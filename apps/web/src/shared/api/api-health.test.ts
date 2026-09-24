@@ -40,6 +40,18 @@ describe("fetchApiHealth", () => {
     });
   });
 
+  it("apiOrigin 끝에 슬래시가 있어도 경로가 중복되지 않는다", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ status: "UP" }));
+
+    await expect(fetchApiHealth("http://api/", fetchImpl)).resolves.toEqual({
+      status: "UP",
+    });
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "http://api/actuator/health",
+      expect.objectContaining({ cache: "no-store" }),
+    );
+  });
+
   it("US1-AC2 제한 시간이 지나면 DOWN을 돌려준다", async () => {
     const fetchImpl = vi.fn(
       (_url: string, init?: RequestInit) =>

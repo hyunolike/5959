@@ -14,7 +14,8 @@ export async function fetchApiHealth(
   timeoutMs = 3000,
 ): Promise<ApiHealth> {
   try {
-    const response = await fetchImpl(`${apiOrigin}/actuator/health`, {
+    const origin = apiOrigin.replace(/\/+$/, "");
+    const response = await fetchImpl(`${origin}/actuator/health`, {
       cache: "no-store",
       signal: AbortSignal.timeout(timeoutMs),
     });
