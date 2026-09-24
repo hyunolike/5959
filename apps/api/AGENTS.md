@@ -6,20 +6,19 @@ Guidance for AI coding agents working in this repository.
 
 오구오구 백엔드: Kotlin + Spring Boot + Spring Modulith 모듈러 모놀리스.
 kotlin-spring-modulith-template에서 이식했다. 단일 Gradle 모듈이며 루트 패키지는
-`com.ogu`. 현재는 공용 인프라를 담는 `shared`(OPEN) 모듈만 있다 — 템플릿의 샘플
-도메인 모듈(`member`, `order`)은 이식 시 제거했다. 실제 도메인 모듈은 이후 기능
-작업에서 `com.ogu.<module>` 아래에 추가한다.
+`com.ogu`. 모듈은 `shared`(OPEN) 하나에서 시작한다. 모듈 목록과 의존 방향은
+`docs/architecture/overview.md` 5.1절을 따른다.
 
 ## Commands
 
 ```bash
-./gradlew test                                              # all tests (requires Docker for Testcontainers)
-./gradlew test --tests "com.ogu.ModularityTests"             # module boundary verification only
-./gradlew ktlintCheck detekt                                 # lint & static analysis
-./gradlew ktlintFormat                                       # auto-format (run before ktlintCheck on new code)
-./gradlew bootRun                                            # local run (starts Postgres via compose.yaml)
-./gradlew clean build                                        # full verification before finishing work
-./gradlew koverHtmlReport                                    # coverage report (build/reports/kover/html)
+cd apps/api && ./gradlew test                                              # all tests (requires Docker for Testcontainers)
+cd apps/api && ./gradlew test --tests "com.ogu.ModularityTests"             # module boundary verification only
+cd apps/api && ./gradlew ktlintCheck detekt                                 # lint & static analysis
+cd apps/api && ./gradlew ktlintFormat                                       # auto-format (run before ktlintCheck on new code)
+cd apps/api && ./gradlew bootRun                                            # local run (starts Postgres via compose.yaml)
+cd apps/api && ./gradlew clean build                                        # full verification before finishing work
+cd apps/api && ./gradlew koverHtmlReport                                    # coverage report (build/reports/kover/html)
 ```
 
 ## Architecture Rules (enforced by tests — do not break)
@@ -29,8 +28,8 @@ kotlin-spring-modulith-template에서 이식했다. 단일 Gradle 모듈이며 �
   `domain`, `presentation` sub-packages are hidden by Spring Modulith.
 - **No dependency cycles between modules.** An event consumer compiles
   against the publisher's event type, so synchronous facade calls and event
-  consumption must point in the same direction. Define the allowed direction
-  explicitly as domain modules are added.
+  consumption must point in the same direction. 의존 방향은
+  `docs/architecture/overview.md` 5.1절의 그래프를 따른다.
 - Cross-module access happens only through a facade interface or an event
   listener (`@ApplicationModuleListener`). Never inject another module's
   repository, service, or entity.
@@ -60,6 +59,9 @@ kotlin-spring-modulith-template에서 이식했다. 단일 Gradle 모듈이며 �
   DDL. Event Publication Registry uses `spring-modulith-starter-jdbc`, whose
   schema (Modulith 2.1 v2, Postgres) is created by `V1__init.sql`, not by the
   starter's own auto schema init.
+- 스키마 변경은 `src/main/resources/db/migration`의 Flyway 스크립트로만 한다.
+  `ddl-auto`는 `validate`다.
+- 테스트 이름 앞에 스펙 인수 조건 ID를 붙인다. 예: `US1-AC2 ...`
 
 ## Gotchas
 

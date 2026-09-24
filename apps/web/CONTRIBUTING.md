@@ -16,19 +16,24 @@
 Run `pnpm lint:fsd` before opening a PR — it catches layer-direction
 violations and public-API sidesteps that `eslint` won't.
 
+Name tests after the spec acceptance criterion they verify, e.g.
+`US1-AC1 ...`.
+
 ## Before opening a PR
 
+Run these from the repo root:
+
 ```bash
-pnpm typecheck
-pnpm lint
-pnpm lint:fsd
-pnpm test
-pnpm build
+pnpm --filter web typecheck
+pnpm --filter web lint
+pnpm --filter web lint:fsd
+pnpm --filter web test
+pnpm --filter web build
 ```
 
 `pnpm test:e2e` is not part of the fast loop (it builds and boots the app),
-but CI runs it on every PR — run it locally if you touched the auth flow or
-the todo board.
+but CI runs it on every PR — run it locally if you touched a BFF route
+handler or a widget it renders.
 
 ## Commits
 

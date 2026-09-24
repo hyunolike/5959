@@ -2,11 +2,18 @@
 
 # Working in this repo
 
-This is a Next.js + Feature-Sliced Design (FSD) template. Before writing
+This app is organized with Feature-Sliced Design (FSD). Before writing
 code, skim [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) — it explains
 the layer order (`app → core → widgets → features → entities → shared`),
 why `core/` exists instead of FSD's usual `app/` layer, and the server-state
-(TanStack Query) vs. client-state (Zustand) split.
+(TanStack Query) vs. client-state (Zustand) split. Only `shared` and
+`widgets/service-status` exist so far; `features` and `entities` are added
+as real domain work lands.
+
+Auth follows the BFF pattern ([ADR-0002](../../docs/adr/0002-bff-auth.md)):
+the browser only ever calls same-origin `/api/*` route handlers, and a
+route handler forwards to the server-only `API_ORIGIN`. Never call the
+backend origin directly from client code.
 
 Rules that are enforced by tooling, not just convention — running
 `pnpm lint:fsd` (steiger) and `pnpm lint` will catch violations of these:
@@ -18,11 +25,12 @@ Rules that are enforced by tooling, not just convention — running
   from `features/*`, etc.
 - Slices in the same layer do not import each other. If two features need
   to be combined, do that composition one layer up, in a widget.
-- `shared/` has zero knowledge of any domain concept (no "todo", "user",
-  "session" in there).
+- `shared/` has zero knowledge of any domain concept.
 
-Before considering a change done, run:
+Test names start with the spec's acceptance criterion ID, e.g. `US1-AC1 ...`.
+
+Run every command from the repo root as `pnpm --filter web <script>`, e.g.:
 
 ```bash
-pnpm typecheck && pnpm lint && pnpm lint:fsd && pnpm test && pnpm build
+pnpm --filter web typecheck && pnpm --filter web lint && pnpm --filter web lint:fsd && pnpm --filter web test && pnpm --filter web build
 ```
