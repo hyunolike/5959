@@ -70,7 +70,7 @@ assert "US3-AC2 헬스 체크에 실패하면 이전 태그로 롤백하고 실�
 setup_no_tag
 # shellcheck disable=SC2034
 run_deploy v2 && status=0 || status=$?
-assert "US3-AC3 .env에 API_TAG가 없으면 배포를 시도하지 않고 명확히 실패한다" \
+assert ".env에 API_TAG가 없으면 배포하지 않고 종료 코드 2로 끝난다" \
   '[[ $status -eq 2 ]] && grep -q "API_TAG" "$WORK/out.log" && [[ ! -f "$WORK/docker.log" ]]'
 
 exit "$failures"
