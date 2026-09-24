@@ -55,6 +55,9 @@ jobs:
     needs: [release-please, api-image]
     runs-on: ubuntu-latest
     environment: production
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
     permissions:
       packages: read
     steps:
@@ -63,6 +66,7 @@ jobs:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
+          fingerprint: ${{ secrets.VM_SSH_FINGERPRINT }}
           script: |
             set -e
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
