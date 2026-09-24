@@ -1,0 +1,425 @@
+package com.ddd.webbb.user.interfaces;
+
+import com.ddd.webbb.global.common.response.ApiResponse;
+import com.ddd.webbb.global.security.CustomUserPrincipal;
+import com.ddd.webbb.user.application.UserService;
+import com.ddd.webbb.user.interfaces.dto.NicknameCheckResponse;
+import com.ddd.webbb.user.interfaces.dto.UserCreateRequest;
+import com.ddd.webbb.user.interfaces.dto.UserListResponse;
+import com.ddd.webbb.user.interfaces.dto.UserMeResponse;
+import com.ddd.webbb.user.interfaces.dto.UserProfileUpdateRequest;
+import com.ddd.webbb.user.interfaces.dto.UserResponse;
+import com.ddd.webbb.user.interfaces.dto.UserUpdateRequest;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import java.util.UUID;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+@Tag(name = "User", description = "회원 API")
+@Validated
+@RestController
+@RequestMapping("/api/users")
+public class UserController {
+
+    private final UserService userService;
+
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
+
+    @Operation(summary = "회원 생성")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "201",
+                description = "생성 성공",
+                content =
+                        @Content(
+                                schema = @Schema(implementation = ApiResponse.class),
+                                examples =
+                                        @ExampleObject(
+                                                value =
+                                                        """
+                        {
+                          "success": true,
+                          "message": "회원이 생성되었습니다.",
+                          "data": {
+                            "id": 1,
+                            "email": "test@test.com",
+                            "nickname": "ogu",
+                            "jobType": null,
+                            "careerLevel": null,
+                            "isActive": true,
+                            "createdAt": "2026-05-03T12:00:00"
+                          },
+                          "timestamp": "2026-05-03T12:00:00"
+                        }
+                        """))),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "400",
+                description = "유효성 검증 실패",
+                content =
+                        @Content(
+                                examples =
+                                        @ExampleObject(
+                                                value =
+                                                        """
+                        {
+                          "success": false,
+                          "message": "유효하지 않은 요청입니다.",
+                          "errors": [
+                            { "field": "email", "reason": "이메일 형식이 올바르지 않습니다." },
+                            { "field": "nickname", "reason": "닉네임은 50자 이하여야 합니다." }
+                          ],
+                          "timestamp": "2026-05-03T12:00:00"
+                        }
+                        """)))
+    })
+    @PostMapping
+    public ResponseEntity<ApiResponse<UserResponse>> createUser(
+            @RequestBody @Valid UserCreateRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.ok("회원이 생성되었습니다.", userService.createUser(request)));
+    }
+
+    @Operation(summary = "닉네임 중복 확인", description = "닉네임 사용 가능 여부를 확인합니다. 인증 없이 호출 가능합니다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "200",
+                description = "중복 확인 성공 (available: true=사용 가능, false=이미 사용 중)",
+                content =
+                        @Content(
+                                examples = {
+                                    @ExampleObject(
+                                            name = "사용 가능",
+                                            value =
+                                                    """
+                        {
+                          "success": true,
+                          "message": "요청이 성공했습니다.",
+                          "data": { "available": true },
+                          "timestamp": "2026-06-12T12:00:00"
+                        }
+                        """),
+                                    @ExampleObject(
+                                            name = "사용 불가",
+                                            value =
+                                                    """
+                        {
+                          "success": true,
+                          "message": "요청이 성공했습니다.",
+                          "data": { "available": false },
+                          "timestamp": "2026-06-12T12:00:00"
+                        }
+                        """)
+                                }))
+    })
+    @GetMapping("/nickname/check")
+    public ApiResponse<NicknameCheckResponse> checkNickname(
+            @Parameter(description = "확인할 닉네임 (최대 10자)") @RequestParam String value) {
+        return ApiResponse.ok(NicknameCheckResponse.of(userService.isNicknameAvailable(value)));
+    }
+
+    @Operation(summary = "회원 단건 조회")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "200",
+                description = "조회 성공",
+                content =
+                        @Content(
+                                examples =
+                                        @ExampleObject(
+                                                value =
+                                                        """
+                        {
+                          "success": true,
+                          "message": "요청이 성공했습니다.",
+                          "data": {
+                            "id": 1,
+                            "email": "test@test.com",
+                            "nickname": "ogu",
+                            "jobType": "DEVELOPMENT",
+                            "careerLevel": "YEAR_3",
+                            "isActive": true,
+                            "createdAt": "2026-05-03T12:00:00"
+                          },
+                          "timestamp": "2026-05-03T12:00:00"
+                        }
+                        """))),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "404",
+                description = "회원 없음",
+                content =
+                        @Content(
+                                examples =
+                                        @ExampleObject(
+                                                value =
+                                                        """
+                        {
+                          "success": false,
+                          "message": "존재하지 않는 회원입니다.",
+                          "timestamp": "2026-05-03T12:00:00"
+                        }
+                        """)))
+    })
+    @GetMapping("/{id}")
+    public ApiResponse<UserResponse> getUser(@PathVariable UUID id) {
+        return ApiResponse.ok(userService.getUser(id));
+    }
+
+    @Operation(summary = "회원 목록 조회 (커서 기반 페이지네이션)")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "200",
+                description = "조회 성공",
+                content =
+                        @Content(
+                                examples =
+                                        @ExampleObject(
+                                                value =
+                                                        """
+                        {
+                          "success": true,
+                          "message": "요청이 성공했습니다.",
+                          "data": {
+                            "users": [
+                              { "id": 2, "email": "b@test.com", "nickname": "bbb", "jobType": null, "careerLevel": null, "isActive": true, "createdAt": "2026-05-03T11:00:00" },
+                              { "id": 1, "email": "a@test.com", "nickname": "aaa", "jobType": null, "careerLevel": null, "isActive": true, "createdAt": "2026-05-03T10:00:00" }
+                            ],
+                            "nextCursor": 1
+                          },
+                          "timestamp": "2026-05-03T12:00:00"
+                        }
+                        """)))
+    })
+    @GetMapping
+    public ApiResponse<UserListResponse> getUsers(
+            @Parameter(description = "마지막으로 받은 회원 id (첫 요청 시 생략)") @RequestParam(required = false)
+                    Long cursor,
+            @Parameter(description = "페이지 크기 (기본값: 20, 최대: 100)")
+                    @RequestParam(defaultValue = "20")
+                    @Min(value = 1, message = "페이지 크기는 1 이상이어야 합니다.")
+                    @Max(value = 100, message = "페이지 크기는 100 이하여야 합니다.")
+                    int size) {
+        return ApiResponse.ok(userService.getUsers(cursor, size));
+    }
+
+    @Operation(
+            summary = "회원 정보 수정",
+            description =
+                    "회원 닉네임, 직군(jobType), 경력(careerLevel)을 수정합니다. "
+                            + "직군/경력은 게시글 목록 필터링 기준으로 사용되므로 아래 코드값만 입력할 수 있습니다.\n\n"
+                            + "직군 허용 값: PLANNING(기획), DESIGN(디자인), DEVELOPMENT(개발), MARKETING(마케팅), "
+                            + "SALES(영업), HR(인사), GENERAL_AFFAIRS(총무), PRODUCTION(생산), "
+                            + "ACCOUNTING(회계), OTHER(기타)\n"
+                            + "경력 허용 값: NEWCOMER(신입), YEAR_1(1년차), YEAR_2(2년차), YEAR_3(3년차), "
+                            + "YEAR_4(4년차), YEAR_5(5년차), YEAR_6(6년차), YEAR_7_PLUS(7년차 이상)\n\n"
+                            + "허용 값 외 문자열을 보내면 400 Bad Request를 반환합니다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "200",
+                description = "수정 성공",
+                content =
+                        @Content(
+                                examples =
+                                        @ExampleObject(
+                                                value =
+                                                        """
+                        {
+                          "success": true,
+                          "message": "요청이 성공했습니다.",
+                          "data": {
+                            "id": 1,
+                            "email": "test@test.com",
+                            "nickname": "newname",
+                            "jobType": "DEVELOPMENT",
+                            "careerLevel": "YEAR_3",
+                            "isActive": true,
+                            "createdAt": "2026-05-03T12:00:00"
+                          },
+                          "timestamp": "2026-05-03T12:00:00"
+                        }
+                        """))),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "404",
+                description = "회원 없음",
+                content =
+                        @Content(
+                                examples =
+                                        @ExampleObject(
+                                                value =
+                                                        """
+                        {
+                          "success": false,
+                          "message": "존재하지 않는 회원입니다.",
+                          "timestamp": "2026-05-03T12:00:00"
+                        }
+                        """)))
+    })
+    @PatchMapping("/{id}")
+    public ApiResponse<UserResponse> updateUser(
+            @PathVariable UUID id, @RequestBody @Valid UserUpdateRequest request) {
+        return ApiResponse.ok(userService.updateUser(id, request));
+    }
+
+    @Operation(summary = "회원 탈퇴 (소프트 삭제)")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "204",
+                description = "탈퇴 성공"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "404",
+                description = "회원 없음",
+                content =
+                        @Content(
+                                examples =
+                                        @ExampleObject(
+                                                value =
+                                                        """
+                        {
+                          "success": false,
+                          "message": "존재하지 않는 회원입니다.",
+                          "timestamp": "2026-05-03T12:00:00"
+                        }
+                        """)))
+    })
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> withdrawUser(@PathVariable UUID id) {
+        userService.withdrawUser(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "내 정보 조회")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "200",
+                description = "조회 성공",
+                content =
+                        @Content(
+                                examples =
+                                        @ExampleObject(
+                                                value =
+                                                        """
+                        {
+                          "success": true,
+                          "message": "요청이 성공했습니다.",
+                          "data": {
+                            "id": "550e8400-e29b-41d4-a716-446655440000",
+                            "email": "test@test.com",
+                            "nickname": "ogu",
+                            "jobType": "DEVELOPMENT",
+                            "careerLevel": "YEAR_3",
+                            "isActive": true,
+                            "createdAt": "2026-05-03T12:00:00"
+                          },
+                          "timestamp": "2026-05-03T12:00:00"
+                        }
+                        """))),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "401",
+                description = "인증 실패",
+                content =
+                        @Content(
+                                examples =
+                                        @ExampleObject(
+                                                value =
+                                                        """
+                        {
+                          "success": false,
+                          "message": "인증이 필요합니다.",
+                          "timestamp": "2026-05-03T12:00:00"
+                        }
+                        """)))
+    })
+    @GetMapping("/me")
+    public ApiResponse<UserMeResponse> getMe(
+            @AuthenticationPrincipal CustomUserPrincipal principal) {
+        return ApiResponse.ok(UserMeResponse.from(userService.getUserEntity(principal.publicId())));
+    }
+
+    @Operation(
+            summary = "내 프로필 수정",
+            description =
+                    "내 닉네임, 직군(jobType), 경력(careerLevel)을 수정합니다. "
+                            + "직군/경력은 게시글 목록 필터링 기준으로 사용되므로 아래 코드값만 입력할 수 있습니다.\n\n"
+                            + "직군 허용 값: PLANNING(기획), DESIGN(디자인), DEVELOPMENT(개발), MARKETING(마케팅), "
+                            + "SALES(영업), HR(인사), GENERAL_AFFAIRS(총무), PRODUCTION(생산), "
+                            + "ACCOUNTING(회계), OTHER(기타)\n"
+                            + "경력 허용 값: NEWCOMER(신입), YEAR_1(1년차), YEAR_2(2년차), YEAR_3(3년차), "
+                            + "YEAR_4(4년차), YEAR_5(5년차), YEAR_6(6년차), YEAR_7_PLUS(7년차 이상)\n\n"
+                            + "허용 값 외 문자열을 보내면 400 Bad Request를 반환합니다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "200",
+                description = "수정 성공",
+                content =
+                        @Content(
+                                examples =
+                                        @ExampleObject(
+                                                value =
+                                                        """
+                        {
+                          "success": true,
+                          "message": "요청이 성공했습니다.",
+                          "data": {
+                            "id": "550e8400-e29b-41d4-a716-446655440000",
+                            "email": "test@test.com",
+                            "nickname": "newogu",
+                            "jobType": "PLANNING",
+                            "careerLevel": "YEAR_5",
+                            "isActive": true,
+                            "createdAt": "2026-05-03T12:00:00"
+                          },
+                          "timestamp": "2026-05-03T12:00:00"
+                        }
+                        """))),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "401",
+                description = "인증 실패",
+                content =
+                        @Content(
+                                examples =
+                                        @ExampleObject(
+                                                value =
+                                                        """
+                        {
+                          "success": false,
+                          "message": "인증이 필요합니다.",
+                          "timestamp": "2026-05-03T12:00:00"
+                        }
+                        """)))
+    })
+    @PatchMapping("/me/profile")
+    public ApiResponse<UserMeResponse> updateMyProfile(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @RequestBody @Valid UserProfileUpdateRequest request) {
+        return ApiResponse.ok(
+                UserMeResponse.from(
+                        userService.updateProfile(
+                                principal.publicId(),
+                                request.nickname(),
+                                request.jobType() != null ? request.jobType().name() : null,
+                                request.careerLevel() != null
+                                        ? request.careerLevel().name()
+                                        : null)));
+    }
+}

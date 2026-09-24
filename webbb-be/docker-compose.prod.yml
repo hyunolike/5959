@@ -1,0 +1,48 @@
+services:
+  app:
+    image: ghcr.io/${GITHUB_REPOSITORY}:${IMAGE_TAG:-latest}
+    container_name: webbb-prod-app
+    ports:
+      - "80:8080"
+    mem_limit: ${APP_MEM_LIMIT:-384m}
+    mem_reservation: ${APP_MEM_RESERVATION:-256m}
+    cpus: ${APP_CPU_LIMIT:-1.0}
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: ${DB_URL_PROD:?DB_URL_PROD is required}
+      DB_USERNAME: ${DB_USERNAME:?DB_USERNAME is required}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      NVIDIA_API_KEY: ${NVIDIA_API_KEY:?NVIDIA_API_KEY is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?GOOGLE_CLIENT_ID is required}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:?GOOGLE_CLIENT_SECRET is required}
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:?KAKAO_CLIENT_ID is required}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:?KAKAO_CLIENT_SECRET is required}
+      NAVER_CLIENT_ID: ${NAVER_CLIENT_ID:?NAVER_CLIENT_ID is required}
+      NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET:?NAVER_CLIENT_SECRET is required}
+      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL is required}
+      MAIL_USERNAME: ${MAIL_USERNAME:?MAIL_USERNAME is required}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:?MAIL_PASSWORD is required}
+      TZ: Asia/Seoul
+      JAVA_TOOL_OPTIONS: -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:InitialRAMPercentage=25.0 -Duser.timezone=Asia/Seoul
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.0
+    container_name: webbb-prod-redis
+    volumes:
+      - redis-prod-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  redis-prod-data:

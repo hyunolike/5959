@@ -1,0 +1,93 @@
+package com.ddd.webbb.user.application;
+
+import com.ddd.webbb.global.common.exception.AppException;
+import com.ddd.webbb.global.common.exception.ErrorCode;
+import com.ddd.webbb.user.domain.User;
+import com.ddd.webbb.user.domain.UserRepository;
+import com.ddd.webbb.user.infrastructure.UserRepositoryImpl;
+import com.ddd.webbb.user.interfaces.dto.UserCreateRequest;
+import com.ddd.webbb.user.interfaces.dto.UserListResponse;
+import com.ddd.webbb.user.interfaces.dto.UserResponse;
+import com.ddd.webbb.user.interfaces.dto.UserUpdateRequest;
+import java.util.List;
+import java.util.UUID;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@Transactional(readOnly = true)
+public class UserService {
+
+    private final UserRepository userRepository;
+    private final UserRepositoryImpl userRepositoryImpl;
+
+    public UserService(UserRepository userRepository, UserRepositoryImpl userRepositoryImpl) {
+        this.userRepository = userRepository;
+        this.userRepositoryImpl = userRepositoryImpl;
+    }
+
+    @Transactional
+    public UserResponse createUser(UserCreateRequest request) {
+        if (userRepository.existsByEmailAndDeletedAtIsNull(request.email())) {
+            throw new AppException(ErrorCode.DUPLICATED_EMAIL);
+        }
+        User user = User.create(request.email(), request.nickname());
+        return UserResponse.from(userRepository.save(user));
+    }
+
+    public boolean isNicknameAvailable(String nickname) {
+        return !userRepository.existsByNicknameAndDeletedAtIsNull(nickname);
+    }
+
+    public UserResponse getUser(UUID publicId) {
+        return UserResponse.from(getUserEntity(publicId));
+    }
+
+    public User getUserEntity(UUID publicId) {
+        User user =
+                userRepository
+                        .findByPublicIdAndDeletedAtIsNull(publicId)
+                        .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        return user;
+    }
+
+    public UserListResponse getUsers(Long cursor, int size) {
+        List<User> users = userRepositoryImpl.findByCursor(cursor, size);
+        Long nextCursor = users.size() == size ? users.get(users.size() - 1).getId() : null;
+        return new UserListResponse(users.stream().map(UserResponse::from).toList(), nextCursor);
+    }
+
+    @Transactional
+    public UserResponse updateUser(UUID publicId, UserUpdateRequest request) {
+        User user = getUserEntity(publicId);
+        validateNicknameForUpdate(user, request.nickname());
+        user.update(
+                request.nickname(),
+                request.jobType() != null ? request.jobType().name() : null,
+                request.careerLevel() != null ? request.careerLevel().name() : null);
+        return UserResponse.from(user);
+    }
+
+    @Transactional
+    public User updateProfile(UUID publicId, String nickname, String jobType, String careerLevel) {
+        User user = getUserEntity(publicId);
+        validateNicknameForUpdate(user, nickname);
+        user.update(nickname, jobType, careerLevel);
+        return user;
+    }
+
+    @Transactional
+    public void withdrawUser(UUID publicId) {
+        User user = getUserEntity(publicId);
+        user.withdraw();
+    }
+
+    private void validateNicknameForUpdate(User user, String nickname) {
+        if (nickname == null || nickname.equals(user.getNickname())) {
+            return;
+        }
+        if (userRepository.existsByNicknameAndDeletedAtIsNull(nickname)) {
+            throw new AppException(ErrorCode.DUPLICATED_NICKNAME);
+        }
+    }
+}

@@ -1,0 +1,86 @@
+package com.ddd.webbb.global.common.exception;
+
+import com.ddd.webbb.global.common.response.ApiResponse;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.ConstraintViolationException;
+import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler(AppException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAppException(AppException e) {
+        ErrorCode errorCode = e.getErrorCode();
+        return ResponseEntity.status(errorCode.getStatus())
+                .body(ApiResponse.fail(errorCode.getMessage()));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiResponse<Void>> handleValidation(MethodArgumentNotValidException e) {
+        List<ApiResponse.FieldError> errors =
+                e.getBindingResult().getFieldErrors().stream()
+                        .map(
+                                fe ->
+                                        new ApiResponse.FieldError(
+                                                fe.getField(), fe.getDefaultMessage()))
+                        .toList();
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.fail(ErrorCode.INVALID_INPUT.getMessage(), errors));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleHttpMessageNotReadable(
+            HttpMessageNotReadableException e) {
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.fail(ErrorCode.INVALID_INPUT.getMessage()));
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleConstraintViolation(
+            ConstraintViolationException e) {
+        List<ApiResponse.FieldError> errors =
+                e.getConstraintViolations().stream()
+                        .map(
+                                violation ->
+                                        new ApiResponse.FieldError(
+                                                violation.getPropertyPath().toString(),
+                                                violation.getMessage()))
+                        .toList();
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.fail(ErrorCode.INVALID_INPUT.getMessage(), errors));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(
+            DataIntegrityViolationException e) {
+        log.error("Data integrity violation", e);
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.fail(ErrorCode.INVALID_INPUT.getMessage()));
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNoResourceFound(NoResourceFoundException e) {
+        return ResponseEntity.status(ErrorCode.RESOURCE_NOT_FOUND.getStatus())
+                .body(ApiResponse.fail(ErrorCode.RESOURCE_NOT_FOUND.getMessage()));
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiResponse<Void>> handleException(
+            Exception e, HttpServletResponse response) {
+        response.setContentType(null);
+        log.error("Unhandled exception", e);
+        return ResponseEntity.internalServerError()
+                .body(ApiResponse.fail(ErrorCode.INTERNAL_SERVER_ERROR.getMessage()));
+    }
+}
