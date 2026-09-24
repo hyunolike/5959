@@ -1,4 +1,5 @@
 import { Card } from "@/shared/ui";
+import { ServiceStatus } from "@/widgets/service-status";
 
 export default function HomePage() {
   return (
@@ -7,6 +8,9 @@ export default function HomePage() {
       <p className="mt-2 text-sm text-neutral-500">
         감정을 나누고 함께 이겨내는 서비스
       </p>
+      <div className="mt-6">
+        <ServiceStatus />
+      </div>
     </Card>
   );
 }
