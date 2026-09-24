@@ -4,7 +4,7 @@
 
 1. Cloudflare R2에 버킷 `ogu-backup`을 만든다.
 2. 버킷 Settings > Object lifecycle rules에서 `postgres/` 접두사 객체를 14일 뒤 삭제하는 규칙을 추가한다.
-3. R2 API 토큰(해당 버킷 Object Read & Write)을 만들고 `/opt/ogu/.env`의 `RCLONE_CONFIG_R2_*`를 채운다. `RCLONE_CONFIG_R2_ENDPOINT`는 `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`이다.
+3. R2 API 토큰(해당 버킷 Object Read & Write)을 만들고 `/opt/ogu/.env`의 `RCLONE_CONFIG_R2_*`를 채운다. `RCLONE_CONFIG_R2_ENDPOINT`는 `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`이다. 버킷 범위 토큰은 버킷 존재 확인/생성 권한이 없으므로 `RCLONE_CONFIG_R2_NO_CHECK_BUCKET=true`가 `.env.example`에 이미 들어있는지 확인한다.
 4. 수동으로 한 번 실행해 본다.
 
 ```bash
