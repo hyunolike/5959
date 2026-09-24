@@ -35,14 +35,21 @@ gh secret set VM_USER --env production --body "ubuntu"
 gh secret set VM_SSH_KEY --env production < ~/.ssh/<배포용_개인키>
 ```
 
+   `VM_SSH_FINGERPRINT`도 등록한다. appleboy/ssh-action이 요구하는 형식은 `ssh-keyscan`으로 얻은 SHA256 지문 문자열이다.
+
+   ```bash
+   ssh-keyscan -t ed25519 <VM_IP> | ssh-keygen -lf -
+   # SHA256:... 형식의 출력에서 SHA256:... 부분만 그대로 시크릿 값으로 쓴다
+   gh secret set VM_SSH_FINGERPRINT --env production --body "SHA256:..."
+   ```
+
 3. `deploy` job이 실행될 때마다 워크플로 토큰으로 VM을 ghcr.io에 로그인시키고 배포가 끝나면 로그아웃한다. GHCR 패키지 `5959-api`는 비공개로 둬도 된다.
+4. Settings > Actions > General > Workflow permissions에서 "Allow GitHub Actions to create and approve pull requests"를 켠다. 꺼져 있으면 release-please가 릴리즈 PR을 열지 못한다. `GITHUB_TOKEN`으로 열린 PR은 CI를 트리거하지 않으니(release-please PR 포함) `main` 브랜치 보호에서 `ci-ok`를 필수 체크로 걸지 않는다(나중에 release-please를 PAT나 GitHub App 토큰으로 바꾸면 걸 수 있다).
 
 ## 4. Grafana Cloud (US4-AC1)
 
 1. Grafana Cloud 무료 스택을 만든다.
-2. Connections > Add new connection > OpenTelemetry (OTLP)에서 토큰을 만들고, 화면에 나온 `OTEL_EXPORTER_OTLP_ENDPOINT`와 `OTEL_EXPORTER_OTLP_HEADERS` 값을 `/opt/ogu/.env`에 넣는다.
-3. `docker compose -f /opt/ogu/repo/infra/compose.prod.yaml --env-file /opt/ogu/.env up -d api`로 다시 띄운다.
-4. **수동 검증**: `curl https://<API_DOMAIN>/actuator/health`를 몇 번 호출한 뒤 Grafana의 Explore > Tempo에서 `service.name = ogu-api`로 트레이스를 찾는다. 같은 trace ID로 Loki에서 로그가 나오면 US4-AC1 통과다.
+2. Connections > Add new connection > OpenTelemetry (OTLP)에서 토큰을 만들고, 화면에 나온 `OTEL_EXPORTER_OTLP_ENDPOINT`와 `OTEL_EXPORTER_OTLP_HEADERS` 값을 `/opt/ogu/.env`에 넣는다. 검증은 §7에서 한다(아직 배포된 이미지가 없다).
 
 ## 5. Vercel
 
@@ -56,6 +63,11 @@ gh secret set VM_SSH_KEY --env production < ~/.ssh/<배포용_개인키>
 2. 그 PR을 머지하면 `Release` 워크플로가 이미지를 올리고 VM에 배포한다.
 3. **검증**: `curl https://<API_DOMAIN>/actuator/health`가 `UP`이고, Vercel 운영 URL 첫 화면에 "서버 정상"이 보이면 US3-AC1과 SC-001 통과다.
 
-## 7. 백업 (US5-AC1, US5-AC2)
+## 7. 관측성 검증 (US4-AC1)
+
+1. `docker compose -f /opt/ogu/repo/infra/compose.prod.yaml --env-file /opt/ogu/.env up -d api`로 §4에서 넣은 OTel 값을 반영해 다시 띄운다.
+2. **수동 검증**: `curl https://<API_DOMAIN>/actuator/health`를 몇 번 호출한 뒤 Grafana의 Explore > Tempo에서 `service.name = ogu-api`로 트레이스를 찾는다. 같은 trace ID로 Loki에서 로그가 나오면 US4-AC1 통과다.
+
+## 8. 백업 (US5-AC1, US5-AC2)
 
 `infra/RESTORE.md`를 따른다.
