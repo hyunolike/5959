@@ -11,7 +11,7 @@ failures=0
 setup() {
   WORK="$(mktemp -d)"
   mkdir -p "$WORK/bin"
-  printf 'API_TAG=v1\nPOSTGRES_DB=ogu\n' > "$WORK/.env"
+  printf 'API_TAG=v1\nAPI_DOMAIN=api.example.com\nPOSTGRES_DB=ogu\n' > "$WORK/.env"
   touch "$WORK/compose.prod.yaml"
 
   # docker 스텁: 호출 기록만 남긴다
@@ -33,7 +33,7 @@ EOF
 setup_pull_fail() {
   WORK="$(mktemp -d)"
   mkdir -p "$WORK/bin"
-  printf 'API_TAG=v1\nPOSTGRES_DB=ogu\n' > "$WORK/.env"
+  printf 'API_TAG=v1\nAPI_DOMAIN=api.example.com\nPOSTGRES_DB=ogu\n' > "$WORK/.env"
   touch "$WORK/compose.prod.yaml"
 
   cat > "$WORK/bin/docker" <<EOF
@@ -52,7 +52,25 @@ EOF
 setup_no_tag() {
   WORK="$(mktemp -d)"
   mkdir -p "$WORK/bin"
-  printf 'POSTGRES_DB=ogu\n' > "$WORK/.env"
+  printf 'API_DOMAIN=api.example.com\nPOSTGRES_DB=ogu\n' > "$WORK/.env"
+  touch "$WORK/compose.prod.yaml"
+
+  cat > "$WORK/bin/docker" <<EOF
+#!/usr/bin/env bash
+echo "\$*" >> "$WORK/docker.log"
+EOF
+  cat > "$WORK/bin/curl" <<EOF
+#!/usr/bin/env bash
+echo '{"status":"UP"}'
+EOF
+  chmod +x "$WORK/bin/docker" "$WORK/bin/curl"
+}
+
+# API_DOMAIN이 없는 .env: check_api_domain()이 조기에 실패해야 한다(docker는 절대 호출되지 않아야 한다)
+setup_no_domain() {
+  WORK="$(mktemp -d)"
+  mkdir -p "$WORK/bin"
+  printf 'API_TAG=v1\nPOSTGRES_DB=ogu\n' > "$WORK/.env"
   touch "$WORK/compose.prod.yaml"
 
   cat > "$WORK/bin/docker" <<EOF
@@ -98,5 +116,11 @@ setup_pull_fail
 run_deploy missing && status=0 || status=$?
 assert "새 이미지를 받지 못하면 이전 태그로 롤백하고 실패한다" \
   '[[ $status -eq 1 ]] && grep -q "^API_TAG=v1$" "$WORK/.env"'
+
+setup_no_domain
+# shellcheck disable=SC2034
+run_deploy v2 && status=0 || status=$?
+assert ".env에 API_DOMAIN이 없으면 배포하지 않고 종료 코드 2로 끝난다" \
+  '[[ $status -eq 2 ]] && grep -q "API_DOMAIN" "$WORK/out.log" && [[ ! -f "$WORK/docker.log" ]]'
 
 exit "$failures"
