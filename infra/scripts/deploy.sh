@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # 사용법: deploy.sh <이미지 태그>
 # 새 태그로 api 컨테이너를 교체하고, 헬스 체크에 실패하면 이전 태그로 되돌린 뒤 실패로 끝낸다.
+# 종료 코드: 0 = 배포 성공, 1 = 롤백함, 2 = 배포를 시작하기 전 환경 설정 오류(예: .env에 API_TAG 없음)
 set -euo pipefail
 
 NEW_TAG="${1:?이미지 태그가 필요합니다}"
@@ -11,7 +12,15 @@ HEALTH_RETRIES="${HEALTH_RETRIES:-30}"
 HEALTH_INTERVAL="${HEALTH_INTERVAL:-2}"
 ENV_FILE="$DEPLOY_DIR/.env"
 
-current_tag() { grep -E '^API_TAG=' "$ENV_FILE" | cut -d= -f2; }
+current_tag() {
+  local tag
+  tag="$(grep -E '^API_TAG=' "$ENV_FILE" | cut -d= -f2)" || true
+  if [[ -z "$tag" ]]; then
+    echo "API_TAG가 $ENV_FILE 에 없습니다" >&2
+    exit 2
+  fi
+  printf '%s' "$tag"
+}
 
 set_tag() {
   sed -i.bak "s/^API_TAG=.*/API_TAG=$1/" "$ENV_FILE"
