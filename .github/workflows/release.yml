@@ -55,6 +55,8 @@ jobs:
     needs: [release-please, api-image]
     runs-on: ubuntu-latest
     environment: production
+    permissions:
+      packages: read
     steps:
       - uses: appleboy/ssh-action@v1.2.5
         with:
@@ -63,6 +65,8 @@ jobs:
           key: ${{ secrets.VM_SSH_KEY }}
           script: |
             set -e
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+            trap 'docker logout ghcr.io' EXIT
             cd /opt/ogu/repo
             git fetch --tags --force
             git checkout --force "api-v${{ needs.release-please.outputs.api_version }}"

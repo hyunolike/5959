@@ -35,7 +35,7 @@ gh secret set VM_USER --env production --body "ubuntu"
 gh secret set VM_SSH_KEY --env production < ~/.ssh/<배포용_개인키>
 ```
 
-3. 첫 릴리즈 뒤 GHCR 패키지 `5959-api`의 Package settings에서 visibility를 Public으로 바꾼다. VM이 인증 없이 이미지를 받게 된다.
+3. `deploy` job이 실행될 때마다 워크플로 토큰으로 VM을 ghcr.io에 로그인시키고 배포가 끝나면 로그아웃한다. GHCR 패키지 `5959-api`는 비공개로 둬도 된다.
 
 ## 4. Grafana Cloud (US4-AC1)
 

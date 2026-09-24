@@ -28,6 +28,26 @@ EOF
   chmod +x "$WORK/bin/docker" "$WORK/bin/curl"
 }
 
+# 새 태그의 이미지를 받지 못하는 상황(인증 실패, 존재하지 않는 태그 등):
+# docker 스텁이 API_TAG=missing일 때만 실패한다
+setup_pull_fail() {
+  WORK="$(mktemp -d)"
+  mkdir -p "$WORK/bin"
+  printf 'API_TAG=v1\nPOSTGRES_DB=ogu\n' > "$WORK/.env"
+  touch "$WORK/compose.prod.yaml"
+
+  cat > "$WORK/bin/docker" <<EOF
+#!/usr/bin/env bash
+if grep -q '^API_TAG=missing' "$WORK/.env"; then exit 1; fi
+echo "\$*" >> "$WORK/docker.log"
+EOF
+  cat > "$WORK/bin/curl" <<EOF
+#!/usr/bin/env bash
+echo '{"status":"UP"}'
+EOF
+  chmod +x "$WORK/bin/docker" "$WORK/bin/curl"
+}
+
 # API_TAG가 없는 .env: current_tag()가 조기에 실패해야 한다(docker는 절대 호출되지 않아야 한다)
 setup_no_tag() {
   WORK="$(mktemp -d)"
@@ -72,5 +92,11 @@ setup_no_tag
 run_deploy v2 && status=0 || status=$?
 assert ".env에 API_TAG가 없으면 배포하지 않고 종료 코드 2로 끝난다" \
   '[[ $status -eq 2 ]] && grep -q "API_TAG" "$WORK/out.log" && [[ ! -f "$WORK/docker.log" ]]'
+
+setup_pull_fail
+# shellcheck disable=SC2034
+run_deploy missing && status=0 || status=$?
+assert "새 이미지를 받지 못하면 이전 태그로 롤백하고 실패한다" \
+  '[[ $status -eq 1 ]] && grep -q "^API_TAG=v1$" "$WORK/.env"'
 
 exit "$failures"

@@ -46,17 +46,15 @@ wait_healthy() {
 
 PREV_TAG="$(current_tag)"
 set_tag "$NEW_TAG"
-up_api
 
-if wait_healthy; then
+if up_api && wait_healthy; then
   echo "배포 성공: $NEW_TAG"
   exit 0
 fi
 
 echo "헬스 체크 실패: $NEW_TAG, $PREV_TAG 로 롤백합니다" >&2
 set_tag "$PREV_TAG"
-up_api
-if ! wait_healthy; then
+if ! up_api || ! wait_healthy; then
   echo "롤백한 $PREV_TAG 도 헬스 체크에 실패했습니다" >&2
 fi
 exit 1
