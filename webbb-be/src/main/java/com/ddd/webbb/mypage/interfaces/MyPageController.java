@@ -1,0 +1,273 @@
+package com.ddd.webbb.mypage.interfaces;
+
+import com.ddd.webbb.global.common.response.ApiResponse;
+import com.ddd.webbb.global.security.CustomUserPrincipal;
+import com.ddd.webbb.mypage.application.MyPageService;
+import com.ddd.webbb.mypage.interfaces.dto.MonsterStatsResponse;
+import com.ddd.webbb.mypage.interfaces.dto.MyCommentResponse;
+import com.ddd.webbb.mypage.interfaces.dto.MyLikedPostResponse;
+import com.ddd.webbb.mypage.interfaces.dto.MyPostResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+@Tag(name = "MyPage", description = "마이페이지 API")
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/api/me")
+public class MyPageController {
+
+    private final MyPageService myPageService;
+
+    @Operation(
+            summary = "내가 작성한 게시글 목록 조회",
+            description =
+                    "로그인한 사용자가 작성한 게시글 목록을 최신순으로 반환합니다.\n\n"
+                            + "**emotionType** — 게시글에 생성된 몬스터의 감정 유형\n"
+                            + "- `ANXIETY`: 불안\n"
+                            + "- `LETHARGY`: 무기력\n"
+                            + "- `LONELINESS`: 외로움\n"
+                            + "- `SELF_DEPRECATION`: 자기비하\n"
+                            + "- `IRRITATION`: 짜증\n"
+                            + "- `null`: 몬스터가 아직 생성되지 않은 경우\n\n"
+                            + "**monsterStatus** — 몬스터의 현재 상태\n"
+                            + "- `ALIVE`: 몬스터가 살아있음 (HP > 0)\n"
+                            + "- `DEAD`: 공감·댓글로 HP가 0이 되어 처치됨\n"
+                            + "- `null`: 몬스터가 아직 생성되지 않은 경우\n\n"
+                            + "**커서 페이지네이션**: `nextCursor`가 null이면 마지막 페이지입니다.\n"
+                            + "다음 페이지 조회 시 `cursor` 파라미터에 `nextCursor` 값을 전달하세요.\n\n"
+                            + "인증 필요: Authorization 헤더에 Bearer Access Token을 포함해야 합니다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "200",
+                description = "내 게시글 목록 조회 성공",
+                content =
+                        @Content(
+                                examples =
+                                        @ExampleObject(
+                                                value =
+                                                        """
+                        {
+                          "success": true,
+                          "message": "내 게시글 목록을 조회했습니다.",
+                          "data": {
+                            "posts": [
+                              {
+                                "postId": 1,
+                                "contentPreview": "면접에서 계속 떨어져서 점점 자신감이...",
+                                "emotionType": "ANXIETY",
+                                "monsterStatus": "ALIVE",
+                                "createdAt": "2026-04-27T21:00:00"
+                              }
+                            ],
+                            "nextCursor": null
+                          },
+                          "timestamp": "2026-04-27T21:00:00"
+                        }
+                        """)))
+    })
+    @GetMapping("/posts")
+    public ApiResponse<MyPostResponse> getMyPosts(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @Parameter(description = "커서 (마지막 postId)") @RequestParam(required = false) Long cursor,
+            @Parameter(description = "페이지 크기") @RequestParam(defaultValue = "20") int size) {
+        MyPostResponse response = myPageService.getMyPosts(principal.publicId(), cursor, size);
+        return ApiResponse.ok("내 게시글 목록을 조회했습니다.", response);
+    }
+
+    @Operation(
+            summary = "내가 공감한 게시글 목록 조회",
+            description =
+                    "로그인한 사용자가 공감(좋아요)한 게시글 목록을 최근 공감 순으로 반환합니다.\n\n"
+                            + "**emotionType** — 게시글에 생성된 몬스터의 감정 유형\n"
+                            + "- `ANXIETY`: 불안\n"
+                            + "- `LETHARGY`: 무기력\n"
+                            + "- `LONELINESS`: 외로움\n"
+                            + "- `SELF_DEPRECATION`: 자기비하\n"
+                            + "- `IRRITATION`: 짜증\n"
+                            + "- `null`: 몬스터가 아직 생성되지 않은 경우\n\n"
+                            + "**monsterStatus** — 몬스터의 현재 상태\n"
+                            + "- `ALIVE`: 몬스터가 살아있음 (HP > 0)\n"
+                            + "- `DEAD`: 공감·댓글로 HP가 0이 되어 처치됨\n"
+                            + "- `null`: 몬스터가 아직 생성되지 않은 경우\n\n"
+                            + "**커서 페이지네이션**: `nextCursor`가 null이면 마지막 페이지입니다.\n"
+                            + "다음 페이지 조회 시 `cursor` 파라미터에 `nextCursor` 값을 전달하세요.\n\n"
+                            + "인증 필요: Authorization 헤더에 Bearer Access Token을 포함해야 합니다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "200",
+                description = "공감한 게시글 목록 조회 성공",
+                content =
+                        @Content(
+                                examples =
+                                        @ExampleObject(
+                                                value =
+                                                        """
+                        {
+                          "success": true,
+                          "message": "공감한 게시글 목록을 조회했습니다.",
+                          "data": {
+                            "posts": [
+                              {
+                                "postId": 1,
+                                "contentPreview": "이직 준비 시작하는 게 진짜 힘들다...",
+                                "authorNickname": "오오",
+                                "authorJobType": "개발",
+                                "authorCareerLevel": "1년차",
+                                "emotionType": "LETHARGY",
+                                "monsterStatus": "ALIVE",
+                                "currentHp": 20,
+                                "maxHp": 30,
+                                "likeCount": 4,
+                                "commentCount": 4,
+                                "commentTone": "COMFORT_ME",
+                                "createdAt": "2026-06-22T12:00:00"
+                              }
+                            ],
+                            "nextCursor": 42
+                          },
+                          "timestamp": "2026-06-23T10:00:00"
+                        }
+                        """)))
+    })
+    @GetMapping("/liked-posts")
+    public ApiResponse<MyLikedPostResponse> getMyLikedPosts(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @Parameter(description = "커서 (마지막 postLikeId)") @RequestParam(required = false)
+                    Long cursor,
+            @Parameter(description = "페이지 크기") @RequestParam(defaultValue = "20") int size) {
+        MyLikedPostResponse response =
+                myPageService.getLikedPosts(principal.publicId(), cursor, size);
+        return ApiResponse.ok("공감한 게시글 목록을 조회했습니다.", response);
+    }
+
+    @Operation(summary = "내가 작성한 댓글 목록 조회")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "200",
+                description = "내 댓글 목록 조회 성공",
+                content =
+                        @Content(
+                                examples =
+                                        @ExampleObject(
+                                                value =
+                                                        """
+                        {
+                          "success": true,
+                          "message": "내 댓글 목록을 조회했습니다.",
+                          "data": {
+                            "comments": [
+                              {
+                                "commentId": 1,
+                                "postId": 1,
+                                "content": "지금 많이 힘들겠지만, 여기까지 온 것만으로도 충분히 잘하고 있어요.",
+                                "createdAt": "2026-04-27T21:30:00"
+                              }
+                            ],
+                            "nextCursor": null
+                          },
+                          "timestamp": "2026-04-27T21:00:00"
+                        }
+                        """)))
+    })
+    @GetMapping("/comments")
+    public ApiResponse<MyCommentResponse> getMyComments(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @Parameter(description = "커서 (마지막 commentId)") @RequestParam(required = false)
+                    Long cursor,
+            @Parameter(description = "페이지 크기") @RequestParam(defaultValue = "20") int size) {
+        MyCommentResponse response =
+                myPageService.getMyComments(principal.publicId(), cursor, size);
+        return ApiResponse.ok("내 댓글 목록을 조회했습니다.", response);
+    }
+
+    @Operation(
+            summary = "몬스터 통계 조회",
+            description =
+                    "로그인한 사용자의 마이페이지 몬스터 통계를 반환합니다.\n\n"
+                            + "응답 필드 설명:\n"
+                            + "- totalMonsterCount: 사용자가 작성한 게시글에 생성된 전체 몬스터 수\n"
+                            + "- defeatedMonsterCount: 공감·댓글로 HP가 0이 되어 처치된 몬스터 수\n"
+                            + "- mostFrequentEmotion: 가장 많이 나타난 감정 유형 정보\n"
+                            + "  - 몬스터가 하나도 없으면 null → 프론트에서 '두드러진 감정이 없어요' 표시\n"
+                            + "  - type: 감정 enum (ANXIETY=불안, LETHARGY=무기력, LONELINESS=외로움, "
+                            + "SELF_DEPRECATION=자기비하, IRRITATION=짜증)\n"
+                            + "  - percentage: 전체 몬스터 중 해당 감정의 비율 (0~100, 반올림)\n\n"
+                            + "인증 필요: Authorization 헤더에 Bearer Access Token을 포함해야 합니다.")
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "200",
+                description = "몬스터 통계 조회 성공",
+                content =
+                        @Content(
+                                examples = {
+                                    @ExampleObject(
+                                            name = "감정 데이터 있음",
+                                            summary = "몬스터가 존재하고 최다 감정이 있는 경우",
+                                            value =
+                                                    """
+                        {
+                          "success": true,
+                          "message": "몬스터 통계를 조회했습니다.",
+                          "data": {
+                            "totalMonsterCount": 5,
+                            "defeatedMonsterCount": 3,
+                            "mostFrequentEmotion": {
+                              "type": "ANXIETY",
+                              "displayName": "불안",
+                              "count": 2,
+                              "percentage": 40
+                            }
+                          },
+                          "timestamp": "2026-06-11T10:00:00"
+                        }
+                        """),
+                                    @ExampleObject(
+                                            name = "감정 데이터 없음",
+                                            summary = "아직 게시글을 작성하지 않아 몬스터가 없는 경우",
+                                            value =
+                                                    """
+                        {
+                          "success": true,
+                          "message": "몬스터 통계를 조회했습니다.",
+                          "data": {
+                            "totalMonsterCount": 0,
+                            "defeatedMonsterCount": 0,
+                            "mostFrequentEmotion": null
+                          },
+                          "timestamp": "2026-06-11T10:00:00"
+                        }
+                        """)
+                                })),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "401",
+                description = "인증 실패 또는 Access Token 누락",
+                content =
+                        @Content(
+                                examples =
+                                        @ExampleObject(
+                                                value =
+                                                        """
+                        {
+                          "success": false,
+                          "message": "인증이 필요합니다.",
+                          "timestamp": "2026-06-11T10:00:00"
+                        }
+                        """)))
+    })
+    @GetMapping("/monster-stats")
+    public ApiResponse<MonsterStatsResponse> getMonsterStats(
+            @AuthenticationPrincipal CustomUserPrincipal principal) {
+        return ApiResponse.ok(
+                "몬스터 통계를 조회했습니다.", myPageService.getMonsterStats(principal.publicId()));
+    }
+}
