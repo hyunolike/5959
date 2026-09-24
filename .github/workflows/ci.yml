@@ -74,6 +74,59 @@ jobs:
           name: modulith-docs
           path: apps/api/build/spring-modulith-docs
           retention-days: 30
+      # 이미지가 실제로 뜨고 헬스 체크를 통과하는지 확인한다(호스트 아키텍처만, push는 하지 않는다)
+      - name: Docker 이미지 빌드
+        run: docker build -t ogu-api:ci .
+      - name: Docker 이미지 기동 스모크 테스트
+        run: |
+          set -euo pipefail
+          docker network create ogu-ci
+
+          docker run -d --name ogu-ci-db --network ogu-ci \
+            -e POSTGRES_DB=ogu -e POSTGRES_USER=ogu -e POSTGRES_PASSWORD=ogu \
+            pgvector/pgvector:pg17
+
+          for _ in $(seq 1 30); do
+            if docker exec ogu-ci-db pg_isready -U ogu -d ogu > /dev/null 2>&1; then
+              break
+            fi
+            sleep 1
+          done
+
+          docker run -d --name ogu-ci-api --network ogu-ci -p 18080:8080 \
+            -e SPRING_PROFILES_ACTIVE=prod \
+            -e DB_URL=jdbc:postgresql://ogu-ci-db:5432/ogu \
+            -e DB_USERNAME=ogu \
+            -e DB_PASSWORD=ogu \
+            -e JAVA_TOOL_OPTIONS=-javaagent:/app/otel/opentelemetry-javaagent.jar \
+            -e OTEL_TRACES_EXPORTER=none \
+            -e OTEL_METRICS_EXPORTER=none \
+            -e OTEL_LOGS_EXPORTER=none \
+            ogu-api:ci
+
+          ok=""
+          for _ in $(seq 1 60); do
+            if curl -fsS http://localhost:18080/actuator/health 2>/dev/null | grep -q '"status":"UP"'; then
+              ok=1
+              break
+            fi
+            sleep 3
+          done
+
+          if [[ -z "$ok" ]]; then
+            echo "스모크 테스트 실패: 헬스 체크가 UP이 되지 않았습니다" >&2
+            echo "--- ogu-ci-api 로그 ---" >&2
+            docker logs ogu-ci-api >&2 || true
+            echo "--- ogu-ci-db 로그 ---" >&2
+            docker logs ogu-ci-db >&2 || true
+            exit 1
+          fi
+          echo "스모크 테스트 통과: 헬스 체크 UP"
+      - name: 스모크 테스트 정리
+        if: always()
+        run: |
+          docker rm -f ogu-ci-api ogu-ci-db > /dev/null 2>&1 || true
+          docker network rm ogu-ci > /dev/null 2>&1 || true
 
   web:
     needs: changes
