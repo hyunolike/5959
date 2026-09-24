@@ -1,0 +1,14 @@
+build:
+  maxIssues: 0
+
+style:
+  MagicNumber:
+    active: false
+
+performance:
+  SpreadOperator:
+    active: false # runApplication<T>(*args)는 Spring Boot Kotlin 표준 관용구
+
+naming:
+  FunctionNaming:
+    excludes: ['**/test/**']

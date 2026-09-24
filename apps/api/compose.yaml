@@ -1,0 +1,13 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    labels:
+      # spring-boot-docker-compose는 이미지 이름으로 서비스 종류를 추론하는데
+      # pgvector/pgvector는 postgres로 인식하지 못한다. 라벨로 명시한다.
+      org.springframework.boot.service-connection: postgres
+    environment:
+      POSTGRES_DB: ogu
+      POSTGRES_USER: ogu
+      POSTGRES_PASSWORD: ogu
+    ports:
+      - "5433:5432" # 호스트 5432 충돌 방지. spring-boot-docker-compose가 매핑 포트를 자동 감지한다
