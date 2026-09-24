@@ -17,7 +17,10 @@ AI가 감정을 분석해 몬스터로 만들고, 함께 반응하며 그 몬스
 ## 🐾 소개
 
 오구오구는 DDD 13기 WEBBB 팀이 만든 감정 공유 커뮤니티입니다.
+저는 이 팀의 백엔드 개발자로 참여해 [DDD-13-WEBBB_BE](https://github.com/DDD-Community/DDD-13-WEBBB_BE)를 함께 개발했습니다.
 이 저장소는 원본 백엔드와 프론트엔드 저장소를 한곳에 모아 참고하면서 서비스를 다시 만들어 가는 공간입니다.
+
+> 👤 **[장현호](https://github.com/hyunolike)** · DDD 13기 WEBBB 팀 백엔드
 
 ### 고민을 남기면
 
@@ -234,4 +237,4 @@ pnpm dev                    # http://localhost:3000
 |                        Backend                        |                        Backend                        |                        Frontend                        |                       Frontend                       |
 | :---------------------------------------------------: | :---------------------------------------------------: | :----------------------------------------------------: | :--------------------------------------------------: |
 | <img src="https://github.com/al1kite.png" width="120" /> | <img src="https://github.com/hyunolike.png" width="120" /> | <img src="https://github.com/Seohyun-Roh.png" width="120" /> | <img src="https://github.com/prkhaeun.png" width="120" /> |
-|         [정다연](https://github.com/al1kite)          |        [장현호](https://github.com/hyunolike)         |       [Seohyun-Roh](https://github.com/Seohyun-Roh)       |      [prkhaeun](https://github.com/prkhaeun)       |
+|         [정다연](https://github.com/al1kite)          |     **[장현호](https://github.com/hyunolike) (나)**     |       [Seohyun-Roh](https://github.com/Seohyun-Roh)       |      [prkhaeun](https://github.com/prkhaeun)       |
