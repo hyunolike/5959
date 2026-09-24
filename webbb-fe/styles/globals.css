@@ -1,0 +1,22 @@
+@import "tailwindcss";
+@import "./colors.css";
+@import "./typography.css";
+@import "./shadows.css";
+
+html {
+  line-height: 1.5;
+  letter-spacing: -0.02em;
+  color-scheme: dark;
+}
+
+body {
+  color: var(--color-white);
+
+  button {
+    cursor: pointer;
+
+    &:disabled {
+      cursor: not-allowed;
+    }
+  }
+}
