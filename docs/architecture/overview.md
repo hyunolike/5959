@@ -85,6 +85,8 @@ flowchart LR
     API -. OTLP .-> Grafana
 ```
 
+Redis는 처음 필요한 M3(SSE 팬아웃)에서 추가한다.
+
 ### 저장소 구성
 
 ```
@@ -106,6 +108,8 @@ flowchart LR
 
 템플릿 구성을 그대로 따른다: Kotlin 2.2, Spring Boot 4.1, Spring Modulith 2.1, JDK 21, PostgreSQL, Flyway, ktlint, detekt, Testcontainers.
 루트 패키지는 `com.ogu`이다.
+
+이벤트 저장소는 `spring-modulith-starter-jdbc`를 쓰고 스키마는 Flyway V1에서 만든다.
 
 ### 5.1 모듈
 
@@ -295,7 +299,7 @@ React Three Fiber로 몬스터를 코드로 만든다. 원본 그림은 쓰지 �
 | DB | VM 안의 PostgreSQL 17 + pgvector | [ADR-0004](../adr/0004-self-hosted-postgres.md) |
 | 백업 | 매일 `pg_dump` → Cloudflare R2, 14일 보관 | 복구 절차를 `infra/RESTORE.md`로 문서화하고 분기마다 복구 연습 |
 | 이미지 저장소 | GHCR | GitHub Actions와 연동 |
-| 관측성 | OpenTelemetry → Grafana Cloud 무료, 프론트엔드는 Sentry 무료 | VM에 모니터링 스택을 띄우지 않는다 |
+| 관측성 | OpenTelemetry Java 에이전트 → Grafana Cloud 무료 (프론트엔드 Sentry는 M1에서 추가) | VM에 모니터링 스택을 띄우지 않는다 |
 | 비밀값 | GitHub Actions Secrets → VM `.env` | 저장소에 비밀값을 두지 않는다 |
 
 ### 배포 흐름

@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: ogu-api
+  jpa:
+    hibernate:
+      ddl-auto: validate # 스키마는 Flyway만 바꾼다
+    open-in-view: false
+    properties:
+      hibernate:
+        default_batch_fetch_size: 100
+  modulith:
+    events:
+      republish-outstanding-events-on-restart: true
+    runtime:
+      verification-enabled: true # 기동 시에도 모듈 경계 검증 — 위반이 있으면 앱이 뜨지 않는다 (Modulith 2.0+)
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

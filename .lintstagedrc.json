@@ -1,0 +1,6 @@
+{
+  "apps/web/**/*.{js,jsx,ts,tsx}": ["pnpm --dir apps/web exec eslint --fix"],
+  "apps/web/**/*.{js,jsx,ts,tsx,css,md,json}": [
+    "pnpm --dir apps/web exec prettier --write"
+  ]
+}

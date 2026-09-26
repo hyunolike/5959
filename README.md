@@ -41,13 +41,25 @@ AI가 감정을 분석해 몬스터로 만들고, 함께 반응하며 그 몬스
 
 ## 📁 저장소 구성
 
-원본 저장소 두 개를 [git subtree](https://git-scm.com/book/en/v2/Git-Tools-Advanced-Merging#_subtree_merge)로 가져왔습니다.
-clone만 하면 두 프로젝트 코드가 모두 들어 있고, 추가로 초기화할 것은 없습니다.
-
 ```
 .
-├── webbb-be/   # Spring Boot 백엔드 (DDD-13-WEBBB_BE @ main)
-└── webbb-fe/   # Next.js 프론트엔드 (DDD-13-WEBBB-FE @ main)
+├── apps/
+│   ├── api/        Kotlin · Spring Boot 4 · Spring Modulith
+│   └── web/        Next.js 16 · Feature-Sliced Design
+├── infra/          운영 compose, 배포와 백업 스크립트
+├── specs/          GitHub Spec Kit 기능 스펙
+├── docs/           아키텍처 설계와 ADR
+├── webbb-be/       원본 백엔드 (DDD-13-WEBBB_BE, 참고용 subtree)
+└── webbb-fe/       원본 프론트엔드 (DDD-13-WEBBB-FE, 참고용 subtree)
+```
+
+새로 만드는 코드는 `apps/`에 있습니다. 설계는 [`docs/architecture/overview.md`](docs/architecture/overview.md)에서, 개발 원칙은 [`.specify/memory/constitution.md`](.specify/memory/constitution.md)에서 볼 수 있습니다.
+
+### 로컬 실행
+
+```bash
+cd apps/api && ./gradlew bootRun        # PostgreSQL은 compose로 자동 기동
+pnpm install && pnpm --filter web dev   # http://localhost:3000
 ```
 
 원본 저장소에 올라온 변경을 다시 받아오려면 아래 명령을 실행합니다.
@@ -59,9 +71,6 @@ git remote add webbb-fe https://github.com/DDD-Community/DDD-13-WEBBB-FE.git   #
 git subtree pull --prefix=webbb-be webbb-be main --squash
 git subtree pull --prefix=webbb-fe webbb-fe main --squash
 ```
-
-> `webbb-be/`와 `webbb-fe/` 안을 직접 고치면 다음 `subtree pull`에서 충돌이 날 수 있습니다.
-> 원본은 참고용으로 두고, 새로 만드는 코드는 별도 디렉터리에 두는 것을 권장합니다.
 
 <br>
 
@@ -210,7 +219,7 @@ flowchart LR
 
 <br>
 
-## 🚀 로컬 실행
+## 🚀 원본 로컬 실행
 
 ### Backend
 

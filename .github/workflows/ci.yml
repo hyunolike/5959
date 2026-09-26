@@ -1,0 +1,201 @@
+name: CI
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+  push:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      web: ${{ steps.filter.outputs.web }}
+      infra: ${{ steps.filter.outputs.infra }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'apps/api/**'
+              - '.github/workflows/ci.yml'
+            web:
+              - 'apps/web/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - '.github/workflows/ci.yml'
+            infra:
+              - 'infra/**'
+              - '.github/workflows/ci.yml'
+
+  api:
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v6
+      # 컴파일 + 테스트(Testcontainers) + ktlint + detekt + 모듈 경계 검증
+      - run: ./gradlew build koverXmlReport
+      - uses: actions/upload-artifact@v7
+        if: success()
+        with:
+          name: api-coverage
+          path: apps/api/build/reports/kover/report.xml
+          retention-days: 30
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: api-test-reports
+          path: apps/api/build/reports/tests/test
+          retention-days: 7
+      - uses: actions/upload-artifact@v7
+        if: success()
+        with:
+          name: modulith-docs
+          path: apps/api/build/spring-modulith-docs
+          retention-days: 30
+      # 이미지가 실제로 뜨고 헬스 체크를 통과하는지 확인한다(호스트 아키텍처만, push는 하지 않는다)
+      - name: Docker 이미지 빌드
+        run: docker build -t ogu-api:ci .
+      - name: Docker 이미지 기동 스모크 테스트
+        run: |
+          set -euo pipefail
+          docker network create ogu-ci
+
+          docker run -d --name ogu-ci-db --network ogu-ci \
+            -e POSTGRES_DB=ogu -e POSTGRES_USER=ogu -e POSTGRES_PASSWORD=ogu \
+            pgvector/pgvector:pg17
+
+          for _ in $(seq 1 30); do
+            if docker exec ogu-ci-db pg_isready -U ogu -d ogu > /dev/null 2>&1; then
+              break
+            fi
+            sleep 1
+          done
+
+          docker run -d --name ogu-ci-api --network ogu-ci -p 18080:8080 \
+            -e SPRING_PROFILES_ACTIVE=prod \
+            -e DB_URL=jdbc:postgresql://ogu-ci-db:5432/ogu \
+            -e DB_USERNAME=ogu \
+            -e DB_PASSWORD=ogu \
+            -e JAVA_TOOL_OPTIONS=-javaagent:/app/otel/opentelemetry-javaagent.jar \
+            -e OTEL_TRACES_EXPORTER=none \
+            -e OTEL_METRICS_EXPORTER=none \
+            -e OTEL_LOGS_EXPORTER=none \
+            ogu-api:ci
+
+          ok=""
+          for _ in $(seq 1 60); do
+            if curl -fsS http://localhost:18080/actuator/health 2>/dev/null | grep -q '"status":"UP"'; then
+              ok=1
+              break
+            fi
+            sleep 3
+          done
+
+          if [[ -z "$ok" ]]; then
+            echo "스모크 테스트 실패: 헬스 체크가 UP이 되지 않았습니다" >&2
+            echo "--- ogu-ci-api 로그 ---" >&2
+            docker logs ogu-ci-api >&2 || true
+            echo "--- ogu-ci-db 로그 ---" >&2
+            docker logs ogu-ci-db >&2 || true
+            exit 1
+          fi
+          echo "스모크 테스트 통과: 헬스 체크 UP"
+      - name: 스모크 테스트 정리
+        if: always()
+        run: |
+          docker rm -f ogu-ci-api ogu-ci-db > /dev/null 2>&1 || true
+          docker network rm ogu-ci > /dev/null 2>&1 || true
+
+  web:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter web typecheck
+      - run: pnpm --filter web lint
+      - run: pnpm --filter web lint:fsd
+      - run: pnpm --filter web test
+      - run: pnpm --filter web build
+
+  web-e2e:
+    needs: [changes, web]
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter web exec playwright install --with-deps chromium
+      - run: pnpm --filter web test:e2e
+        env:
+          CI: true
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7
+
+  infra:
+    needs: changes
+    if: needs.changes.outputs.infra == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: bash infra/tests/deploy_test.sh
+      - run: shellcheck infra/scripts/*.sh infra/tests/*.sh
+
+  pr-title:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # 브랜치 보호의 필수 체크는 이 job 하나다. 경로 필터로 건너뛴 job은 skipped로 두고,
+  # 실패하거나 취소된 job이 하나라도 있으면 실패한다.
+  ci-ok:
+    needs: [changes, api, web, web-e2e, infra, pr-title]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: 필요한 job 결과 확인
+        run: |
+          echo '${{ toJSON(needs) }}'
+          if [[ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            exit 1
+          fi

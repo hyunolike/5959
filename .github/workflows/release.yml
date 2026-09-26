@@ -1,0 +1,77 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+  packages: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      api_release: ${{ steps.rp.outputs['apps/api--release_created'] }}
+      api_version: ${{ steps.rp.outputs['apps/api--version'] }}
+    steps:
+      - uses: googleapis/release-please-action@v5
+        id: rp
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  api-image:
+    needs: release-please
+    if: needs.release-please.outputs.api_release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v6
+      - run: ./gradlew bootJar
+        working-directory: apps/api
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v7
+        with:
+          context: apps/api
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/hyunolike/5959-api:${{ needs.release-please.outputs.api_version }}
+            ghcr.io/hyunolike/5959-api:latest
+
+  deploy:
+    needs: [release-please, api-image]
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    permissions:
+      packages: read
+    steps:
+      - uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          fingerprint: ${{ secrets.VM_SSH_FINGERPRINT }}
+          script: |
+            set -e
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+            trap 'docker logout ghcr.io' EXIT
+            cd /opt/ogu/repo
+            git fetch --tags --force
+            git checkout --force "api-v${{ needs.release-please.outputs.api_version }}"
+            infra/scripts/deploy.sh "${{ needs.release-please.outputs.api_version }}"
