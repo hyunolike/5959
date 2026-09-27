@@ -14,6 +14,15 @@ AI가 감정을 분석해 몬스터로 만들고, 함께 반응하며 그 몬스
 
 <br>
 
+## 🎬 런칭 영상
+
+<a href="docs/assets/launch/brag.mp4"><img src="docs/assets/launch/brag.jpg" alt="오구오구 런칭 영상" width="720" /></a>
+
+고민을 쓰면 AI가 감정 몬스터를 만들고, 공감과 댓글이 모여 그 몬스터를 쓰러뜨리는 과정을 20초에 담았습니다.
+이미지를 누르면 영상([`docs/assets/launch/brag.mp4`](docs/assets/launch/brag.mp4))이 열립니다.
+
+<br>
+
 ## 🐾 소개
 
 오구오구는 DDD 13기 WEBBB 팀이 만든 감정 공유 커뮤니티입니다.
