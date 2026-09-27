@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/launch/brag.jpg" alt="오구오구" width="100%" />
+<img src="docs/assets/intro/brag.jpg" alt="오구오구" width="100%" />
 
 # 🐾 오구오구 (5959)
 
@@ -16,7 +16,7 @@ AI가 감정을 분석해 몬스터로 만들고, 함께 반응하며 그 몬스
 
 <br>
 
-## 🎬 런칭 영상
+## 🎬 서비스 소개 영상
 
 https://github.com/user-attachments/assets/ce60a420-c1f4-43d1-8262-8f18a82cb71b
 
