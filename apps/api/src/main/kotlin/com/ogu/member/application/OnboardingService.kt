@@ -5,6 +5,7 @@ import com.ogu.member.JobRole
 import com.ogu.member.domain.Member
 import com.ogu.member.domain.MemberRepository
 import com.ogu.member.domain.Nickname
+import com.ogu.member.infrastructure.persistence.UniqueConstraints
 import com.ogu.member.infrastructure.security.AccessToken
 import com.ogu.member.infrastructure.security.JwtIssuer
 import com.ogu.shared.error.BusinessException
@@ -53,8 +54,8 @@ class OnboardingService(
         try {
             memberRepository.saveAndFlush(member)
         } catch (e: DataIntegrityViolationException) {
-            // 확인과 저장 사이에 다른 회원이 같은 닉네임으로 먼저 커밋한 경우. 온보딩에서 바뀌는 컬럼 중
-            // 유일 제약이 있는 것은 nickname_key뿐이다.
+            // 확인과 저장 사이에 다른 회원이 같은 닉네임으로 먼저 커밋한 경우. 다른 제약 위반은 409로 숨기지 않는다.
+            if (!UniqueConstraints.isViolated(e, UniqueConstraints.MEMBER_NICKNAME_KEY)) throw e
             throw BusinessException(ErrorCode.NICKNAME_TAKEN).apply { initCause(e) }
         }
         val accessToken = jwtIssuer.issue(memberId = member.id, sessionId = sessionId, onboarded = true)

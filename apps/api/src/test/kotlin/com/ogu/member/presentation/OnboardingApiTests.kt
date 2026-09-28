@@ -226,7 +226,7 @@ class OnboardingApiTests {
                         },
                     )
                 }
-            ready.await(5, TimeUnit.SECONDS)
+            assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue()
             start.countDown()
             val responses = futures.map { it.get(30, TimeUnit.SECONDS) }
 

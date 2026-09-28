@@ -278,7 +278,7 @@ class LoginThrottleTest {
                         },
                     )
                 }
-            ready.await(5, TimeUnit.SECONDS)
+            assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue()
             start.countDown()
             return futures.map { it.get(30, TimeUnit.SECONDS) }
         } finally {

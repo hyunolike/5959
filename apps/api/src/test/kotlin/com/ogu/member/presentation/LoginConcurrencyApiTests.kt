@@ -88,7 +88,7 @@ class LoginConcurrencyApiTests {
                         },
                     )
                 }
-            ready.await(5, TimeUnit.SECONDS)
+            assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue()
             start.countDown()
             return futures.map { it.get(60, TimeUnit.SECONDS) }
         } finally {
