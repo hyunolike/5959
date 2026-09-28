@@ -64,7 +64,11 @@ BFF는 상태를 바꾸는 요청(POST, PUT, PATCH, DELETE)의 `Origin` 헤더�
 - API가 상태를 들고 있지 않는다. 원본은 API의 Spring OAuth2 Client가 흐름을 처리하고 일회용 교환 코드를 발급했는데, 그러려면 인가 요청 상태를 API에 저장하고 교환 코드용 저장소를 따로 둬야 했다.
 - 구글은 OpenID Connect `id_token`의 `sub`, `email`, `email_verified`를 쓴다. 카카오는 토큰으로 `/v2/user/me`를 호출해 `id`와 선택 동의 항목인 이메일을 받는다.
 
-**확인 필요(구현 첫 작업)**: 카카오의 PKCE(`code_challenge`, S256) 지원 여부를 공식 문서로 확인한다. 지원하지 않으면 카카오는 `state`만 쓴다. 기밀 클라이언트라 `state`만으로도 CSRF는 막을 수 있다.
+**확인 완료**: 카카오는 PKCE(`code_challenge`/`code_challenge_method`, `code_verifier`)를 지원하지 않는다. 카카오 공식 문서(REST API)의 인가 코드 요청 파라미터 목록에는 `client_id`, `redirect_uri`, `response_type`, `scope`, `prompt`, `login_hint`, `service_terms`, `state`, `nonce`만 있고, 토큰 요청 파라미터에도 `code_verifier`가 없다. 따라서 카카오는 `state`만 쓴다. 기밀 클라이언트라 `state`만으로도 CSRF는 막을 수 있다.
+
+- 지원 여부: 미지원(공식 문서에 PKCE 관련 파라미터 없음)
+- 확인한 문서: [카카오 로그인 REST API](https://developers.kakao.com/docs/latest/ko/kakaologin/rest-api) (인가 코드 받기, 토큰 받기 섹션)
+- 확인 날짜: 2026-09-28
 
 **검토한 대안**:
 - 원본 방식(API가 Spring OAuth2 Client로 흐름 처리 + 일회용 교환 코드): 위 근거대로 상태 저장이 늘어나고, 사용자가 API 도메인을 거친다.
