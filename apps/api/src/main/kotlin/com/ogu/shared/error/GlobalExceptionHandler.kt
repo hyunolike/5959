@@ -2,6 +2,7 @@ package com.ogu.shared.error
 
 import com.ogu.shared.response.ApiResponse
 import org.slf4j.LoggerFactory
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
@@ -17,9 +18,12 @@ class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException::class)
     fun handleBusinessException(e: BusinessException): ResponseEntity<ApiResponse<Unit>> {
         log.warn("BusinessException: code={}, message={}", e.errorCode.name, e.message)
-        return ResponseEntity
-            .status(e.errorCode.status)
-            .body(ApiResponse.error(e.errorCode, e.message))
+        val retryAfterSeconds = e.retryAfterSeconds
+        val response = ResponseEntity.status(e.errorCode.status)
+        if (retryAfterSeconds != null) {
+            response.header(HttpHeaders.RETRY_AFTER, retryAfterSeconds.toString())
+        }
+        return response.body(ApiResponse.error(e.errorCode, e.message, retryAfterSeconds))
     }
 
     @ExceptionHandler(MethodArgumentNotValidException::class)

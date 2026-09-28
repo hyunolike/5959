@@ -2,6 +2,7 @@ package com.ogu.shared.error
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import org.springframework.web.HttpMediaTypeNotSupportedException
@@ -19,6 +20,25 @@ class GlobalExceptionHandlerTest {
         assertThat(response.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
         assertThat(response.body!!.success).isFalse()
         assertThat(response.body!!.error!!.code).isEqualTo("INVALID_REQUEST")
+    }
+
+    @Test
+    fun `재시도까지 남은 초가 있는 BusinessException은 Retry-After 헤더와 retryAfterSeconds를 함께 준다`() {
+        val response =
+            handler.handleBusinessException(BusinessException(ErrorCode.LOGIN_THROTTLED, retryAfterSeconds = 120))
+
+        assertThat(response.statusCode).isEqualTo(HttpStatus.TOO_MANY_REQUESTS)
+        assertThat(response.headers.getFirst(HttpHeaders.RETRY_AFTER)).isEqualTo("120")
+        assertThat(response.body!!.error!!.code).isEqualTo("LOGIN_THROTTLED")
+        assertThat(response.body!!.error!!.retryAfterSeconds).isEqualTo(120)
+    }
+
+    @Test
+    fun `재시도 시간이 없는 BusinessException에는 Retry-After 헤더가 없다`() {
+        val response = handler.handleBusinessException(BusinessException(ErrorCode.INVALID_CREDENTIALS))
+
+        assertThat(response.headers.containsHeader(HttpHeaders.RETRY_AFTER)).isFalse()
+        assertThat(response.body!!.error!!.retryAfterSeconds).isNull()
     }
 
     @Test
