@@ -1,11 +1,19 @@
 package com.ogu.member.presentation
 
+import com.ogu.member.AuthenticatedMember
+import com.ogu.member.application.LoginService
+import com.ogu.member.application.SessionService
 import com.ogu.member.application.SignupService
+import com.ogu.member.domain.SessionRevokeReason
+import com.ogu.member.infrastructure.security.BffClientIpResolver
 import com.ogu.member.presentation.dto.AuthResultResponse
+import com.ogu.member.presentation.dto.LoginRequest
 import com.ogu.member.presentation.dto.SignupRequest
 import com.ogu.shared.response.ApiResponse
 import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -22,6 +30,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse as DocResponse
 @RequestMapping("/api/v1/auth")
 class AuthController(
     private val signupService: SignupService,
+    private val loginService: LoginService,
+    private val sessionService: SessionService,
+    private val clientIpResolver: BffClientIpResolver,
 ) {
     @Operation(
         operationId = "signup",
@@ -44,5 +55,55 @@ class AuthController(
     ): ApiResponse<AuthResultResponse> {
         val result = signupService.signup(request.email, request.password)
         return ApiResponse.success(AuthResultResponse.of(result.member, result.tokens, newMember = true))
+    }
+
+    @Operation(
+        operationId = "login",
+        summary = "이메일 로그인 (US2-AC1~AC4)",
+        responses = [
+            DocResponse(responseCode = "200", description = "로그인 성공"),
+            DocResponse(responseCode = "400", description = "입력 검증 실패 (INVALID_REQUEST)"),
+            DocResponse(
+                responseCode = "401",
+                description = "이메일 또는 비밀번호가 틀림. 어느 쪽인지 구분하지 않는다 (INVALID_CREDENTIALS)",
+            ),
+            DocResponse(
+                responseCode = "429",
+                description = "로그인 실패 제한에 걸림 (LOGIN_THROTTLED). error.retryAfterSeconds와 Retry-After 헤더가 있다",
+            ),
+        ],
+    )
+    @PostMapping("/login")
+    fun login(
+        @RequestBody request: LoginRequest,
+        httpRequest: HttpServletRequest,
+    ): ApiResponse<AuthResultResponse> {
+        val clientIp = clientIpResolver.resolve(httpRequest)
+        val result = loginService.login(request.email, request.password, clientIp)
+        return ApiResponse.success(AuthResultResponse.of(result.member, result.tokens, newMember = false))
+    }
+
+    @Operation(
+        operationId = "logout",
+        summary = "현재 세션 무효화 (US2-AC5)",
+        security = [SecurityRequirement(name = "bearer")],
+        responses = [
+            DocResponse(
+                responseCode = "204",
+                description =
+                    "세션이 무효가 되었다. 이미 무효이거나 만료된 세션의 토큰은 401이다" +
+                        "(BFF는 결과와 관계없이 쿠키를 지운다)",
+            ),
+            DocResponse(
+                responseCode = "401",
+                description = "인증 없음 또는 세션 만료, 무효 (UNAUTHORIZED, SESSION_EXPIRED)",
+            ),
+        ],
+    )
+    @PostMapping("/logout")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun logout(member: AuthenticatedMember) {
+        // 이미 무효인 세션의 토큰은 SessionCheckFilter가 401 SESSION_EXPIRED로 먼저 막는다.
+        sessionService.revoke(member.sessionId, SessionRevokeReason.LOGOUT)
     }
 }

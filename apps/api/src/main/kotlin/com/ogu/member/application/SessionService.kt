@@ -2,6 +2,7 @@ package com.ogu.member.application
 
 import com.ogu.member.domain.AuthSession
 import com.ogu.member.domain.AuthSessionRepository
+import com.ogu.member.domain.SessionRevokeReason
 import com.ogu.member.infrastructure.config.AuthProperties
 import com.ogu.member.infrastructure.security.JwtIssuer
 import org.springframework.stereotype.Service
@@ -10,7 +11,7 @@ import java.time.Clock
 import java.util.UUID
 
 /**
- * 세션 발급과 유효성 확인. refresh(T061)와 무효화(T047)는 해당 스토리에서 추가한다.
+ * 세션 발급, 유효성 확인, 무효화. refresh(T061)는 US4에서 추가한다.
  */
 @Service
 class SessionService(
@@ -62,4 +63,15 @@ class SessionService(
             .findById(sessionId)
             .map { it.memberId == memberId && it.isActive(clock.instant()) }
             .orElse(false)
+
+    /**
+     * 세션을 무효로 한다(FR-011). 이미 무효인 세션은 처음 무효가 된 시각과 이유를 그대로 둔다.
+     */
+    @Transactional
+    fun revoke(
+        sessionId: UUID,
+        reason: SessionRevokeReason,
+    ) {
+        repository.findById(sessionId).ifPresent { it.revoke(reason, clock.instant()) }
+    }
 }
