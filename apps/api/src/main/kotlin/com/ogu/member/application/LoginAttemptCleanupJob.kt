@@ -19,9 +19,10 @@ class LoginAttemptCleanupJob(
     private val log = LoggerFactory.getLogger(javaClass)
 
     @Scheduled(cron = "\${ogu.auth.login-attempt-cleanup-cron:0 30 4 * * *}", zone = "Asia/Seoul")
-    fun deleteStaleAttempts() {
+    fun deleteStaleAttempts(): Int {
         val deleted = repository.deleteUntouchedBefore(clock.instant().minus(RETENTION))
         log.info("Deleted {} stale login_attempt rows", deleted)
+        return deleted
     }
 
     companion object {

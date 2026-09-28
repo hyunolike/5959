@@ -12,11 +12,12 @@ import java.util.UUID
 /**
  * 이메일 로그인(US2-AC1~AC4, FR-003, FR-004).
  *
- * 순서: 이메일 정규화 → 차단 확인(막혀 있으면 비밀번호를 검증하지 않는다) → 회원 조회 → 비밀번호 검증 → 실패 기록 또는
- * 성공 처리 → 세션 발급. 회원이 없어도 더미 해시로 bcrypt를 한 번 돌려 응답 시간으로 가입 여부가 드러나지 않게 한다.
+ * 순서: 이메일 정규화 → 시도 예약과 차단 확인(막혔으면 회원 조회도 비밀번호 검증도 하지 않는다) → 회원 조회 →
+ * 비밀번호 검증 → 성공 처리 → 세션 발급. 예약을 검증 전에 하므로 동시에 보낸 요청도 한도만큼만 bcrypt에 닿는다.
+ * 검증에 실패하면 예약이 그대로 실패 기록이 된다. 회원이 없어도 더미 해시로 bcrypt를 한 번 돌려 응답 시간으로 가입
+ * 여부가 드러나지 않게 한다.
  *
- * 전체를 한 트랜잭션으로 묶지 않는다. 실패 기록은 `401`을 던진 뒤에도 남아야 하기 때문이다. 실패 기록과 세션 발급은
- * 각자 트랜잭션에서 커밋된다.
+ * 전체를 한 트랜잭션으로 묶지 않는다. 예약은 `401`을 던진 뒤에도 남아야 하기 때문이다.
  */
 @Service
 class LoginService(
@@ -35,11 +36,10 @@ class LoginService(
     ): LoginResult {
         val email = Member.normalizeEmail(rawEmail)
         validate(email, password)
-        throttle.checkNotBlocked(clientIp, email)
+        throttle.reserve(clientIp, email)
 
         val member = memberRepository.findAllByEmail(email).firstOrNull { it.authMethod == AuthMethod.EMAIL }
         if (!passwordMatches(member, password)) {
-            throttle.recordFailure(clientIp, email)
             throw BusinessException(ErrorCode.INVALID_CREDENTIALS)
         }
         val loggedIn = requireNotNull(member)

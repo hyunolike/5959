@@ -95,9 +95,9 @@ flowchart TD
 
 | 컬럼 | 타입 | 제약 | 설명 |
 |---|---|---|---|
-| scope_key | varchar(300) | PK | `ip:{ip}\|email:{email}` 또는 `email:{email}` |
+| scope_key | varchar(300) | PK | `ip:{sha256(ip)}\|email:{sha256(email)}` 또는 `email:{sha256(email)}`. 정규화한 값의 SHA-256 hex라 길이가 고정된다 |
 | window_started_at | timestamptz | NOT NULL | 현재 창 시작 |
-| failure_count | int | NOT NULL | 창 안의 실패 수 |
+| failure_count | int | NOT NULL | 창 안의 시도 수(성공한 시도는 뺀다) |
 | blocked_until | timestamptz | NULL | 차단 끝 시각 |
 
 | 키 종류 | 창 | 한도 | 차단 |
@@ -105,7 +105,7 @@ flowchart TD
 | IP + 이메일 | 15분 | 5회 | 15분 |
 | 이메일 | 1시간 | 20회 | 1시간 |
 
-창이 지나면 다음 실패 때 `window_started_at`과 `failure_count`를 초기화한다. 로그인에 성공하면 IP+이메일 키를 지운다. 이메일 키는 지우지 않는다(여러 출처의 공격이 성공 한 번으로 초기화되지 않도록). 하루 지난 행은 스케줄러가 매일 지운다.
+비밀번호 검증 전에 두 키에 시도를 하나씩 센다(예약, `INSERT ... ON CONFLICT DO UPDATE ... RETURNING` 한 문장). 창이 지났으면 이때 `window_started_at`과 `failure_count`를 초기화한다. 새 수가 한도를 넘으면 `blocked_until`을 걸고, 이미 막혀 있거나 이번에 한도를 넘으면 검증 없이 429다. 막힌 동안의 시도는 행을 바꾸지 않고, IP+이메일 키에서 막힌 시도는 이메일 키에 세지 않는다. 검증에 실패하면 예약이 그대로 실패 기록이다. 로그인에 성공하면 IP+이메일 키를 지우고 이메일 키는 창이 아직 유효할 때 1만 뺀다(0 아래로 내려가지 않는다). 이메일 키를 지우지 않는 것은 여러 출처의 공격이 성공 한 번으로 초기화되지 않도록 하기 위해서다. 하루 지난 행은 스케줄러가 매일 지운다.
 
 ## JWT access 토큰 클레임
 

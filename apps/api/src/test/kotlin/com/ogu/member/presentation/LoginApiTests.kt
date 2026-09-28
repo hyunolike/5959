@@ -236,6 +236,39 @@ class LoginApiTests {
     }
 
     @Test
+    fun `254자 이메일과 가장 긴 IPv6 표기로도 실패를 세고 막는다`() {
+        val email = "a".repeat(230) + UUID.randomUUID().toString().take(12) + "@example.com"
+        assertThat(email).hasSize(254)
+        val longIp = "0000:0000:0000:0000:0000:ffff:${(1..254).random()}.${(1..254).random()}.100.200"
+
+        repeat(5) {
+            login(email, "wrongpass123", clientIp = longIp)
+                .andExpect(status().isUnauthorized)
+                .andExpect(jsonPath("$.error.code").value("INVALID_CREDENTIALS"))
+        }
+
+        login(email, "wrongpass123", clientIp = longIp)
+            .andExpect(status().isTooManyRequests)
+            .andExpect(jsonPath("$.error.code").value("LOGIN_THROTTLED"))
+    }
+
+    @Test
+    fun `BFF 키가 맞아도 X-Ogu-Client-Ip가 IP가 아니면 원격 주소로 센다`() {
+        val email = uniqueEmail()
+        signup(email)
+
+        // 헤더 값이 매번 달라도 IP 리터럴이 아니면 모두 원격 주소 하나로 센다.
+        repeat(5) {
+            login(email, "wrongpass123", clientIp = "evil-${UUID.randomUUID()}")
+                .andExpect(status().isUnauthorized)
+        }
+
+        login(email, VALID_PASSWORD, clientIp = "evil-${UUID.randomUUID()}")
+            .andExpect(status().isTooManyRequests)
+        login(email, VALID_PASSWORD, clientIp = uniqueIp()).andExpect(status().isOk)
+    }
+
+    @Test
     fun `이메일이나 비밀번호가 비어 있으면 400`() {
         login("", VALID_PASSWORD, clientIp = uniqueIp())
             .andExpect(status().isBadRequest)
