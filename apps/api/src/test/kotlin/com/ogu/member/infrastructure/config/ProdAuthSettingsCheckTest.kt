@@ -48,6 +48,17 @@ class ProdAuthSettingsCheckTest {
     }
 
     @Test
+    fun `prod와 e2e 프로필을 함께 켜면 기동하지 않는다`() {
+        runner
+            .withInitializer { it.environment.setActiveProfiles("prod", "e2e") }
+            .withPropertyValues("ogu.auth.jwt.secret=$PROD_SECRET", "ogu.auth.bff-key=prod-bff-key")
+            .run { context ->
+                assertThat(context).hasFailed()
+                assertThat(context.startupFailure).rootCause().hasMessageContaining("e2e")
+            }
+    }
+
+    @Test
     fun `prod가 아닌 프로필에서는 로컬 개발용 값으로도 기동한다`() {
         runner
             .withInitializer { it.environment.setActiveProfiles("local") }

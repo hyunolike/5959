@@ -28,7 +28,11 @@ export default defineConfig({
   webServer: {
     command: "pnpm build && pnpm start",
     url: "http://localhost:3000",
-    reuseExistingServer: !process.env.CI,
+    // 항상 이 config가 직접 띄운 서버를 쓴다. true(로컬 기본값)면 :3000에 이미 떠 있는 아무 서버에나
+    // 붙어서 아래 webServer.env(API_ORIGIN=:18080 등)가 전혀 적용되지 않은 채로 "실제 API" 스위트가
+    // 엉뚱한 백엔드(로컬 :8080이나 이전 빌드)를 상대로 조용히 돌 수 있다. 포트가 이미 쓰이고 있으면
+    // 시끄럽게 실패하는 편이 맞다.
+    reuseExistingServer: false,
     timeout: 120_000,
     env: {
       API_ORIGIN: process.env.API_ORIGIN ?? "http://localhost:18080",
