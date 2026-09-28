@@ -140,6 +140,10 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: 계약과 생성된 API 타입이 어긋나지 않는지 확인
+        run: |
+          pnpm --filter web gen:api
+          git diff --exit-code apps/web/src/shared/api/generated.ts
       - run: pnpm --filter web typecheck
       - run: pnpm --filter web lint
       - run: pnpm --filter web lint:fsd

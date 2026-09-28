@@ -16,7 +16,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:full": "playwright test --config playwright.full.config.ts",
-    "gen:api": "openapi-typescript ../../specs/002-auth/contracts/openapi.yaml -o src/shared/api/generated.ts"
+    "gen:api": "openapi-typescript ../../specs/002-auth/contracts/openapi.yaml -o src/shared/api/generated.ts && prettier --write src/shared/api/generated.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
