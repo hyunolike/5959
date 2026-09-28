@@ -22,3 +22,10 @@ ogu:
   auth:
     oauth:
       allowed-redirect-uris: http://localhost:3000/api/auth/oauth/kakao/callback,http://localhost:3000/api/auth/oauth/google/callback
+      # e2e는 FakeOAuthProviderClient가 제공자를 대신하므로 실제 키가 필요 없다. 바인딩만 되게 고정 값을 둔다.
+      kakao:
+        client-id: e2e-unused
+        client-secret: e2e-unused
+      google:
+        client-id: e2e-unused
+        client-secret: e2e-unused
