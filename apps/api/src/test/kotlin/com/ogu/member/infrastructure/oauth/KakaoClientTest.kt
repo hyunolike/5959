@@ -6,6 +6,8 @@ import com.ogu.shared.error.ErrorCode
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
@@ -107,6 +109,20 @@ class KakaoClientTest {
             )
 
         assertErrorCode(ErrorCode.OAUTH_CODE_INVALID) { client.exchange("used-code", REDIRECT_URI, null) }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [401, 403, 429])
+    fun `토큰 요청의 401, 403, 429는 우리 설정이나 한도 문제이므로 OAUTH_PROVIDER_UNAVAILABLE`(status: Int) {
+        server
+            .expect(requestTo(settings.tokenUri))
+            .andRespond(
+                withStatus(HttpStatus.valueOf(status))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("""{"error":"invalid_client","error_code":"KOE010"}"""),
+            )
+
+        assertErrorCode(ErrorCode.OAUTH_PROVIDER_UNAVAILABLE) { client.exchange("auth-code", REDIRECT_URI, null) }
     }
 
     @Test

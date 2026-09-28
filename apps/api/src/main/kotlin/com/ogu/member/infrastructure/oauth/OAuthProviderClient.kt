@@ -5,8 +5,8 @@ import com.ogu.member.domain.OAuthProvider
 /**
  * 제공자와 인가 코드를 교환해 사용자 정보를 받는다(research R4).
  *
- * 제공자가 코드를 거절하면(토큰 요청의 4xx) `OAUTH_CODE_INVALID`, 연결 실패, 타임아웃, 5xx, 해석할 수 없는 응답이면
- * `OAUTH_PROVIDER_UNAVAILABLE`을 `BusinessException`으로 던진다. 코드, 토큰, `id_token`은 로그에 남기지 않는다.
+ * 제공자가 코드를 거절하면(토큰 요청의 400) `OAUTH_CODE_INVALID`, 다른 4xx(401, 403, 429), 연결 실패, 타임아웃,
+ * 5xx, 해석할 수 없는 응답이면 `OAUTH_PROVIDER_UNAVAILABLE`을 `BusinessException`으로 던진다. 코드, 토큰, `id_token`은 로그에 남기지 않는다.
  */
 interface OAuthProviderClient {
     val provider: OAuthProvider

@@ -37,31 +37,35 @@ object OAuthHttp {
     }
 
     /**
-     * 제공자를 부른다. 4xx는 [onClientError]로, 5xx, 연결 실패, 타임아웃, 해석 실패, 빈 응답은
-     * `OAUTH_PROVIDER_UNAVAILABLE`로 바꾼다.
+     * 제공자를 부른다. 400(`invalid_grant` 등 요청 값 문제)은 [onBadRequest]로 바꾼다. 401(`invalid_client`), 403,
+     * 429 같은 다른 4xx는 우리 설정이나 호출 한도 문제이므로, 5xx, 연결 실패, 타임아웃, 해석 실패, 빈 응답과 함께
+     * `OAUTH_PROVIDER_UNAVAILABLE`로 바꾼다. 로그에는 상태 코드만 남기고 응답 본문은 남기지 않는다.
      */
     fun <T : Any> call(
         step: String,
-        onClientError: ErrorCode,
+        onBadRequest: ErrorCode,
         request: () -> T?,
     ): T {
         val result =
             try {
                 request()
             } catch (e: RestClientException) {
-                throw translate(step, onClientError, e)
+                throw translate(step, onBadRequest, e)
             }
         return result ?: throw unavailable(step, "빈 응답")
     }
 
     private fun translate(
         step: String,
-        onClientError: ErrorCode,
+        onBadRequest: ErrorCode,
         e: RestClientException,
     ): BusinessException =
-        if (e is HttpClientErrorException) {
+        if (e is HttpClientErrorException.BadRequest) {
             log.warn("OAuth 제공자가 요청을 거절했습니다: step={}, status={}", step, e.statusCode.value())
-            BusinessException(onClientError)
+            BusinessException(onBadRequest)
+        } else if (e is HttpClientErrorException) {
+            log.warn("OAuth 제공자가 우리 요청을 받지 않습니다: step={}, status={}", step, e.statusCode.value())
+            BusinessException(ErrorCode.OAUTH_PROVIDER_UNAVAILABLE)
         } else {
             log.warn("OAuth 제공자 호출에 실패했습니다: step={}, error={}", step, e.javaClass.simpleName)
             BusinessException(ErrorCode.OAUTH_PROVIDER_UNAVAILABLE)

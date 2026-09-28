@@ -26,7 +26,7 @@ class KakaoClient(
     ): OAuthUserInfo {
         val accessToken = requestAccessToken(code, redirectUri)
         val user =
-            OAuthHttp.call("kakao-user", onClientError = ErrorCode.OAUTH_PROVIDER_UNAVAILABLE) {
+            OAuthHttp.call("kakao-user", onBadRequest = ErrorCode.OAUTH_PROVIDER_UNAVAILABLE) {
                 restClient
                     .get()
                     .uri(settings.userInfoUri)
@@ -56,7 +56,7 @@ class KakaoClient(
                 add("code", code)
             }
         val token =
-            OAuthHttp.call("kakao-token", onClientError = ErrorCode.OAUTH_CODE_INVALID) {
+            OAuthHttp.call("kakao-token", onBadRequest = ErrorCode.OAUTH_CODE_INVALID) {
                 restClient
                     .post()
                     .uri(settings.tokenUri)

@@ -6,6 +6,7 @@ import org.springframework.core.env.Environment
 
 /**
  * 운영(prod 프로필)에서 인증 비밀 값이 빠졌거나 저장소에 커밋된 개발용 값이면 기동을 막는다.
+ * 외부 로그인 client id와 secret이 비었거나, 허용한 redirect URI가 https가 아니어도 막는다.
  * 커밋된 JWT 비밀키로는 누구나 access 토큰을 위조할 수 있고, BFF 키가 비면 로그인 실패 제한이 BFF 주소 하나로 묶인다.
  * e2e 프로필과 동시에 켜는 조합도 막는다 — e2e의 JWT_SECRET/OGU_BFF_KEY는 infra/compose.e2e.yaml에
  * 저장소째 커밋된 고정 값이라, prod에 같이 켜지면 누구나 access 토큰을 위조할 수 있다.
@@ -25,6 +26,24 @@ class ProdAuthSettingsCheck(
         }
         check(properties.bffKey.isNotBlank()) {
             "prod 프로필에서는 ogu.auth.bff-key(OGU_BFF_KEY)를 설정해야 합니다."
+        }
+        checkOAuth(properties.oauth)
+    }
+
+    private fun checkOAuth(oauth: AuthProperties.OAuth) {
+        val credentials =
+            mapOf(
+                "ogu.auth.oauth.kakao.client-id" to oauth.kakao.clientId,
+                "ogu.auth.oauth.kakao.client-secret" to oauth.kakao.clientSecret,
+                "ogu.auth.oauth.google.client-id" to oauth.google.clientId,
+                "ogu.auth.oauth.google.client-secret" to oauth.google.clientSecret,
+            )
+        credentials.forEach { (name, value) ->
+            check(value.isNotBlank()) { "prod 프로필에서는 $name 을 설정해야 합니다." }
+        }
+        val insecure = oauth.allowedRedirectUris.filterNot { it.startsWith("https://") }
+        check(insecure.isEmpty()) {
+            "prod 프로필에서 ogu.auth.oauth.allowed-redirect-uris는 https만 쓸 수 있습니다: $insecure"
         }
     }
 

@@ -14,6 +14,8 @@ import com.ogu.shared.error.ErrorCode
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -131,6 +133,55 @@ class GoogleClientTest {
     }
 
     @Test
+    fun `nbf가 시계 오차 1분보다 더 미래면 OAUTH_CODE_INVALID`() {
+        expectToken(idToken { it.notBeforeTime(Date.from(now.plus(Duration.ofMinutes(5)))) })
+        expectJwks()
+
+        assertErrorCode(ErrorCode.OAUTH_CODE_INVALID)
+    }
+
+    @Test
+    fun `nbf와 iat가 시계 오차 1분 안의 미래면 받는다`() {
+        val soon = Date.from(now.plusSeconds(30))
+        expectToken(idToken { it.notBeforeTime(soon).issueTime(soon) })
+        expectJwks()
+
+        assertThat(client.exchange("auth-code", REDIRECT_URI, "pkce-verifier").providerUserId).isEqualTo("109876543210")
+    }
+
+    @Test
+    fun `iat가 시계 오차 1분보다 더 미래면 OAUTH_CODE_INVALID`() {
+        expectToken(idToken { it.issueTime(Date.from(now.plus(Duration.ofMinutes(5)))) })
+        expectJwks()
+
+        assertErrorCode(ErrorCode.OAUTH_CODE_INVALID)
+    }
+
+    @Test
+    fun `aud가 여럿이면 azp가 우리 client id일 때만 받는다`() {
+        expectToken(idToken { it.audience(listOf(settings.clientId, "other")).claim("azp", settings.clientId) })
+        expectJwks()
+
+        assertThat(client.exchange("auth-code", REDIRECT_URI, "pkce-verifier").providerUserId).isEqualTo("109876543210")
+    }
+
+    @Test
+    fun `aud가 여럿인데 azp가 없으면 OAUTH_CODE_INVALID`() {
+        expectToken(idToken { it.audience(listOf(settings.clientId, "other")) })
+        expectJwks()
+
+        assertErrorCode(ErrorCode.OAUTH_CODE_INVALID)
+    }
+
+    @Test
+    fun `aud가 여럿인데 azp가 다른 client면 OAUTH_CODE_INVALID`() {
+        expectToken(idToken { it.audience(listOf(settings.clientId, "other")).claim("azp", "other") })
+        expectJwks()
+
+        assertErrorCode(ErrorCode.OAUTH_CODE_INVALID)
+    }
+
+    @Test
     fun `JWKS에 없는 키로 서명한 id_token은 OAUTH_CODE_INVALID`() {
         val otherKey = RSAKeyGenerator(2048).keyID("google-key-1").generate()
         expectToken(idToken(key = otherKey))
@@ -158,6 +209,20 @@ class GoogleClientTest {
             )
 
         assertErrorCode(ErrorCode.OAUTH_CODE_INVALID)
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [401, 403, 429])
+    fun `토큰 요청의 401, 403, 429는 우리 설정이나 한도 문제이므로 OAUTH_PROVIDER_UNAVAILABLE`(status: Int) {
+        server
+            .expect(requestTo(settings.tokenUri))
+            .andRespond(
+                withStatus(HttpStatus.valueOf(status))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("""{"error":"invalid_client"}"""),
+            )
+
+        assertErrorCode(ErrorCode.OAUTH_PROVIDER_UNAVAILABLE)
     }
 
     @Test

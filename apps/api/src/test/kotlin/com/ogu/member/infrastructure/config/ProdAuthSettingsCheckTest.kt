@@ -2,6 +2,8 @@ package com.ogu.member.infrastructure.config
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import org.springframework.beans.factory.config.YamlPropertiesFactoryBean
 import org.springframework.boot.test.context.runner.ApplicationContextRunner
 import org.springframework.core.io.ClassPathResource
@@ -15,6 +17,12 @@ class ProdAuthSettingsCheckTest {
                 "ogu.auth.session.idle-ttl=14d",
                 "ogu.auth.session.absolute-ttl=30d",
                 "ogu.auth.session.rotation-grace=30s",
+                // 운영에 맞는 외부 로그인 설정. 각 테스트가 필요한 값만 덮어쓴다.
+                "ogu.auth.oauth.allowed-redirect-uris=$KAKAO_CALLBACK,$GOOGLE_CALLBACK",
+                "ogu.auth.oauth.kakao.client-id=kakao-id",
+                "ogu.auth.oauth.kakao.client-secret=kakao-secret",
+                "ogu.auth.oauth.google.client-id=google-id",
+                "ogu.auth.oauth.google.client-secret=google-secret",
             )
 
     @Test
@@ -45,6 +53,42 @@ class ProdAuthSettingsCheckTest {
             .withInitializer { it.environment.setActiveProfiles("prod") }
             .withPropertyValues("ogu.auth.jwt.secret=$PROD_SECRET", "ogu.auth.bff-key=prod-bff-key")
             .run { context -> assertThat(context).hasNotFailed() }
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+        strings = [
+            "ogu.auth.oauth.kakao.client-id",
+            "ogu.auth.oauth.kakao.client-secret",
+            "ogu.auth.oauth.google.client-id",
+            "ogu.auth.oauth.google.client-secret",
+        ],
+    )
+    fun `prod 프로필에서 외부 로그인 client id나 secret이 비어 있으면 기동하지 않는다`(property: String) {
+        runner
+            .withInitializer { it.environment.setActiveProfiles("prod") }
+            .withPropertyValues("ogu.auth.jwt.secret=$PROD_SECRET", "ogu.auth.bff-key=prod-bff-key", "$property= ")
+            .run { context ->
+                assertThat(context).hasFailed()
+                assertThat(context.startupFailure).rootCause().hasMessageContaining(property)
+            }
+    }
+
+    @Test
+    fun `prod 프로필에서 https가 아닌 redirect URI가 허용 목록에 있으면 기동하지 않는다`() {
+        runner
+            .withInitializer { it.environment.setActiveProfiles("prod") }
+            .withPropertyValues(
+                "ogu.auth.jwt.secret=$PROD_SECRET",
+                "ogu.auth.bff-key=prod-bff-key",
+                "ogu.auth.oauth.allowed-redirect-uris=$KAKAO_CALLBACK,$INSECURE_GOOGLE_CALLBACK",
+            ).run { context ->
+                assertThat(context).hasFailed()
+                assertThat(context.startupFailure)
+                    .rootCause()
+                    .hasMessageContaining("ogu.auth.oauth.allowed-redirect-uris")
+                    .hasMessageContaining("http://ogu.example.com")
+            }
     }
 
     @Test
@@ -78,6 +122,9 @@ class ProdAuthSettingsCheckTest {
 
     companion object {
         private const val LOCAL_DEV_SECRET = "local-dev-only-jwt-secret-do-not-use-in-production-0123456789"
+        private const val KAKAO_CALLBACK = "https://ogu.example.com/api/auth/oauth/kakao/callback"
+        private const val GOOGLE_CALLBACK = "https://ogu.example.com/api/auth/oauth/google/callback"
+        private const val INSECURE_GOOGLE_CALLBACK = "http://ogu.example.com/api/auth/oauth/google/callback"
         private const val PROD_SECRET = "prod-like-jwt-secret-0123456789-0123456789-abcdef"
     }
 }

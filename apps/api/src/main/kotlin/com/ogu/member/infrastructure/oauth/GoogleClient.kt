@@ -32,7 +32,8 @@ import java.time.Duration
  * `sub`, `email`, `email_verified`를 읽는다(research R4).
  *
  * `id_token` 검증: 구글 JWKS 공개키로 RS256 서명, `iss`(`accounts.google.com` 또는 `https://accounts.google.com`),
- * `aud`에 우리 client id 포함, `exp`(필수, 시계 오차 1분 허용). JWKS는 [AuthProperties.Google.jwksUri]에서 받아
+ * `aud`에 우리 client id 포함(여럿이면 `azp`도 우리), `exp`(필수), `nbf`와 `iat`(있으면 미래가 아님),
+ * 시계 오차 1분 허용. JWKS는 [AuthProperties.Google.jwksUri]에서 받아
  * 캐시한다(nimbus 기본값: 5분, 모르는 `kid`면 다시 받는다).
  */
 class GoogleClient(
@@ -73,7 +74,7 @@ class GoogleClient(
                 add("code_verifier", codeVerifier)
             }
         val token =
-            OAuthHttp.call("google-token", onClientError = ErrorCode.OAUTH_CODE_INVALID) {
+            OAuthHttp.call("google-token", onBadRequest = ErrorCode.OAUTH_CODE_INVALID) {
                 restClient
                     .post()
                     .uri(settings.tokenUri)
@@ -101,9 +102,8 @@ class GoogleClient(
 
     private fun verifyClaims(claims: JWTClaimsSet): OAuthUserInfo {
         if (claims.issuer !in ISSUERS) rejectIdToken("iss 불일치")
-        if (settings.clientId !in claims.audience) rejectIdToken("aud 불일치")
-        val expiresAt = claims.expirationTime?.toInstant() ?: rejectIdToken("exp 없음")
-        if (!clock.instant().isBefore(expiresAt.plus(CLOCK_SKEW))) rejectIdToken("exp 지남")
+        verifyAudience(claims)
+        verifyTimes(claims)
         val subject = claims.subject?.takeIf { it.isNotBlank() } ?: rejectIdToken("sub 없음")
         val email = claims.getClaim("email") as? String
         val emailVerified =
@@ -114,6 +114,26 @@ class GoogleClient(
                 else -> false
             }
         return OAuthUserInfo(providerUserId = subject, email = email, emailVerified = email != null && emailVerified)
+    }
+
+    /** `aud`에 우리 client id가 있어야 하고, 여럿이면 `azp`(토큰을 받은 쪽)가 우리여야 한다(OIDC Core 3.1.3.7). */
+    private fun verifyAudience(claims: JWTClaimsSet) {
+        val audience = claims.audience
+        if (settings.clientId !in audience) rejectIdToken("aud 불일치")
+        if (audience.size > 1 && claims.getClaim("azp") != settings.clientId) rejectIdToken("azp 불일치")
+    }
+
+    /**
+     * `exp`는 필수이고 지나지 않아야 한다. `nbf`, `iat`는 있으면 미래가 아니어야 한다. 모두 시계 오차 1분을 허용한다.
+     * nimbus 기본 검증기를 끄고 여기서 주입한 [Clock]으로 확인한다.
+     */
+    private fun verifyTimes(claims: JWTClaimsSet) {
+        val now = clock.instant()
+        val expiresAt = claims.expirationTime?.toInstant() ?: rejectIdToken("exp 없음")
+        if (!now.isBefore(expiresAt.plus(CLOCK_SKEW))) rejectIdToken("exp 지남")
+        val latestAllowed = now.plus(CLOCK_SKEW)
+        if (claims.notBeforeTime?.toInstant()?.isAfter(latestAllowed) == true) rejectIdToken("nbf 미래")
+        if (claims.issueTime?.toInstant()?.isAfter(latestAllowed) == true) rejectIdToken("iat 미래")
     }
 
     private fun rejectIdToken(reason: String): Nothing = throw OAuthHttp.codeInvalid(ID_TOKEN_STEP, reason)

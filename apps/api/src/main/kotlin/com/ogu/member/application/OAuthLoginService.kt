@@ -8,6 +8,7 @@ import com.ogu.shared.error.BusinessException
 import com.ogu.shared.error.ErrorCode
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
+import java.net.URI
 
 /**
  * 외부 계정 로그인(US3-AC1~AC3, FR-005, FR-006, research R4, R5).
@@ -40,7 +41,10 @@ class OAuthLoginService(
         }
     }
 
-    /** 제공자를 부르기 전에 확인한다. `redirectUri`는 허용 목록의 값 하나와 정확히 같아야 한다. */
+    /**
+     * 제공자를 부르기 전에 확인한다. `redirectUri`는 허용 목록의 값 하나와 정확히 같고, 경로가 요청한 제공자의
+     * 콜백(`/api/auth/oauth/{provider}/callback`)으로 끝나야 한다.
+     */
     private fun validate(
         providerPath: String,
         code: String,
@@ -48,8 +52,17 @@ class OAuthLoginService(
     ): OAuthProvider {
         val provider = OAuthProvider.fromPath(providerPath) ?: invalid("지원하지 않는 외부 계정 제공자입니다.")
         if (code.isBlank()) invalid("인가 코드가 없습니다.")
-        if (redirectUri !in properties.oauth.allowedRedirectUris) invalid("허용되지 않은 redirectUri입니다.")
+        if (!isAllowedRedirect(provider, redirectUri)) invalid("허용되지 않은 redirectUri입니다.")
         return provider
+    }
+
+    private fun isAllowedRedirect(
+        provider: OAuthProvider,
+        redirectUri: String,
+    ): Boolean {
+        val callbackPath = "/api/auth/oauth/${provider.pathValue}/callback"
+        val path = runCatching { URI(redirectUri).path }.getOrNull()
+        return redirectUri in properties.oauth.allowedRedirectUris && path?.endsWith(callbackPath) == true
     }
 
     private fun invalid(message: String): Nothing = throw BusinessException(ErrorCode.INVALID_REQUEST, message)

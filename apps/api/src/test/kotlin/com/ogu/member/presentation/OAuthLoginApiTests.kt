@@ -9,9 +9,6 @@ import com.ogu.shared.error.ErrorCode
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.mockito.ArgumentMatchers.anyString
-import org.mockito.Mockito.never
-import org.mockito.Mockito.verify
 import org.mockito.Mockito.verifyNoInteractions
 import org.mockito.Mockito.`when`
 import org.springframework.beans.factory.annotation.Autowired
@@ -248,7 +245,18 @@ class OAuthLoginApiTests {
         oauth("kakao", "code", "$KAKAO_REDIRECT/extra")
             .andExpect(status().isBadRequest)
 
-        verify(kakaoClient, never()).exchange(anyString(), anyString(), anyString())
+        verifyNoInteractions(kakaoClient, googleClient)
+    }
+
+    @Test
+    fun `허용 목록에 있어도 다른 제공자의 콜백 주소면 400이고 제공자를 부르지 않는다`() {
+        oauth("google", "code", KAKAO_REDIRECT, codeVerifier = "v")
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"))
+        oauth("kakao", "code", GOOGLE_REDIRECT)
+            .andExpect(status().isBadRequest)
+
+        verifyNoInteractions(kakaoClient, googleClient)
     }
 
     @Test
