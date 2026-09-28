@@ -5,6 +5,7 @@ import {
   JOB_ROLE_LABELS,
   useMeQuery,
 } from "@/entities/member";
+import { LogoutButton } from "@/features/auth/logout";
 import { Card, Spinner } from "@/shared/ui";
 
 /** FR-015: 로그인한 사용자는 자신의 닉네임, 직군, 경력을 볼 수 있다. */
@@ -40,6 +41,9 @@ export default function MyPage() {
           </dd>
         </div>
       </dl>
+      <div className="mt-6">
+        <LogoutButton />
+      </div>
     </Card>
   );
 }

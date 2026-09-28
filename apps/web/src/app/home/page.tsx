@@ -1,6 +1,7 @@
 "use client";
 
 import { useMeQuery } from "@/entities/member";
+import { LogoutButton } from "@/features/auth/logout";
 import { Card, Spinner } from "@/shared/ui";
 
 export default function HomePage() {
@@ -22,6 +23,9 @@ export default function HomePage() {
       <p className="mt-4 text-sm text-neutral-500">
         고민 쓰기는 준비 중이에요.
       </p>
+      <div className="mt-6">
+        <LogoutButton />
+      </div>
     </Card>
   );
 }
