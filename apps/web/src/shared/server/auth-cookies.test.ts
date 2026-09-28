@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { NextRequest, NextResponse } from "next/server";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   ACCESS_TOKEN_COOKIE,
@@ -68,6 +68,39 @@ describe("setSessionCookies", () => {
     );
     expect(response.cookies.get(REFRESH_TOKEN_COOKIE)).toBeUndefined();
   });
+
+  it("이미 지난 만료 시각이면 Max-Age를 0으로 설정한다", () => {
+    const response = NextResponse.json({});
+
+    setSessionCookies(response, {
+      accessToken: "access-token",
+      refreshToken: "refresh-token",
+      refreshTokenExpiresAt: new Date(Date.now() - 60_000).toISOString(),
+    });
+
+    expect(response.cookies.get(REFRESH_TOKEN_COOKIE)?.maxAge).toBe(0);
+  });
+
+  it("만료 시각을 해석할 수 없으면 Max-Age를 0으로 설정하고 콘솔에 남긴다", () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const response = NextResponse.json({});
+
+    setSessionCookies(response, {
+      accessToken: "access-token",
+      refreshToken: "refresh-token",
+      refreshTokenExpiresAt: "이건 날짜가 아니다",
+    });
+
+    expect(response.cookies.get(REFRESH_TOKEN_COOKIE)?.maxAge).toBe(0);
+    expect(consoleError).toHaveBeenCalledTimes(1);
+    consoleError.mockRestore();
+  });
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe("setOnboardedCookie", () => {

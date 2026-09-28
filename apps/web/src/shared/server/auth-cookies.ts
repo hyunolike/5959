@@ -35,7 +35,14 @@ export interface SessionCookies {
 }
 
 function refreshTokenMaxAgeSeconds(refreshTokenExpiresAt: string): number {
-  const remainingMs = new Date(refreshTokenExpiresAt).getTime() - Date.now();
+  const expiresAtMs = new Date(refreshTokenExpiresAt).getTime();
+  if (Number.isNaN(expiresAtMs)) {
+    console.error(
+      `[auth-cookies] refreshTokenExpiresAt을 해석할 수 없어 쿠키를 바로 지운다: "${refreshTokenExpiresAt}"`,
+    );
+    return 0;
+  }
+  const remainingMs = expiresAtMs - Date.now();
   return Math.max(0, Math.round(remainingMs / 1000));
 }
 

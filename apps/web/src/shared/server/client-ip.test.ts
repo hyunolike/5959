@@ -38,4 +38,31 @@ describe("resolveClientIp", () => {
 
     expect(resolveClientIp(request)).toBe("unknown");
   });
+
+  it("x-forwarded-for가 IP 형식이 아니면 unknown을 돌려준다", () => {
+    const request = requestWith({ "x-forwarded-for": "not-an-ip" });
+
+    expect(resolveClientIp(request)).toBe("unknown");
+  });
+
+  it("x-forwarded-for가 IP 형식이 아니어도 x-real-ip가 유효하면 그걸 쓴다", () => {
+    const request = requestWith({
+      "x-forwarded-for": "not-an-ip",
+      "x-real-ip": "198.51.100.7",
+    });
+
+    expect(resolveClientIp(request)).toBe("198.51.100.7");
+  });
+
+  it("x-real-ip가 IP 형식이 아니면 unknown을 돌려준다", () => {
+    const request = requestWith({ "x-real-ip": "'; DROP TABLE members;--" });
+
+    expect(resolveClientIp(request)).toBe("unknown");
+  });
+
+  it("IPv6 주소도 그대로 쓴다", () => {
+    const request = requestWith({ "x-forwarded-for": "2001:db8::1" });
+
+    expect(resolveClientIp(request)).toBe("2001:db8::1");
+  });
 });

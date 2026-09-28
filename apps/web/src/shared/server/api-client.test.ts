@@ -18,6 +18,7 @@ const jsonResponse = (body: unknown, status = 200) =>
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe("callApi", () => {
@@ -57,6 +58,20 @@ describe("callApi", () => {
     expect(headers.get("X-Ogu-Bff-Key")).toBe("test-bff-key");
   });
 
+  it("15초 타임아웃 신호를 fetch에 붙인다", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse({ success: true, data: {}, error: null }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await callApi("/api/v1/members/me", "203.0.113.1");
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
+
   it("성공 응답을 status와 ApiResponse 그대로 돌려준다", async () => {
     const payload = { success: true, data: { id: 1 }, error: null };
     vi.stubGlobal(
@@ -88,17 +103,111 @@ describe("callApi", () => {
     expect(result).toEqual({ status: 401, body: payload });
   });
 
-  it("네트워크 실패는 502와 ApiResponse 오류 봉투로 바꾼다", async () => {
+  it("204는 상태만 그대로 돌려주고 본문은 null이다", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(null, { status: 204 })),
+    );
+
+    const result = await callApi("/api/v1/auth/logout", "203.0.113.1");
+
+    expect(result).toEqual({ status: 204, body: null });
+  });
+
+  it("본문이 빈 문자열이면 본문은 null이다", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response("", { status: 200 })),
+    );
+
+    const result = await callApi("/api/v1/members/me", "203.0.113.1");
+
+    expect(result).toEqual({ status: 200, body: null });
+  });
+
+  it("JSON이 아닌 5xx 본문은 원래 상태를 유지한 채 INTERNAL_ERROR 봉투로 바꾼다", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response("<html>Internal Server Error</html>", { status: 500 }),
+        ),
+    );
+
+    const result = await callApi("/api/v1/members/me", "203.0.113.1");
+
+    expect(result).toEqual({
+      status: 500,
+      body: {
+        success: false,
+        data: null,
+        error: { code: "INTERNAL_ERROR", message: expect.any(String) },
+      },
+    });
+  });
+
+  it("JSON이 아닌 4xx 본문은 원래 상태를 유지한 채 INVALID_REQUEST 봉투로 바꾼다", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response("bad request", { status: 400 })),
+    );
+
+    const result = await callApi("/api/v1/members/me", "203.0.113.1");
+
+    expect(result).toEqual({
+      status: 400,
+      body: {
+        success: false,
+        data: null,
+        error: { code: "INVALID_REQUEST", message: expect.any(String) },
+      },
+    });
+  });
+
+  it("네트워크 실패는 502와 ApiResponse 오류 봉투로 바꾸고 콘솔에 남긴다(시크릿 없이)", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
     vi.stubGlobal(
       "fetch",
       vi.fn().mockRejectedValue(new TypeError("fetch failed")),
     );
 
-    const result = await callApi("/api/v1/members/me", "203.0.113.1");
+    const result = await callApi("/api/v1/members/me", "203.0.113.1", {
+      headers: { Authorization: "Bearer super-secret-token" },
+    });
 
     expect(result.status).toBe(502);
-    expect(result.body.success).toBe(false);
-    expect(result.body.data).toBeNull();
-    expect(result.body.error?.code).toEqual(expect.any(String));
+    expect(result.body).toEqual({
+      success: false,
+      data: null,
+      error: { code: "API_UNAVAILABLE", message: expect.any(String) },
+    });
+    expect(consoleError).toHaveBeenCalledTimes(1);
+    const loggedArgs = consoleError.mock.calls[0]?.map(String).join(" ");
+    expect(loggedArgs).not.toContain("super-secret-token");
+    expect(loggedArgs).not.toContain("test-bff-key");
+  });
+
+  it("15초 안에 응답이 없으면(타임아웃) 504와 ApiResponse 오류 봉투로 바꾼다", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockRejectedValue(
+          new DOMException("The operation timed out.", "TimeoutError"),
+        ),
+    );
+
+    const result = await callApi("/api/v1/members/me", "203.0.113.1");
+
+    expect(result.status).toBe(504);
+    expect(result.body).toEqual({
+      success: false,
+      data: null,
+      error: { code: "API_UNAVAILABLE", message: expect.any(String) },
+    });
   });
 });

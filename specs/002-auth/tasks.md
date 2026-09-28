@@ -103,7 +103,7 @@ description: "Task list for 002-auth (인증과 회원)"
 - [ ] T035 [US1] member/application/MemberQueryService.kt가 `MemberApi`를 구현한다
 - [ ] T036 [P] [US1] apps/web/src/app/api/auth/signup/route.ts와 apps/web/src/app/api/auth/onboarding/route.ts: origin-guard → api-client 호출 → 성공 시 auth-cookies로 쿠키 설정(가입은 `ogu_ob` 삭제, 온보딩은 `ogu_at` 교체와 `ogu_ob` 설정) → 본문에는 `member`만 반환
 - [ ] T037 [P] [US1] apps/web/src/features/auth/email-signup/(model/schema.ts, api/use-signup-mutation.ts, ui/signup-form.tsx, index.ts)와 apps/web/src/app/(auth)/signup/page.tsx. 성공하면 `/onboarding`으로 이동, 409는 "이미 가입된 이메일" 안내, 400은 비밀번호 규칙 안내
-- [ ] T038 [P] [US1] apps/web/src/features/onboarding/(model/schema.ts, api/use-nickname-check.ts(입력 뒤 400ms 디바운스), api/use-onboarding-mutation.ts, ui/onboarding-form.tsx, index.ts)와 apps/web/src/app/onboarding/page.tsx. 직군과 경력은 entities/member의 라벨 맵으로 선택지를 만든다. 완료하면 `/home`으로 이동
+- [ ] T038 [P] [US1] apps/web/src/features/onboarding/(model/schema.ts, api/use-nickname-check.ts(입력 뒤 400ms 디바운스), api/use-onboarding-mutation.ts, ui/onboarding-form.tsx, index.ts)와 apps/web/src/app/onboarding/page.tsx. 직군과 경력은 entities/member의 라벨 맵으로 선택지를 만든다. 완료하면 `/home`으로 이동. 그리고 Batch 4에서 임시로 넣은 steiger `entities/member` insignificant-slice override를 지운다
 - [ ] T039 [US1] apps/web/src/proxy.ts를 bff-routes.md 가드 표대로 다시 쓴다(US1 범위: `ogu_ob` 없으면 `/onboarding`, `/onboarding`에 `ogu_ob` 있으면 `/home`). 가드 판단 로직은 순수 함수 apps/web/src/shared/server/route-guard.ts로 분리하고 표의 모든 행을 route-guard.test.ts로 검증한다
 - [ ] T040 [P] [US1] apps/web/src/app/home/page.tsx(닉네임 인사와 "고민 쓰기는 준비 중" 자리 표시, `useMeQuery`)와 apps/web/src/app/my/page.tsx(닉네임, 직군, 경력 표시 – FR-015)
 
