@@ -1,0 +1,28 @@
+# Playwright test:e2e:full이 상대할 실제 API + DB. CI(e2e-full job)와 로컬 증명에서 쓴다.
+# 값은 전부 고정 리터럴이다 — 저장소 밖 비밀이 아니라 이 컴포즈 파일 안에서만 쓰는 일회용 테스트 값이다.
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: ogu
+      POSTGRES_USER: ogu
+      POSTGRES_PASSWORD: ogu
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ogu -d ogu"]
+      interval: 5s
+      retries: 10
+
+  api:
+    image: ogu-api:e2e
+    ports:
+      - "18080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: e2e
+      DB_URL: jdbc:postgresql://postgres:5432/ogu
+      DB_USERNAME: ogu
+      DB_PASSWORD: ogu
+      JWT_SECRET: e2e-fixed-jwt-secret-for-playwright-full-tests-0123456789
+      OGU_BFF_KEY: e2e-bff-key
+    depends_on:
+      postgres:
+        condition: service_healthy
