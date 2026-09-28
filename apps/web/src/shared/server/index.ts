@@ -15,3 +15,18 @@ export { resolveClientIp } from "./client-ip";
 export { guardOrigin } from "./origin-guard";
 export { resolveRouteGuardAction } from "./route-guard";
 export type { RouteGuardAction, RouteGuardCookies } from "./route-guard";
+export {
+  buildAuthorizationUrl,
+  clearOAuthStateCookie,
+  codeChallengeS256,
+  createOAuthState,
+  isOAuthProvider,
+  OAUTH_STATE_COOKIE,
+  oauthRedirectUri,
+  sanitizeNextPath,
+  serializeOAuthState,
+  setOAuthStateCookie,
+  verifyOAuthCallback,
+} from "./oauth-state";
+export type { OAuthProvider, OAuthStatePayload } from "./oauth-state";
+export { oauthStateSecret } from "./oauth-secret";

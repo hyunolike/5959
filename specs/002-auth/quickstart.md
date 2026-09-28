@@ -43,6 +43,6 @@ grep -rn "US2-AC3" apps/                           # 인수 조건에서 테스�
 4. Sentry 무료 프로젝트(Next.js)를 만들고 DSN을 발급한다.
 5. 값을 넣는다.
    - VM `/opt/ogu/.env`: `OGU_BFF_KEY`, `JWT_SECRET`(`openssl rand -base64 48`), `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `OAUTH_ALLOWED_REDIRECT_URIS`
-   - Vercel: `BFF_API_KEY`(VM의 `OGU_BFF_KEY`와 같은 값), `APP_ORIGIN`, `KAKAO_CLIENT_ID`, `GOOGLE_CLIENT_ID`, `NEXT_PUBLIC_SENTRY_DSN`
+   - Vercel: `BFF_API_KEY`(VM의 `OGU_BFF_KEY`와 같은 값), `APP_ORIGIN`, `KAKAO_CLIENT_ID`, `GOOGLE_CLIENT_ID`, `OAUTH_STATE_SECRET`(`openssl rand -base64 48`, 없으면 운영 빌드가 실패한다), `NEXT_PUBLIC_SENTRY_DSN`
 6. **US5-AC1 수동 검증**: Vercel에 `ENABLE_ERROR_PROBE=1`을 잠시 넣고 재배포한 뒤, 운영 URL의 `/debug/error-probe`에서 확인용 오류를 낸다. 5분 안에 Sentry에 나타나는지 보고, 끝나면 변수를 지우고 재배포한다(변수가 없으면 이 경로는 404다).
 7. **US5-AC2 수동 검증**: 그 오류 기록의 요청 정보에 쿠키, `Authorization`, `password`가 없는지 본다.

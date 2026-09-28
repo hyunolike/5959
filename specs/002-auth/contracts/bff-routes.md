@@ -84,4 +84,6 @@ apps/api가 JSON이 아닌 본문을 돌려주면(예상 밖의 5xx 오류 페�
 | `BFF_API_KEY` | `X-Ogu-Bff-Key` 값. API의 `OGU_BFF_KEY`와 같아야 한다 |
 | `APP_ORIGIN` | Origin 검사와 OAuth `redirect_uri`의 기준 주소 |
 | `KAKAO_CLIENT_ID`, `GOOGLE_CLIENT_ID` | 인가 URL 생성용(공개 값). 시크릿은 API만 가진다 |
+| `OAUTH_STATE_SECRET` | `__Host-ogu_oauth` 쿠키 HMAC 서명 키(32자 이상). 운영(`VERCEL_ENV` 또는 `APP_ENV`가 `production`)에서는 필수 |
+| `APP_ENV` | `development`, `e2e`, `production`. `e2e`면 OAuth 시작 라우트가 제공자 대신 자기 콜백으로 바로 보낸다. `VERCEL_ENV=production`과 함께 쓰면 env 검증이 빌드와 기동을 막는다 |
 | `NEXT_PUBLIC_SENTRY_DSN` | 설정했을 때만 오류 수집을 켠다 |
