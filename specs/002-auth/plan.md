@@ -26,7 +26,7 @@ API는 `member` 모듈 하나에 회원, 외부 계정 연결, 세션, 로그인
 
 **Project Type**: 웹 서비스(모노레포 `apps/api` + `apps/web`)
 
-**Performance Goals**: 로그인과 가입 p95 500ms 이하(bcrypt 약 100ms 포함), 보호 API의 세션 확인 추가 비용 p95 5ms 이하
+**Performance Goals**: 로그인과 가입 p95 500ms 이하(bcrypt 약 100ms 포함), 보호 API의 세션 확인 추가 비용 p95 5ms 이하. T070에서 로컬 측정으로 확인하고 결과를 quickstart에 남긴다
 
 **Constraints**: 토큰이 브라우저 스크립트에 노출되지 않는다(FR-012). 로그아웃은 즉시 반영된다(SC-004). 새 유료 서비스는 없다(constitution VI)
 
@@ -110,7 +110,7 @@ apps/web/src/
     ├── server/                        # 서버 전용: api-client, auth-cookies, oauth-state, origin-guard, client-ip
     └── config/env.ts                  # BFF_API_KEY, APP_ORIGIN, OAuth client id, Sentry DSN 추가
 apps/web/instrumentation.ts, instrumentation-client.ts, sentry.*.config.ts
-apps/web/e2e/auth.spec.ts, apps/web/e2e-full/auth-flow.spec.ts
+apps/web/e2e-full/*.spec.ts             # API까지 띄운 인증 흐름. 기존 apps/web/e2e/는 M0 랜딩 테스트만 둔다
 infra/compose.e2e.yaml                 # CI e2e-full: Postgres + API(e2e 프로필)
 ```
 

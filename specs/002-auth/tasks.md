@@ -61,7 +61,7 @@ description: "Task list for 002-auth (인증과 회원)"
 - [ ] T012 [P] member/infrastructure/security/JwtIssuer.kt와 그 단위 테스트 apps/api/src/test/kotlin/com/ogu/member/infrastructure/security/JwtIssuerTest.kt를 작성한다(TDD). HS256, 클레임 `sub`, `sid`, `onboarded`, `iss=ogu-api`, 만료 `ogu.auth.jwt.access-token-ttl`. 테스트: 발급한 토큰을 디코더로 검증하면 클레임이 같다, 만료된 토큰은 거부된다, 다른 비밀키로 서명한 토큰은 거부된다
 - [ ] T013 [P] member/infrastructure/security/BffClientIpResolver.kt와 테스트를 작성한다(TDD): `X-Ogu-Bff-Key`가 `ogu.auth.bff-key`와 같을 때만 `X-Ogu-Client-Ip`를 쓰고, 키가 없거나 다르거나 설정 값이 비어 있으면 원격 주소를 쓴다. 비교는 상수 시간 비교(`MessageDigest.isEqual`)로 한다
 - [ ] T014 member/domain/AuthSession.kt(엔티티), member/domain/AuthSessionRepository.kt, member/application/SessionService.kt의 `issue(memberId): IssuedTokens`를 작성한다. refresh 토큰은 `SecureRandom` 32바이트 base64url, 저장은 SHA-256 hex. `expires_at = now + 14일`, `absolute_expires_at = now + 30일`. 단위 테스트는 member/application/SessionServiceTest.kt에 둔다
-- [ ] T015 member/infrastructure/security/SecurityConfig.kt와 SessionCheckFilter.kt를 작성한다: stateless, CSRF 비활성(API는 브라우저가 직접 부르지 않음), 공개 경로는 `/api/v1/auth/signup`, `/api/v1/auth/login`, `/api/v1/auth/oauth/**`, `/api/v1/auth/refresh`, `/actuator/health`, `/v3/api-docs`(local, e2e 프로필만). 나머지 `/api/v1/**`는 JWT 필요. JWT 검증 뒤 `SessionCheckFilter`가 `sid`의 세션이 유효(`revoked_at IS NULL AND now() < expires_at`)한지 확인하고, 아니면 `401 SESSION_EXPIRED`. 인증 결과를 `AuthenticatedMember`로 컨트롤러에 넘기는 `HandlerMethodArgumentResolver`를 등록한다. 401, 403 응답도 `ApiResponse` 봉투로 쓴다
+- [ ] T015 member/infrastructure/security/SecurityConfig.kt와 SessionCheckFilter.kt를 작성한다: stateless, CSRF 비활성(API는 브라우저가 직접 부르지 않음), 공개 경로는 `/api/v1/auth/signup`, `/api/v1/auth/login`, `/api/v1/auth/oauth/**`, `/api/v1/auth/refresh`, `/actuator/health`, 그리고 springdoc이 켜져 있을 때 `/v3/api-docs/**`(운영은 M0에서 springdoc을 껐으므로 노출되지 않는다. 프로필 이름으로 판단하지 않는다). 나머지 `/api/v1/**`는 JWT 필요. JWT 검증 뒤 `SessionCheckFilter`가 `sid`의 세션이 유효(`revoked_at IS NULL AND now() < expires_at`)한지 확인하고, 아니면 `401 SESSION_EXPIRED`. 인증 결과를 `AuthenticatedMember`로 컨트롤러에 넘기는 `HandlerMethodArgumentResolver`를 등록한다. 401, 403 응답도 `ApiResponse` 봉투로 쓴다
 - [ ] T016 member/infrastructure/security/OnboardingGuard.kt: 인증 필요 경로 중 허용 목록(`/api/v1/members/me`, `/api/v1/members/nickname-availability`, `/api/v1/members/me/onboarding`, `/api/v1/auth/logout`)이 아니면 `onboarded=false` 토큰에 `403 ONBOARDING_REQUIRED`를 돌려준다. 테스트: 허용 목록 경로는 통과, 가짜 보호 경로(테스트 전용 컨트롤러)는 403
 - [ ] T017 apps/api/src/test/kotlin/com/ogu/member/security/SecurityIntegrationTests.kt(Testcontainers, MockMvc): 토큰 없이 보호 경로 401, 무효화된 세션의 토큰 401 `SESSION_EXPIRED`, 만료 세션 401, 공개 경로는 토큰 없이 접근 가능
 
@@ -89,15 +89,15 @@ description: "Task list for 002-auth (인증과 회원)"
 ### Tests for User Story 1 ⚠️ (먼저 쓰고 실패 확인)
 
 - [ ] T026 [P] [US1] apps/api/src/test/kotlin/com/ogu/member/domain/MemberTest.kt: 이메일 정규화(앞뒤 공백 제거, 소문자), 닉네임 검증 `^[가-힣A-Za-z0-9]{1,10}$`(앞뒤 공백 제거 후), `nickname_key = lower(nickname)`, 온보딩 두 번 호출 시 예외
-- [ ] T027 [P] [US1] apps/api/src/test/kotlin/com/ogu/member/presentation/SignupApiTests.kt(MockMvc, Testcontainers): `US1-AC1 새 이메일과 규칙에 맞는 비밀번호로 가입하면 201과 onboarded=false 토큰을 받는다`, `US1-AC2 이미 가입된 이메일은 409 EMAIL_ALREADY_REGISTERED`(대소문자만 다른 이메일 포함), `US1-AC3 비밀번호 규칙 위반은 400`(7자, 21자, 숫자 없음, 영문 없음 각각), 동시 가입 요청 두 개 중 하나만 성공
-- [ ] T028 [P] [US1] apps/api/src/test/kotlin/com/ogu/member/presentation/OnboardingApiTests.kt: `US1-AC4 온보딩을 마치면 프로필이 저장되고 onboarded=true인 새 access 토큰을 받는다`, `US1-AC5 대소문자만 다른 닉네임도 409 NICKNAME_TAKEN`, `US1-AC6 공백, 특수문자, 이모지가 든 닉네임은 400`, 닉네임 확인 API가 `INVALID_FORMAT`/`TAKEN`/사용 가능을 구분한다, 이미 온보딩한 회원은 409 `ALREADY_ONBOARDED`, `US1-AC7 온보딩 전 토큰으로 보호 API를 부르면 403 ONBOARDING_REQUIRED`
+- [ ] T027 [P] [US1] apps/api/src/test/kotlin/com/ogu/member/presentation/SignupApiTests.kt(MockMvc, Testcontainers): `US1-AC1 새 이메일과 규칙에 맞는 비밀번호로 가입하면 201과 onboarded=false 토큰을 받는다`, `US1-AC2 이미 가입된 이메일은 409 EMAIL_ALREADY_REGISTERED`(대소문자만 다른 이메일 포함), 외부 계정 회원이 쓰는 이메일로 가입하면 409 `EMAIL_REGISTERED_WITH_OTHER_METHOD`, `US1-AC3 비밀번호 규칙 위반은 400`(7자, 21자, 숫자 없음, 영문 없음 각각), 동시 가입 요청 두 개 중 하나만 성공
+- [ ] T028 [P] [US1] apps/api/src/test/kotlin/com/ogu/member/presentation/OnboardingApiTests.kt: `US1-AC4 온보딩을 마치면 프로필이 저장되고 onboarded=true인 새 access 토큰을 받는다`, `US1-AC5 대소문자만 다른 닉네임도 409 NICKNAME_TAKEN`, `US1-AC6 공백, 특수문자, 이모지가 든 닉네임은 400`, 닉네임 확인 API가 `INVALID_FORMAT`/`TAKEN`/사용 가능을 구분한다, 이미 온보딩한 회원은 409 `ALREADY_ONBOARDED`, 두 회원이 같은 닉네임으로 동시에 온보딩하면 한 명만 성공하고 다른 한 명은 409 `NICKNAME_TAKEN`, `US1-AC7 온보딩 전 토큰으로 보호 API를 부르면 403 ONBOARDING_REQUIRED`
 - [ ] T029 [P] [US1] apps/web/src/features/onboarding/model/schema.test.ts: Zod 스키마가 API와 같은 닉네임 규칙을 적용한다(허용, 거부 사례)
 - [ ] T030 [P] [US1] apps/web/e2e-full/signup-onboarding.spec.ts: `US1-AC1`, `US1-AC4`(가입 → `/onboarding` → 완료 → `/home`), `US1-AC5`(중복 닉네임 안내), `US1-AC7`(온보딩 전 `/home` 접근 시 `/onboarding`으로 이동)
 
 ### Implementation for User Story 1
 
 - [ ] T031 [US1] member/domain/Member.kt, MemberRepository.kt: 필드와 제약은 data-model.md `member` 표 그대로, 팩토리 `registerWithEmail(email, passwordHash)`, `completeOnboarding(nickname, jobRole, careerYear, now)`. `BaseTimeEntity`를 상속한다
-- [ ] T032 [US1] member/application/SignupService.kt: 비밀번호 규칙 검증(8~20자, 영문 1자 이상, 숫자 1자 이상), `DelegatingPasswordEncoder`(bcrypt) 해시, 가입과 `SessionService.issue`를 한 트랜잭션으로 처리, 유일 제약 위반을 `EMAIL_ALREADY_REGISTERED`로 바꾼다
+- [ ] T032 [US1] member/application/SignupService.kt: 비밀번호 규칙 검증(8~20자, 영문 1자 이상, 숫자 1자 이상), `DelegatingPasswordEncoder`(bcrypt) 해시, 가입과 `SessionService.issue`를 한 트랜잭션으로 처리, 가입 전에 가입 방법과 관계없이 같은 `email`의 회원이 있는지 확인해 외부 계정 회원이면 `EMAIL_REGISTERED_WITH_OTHER_METHOD`, 이메일 회원이면 `EMAIL_ALREADY_REGISTERED`로 거절하고, 동시 가입으로 인한 유일 제약 위반도 `EMAIL_ALREADY_REGISTERED`로 바꾼다
 - [ ] T033 [US1] member/application/OnboardingService.kt: 닉네임 확인(`checkNickname`)과 온보딩 완료. 닉네임 유일 제약 위반을 `NICKNAME_TAKEN`으로 바꾸고, 완료 후 `JwtIssuer`로 `onboarded=true` 토큰을 발급한다(세션 ID 유지)
 - [ ] T034 [US1] member/presentation/AuthController.kt의 `POST /api/v1/auth/signup`과 member/presentation/MemberController.kt의 `GET /api/v1/members/me`, `GET /api/v1/members/nickname-availability`, `PUT /api/v1/members/me/onboarding`, 요청과 응답 DTO(member/presentation/dto/). springdoc 어노테이션은 계약의 operationId, 응답 코드와 맞춘다. ContractTests의 `pendingPaths`에서 이 네 경로를 뺀다
 - [ ] T035 [US1] member/application/MemberQueryService.kt가 `MemberApi`를 구현한다
@@ -151,9 +151,9 @@ description: "Task list for 002-auth (인증과 회원)"
 
 ### Implementation for User Story 3
 
-- [ ] T054 [US3] member/infrastructure/oauth/OAuthProviderClient.kt(인터페이스: `exchange(code, redirectUri, codeVerifier): OAuthUserInfo(providerUserId, email, emailVerified)`), KakaoClient.kt, GoogleClient.kt(`RestClient`, 연결 3초, 읽기 5초 타임아웃), FakeOAuthProviderClient.kt(`@Profile("e2e")`, 코드 문자열에서 사용자 ID와 이메일을 만든다. 코드가 `denied`면 거절)
+- [ ] T054 [US3] member/infrastructure/oauth/OAuthProviderClient.kt(인터페이스: `exchange(code, redirectUri, codeVerifier): OAuthUserInfo(providerUserId, email, emailVerified)`), KakaoClient.kt, GoogleClient.kt(`RestClient`, 연결 3초, 읽기 5초 타임아웃), FakeOAuthProviderClient.kt(`@Profile("e2e")`, 코드 문자열에서 사용자 ID와 이메일을 만든다. 코드가 `denied`면 거절). `e2e`와 `prod` 프로필이 함께 켜지면 기동을 실패시키는 검사(member/infrastructure/oauth/E2eProfileGuard.kt)와 그 테스트를 둔다
 - [ ] T055 [US3] member/domain/OAuthIdentity.kt, OAuthIdentityRepository.kt, Member 팩토리 `registerWithOAuth(provider, email)`, member/application/OAuthLoginService.kt(research R5 규칙: 연결된 계정이면 로그인, 아니면 이메일 충돌 확인 후 새 회원과 연결 생성, `redirectUri` 허용 목록 대조), AuthController `POST /api/v1/auth/oauth/{provider}`. ContractTests `pendingPaths`에서 이 경로를 뺀다
-- [ ] T056 [US3] apps/web/src/shared/server/oauth-state.ts와 apps/web/src/app/api/auth/oauth/[provider]/route.ts(시작), apps/web/src/app/api/auth/oauth/[provider]/callback/route.ts(콜백): bff-routes.md 표대로. 카카오와 구글 인가 URL, scope(구글 `openid email`, 카카오 `account_email`은 선택 동의), `redirect_uri = APP_ORIGIN + /api/auth/oauth/{provider}/callback`. e2e 프로필에서는 제공자 대신 `/api/auth/oauth/{provider}/callback?code=fake-...&state=...`로 바로 보내는 분기를 `APP_ENV=e2e`일 때만 켠다
+- [ ] T056 [US3] apps/web/src/shared/server/oauth-state.ts와 apps/web/src/app/api/auth/oauth/[provider]/route.ts(시작), apps/web/src/app/api/auth/oauth/[provider]/callback/route.ts(콜백): bff-routes.md 표대로. 카카오와 구글 인가 URL, scope(구글 `openid email`, 카카오 `account_email`은 선택 동의), `redirect_uri = APP_ORIGIN + /api/auth/oauth/{provider}/callback`. e2e 프로필에서는 제공자 대신 `/api/auth/oauth/{provider}/callback?code=fake-...&state=...`로 바로 보내는 분기를 `APP_ENV=e2e`일 때만 켠다. `VERCEL_ENV=production`인데 `APP_ENV=e2e`면 env.ts 검증에서 빌드와 기동을 실패시키고, 이 규칙을 env 테스트로 확인한다
 - [ ] T057 [P] [US3] apps/web/src/features/auth/oauth-buttons/(ui/oauth-buttons.tsx, index.ts): 카카오, 구글 버튼은 `<a href="/api/auth/oauth/{provider}?next=...">`로 이동한다. login과 signup 페이지에 넣고, `/login?error=`의 세 값(`oauth_cancelled`, `oauth_failed`, `email_registered`)에 맞는 안내를 로그인 페이지에 표시한다
 
 **Checkpoint**: 외부 계정 로그인이 단독으로 동작한다
@@ -206,7 +206,7 @@ description: "Task list for 002-auth (인증과 회원)"
 - [ ] T067 [P] `grep -rn "US[1-5]-AC[0-9]" apps/`로 스펙의 인수 조건 24개가 모두 테스트 이름에 있는지 확인하고, 자동화하지 않는 US5-AC1은 quickstart.md에 수동 절차가 있는지 확인한다. 빠진 ID가 있으면 해당 테스트를 추가한다
 - [ ] T068 [P] apps/api/AGENTS.md에 `member` 모듈의 공개 타입, 보안 설정 위치, 온보딩 가드 허용 목록을 추가하고, apps/web/docs/ARCHITECTURE.md의 BFF 절에 인증 라우트, 쿠키, 라우트 가드를 반영한다
 - [ ] T069 [P] docs/architecture/overview.md 5.1 모듈 표의 `member` 행과 6.3 인증 절을 구현과 맞춘다(Postgres 기반 로그인 제한, refresh 교체와 30초 유예)
-- [ ] T070 specs/002-auth/quickstart.md의 "수동 검증 시나리오"를 로컬에서 끝까지 실행하고, 다른 결과가 나오면 문서나 코드를 고친다
+- [ ] T070 specs/002-auth/quickstart.md의 "수동 검증 시나리오"를 로컬에서 끝까지 실행하고, 다른 결과가 나오면 문서나 코드를 고친다. 로그인 API 100회와 보호 API 100회(세션 확인 포함, 미포함 비교)의 p95를 재서 plan.md 성능 목표와 비교하고 결과를 quickstart.md에 표로 남긴다
 - [ ] T071 `/speckit-analyze`로 spec, plan, tasks의 일관성을 확인하고 PR을 연다(PR 본문에 스펙 링크와 인수 조건 체크리스트, quickstart의 운영 준비 항목)
 
 ---

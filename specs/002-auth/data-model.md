@@ -17,7 +17,8 @@
 | onboarded_at | timestamptz | NULL | NULL이면 온보딩 전 |
 | created_at, updated_at | timestamptz | NOT NULL | `BaseTimeEntity` |
 
-- 부분 유일 인덱스: `UNIQUE (email) WHERE auth_method = 'EMAIL'`. 이메일 가입끼리만 이메일이 겹치지 않으면 된다. 외부 계정 이메일은 참고 값이다.
+- 부분 유일 인덱스: `UNIQUE (email) WHERE auth_method = 'EMAIL'`. 이메일 가입끼리의 중복을 DB가 막는다.
+- 이메일 가입 때는 가입 방법과 관계없이 `member.email`이 같은 회원이 있는지 애플리케이션에서 먼저 확인하고, 외부 계정 회원과 겹치면 `409 EMAIL_REGISTERED_WITH_OTHER_METHOD`로 거절한다(FR-001). 외부 계정끼리는 이메일이 겹쳐도 된다(제공자마다 따로 가입한 경우).
 - 체크 제약: `auth_method = 'EMAIL'`이면 `email`과 `password_hash`가 NOT NULL이다.
 - 체크 제약: `onboarded_at`이 NOT NULL이면 `nickname`, `nickname_key`, `job_role`, `career_year`도 NOT NULL이다.
 

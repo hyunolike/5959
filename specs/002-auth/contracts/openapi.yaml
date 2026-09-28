@@ -176,7 +176,7 @@ paths:
               schema: { $ref: '#/components/schemas/AuthResultEnvelope' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '409':
-          description: 이미 가입된 이메일 (EMAIL_ALREADY_REGISTERED)
+          description: 이미 가입된 이메일(EMAIL_ALREADY_REGISTERED), 또는 외부 계정 회원이 쓰는 이메일(EMAIL_REGISTERED_WITH_OTHER_METHOD)
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorEnvelope' }
