@@ -11,7 +11,7 @@
 | `POST /api/auth/logout` | 없음 | `204` | 없음(API가 실패해도 쿠키는 지운다) | 세 쿠키 모두 삭제 |
 | `GET /api/auth/oauth/{provider}?next=` | 없음 | `302` 제공자 인가 URL | 지원하지 않는 제공자면 `302 /login` | `ogu_oauth`(state, code_verifier, next) 10분 설정 |
 | `GET /api/auth/oauth/{provider}/callback?code&state` | 제공자가 호출 | `302` 온보딩 또는 `next` | state 불일치, 동의 취소, 제공자 오류: `302 /login?error=...` | `ogu_at`, `ogu_rt`(,`ogu_ob`) 설정, `ogu_oauth` 삭제 |
-| `PUT /api/members/me/onboarding` | `{ nickname, jobRole, careerYear }` | `200 { member }` | `400`, `409` | `ogu_at` 교체, `ogu_ob` 설정 |
+| `PUT /api/auth/onboarding` | `{ nickname, jobRole, careerYear }` | `200 { member }` | `400`, `409` | `ogu_at` 교체, `ogu_ob` 설정 |
 
 - 응답 본문에는 토큰이 절대 들어가지 않는다. 쿠키로만 전달한다.
 - 쿠키 이름은 실제로 `__Host-` 접두사가 붙는다(`__Host-ogu_at` 등).
