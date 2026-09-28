@@ -19,7 +19,7 @@ import org.springframework.context.annotation.Import
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
-@Import(TestcontainersConfiguration::class, ContractTestSecurityConfig::class)
+@Import(TestcontainersConfiguration::class)
 class ContractTests {
     @Autowired
     lateinit var restTemplate: TestRestTemplate
