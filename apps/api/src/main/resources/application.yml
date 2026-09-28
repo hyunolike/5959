@@ -1,3 +1,8 @@
+server:
+  # X-Forwarded-For 등으로 request.remoteAddr가 바뀌지 않게 한다. 클라이언트 IP는 BffClientIpResolver가 BFF 키를 확인한
+  # X-Ogu-Client-Ip로만 정한다.
+  forward-headers-strategy: none
+
 spring:
   application:
     name: ogu-api

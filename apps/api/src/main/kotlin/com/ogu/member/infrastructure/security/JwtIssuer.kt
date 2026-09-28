@@ -75,7 +75,7 @@ class JwtIssuer(
         }
 
         /**
-         * HS256 서명, `iss=ogu-api`, `exp`를 검증하는 디코더. 발급과 검증을 같은 서버가 하므로 시계 오차 허용은 두지 않는다.
+         * HS256 서명, `iss=ogu-api`, `exp`(필수)를 검증하는 디코더. 발급과 검증을 같은 서버가 하므로 시계 오차 허용은 두지 않는다.
          */
         fun decoder(
             secret: String,
@@ -86,7 +86,12 @@ class JwtIssuer(
                     .withSecretKey(secretKey(secret))
                     .macAlgorithm(MacAlgorithm.HS256)
                     .build()
-            val timestamp = JwtTimestampValidator(Duration.ZERO).apply { setClock(clock) }
+            val timestamp =
+                JwtTimestampValidator(Duration.ZERO).apply {
+                    setClock(clock)
+                    // 7.1 기본값은 exp가 없어도 통과시킨다. exp 없는 토큰은 영원히 유효하므로 거절한다.
+                    setAllowEmptyExpiryClaim(false)
+                }
             decoder.setJwtValidator(
                 JwtValidators.createDefaultWithValidators(
                     timestamp,

@@ -54,6 +54,18 @@ class OnboardingGuardTest {
             .contains("\"code\":\"ONBOARDING_REQUIRED\"")
     }
 
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = ["/api/v1/members/meX", "/api/v1/members/me/", "/API/V1/MEMBERS/ME"])
+    fun `허용 목록과 비슷하기만 한 경로는 온보딩 전 토큰에 403 ONBOARDING_REQUIRED다`(path: String) {
+        authenticate(onboarded = false)
+
+        val result = run("GET", path)
+
+        assertThat(result.passed).isFalse()
+        assertThat(result.response.status).isEqualTo(403)
+        assertThat(result.response.contentAsString).contains("\"code\":\"ONBOARDING_REQUIRED\"")
+    }
+
     @Test
     fun `허용 목록 경로의 하위 경로는 허용 목록이 아니다`() {
         authenticate(onboarded = false)

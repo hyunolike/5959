@@ -94,14 +94,14 @@ class SessionServiceTest {
     fun `무효화되지 않았고 만료 전인 세션은 유효하다`() {
         val session = storedSession(expiresAt = now.plusSeconds(1))
 
-        assertThat(service.isActive(session.id)).isTrue()
+        assertThat(service.isActive(session.id, memberId = 42L)).isTrue()
     }
 
     @Test
     fun `만료 시각이 지난 세션은 유효하지 않다`() {
         val session = storedSession(expiresAt = now)
 
-        assertThat(service.isActive(session.id)).isFalse()
+        assertThat(service.isActive(session.id, memberId = 42L)).isFalse()
     }
 
     @Test
@@ -109,7 +109,14 @@ class SessionServiceTest {
         val session = storedSession(expiresAt = now.plus(Duration.ofDays(1)))
         session.revoke(SessionRevokeReason.LOGOUT, now)
 
-        assertThat(service.isActive(session.id)).isFalse()
+        assertThat(service.isActive(session.id, memberId = 42L)).isFalse()
+    }
+
+    @Test
+    fun `토큰의 회원 ID가 세션의 회원과 다르면 유효하지 않다`() {
+        val session = storedSession(expiresAt = now.plus(Duration.ofDays(1)))
+
+        assertThat(service.isActive(session.id, memberId = 43L)).isFalse()
     }
 
     @Test
@@ -117,7 +124,7 @@ class SessionServiceTest {
         val sessionId = UUID.randomUUID()
         given(repository.findById(sessionId)).willReturn(Optional.empty())
 
-        assertThat(service.isActive(sessionId)).isFalse()
+        assertThat(service.isActive(sessionId, memberId = 42L)).isFalse()
     }
 
     private fun storedSession(expiresAt: Instant): AuthSession {

@@ -4,6 +4,7 @@ import com.ogu.TestcontainersConfiguration
 import com.ogu.member.AuthenticatedMember
 import com.ogu.member.application.IssuedTokens
 import com.ogu.member.application.SessionService
+import com.ogu.member.infrastructure.security.JwtIssuer
 import com.ogu.shared.response.ApiResponse
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
@@ -40,6 +41,9 @@ class SecurityIntegrationTests {
 
     @Autowired
     lateinit var jdbcTemplate: JdbcTemplate
+
+    @Autowired
+    lateinit var jwtIssuer: JwtIssuer
 
     lateinit var mockMvc: MockMvc
 
@@ -113,6 +117,18 @@ class SecurityIntegrationTests {
     }
 
     @Test
+    fun `토큰의 회원 ID가 세션의 회원과 다르면 401 SESSION_EXPIRED다`() {
+        val tokens = issue(onboarded = true)
+        val otherMemberId = insertMember()
+        val forged = jwtIssuer.issue(memberId = otherMemberId, sessionId = tokens.sessionId, onboarded = true)
+
+        mockMvc
+            .perform(get(PROTECTED_PATH).bearer(forged.value))
+            .andExpect(status().isUnauthorized)
+            .andExpect(jsonPath("$.error.code").value("SESSION_EXPIRED"))
+    }
+
+    @Test
     fun `온보딩 전 토큰으로 허용 목록 밖의 보호 경로를 부르면 403 ONBOARDING_REQUIRED다`() {
         val tokens = issue(onboarded = false)
 
@@ -169,9 +185,10 @@ class SecurityIntegrationTests {
                     .andReturn()
                     .response.status
 
-            assertThat(listOf(withoutToken, withRevokedToken, withGarbageToken))
-                .describedAs(path)
-                .doesNotContain(401, 403)
+            // 아직 컨트롤러가 없으므로 보안 필터를 지나 MVC까지 가서 404가 된다. 401/403이면 보안 필터가 막은 것이다.
+            listOf(withoutToken, withRevokedToken, withGarbageToken).forEach { status ->
+                assertThat(status).describedAs(path).isLessThan(500).isEqualTo(NO_CONTROLLER_YET_STATUS)
+            }
         }
     }
 
@@ -207,5 +224,6 @@ class SecurityIntegrationTests {
 
     companion object {
         const val PROTECTED_PATH = "/api/v1/test-only/protected-probe"
+        private const val NO_CONTROLLER_YET_STATUS = 404
     }
 }

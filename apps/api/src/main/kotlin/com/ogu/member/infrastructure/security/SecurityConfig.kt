@@ -6,6 +6,7 @@ import com.ogu.member.infrastructure.config.AuthProperties
 import com.ogu.shared.error.ErrorCode
 import jakarta.servlet.DispatcherType
 import org.springdoc.core.utils.SpringDocUtils
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpHeaders
@@ -29,7 +30,11 @@ import java.time.Clock
  * API는 브라우저가 직접 부르지 않고 BFF만 부르므로(ADR-0002) 세션 쿠키와 CSRF 토큰을 쓰지 않는다.
  */
 @Configuration(proxyBeanMethods = false)
-class SecurityConfig : WebMvcConfigurer {
+class SecurityConfig(
+    @param:Value("\${springdoc.api-docs.enabled:true}") private val apiDocsEnabled: Boolean,
+) : WebMvcConfigurer {
+    private val publicMatcher = SecurityPaths.publicMatcher(apiDocsEnabled)
+
     init {
         // 컨트롤러의 AuthenticatedMember 인자는 요청 파라미터가 아니므로 API 문서에서 뺀다.
         SpringDocUtils.getConfig().addRequestWrapperToIgnore(AuthenticatedMember::class.java)
@@ -68,7 +73,7 @@ class SecurityConfig : WebMvcConfigurer {
                 auth
                     .dispatcherTypeMatchers(DispatcherType.ERROR)
                     .permitAll()
-                    .requestMatchers(SecurityPaths.publicMatcher)
+                    .requestMatchers(publicMatcher)
                     .permitAll()
                     .requestMatchers(SecurityPaths.apiMatcher)
                     .authenticated()
@@ -103,7 +108,7 @@ class SecurityConfig : WebMvcConfigurer {
     private fun publicPathIgnoringResolver(): BearerTokenResolver {
         val delegate = DefaultBearerTokenResolver()
         return BearerTokenResolver { request ->
-            if (SecurityPaths.publicMatcher.matches(request)) null else delegate.resolve(request)
+            if (publicMatcher.matches(request)) null else delegate.resolve(request)
         }
     }
 }

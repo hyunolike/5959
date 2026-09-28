@@ -50,12 +50,16 @@ class SessionService(
     }
 
     /**
-     * 요청마다 부른다. PK 조회 한 번으로 `revoked_at IS NULL AND now < expires_at`을 확인한다.
+     * 요청마다 부른다. PK 조회 한 번으로 `revoked_at IS NULL AND now < expires_at`과
+     * 세션의 회원이 토큰의 `sub`와 같은지 확인한다.
      */
     @Transactional(readOnly = true)
-    fun isActive(sessionId: UUID): Boolean =
+    fun isActive(
+        sessionId: UUID,
+        memberId: Long,
+    ): Boolean =
         repository
             .findById(sessionId)
-            .map { it.isActive(clock.instant()) }
+            .map { it.memberId == memberId && it.isActive(clock.instant()) }
             .orElse(false)
 }

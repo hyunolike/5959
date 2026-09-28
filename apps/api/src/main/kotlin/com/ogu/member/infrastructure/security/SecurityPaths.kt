@@ -18,9 +18,10 @@ object SecurityPaths {
             "/api/v1/auth/oauth/**",
             "/api/v1/auth/refresh",
             "/actuator/health",
-            // springdoc이 켜져 있을 때만 존재한다. 운영(prod 프로필)은 springdoc.api-docs.enabled=false라 이 경로가 없다.
-            "/v3/api-docs/**",
         )
+
+    /** springdoc이 켜져 있을 때(`springdoc.api-docs.enabled`, 기본 true)만 공개한다. 운영은 이 설정이 false다. */
+    const val API_DOCS = "/v3/api-docs/**"
 
     /** 온보딩 전(`onboarded=false`) 토큰으로도 부를 수 있는 인증 필요 경로(research R9). */
     val ONBOARDING_ALLOWED =
@@ -31,7 +32,11 @@ object SecurityPaths {
             "/api/v1/auth/logout",
         )
 
-    val publicMatcher: RequestMatcher = anyOf(PUBLIC)
+    fun publicMatcher(apiDocsEnabled: Boolean): RequestMatcher {
+        val patterns = if (apiDocsEnabled) PUBLIC + API_DOCS else PUBLIC
+        return anyOf(patterns)
+    }
+
     val onboardingAllowedMatcher: RequestMatcher = anyOf(ONBOARDING_ALLOWED)
     val apiMatcher: RequestMatcher = PathPatternRequestMatcher.withDefaults().matcher(API)
 

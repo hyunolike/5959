@@ -14,7 +14,9 @@ import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneOffset
+import java.util.Base64
 import java.util.UUID
+import javax.crypto.spec.SecretKeySpec
 
 class JwtIssuerTest {
     private val now = Instant.parse("2026-09-28T00:00:00Z")
@@ -91,6 +93,68 @@ class JwtIssuerTest {
     }
 
     @Test
+    fun `올바른 키로 서명했어도 exp가 없는 토큰은 거부된다`() {
+        val withoutExpiry =
+            NimbusJwtEncoder
+                .withSecretKey(JwtIssuer.secretKey(SECRET))
+                .build()
+                .encode(
+                    JwtEncoderParameters.from(
+                        JwsHeader.with(MacAlgorithm.HS256).build(),
+                        JwtClaimsSet
+                            .builder()
+                            .issuer("ogu-api")
+                            .subject("42")
+                            .issuedAt(now)
+                            .claim("sid", sessionId.toString())
+                            .claim("onboarded", true)
+                            .build(),
+                    ),
+                ).tokenValue
+
+        assertThatThrownBy { JwtIssuer.decoder(SECRET, clock).decode(withoutExpiry) }
+            .isInstanceOf(JwtException::class.java)
+    }
+
+    @Test
+    fun `alg=none 토큰은 거부된다`() {
+        val encoder = Base64.getUrlEncoder().withoutPadding()
+        val header = encoder.encodeToString("""{"alg":"none","typ":"JWT"}""".toByteArray())
+        val payload =
+            encoder.encodeToString(
+                """{"iss":"ogu-api","sub":"42","sid":"$sessionId","onboarded":true,"exp":${now.epochSecond + 60}}"""
+                    .toByteArray(),
+            )
+
+        assertThatThrownBy { JwtIssuer.decoder(SECRET, clock).decode("$header.$payload.") }
+            .isInstanceOf(JwtException::class.java)
+    }
+
+    @Test
+    fun `같은 비밀키라도 HS512로 서명한 토큰은 거부된다`() {
+        val hs512 =
+            NimbusJwtEncoder
+                .withSecretKey(SecretKeySpec(LONG_SECRET.toByteArray(), "HmacSHA512"))
+                .algorithm(MacAlgorithm.HS512)
+                .build()
+                .encode(
+                    JwtEncoderParameters.from(
+                        JwsHeader.with(MacAlgorithm.HS512).build(),
+                        JwtClaimsSet
+                            .builder()
+                            .issuer("ogu-api")
+                            .subject("42")
+                            .issuedAt(now)
+                            .expiresAt(now.plusSeconds(60))
+                            .build(),
+                    ),
+                ).tokenValue
+
+        assertThatThrownBy { JwtIssuer.decoder(LONG_SECRET, clock).decode(hs512) }
+            .isInstanceOf(JwtException::class.java)
+    }
+
+    @Test
     fun `32바이트보다 짧은 비밀키는 받지 않는다`() {
         assertThatThrownBy { JwtIssuer(properties("too-short-secret"), clock) }
             .isInstanceOf(IllegalArgumentException::class.java)
@@ -110,5 +174,8 @@ class JwtIssuerTest {
     companion object {
         private const val SECRET = "test-jwt-secret-0123456789-0123456789-abcdef"
         private const val OTHER_SECRET = "another-jwt-secret-9876543210-9876543210-xyz"
+
+        /** HS512 서명에는 64바이트 이상의 키가 필요하다. */
+        private const val LONG_SECRET = "long-jwt-secret-for-hs512-0123456789-0123456789-0123456789-abcdefgh"
     }
 }
