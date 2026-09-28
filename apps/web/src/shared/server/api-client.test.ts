@@ -228,6 +228,53 @@ describe("callApi", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it("forwardResponseHeaders로 요청한 헤더가 실제로 있으면 값을 그대로 담고, 요청하지 않은 헤더는 담지 않는다(예: 429의 Retry-After)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            success: false,
+            data: null,
+            error: {
+              code: "LOGIN_THROTTLED",
+              message: "잠시 후 다시 시도해 주세요.",
+            },
+          }),
+          {
+            status: 429,
+            headers: {
+              "content-type": "application/json",
+              "retry-after": "900",
+              "x-secret-header": "leak-me-not",
+            },
+          },
+        ),
+      ),
+    );
+
+    const result = await callApi("/api/v1/auth/login", "203.0.113.1", {
+      forwardResponseHeaders: ["retry-after"],
+    });
+
+    expect(result.headers).toEqual({ "retry-after": "900" });
+  });
+
+  it("forwardResponseHeaders를 주지 않으면 headers 필드 자체가 없다", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse({ success: true, data: { id: 1 }, error: null }),
+        ),
+    );
+
+    const result = await callApi("/api/v1/members/me", "203.0.113.1");
+
+    expect(result.headers).toBeUndefined();
+  });
+
   it("15초 안에 응답이 없으면(타임아웃) 504와 ApiResponse 오류 봉투로 바꾼다", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     vi.stubGlobal(

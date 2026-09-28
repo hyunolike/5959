@@ -5,12 +5,21 @@ import { env } from "@/shared/config";
 
 export interface ApiClientOptions extends Omit<RequestInit, "headers"> {
   headers?: HeadersInit;
+  /**
+   * 이 이름의 응답 헤더만 결과의 `headers`에 담아 돌려준다(예: 429의
+   * `Retry-After`). 지정하지 않으면 `headers` 필드 자체가 없다 — BFF 라우트가
+   * 명시적으로 고른 헤더만 브라우저에 다시 노출하기 위함이다(업스트림 응답
+   * 헤더를 통째로 넘기지 않는다).
+   */
+  forwardResponseHeaders?: string[];
 }
 
 export interface ApiClientResult<T> {
   status: number;
   /** 204이거나 본문이 비어 있으면 null. */
   body: ApiResponse<T> | null;
+  /** forwardResponseHeaders로 요청했고 실제로 있던 헤더만 담는다. */
+  headers?: Record<string, string>;
 }
 
 const UPSTREAM_TIMEOUT_MS = 15_000;
@@ -30,6 +39,23 @@ function nonJsonBodyError(status: number): ApiErrorResponse {
     return { code: "INVALID_REQUEST", message: "잘못된 요청입니다." };
   }
   return { code: "INTERNAL_ERROR", message: "서버 오류가 발생했습니다." };
+}
+
+function pickResponseHeaders(
+  response: Response,
+  names: string[] | undefined,
+): Record<string, string> | undefined {
+  if (!names || names.length === 0) {
+    return undefined;
+  }
+  const picked: Record<string, string> = {};
+  for (const name of names) {
+    const value = response.headers.get(name);
+    if (value !== null) {
+      picked[name] = value;
+    }
+  }
+  return Object.keys(picked).length > 0 ? picked : undefined;
 }
 
 function buildUrl(path: string): string {
@@ -66,7 +92,7 @@ export async function callApi<T>(
   clientIp: string,
   options: ApiClientOptions = {},
 ): Promise<ApiClientResult<T>> {
-  const { headers, ...rest } = options;
+  const { headers, forwardResponseHeaders, ...rest } = options;
   const requestHeaders = new Headers(headers);
   requestHeaders.set("X-Ogu-Bff-Key", env.BFF_API_KEY);
   requestHeaders.set("X-Ogu-Client-Ip", clientIp);
@@ -99,19 +125,25 @@ export async function callApi<T>(
     };
   }
 
+  const forwardedHeaders = pickResponseHeaders(
+    response,
+    forwardResponseHeaders,
+  );
+
   if (response.status === 204) {
-    return { status: response.status, body: null };
+    return { status: response.status, body: null, headers: forwardedHeaders };
   }
 
   const text = await response.text();
   if (text.length === 0) {
-    return { status: response.status, body: null };
+    return { status: response.status, body: null, headers: forwardedHeaders };
   }
 
   try {
     return {
       status: response.status,
       body: JSON.parse(text) as ApiResponse<T>,
+      headers: forwardedHeaders,
     };
   } catch {
     return {
@@ -121,6 +153,7 @@ export async function callApi<T>(
         data: null,
         error: nonJsonBodyError(response.status),
       },
+      headers: forwardedHeaders,
     };
   }
 }
