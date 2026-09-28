@@ -13,11 +13,17 @@ data class ApiResponse<T>(
         fun error(
             errorCode: ErrorCode,
             message: String? = null,
+            retryAfterSeconds: Int? = null,
         ): ApiResponse<Unit> =
             ApiResponse(
                 success = false,
                 data = null,
-                error = ErrorResponse(code = errorCode.name, message = message ?: errorCode.message),
+                error =
+                    ErrorResponse(
+                        code = errorCode.name,
+                        message = message ?: errorCode.message,
+                        retryAfterSeconds = retryAfterSeconds,
+                    ),
             )
     }
 }
@@ -25,4 +31,5 @@ data class ApiResponse<T>(
 data class ErrorResponse(
     val code: String,
     val message: String,
+    val retryAfterSeconds: Int? = null,
 )
