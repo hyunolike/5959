@@ -2,19 +2,24 @@ package com.ogu.member.presentation
 
 import com.ogu.member.AuthenticatedMember
 import com.ogu.member.application.LoginService
+import com.ogu.member.application.OAuthLoginService
 import com.ogu.member.application.SessionService
 import com.ogu.member.application.SignupService
 import com.ogu.member.domain.SessionRevokeReason
 import com.ogu.member.infrastructure.security.BffClientIpResolver
 import com.ogu.member.presentation.dto.AuthResultResponse
 import com.ogu.member.presentation.dto.LoginRequest
+import com.ogu.member.presentation.dto.OAuthLoginRequest
 import com.ogu.member.presentation.dto.SignupRequest
 import com.ogu.shared.response.ApiResponse
 import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.HttpStatus
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -31,6 +36,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse as DocResponse
 class AuthController(
     private val signupService: SignupService,
     private val loginService: LoginService,
+    private val oauthLoginService: OAuthLoginService,
     private val sessionService: SessionService,
     private val clientIpResolver: BffClientIpResolver,
 ) {
@@ -81,6 +87,33 @@ class AuthController(
         val clientIp = clientIpResolver.resolve(httpRequest)
         val result = loginService.login(request.email, request.password, clientIp)
         return ApiResponse.success(AuthResultResponse.of(result.member, result.tokens, newMember = false))
+    }
+
+    @Operation(
+        operationId = "oauthLogin",
+        summary = "외부 계정 인가 코드 교환과 로그인 (US3-AC1~AC3)",
+        responses = [
+            DocResponse(responseCode = "200", description = "로그인 성공. 처음이면 newMember=true, member.onboarded=false"),
+            DocResponse(
+                responseCode = "400",
+                description = "입력 검증 실패, 지원하지 않는 제공자, 허용 목록에 없는 redirectUri (INVALID_REQUEST)",
+            ),
+            DocResponse(responseCode = "401", description = "제공자가 코드를 거절함 (OAUTH_CODE_INVALID)"),
+            DocResponse(
+                responseCode = "409",
+                description = "같은 이메일이 이메일 가입으로 이미 쓰임 (EMAIL_REGISTERED_WITH_OTHER_METHOD)",
+            ),
+            DocResponse(responseCode = "502", description = "제공자가 응답하지 않음 (OAUTH_PROVIDER_UNAVAILABLE)"),
+        ],
+    )
+    @PostMapping("/oauth/{provider}")
+    fun oauthLogin(
+        @Parameter(schema = Schema(allowableValues = ["kakao", "google"]))
+        @PathVariable provider: String,
+        @RequestBody request: OAuthLoginRequest,
+    ): ApiResponse<AuthResultResponse> {
+        val result = oauthLoginService.login(provider, request.code, request.redirectUri, request.codeVerifier)
+        return ApiResponse.success(AuthResultResponse.of(result.member, result.tokens, newMember = result.newMember))
     }
 
     @Operation(

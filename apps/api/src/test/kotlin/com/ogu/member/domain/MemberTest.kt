@@ -95,4 +95,22 @@ class MemberTest {
         assertThat(member.nickname).isEqualTo("오구")
         assertThat(member.onboardedAt).isEqualTo(now)
     }
+
+    @Test
+    fun `외부 계정으로 가입한 회원은 제공자별 가입 방법과 정규화된 이메일을 갖고 비밀번호가 없다`() {
+        val member = Member.registerWithOAuth(OAuthProvider.GOOGLE, " Ogu@Gmail.com ")
+
+        assertThat(member.authMethod).isEqualTo(AuthMethod.GOOGLE)
+        assertThat(member.email).isEqualTo("ogu@gmail.com")
+        assertThat(member.passwordHash).isNull()
+        assertThat(member.isOnboarded).isFalse()
+    }
+
+    @Test
+    fun `이메일 없는 카카오 계정도 회원이 된다`() {
+        val member = Member.registerWithOAuth(OAuthProvider.KAKAO, null)
+
+        assertThat(member.authMethod).isEqualTo(AuthMethod.KAKAO)
+        assertThat(member.email).isNull()
+    }
 }

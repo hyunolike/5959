@@ -95,5 +95,14 @@ class Member private constructor(
             email: String,
             passwordHash: String,
         ): Member = Member(AuthMethod.EMAIL, normalizeEmail(email), passwordHash)
+
+        /**
+         * 외부 계정으로 처음 로그인할 때의 가입. [email]은 제공자가 검증한 이메일만 넘긴다(카카오는 없을 수 있다).
+         * 비밀번호는 없다.
+         */
+        fun registerWithOAuth(
+            provider: OAuthProvider,
+            email: String?,
+        ): Member = Member(provider.authMethod, email?.let(::normalizeEmail), passwordHash = null)
     }
 }
