@@ -2,7 +2,12 @@ package com.ogu.shared.error
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
+import org.springframework.web.HttpMediaTypeNotSupportedException
+import org.springframework.web.HttpRequestMethodNotSupportedException
+import org.springframework.web.bind.MissingServletRequestParameterException
+import org.springframework.web.servlet.resource.NoResourceFoundException
 
 class GlobalExceptionHandlerTest {
     private val handler = GlobalExceptionHandler()
@@ -13,6 +18,40 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
         assertThat(response.body!!.success).isFalse()
+        assertThat(response.body!!.error!!.code).isEqualTo("INVALID_REQUEST")
+    }
+
+    @Test
+    fun `처리기가 없는 경로는 404 NOT_FOUND다`() {
+        val response = handler.handleException(NoResourceFoundException(HttpMethod.GET, "/v3/api-docs", "v3/api-docs"))
+
+        assertThat(response.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
+        assertThat(response.body!!.success).isFalse()
+        assertThat(response.body!!.error!!.code).isEqualTo("NOT_FOUND")
+    }
+
+    @Test
+    fun `지원하지 않는 메서드는 405 METHOD_NOT_ALLOWED이고 Allow 헤더를 유지한다`() {
+        val response = handler.handleException(HttpRequestMethodNotSupportedException("DELETE", listOf("GET")))
+
+        assertThat(response.statusCode).isEqualTo(HttpStatus.METHOD_NOT_ALLOWED)
+        assertThat(response.body!!.error!!.code).isEqualTo("METHOD_NOT_ALLOWED")
+        assertThat(response.headers.allow).containsExactly(HttpMethod.GET)
+    }
+
+    @Test
+    fun `지원하지 않는 미디어 타입은 415 UNSUPPORTED_MEDIA_TYPE이다`() {
+        val response = handler.handleException(HttpMediaTypeNotSupportedException("text/plain"))
+
+        assertThat(response.statusCode).isEqualTo(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
+        assertThat(response.body!!.error!!.code).isEqualTo("UNSUPPORTED_MEDIA_TYPE")
+    }
+
+    @Test
+    fun `그 밖의 Spring MVC 4xx 예외는 자기 상태 코드와 INVALID_REQUEST로 응답한다`() {
+        val response = handler.handleException(MissingServletRequestParameterException("nickname", "String"))
+
+        assertThat(response.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
         assertThat(response.body!!.error!!.code).isEqualTo("INVALID_REQUEST")
     }
 
