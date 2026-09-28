@@ -63,6 +63,24 @@ class BffClientIpResolverTest {
         assertThat(resolver.resolve(request(bffKey = BFF_KEY, clientIp = " "))).isEqualTo(REMOTE_ADDR)
     }
 
+    @Test
+    fun `BFF 키가 맞아도 X-Ogu-Client-Ip가 IP 리터럴이 아니면 원격 주소를 쓴다`() {
+        val resolver = BffClientIpResolver(properties(bffKey = BFF_KEY))
+
+        assertThat(resolver.resolve(request(bffKey = BFF_KEY, clientIp = "evil-host.example"))).isEqualTo(REMOTE_ADDR)
+        assertThat(resolver.resolve(request(bffKey = BFF_KEY, clientIp = "1".repeat(46)))).isEqualTo(REMOTE_ADDR)
+    }
+
+    @Test
+    fun `X-Ogu-Client-Ip는 표준 표기로 바꿔 돌려준다`() {
+        val resolver = BffClientIpResolver(properties(bffKey = BFF_KEY))
+
+        assertThat(resolver.resolve(request(bffKey = BFF_KEY, clientIp = "2001:0DB8:0:0:0:0:0:0001")))
+            .isEqualTo("2001:db8::1")
+        assertThat(resolver.resolve(request(bffKey = BFF_KEY, clientIp = "::ffff:203.0.113.7")))
+            .isEqualTo("203.0.113.7")
+    }
+
     private fun request(
         bffKey: String?,
         clientIp: String?,

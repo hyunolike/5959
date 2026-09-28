@@ -22,9 +22,15 @@ class BffClientIpResolver(
             .takeIf { it.isNotBlank() }
             ?.let { sha256(it) }
 
+    /**
+     * 표준 표기의 IP를 돌려준다. 헤더 값이 IP 리터럴이 아니거나 45자를 넘으면 믿지 않고 원격 주소를 쓴다
+     * ([IpLiteral]).
+     */
     fun resolve(request: HttpServletRequest): String {
-        val clientIp = request.getHeader(CLIENT_IP_HEADER)?.trim()
-        return if (isFromBff(request) && !clientIp.isNullOrEmpty()) clientIp else request.remoteAddr
+        val clientIp = request.getHeader(CLIENT_IP_HEADER)?.let(IpLiteral::canonicalize)
+        if (clientIp != null && isFromBff(request)) return clientIp
+        val remoteAddr = request.remoteAddr
+        return IpLiteral.canonicalize(remoteAddr) ?: remoteAddr
     }
 
     private fun isFromBff(request: HttpServletRequest): Boolean {
