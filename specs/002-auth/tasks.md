@@ -122,15 +122,15 @@ description: "Task list for 002-auth (인증과 회원)"
 - [x] T041 [P] [US2] apps/api/src/test/kotlin/com/ogu/member/application/LoginThrottleTest.kt(Testcontainers, 시계 주입): IP+이메일 키 15분 창 5회 → 15분 차단, 이메일 키 1시간 창 20회 → 1시간 차단, 창이 지나면 초기화, 성공 시 IP+이메일 키만 삭제, 동시 실패 10건이 정확히 10으로 집계
 - [x] T042 [P] [US2] apps/api/src/test/kotlin/com/ogu/member/presentation/LoginApiTests.kt: `US2-AC1 올바른 이메일과 비밀번호로 로그인하면 200`, `US2-AC2 틀린 비밀번호와 없는 이메일은 같은 401 INVALID_CREDENTIALS와 같은 메시지`, `US2-AC3 한 IP에서 15분 안에 5번 실패하면 올바른 비밀번호도 429이고 다른 IP는 로그인된다`, `US2-AC4 여러 IP에서 1시간 안에 20번 실패하면 모든 IP에서 429`, 429 응답에 `Retry-After`와 `retryAfterSeconds`, BFF 키가 틀리면 `X-Ogu-Client-Ip`를 무시한다
 - [x] T043 [P] [US2] apps/api/src/test/kotlin/com/ogu/member/presentation/LogoutApiTests.kt: `US2-AC5 로그아웃하면 204이고 같은 access 토큰으로 보호 API를 부르면 401 SESSION_EXPIRED`, 이미 무효인 세션의 토큰으로 로그아웃하면 401 `SESSION_EXPIRED`(계약과 같음)
-- [ ] T044 [P] [US2] apps/web/e2e-full/login-logout.spec.ts: `US2-AC1`, `US2-AC5`(로그아웃 후 `/login`, 뒤로 가기로 `/home`에 가도 이전 데이터가 보이지 않음)
+- [x] T044 [P] [US2] apps/web/e2e-full/login-logout.spec.ts: `US2-AC1`, `US2-AC5`(로그아웃 후 `/login`, 뒤로 가기로 `/home`에 가도 이전 데이터가 보이지 않음)
 
 ### Implementation for User Story 2
 
 - [x] T045 [US2] member/domain/LoginAttempt.kt, LoginAttemptRepository.kt(네이티브 `INSERT ... ON CONFLICT (scope_key) DO UPDATE`로 원자적 증가), member/application/LoginThrottle.kt(data-model.md `login_attempt` 표의 창, 한도, 차단 값), 하루 지난 행을 지우는 `@Scheduled` 작업
 - [x] T046 [US2] member/application/LoginService.kt: 차단 확인(차단 중이면 비밀번호 검증 없이 `LOGIN_THROTTLED`) → 이메일 정규화 → 회원 조회 → 비밀번호 검증(회원이 없어도 더미 해시로 한 번 검증해 응답 시간 차이를 줄인다) → 실패 기록 또는 성공 처리 → `SessionService.issue`
 - [x] T047 [US2] member/application/SessionService.kt에 `revoke(sessionId, reason)` 추가, AuthController에 `POST /api/v1/auth/login`, `POST /api/v1/auth/logout` 추가, `LOGIN_THROTTLED` 응답에 `Retry-After` 헤더를 붙이는 예외 처리. ContractTests `pendingPaths`에서 두 경로를 뺀다
-- [ ] T048 [P] [US2] apps/web/src/app/api/auth/login/route.ts와 apps/web/src/app/api/auth/logout/route.ts: 로그인 성공 시 온보딩 여부에 따라 `ogu_ob` 설정, 로그아웃은 API 결과와 관계없이 세 쿠키 삭제 후 204
-- [ ] T049 [P] [US2] apps/web/src/features/auth/email-login/(schema, use-login-mutation, ui/login-form.tsx, index.ts), apps/web/src/features/auth/logout/(use-logout-mutation, ui/logout-button.tsx, index.ts), apps/web/src/app/(auth)/login/page.tsx. 429는 남은 시간을 분 단위로 안내한다. 로그아웃하면 TanStack Query 캐시를 비우고 `/login`으로 이동한다. apps/web/src/app/home/page.tsx와 my/page.tsx에 로그아웃 버튼을 둔다
+- [x] T048 [P] [US2] apps/web/src/app/api/auth/login/route.ts와 apps/web/src/app/api/auth/logout/route.ts: 로그인 성공 시 온보딩 여부에 따라 `ogu_ob` 설정, 로그아웃은 API 결과와 관계없이 세 쿠키 삭제 후 204
+- [x] T049 [P] [US2] apps/web/src/features/auth/email-login/(schema, use-login-mutation, ui/login-form.tsx, index.ts), apps/web/src/features/auth/logout/(use-logout-mutation, ui/logout-button.tsx, index.ts), apps/web/src/app/(auth)/login/page.tsx. 429는 남은 시간을 분 단위로 안내한다. 로그아웃하면 TanStack Query 캐시를 비우고 `/login`으로 이동한다. apps/web/src/app/home/page.tsx와 my/page.tsx에 로그아웃 버튼을 둔다
 
 **Checkpoint**: US1과 US2가 각각 단독으로 동작한다
 
