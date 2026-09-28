@@ -67,13 +67,13 @@ description: "Task list for 002-auth (인증과 회원)"
 
 ### 웹 공통 (BFF)
 
-- [ ] T018 [P] apps/web/src/shared/config/env.ts에 서버 변수 `BFF_API_KEY`(min 1, 기본값 `local-bff-key`), `APP_ORIGIN`(url, 기본값 `http://localhost:3000`), `KAKAO_CLIENT_ID`, `GOOGLE_CLIENT_ID`(선택), `ENABLE_ERROR_PROBE`(선택), `APP_ENV`(`development`/`e2e`/`production`, 기본 `development`)와 클라이언트 변수 `NEXT_PUBLIC_SENTRY_DSN`(선택)을 추가한다
-- [ ] T019 [P] apps/web/src/shared/server/auth-cookies.ts와 테스트(TDD): research R3 표대로 `__Host-ogu_at`(Max-Age 900), `__Host-ogu_rt`(Max-Age = refreshTokenExpiresAt까지 초), `__Host-ogu_ob`(값 `1`) 설정, 읽기, 전부 삭제 함수. 모든 쿠키는 HttpOnly, Secure, SameSite=Lax, Path=/. `refreshToken`이 null이면 `ogu_rt`를 바꾸지 않는다. 파일 첫 줄은 `import "server-only"`
-- [ ] T020 [P] apps/web/src/shared/server/origin-guard.ts와 테스트: POST, PUT, PATCH, DELETE에서 `Origin`이 `APP_ORIGIN`과 다르거나 없으면 `403 FORBIDDEN_ORIGIN` 응답을 만든다. GET, HEAD는 통과
-- [ ] T021 [P] apps/web/src/shared/server/client-ip.ts와 테스트: `x-forwarded-for`의 첫 값, 없으면 `x-real-ip`, 없으면 `unknown`
-- [ ] T022 apps/web/src/shared/server/api-client.ts와 테스트: `API_ORIGIN`으로 요청하면서 `X-Ogu-Bff-Key`, `X-Ogu-Client-Ip`를 붙이고, 응답을 generated.ts 타입의 `ApiResponse`로 파싱한다. 네트워크 실패는 `502`와 `ApiResponse` 오류 봉투로 바꾼다
-- [ ] T023 apps/web/src/app/api/[...path]/route.ts(범용 프록시): `__Host-ogu_at`을 `Authorization: Bearer`로 바꿔 `API_ORIGIN/api/v1/{path}`로 전달한다. 상태 변경 메서드에는 origin-guard를 적용한다. refresh 재시도는 US4(T058)에서 추가한다. 기존 `/api/health` 라우트가 계속 동작하는지 확인한다
-- [ ] T024 [P] apps/web/src/entities/member/: `model/types.ts`(generated.ts에서 `MemberProfile`, `JobRole`, `CareerYear` 재공개, 직군과 경력의 한국어 라벨 맵), `api/queries.ts`(`useMeQuery` → `GET /api/members/me`), `index.ts`
+- [x] T018 [P] apps/web/src/shared/config/env.ts에 서버 변수 `BFF_API_KEY`(min 1, 기본값 `local-bff-key`), `APP_ORIGIN`(url, 기본값 `http://localhost:3000`), `KAKAO_CLIENT_ID`, `GOOGLE_CLIENT_ID`(선택), `ENABLE_ERROR_PROBE`(선택), `APP_ENV`(`development`/`e2e`/`production`, 기본 `development`)와 클라이언트 변수 `NEXT_PUBLIC_SENTRY_DSN`(선택)을 추가한다
+- [x] T019 [P] apps/web/src/shared/server/auth-cookies.ts와 테스트(TDD): research R3 표대로 `__Host-ogu_at`(Max-Age 900), `__Host-ogu_rt`(Max-Age = refreshTokenExpiresAt까지 초), `__Host-ogu_ob`(값 `1`) 설정, 읽기, 전부 삭제 함수. 모든 쿠키는 HttpOnly, Secure, SameSite=Lax, Path=/. `refreshToken`이 null이면 `ogu_rt`를 바꾸지 않는다. 파일 첫 줄은 `import "server-only"`
+- [x] T020 [P] apps/web/src/shared/server/origin-guard.ts와 테스트: POST, PUT, PATCH, DELETE에서 `Origin`이 `APP_ORIGIN`과 다르거나 없으면 `403 FORBIDDEN_ORIGIN` 응답을 만든다. GET, HEAD는 통과
+- [x] T021 [P] apps/web/src/shared/server/client-ip.ts와 테스트: `x-forwarded-for`의 첫 값, 없으면 `x-real-ip`, 없으면 `unknown`
+- [x] T022 apps/web/src/shared/server/api-client.ts와 테스트: `API_ORIGIN`으로 요청하면서 `X-Ogu-Bff-Key`, `X-Ogu-Client-Ip`를 붙이고, 응답을 generated.ts 타입의 `ApiResponse`로 파싱한다. 네트워크 실패는 `502`와 `ApiResponse` 오류 봉투로 바꾼다
+- [x] T023 apps/web/src/app/api/[...path]/route.ts(범용 프록시): `__Host-ogu_at`을 `Authorization: Bearer`로 바꿔 `API_ORIGIN/api/v1/{path}`로 전달한다. 상태 변경 메서드에는 origin-guard를 적용한다. refresh 재시도는 US4(T058)에서 추가한다. 기존 `/api/health` 라우트가 계속 동작하는지 확인한다
+- [x] T024 [P] apps/web/src/entities/member/: `model/types.ts`(generated.ts에서 `MemberProfile`, `JobRole`, `CareerYear` 재공개, 직군과 경력의 한국어 라벨 맵), `api/queries.ts`(`useMeQuery` → `GET /api/members/me`), `index.ts`
 - [ ] T025 infra/compose.e2e.yaml(Postgres `pgvector/pgvector:pg17` + API 이미지, `SPRING_PROFILES_ACTIVE=e2e`, 고정 `JWT_SECRET`, `OGU_BFF_KEY=e2e-bff-key`)과 apps/web/playwright.full.config.ts(`testDir: ./e2e-full`, 웹 서버 env에 `API_ORIGIN=http://localhost:18080`, `BFF_API_KEY=e2e-bff-key`)를 만들고, .github/workflows/ci.yml에 `e2e-full` job(api bootJar → 이미지 빌드 → compose.e2e 기동 → 헬스 대기 → `pnpm --filter web test:e2e:full` → 정리)을 추가한다. `ci-ok`의 needs에 넣는다. 첫 테스트로 apps/web/e2e-full/smoke.spec.ts(첫 화면에 "서버 정상")를 둔다
 
 **Checkpoint**: 스키마, 계약 검증, 보안 뼈대, BFF 공통 코드, 전체 E2E 환경이 준비됨

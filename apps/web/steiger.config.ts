@@ -21,4 +21,14 @@ export default defineConfig([
       "fsd/no-segmentless-slices": "off",
     },
   },
+  {
+    // 002-auth의 태스크 순서상 entities/member(T024)가 이를 쓰는
+    // features/onboarding(T038), app/home·app/my(T040)보다 먼저 배치로 들어온다.
+    // 그 전까지는 아무도 참조하지 않아 insignificant-slice가 걸린다.
+    // T038, T040이 끝나면 이 예외는 지운다.
+    files: ["./src/entities/member/**"],
+    rules: {
+      "fsd/insignificant-slice": "off",
+    },
+  },
 ]);

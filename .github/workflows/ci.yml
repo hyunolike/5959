@@ -32,6 +32,7 @@ jobs:
               - '.github/workflows/ci.yml'
             web:
               - 'apps/web/**'
+              - 'specs/**'
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
