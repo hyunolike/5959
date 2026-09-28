@@ -1,0 +1,5 @@
+ogu:
+  auth:
+    jwt:
+      secret: local-dev-only-jwt-secret-do-not-use-in-production-0123456789
+    bff-key: local-bff-key
