@@ -46,14 +46,21 @@ export function OnboardingForm() {
 
   const nickname = useWatch({ control, name: "nickname" }) ?? "";
   const nicknameCheck = useNicknameCheck(nickname);
+  // isSettled가 false면 data는 지금 입력이 아니라 이전 값의 결과다(디바운스가
+  // 아직 끝나지 않았다). 그럴 때는 힌트도, 제출 차단도 하지 않고 서버의
+  // 409(NICKNAME_TAKEN) 응답에 맡긴다 — 오래된 "사용 중" 결과로 방금 고쳐
+  // 쓴 사용 가능한 닉네임을 막으면 안 된다.
+  const settledNicknameResult = nicknameCheck.isSettled
+    ? nicknameCheck.data
+    : undefined;
   const nicknameUnavailable =
-    nicknameCheck.data !== undefined && !nicknameCheck.data.available;
+    settledNicknameResult !== undefined && !settledNicknameResult.available;
 
   const onSubmit = handleSubmit(async (values) => {
     if (nicknameUnavailable) {
       setError("nickname", {
-        message: nicknameCheck.data?.reason
-          ? NICKNAME_REASON_LABEL[nicknameCheck.data.reason]
+        message: settledNicknameResult?.reason
+          ? NICKNAME_REASON_LABEL[settledNicknameResult.reason]
           : "사용할 수 없는 닉네임입니다.",
       });
       return;
@@ -65,12 +72,15 @@ export function OnboardingForm() {
         router.push("/home");
       }
     } catch (error) {
-      if (
-        error instanceof ApiError &&
-        (error.code === "NICKNAME_TAKEN" || error.status === 400)
-      ) {
-        setError("nickname", { message: error.message });
-        return;
+      if (error instanceof ApiError) {
+        if (error.code === "ALREADY_ONBOARDED") {
+          router.push("/home");
+          return;
+        }
+        if (error.code === "NICKNAME_TAKEN" || error.status === 400) {
+          setError("nickname", { message: error.message });
+          return;
+        }
       }
       setError("root", { message: GENERIC_ERROR_MESSAGE });
     }
@@ -78,9 +88,9 @@ export function OnboardingForm() {
 
   const nicknameHint = errors.nickname
     ? null
-    : nicknameCheck.data?.reason
-      ? NICKNAME_REASON_LABEL[nicknameCheck.data.reason]
-      : nicknameCheck.data?.available
+    : settledNicknameResult?.reason
+      ? NICKNAME_REASON_LABEL[settledNicknameResult.reason]
+      : settledNicknameResult?.available
         ? "사용할 수 있는 닉네임입니다."
         : null;
 
@@ -107,7 +117,7 @@ export function OnboardingForm() {
             <p
               className={cn(
                 "text-sm",
-                nicknameCheck.data?.available
+                settledNicknameResult?.available
                   ? "text-emerald-600"
                   : "text-neutral-500",
               )}

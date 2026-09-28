@@ -10,7 +10,11 @@ vi.mock("@/shared/config", () => ({
   },
 }));
 
-import { ACCESS_TOKEN_COOKIE, ONBOARDED_COOKIE } from "@/shared/server";
+import {
+  ACCESS_TOKEN_COOKIE,
+  ONBOARDED_COOKIE,
+  REFRESH_TOKEN_COOKIE,
+} from "@/shared/server";
 
 import { PUT } from "./route";
 
@@ -114,6 +118,8 @@ describe("PUT /api/auth/onboarding", () => {
       "new-access-token",
     );
     expect(response.cookies.get(ONBOARDED_COOKIE)?.value).toBe("1");
+    // OnboardingResult에는 refresh 토큰이 없다 — ogu_rt는 건드리지 않는다.
+    expect(response.cookies.get(REFRESH_TOKEN_COOKIE)).toBeUndefined();
   });
 
   it("온보딩 응답 본문 어디에도 accessToken 키가 없다(FR-012)", async () => {
@@ -188,6 +194,7 @@ describe("PUT /api/auth/onboarding", () => {
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toEqual(errorBody);
     expect(response.cookies.get(ACCESS_TOKEN_COOKIE)).toBeUndefined();
+    expect(response.cookies.get(ONBOARDED_COOKIE)).toBeUndefined();
   });
 
   it("US1-AC6 닉네임 형식이 잘못되면 400 오류 봉투를 그대로 전달한다", async () => {
@@ -211,6 +218,29 @@ describe("PUT /api/auth/onboarding", () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual(errorBody);
+  });
+
+  it("업스트림이 2xx인데 본문이 비어 있으면 502 오류 봉투로 바꾼다(예상 밖의 응답)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response("", { status: 200 })),
+    );
+
+    const response = await PUT(
+      onboardingRequest({
+        nickname: "오구",
+        jobRole: "DEVELOPMENT",
+        careerYear: "YEAR_1",
+      }),
+    );
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({
+      success: false,
+      data: null,
+      error: { code: "INTERNAL_ERROR", message: expect.any(String) },
+    });
+    expect(response.cookies.get(ACCESS_TOKEN_COOKIE)).toBeUndefined();
   });
 
   it("access 토큰 쿠키가 없으면 Authorization 헤더 없이 호출하고 API의 401을 그대로 전달한다", async () => {

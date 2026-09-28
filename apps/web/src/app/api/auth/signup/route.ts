@@ -45,8 +45,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     },
   );
 
-  if (apiBody === null || !apiBody.success) {
-    return NextResponse.json(apiBody ?? FALLBACK_ERROR, { status });
+  if (apiBody === null) {
+    // apps/api가 2xx인데 본문이 비어 있는 건 계약 위반이다 — 그 2xx 상태를
+    // 그대로 돌려주면 브라우저가 가입에 성공한 줄 알게 된다.
+    const isSuccessStatus = status >= 200 && status < 300;
+    return NextResponse.json(FALLBACK_ERROR, {
+      status: isSuccessStatus ? 502 : status,
+    });
+  }
+  if (!apiBody.success) {
+    return NextResponse.json(apiBody, { status });
   }
 
   const { member, tokens } = apiBody.data;

@@ -189,6 +189,25 @@ describe("POST /api/auth/signup", () => {
     await expect(response.json()).resolves.toEqual(errorBody);
   });
 
+  it("업스트림이 2xx인데 본문이 비어 있으면 502 오류 봉투로 바꾼다(예상 밖의 응답)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response("", { status: 201 })),
+    );
+
+    const response = await POST(
+      signupRequest({ email: "new@example.com", password: "abcd1234" }),
+    );
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({
+      success: false,
+      data: null,
+      error: { code: "INTERNAL_ERROR", message: expect.any(String) },
+    });
+    expect(response.cookies.get(ACCESS_TOKEN_COOKIE)).toBeUndefined();
+  });
+
   it("apps/api로 /api/v1/auth/signup을 부르고 요청 본문을 그대로 전달한다", async () => {
     const fetchMock = vi
       .fn()

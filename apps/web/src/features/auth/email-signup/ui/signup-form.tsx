@@ -8,6 +8,7 @@ import { ApiError } from "@/shared/api";
 import { Button, Input, Label } from "@/shared/ui";
 
 import { useSignupMutation } from "../api/use-signup-mutation";
+import { pickSignup400Field } from "../model/pick-bad-request-field";
 import { signupSchema, type SignupFormValues } from "../model/schema";
 
 const GENERIC_ERROR_MESSAGE =
@@ -16,7 +17,9 @@ const GENERIC_ERROR_MESSAGE =
 /**
  * 이메일 가입 폼. 성공하면 `/onboarding`으로 이동한다(US1-AC1). API 오류는
  * 필드에 인라인으로 보여준다: 409(이미 가입된 이메일)는 이메일 필드에
- * (US1-AC2), 400(비밀번호 규칙 위반)은 비밀번호 필드에(US1-AC3).
+ * (US1-AC2). 400은 이메일 형식과 비밀번호 규칙 위반을 같은 코드로 뭉뚱그리므로
+ * `pickSignup400Field`로 메시지 내용을 보고 이메일/비밀번호 필드를 가른다
+ * (US1-AC3).
  */
 export function SignupForm() {
   const router = useRouter();
@@ -42,7 +45,9 @@ export function SignupForm() {
           return;
         }
         if (error.status === 400) {
-          setError("password", { message: error.message });
+          setError(pickSignup400Field(error.message), {
+            message: error.message,
+          });
           return;
         }
       }

@@ -205,6 +205,7 @@ describe("callApi", () => {
   });
 
   it("업스트림이 3xx를 돌려주면 API_UNAVAILABLE 오류 봉투로 바꾸고 리다이렉트를 따라가지 않는다(X-Ogu-Bff-Key를 두 번째 요청에 싣지 않는다)", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(null, {
         status: 302,
