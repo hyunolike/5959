@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   ACCESS_TOKEN_COOKIE,
+  clearOnboardedCookie,
   clearSessionCookies,
   ONBOARDED_COOKIE,
   readSessionCookies,
@@ -115,6 +116,28 @@ describe("setOnboardedCookie", () => {
     expect(cookie?.secure).toBe(true);
     expect(cookie?.sameSite).toBe("lax");
     expect(cookie?.path).toBe("/");
+  });
+});
+
+describe("clearOnboardedCookie", () => {
+  it("온보딩 표시 쿠키만 지운다(Max-Age=0), 다른 쿠키는 건드리지 않는다", () => {
+    const response = NextResponse.json({});
+    setSessionCookies(response, {
+      accessToken: "access-token",
+      refreshToken: "refresh-token",
+      refreshTokenExpiresAt: futureIso(3600),
+    });
+
+    clearOnboardedCookie(response);
+
+    expect(response.cookies.get(ONBOARDED_COOKIE)?.value).toBe("");
+    expect(response.cookies.get(ONBOARDED_COOKIE)?.maxAge).toBe(0);
+    expect(response.cookies.get(ACCESS_TOKEN_COOKIE)?.value).toBe(
+      "access-token",
+    );
+    expect(response.cookies.get(REFRESH_TOKEN_COOKIE)?.value).toBe(
+      "refresh-token",
+    );
   });
 });
 

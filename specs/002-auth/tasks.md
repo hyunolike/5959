@@ -91,8 +91,8 @@ description: "Task list for 002-auth (인증과 회원)"
 - [x] T026 [P] [US1] apps/api/src/test/kotlin/com/ogu/member/domain/MemberTest.kt: 이메일 정규화(앞뒤 공백 제거, 소문자), 닉네임 검증 `^[가-힣A-Za-z0-9]{1,10}$`(앞뒤 공백 제거 후), `nickname_key = lower(nickname)`, 온보딩 두 번 호출 시 예외
 - [x] T027 [P] [US1] apps/api/src/test/kotlin/com/ogu/member/presentation/SignupApiTests.kt(MockMvc, Testcontainers): `US1-AC1 새 이메일과 규칙에 맞는 비밀번호로 가입하면 201과 onboarded=false 토큰을 받는다`, `US1-AC2 이미 가입된 이메일은 409 EMAIL_ALREADY_REGISTERED`(대소문자만 다른 이메일 포함), 외부 계정 회원이 쓰는 이메일로 가입하면 409 `EMAIL_REGISTERED_WITH_OTHER_METHOD`, `US1-AC3 비밀번호 규칙 위반은 400`(7자, 21자, 숫자 없음, 영문 없음 각각), 동시 가입 요청 두 개 중 하나만 성공
 - [x] T028 [P] [US1] apps/api/src/test/kotlin/com/ogu/member/presentation/OnboardingApiTests.kt: `US1-AC4 온보딩을 마치면 프로필이 저장되고 onboarded=true인 새 access 토큰을 받는다`, `US1-AC5 대소문자만 다른 닉네임도 409 NICKNAME_TAKEN`, `US1-AC6 공백, 특수문자, 이모지가 든 닉네임은 400`, 닉네임 확인 API가 `INVALID_FORMAT`/`TAKEN`/사용 가능을 구분한다, 이미 온보딩한 회원은 409 `ALREADY_ONBOARDED`, 두 회원이 같은 닉네임으로 동시에 온보딩하면 한 명만 성공하고 다른 한 명은 409 `NICKNAME_TAKEN`, `US1-AC7 온보딩 전 토큰으로 보호 API를 부르면 403 ONBOARDING_REQUIRED`
-- [ ] T029 [P] [US1] apps/web/src/features/onboarding/model/schema.test.ts: Zod 스키마가 API와 같은 닉네임 규칙을 적용한다(허용, 거부 사례)
-- [ ] T030 [P] [US1] apps/web/e2e-full/signup-onboarding.spec.ts: `US1-AC1`, `US1-AC4`(가입 → `/onboarding` → 완료 → `/home`), `US1-AC5`(중복 닉네임 안내), `US1-AC7`(온보딩 전 `/home` 접근 시 `/onboarding`으로 이동)
+- [x] T029 [P] [US1] apps/web/src/features/onboarding/model/schema.test.ts: Zod 스키마가 API와 같은 닉네임 규칙을 적용한다(허용, 거부 사례)
+- [x] T030 [P] [US1] apps/web/e2e-full/signup-onboarding.spec.ts: `US1-AC1`, `US1-AC4`(가입 → `/onboarding` → 완료 → `/home`), `US1-AC5`(중복 닉네임 안내), `US1-AC7`(온보딩 전 `/home` 접근 시 `/onboarding`으로 이동)
 
 ### Implementation for User Story 1
 
@@ -101,11 +101,11 @@ description: "Task list for 002-auth (인증과 회원)"
 - [x] T033 [US1] member/application/OnboardingService.kt: 닉네임 확인(`checkNickname`)과 온보딩 완료. 닉네임 유일 제약 위반을 `NICKNAME_TAKEN`으로 바꾸고, 완료 후 `JwtIssuer`로 `onboarded=true` 토큰을 발급한다(세션 ID 유지)
 - [x] T034 [US1] member/presentation/AuthController.kt의 `POST /api/v1/auth/signup`과 member/presentation/MemberController.kt의 `GET /api/v1/members/me`, `GET /api/v1/members/nickname-availability`, `PUT /api/v1/members/me/onboarding`, 요청과 응답 DTO(member/presentation/dto/). springdoc 어노테이션은 계약의 operationId, 응답 코드와 맞춘다. ContractTests의 `pendingPaths`에서 이 네 경로를 뺀다
 - [x] T035 [US1] member/application/MemberQueryService.kt가 `MemberApi`를 구현한다
-- [ ] T036 [P] [US1] apps/web/src/app/api/auth/signup/route.ts와 apps/web/src/app/api/auth/onboarding/route.ts: origin-guard → api-client 호출 → 성공 시 auth-cookies로 쿠키 설정(가입은 `ogu_ob` 삭제, 온보딩은 `ogu_at` 교체와 `ogu_ob` 설정) → 본문에는 `member`만 반환
-- [ ] T037 [P] [US1] apps/web/src/features/auth/email-signup/(model/schema.ts, api/use-signup-mutation.ts, ui/signup-form.tsx, index.ts)와 apps/web/src/app/(auth)/signup/page.tsx. 성공하면 `/onboarding`으로 이동, 409는 "이미 가입된 이메일" 안내, 400은 비밀번호 규칙 안내
-- [ ] T038 [P] [US1] apps/web/src/features/onboarding/(model/schema.ts, api/use-nickname-check.ts(입력 뒤 400ms 디바운스), api/use-onboarding-mutation.ts, ui/onboarding-form.tsx, index.ts)와 apps/web/src/app/onboarding/page.tsx. 직군과 경력은 entities/member의 라벨 맵으로 선택지를 만든다. 완료하면 `/home`으로 이동. 그리고 Batch 4에서 임시로 넣은 steiger `entities/member` insignificant-slice override를 지운다
-- [ ] T039 [US1] apps/web/src/proxy.ts를 bff-routes.md 가드 표대로 다시 쓴다(US1 범위: `ogu_ob` 없으면 `/onboarding`, `/onboarding`에 `ogu_ob` 있으면 `/home`). 가드 판단 로직은 순수 함수 apps/web/src/shared/server/route-guard.ts로 분리하고 표의 모든 행을 route-guard.test.ts로 검증한다
-- [ ] T040 [P] [US1] apps/web/src/app/home/page.tsx(닉네임 인사와 "고민 쓰기는 준비 중" 자리 표시, `useMeQuery`)와 apps/web/src/app/my/page.tsx(닉네임, 직군, 경력 표시 – FR-015)
+- [x] T036 [P] [US1] apps/web/src/app/api/auth/signup/route.ts와 apps/web/src/app/api/auth/onboarding/route.ts: origin-guard → api-client 호출 → 성공 시 auth-cookies로 쿠키 설정(가입은 `ogu_ob` 삭제, 온보딩은 `ogu_at` 교체와 `ogu_ob` 설정) → 본문에는 `member`만 반환
+- [x] T037 [P] [US1] apps/web/src/features/auth/email-signup/(model/schema.ts, api/use-signup-mutation.ts, ui/signup-form.tsx, index.ts)와 apps/web/src/app/(auth)/signup/page.tsx. 성공하면 `/onboarding`으로 이동, 409는 "이미 가입된 이메일" 안내, 400은 비밀번호 규칙 안내
+- [x] T038 [P] [US1] apps/web/src/features/onboarding/(model/schema.ts, api/use-nickname-check.ts(입력 뒤 400ms 디바운스), api/use-onboarding-mutation.ts, ui/onboarding-form.tsx, index.ts)와 apps/web/src/app/onboarding/page.tsx. 직군과 경력은 entities/member의 라벨 맵으로 선택지를 만든다. 완료하면 `/home`으로 이동. 그리고 Batch 4에서 임시로 넣은 steiger `entities/member` insignificant-slice override를 지운다
+- [x] T039 [US1] apps/web/src/proxy.ts를 bff-routes.md 가드 표대로 다시 쓴다(US1 범위: `ogu_ob` 없으면 `/onboarding`, `/onboarding`에 `ogu_ob` 있으면 `/home`). 가드 판단 로직은 순수 함수 apps/web/src/shared/server/route-guard.ts로 분리하고 표의 모든 행을 route-guard.test.ts로 검증한다
+- [x] T040 [P] [US1] apps/web/src/app/home/page.tsx(닉네임 인사와 "고민 쓰기는 준비 중" 자리 표시, `useMeQuery`)와 apps/web/src/app/my/page.tsx(닉네임, 직군, 경력 표시 – FR-015)
 
 **Checkpoint**: 이메일 가입과 온보딩이 단독으로 동작한다 (MVP)
 

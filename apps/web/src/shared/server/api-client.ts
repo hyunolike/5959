@@ -20,6 +20,10 @@ const UPSTREAM_UNAVAILABLE_ERROR: ApiErrorResponse = {
   message: "서버에 연결할 수 없습니다.",
 };
 
+function isRedirectStatus(status: number): boolean {
+  return status >= 300 && status < 400;
+}
+
 /** apps/api의 ErrorCode.kt와 같은 메시지를 쓴다. */
 function nonJsonBodyError(status: number): ApiErrorResponse {
   if (status >= 400 && status < 500) {
@@ -49,6 +53,10 @@ function buildUrl(path: string): string {
  *
  * - 네트워크 실패는 502, 타임아웃은 504로 바꾸고 콘솔에 원인을 남긴다(요청
  *   헤더나 토큰 같은 시크릿은 남기지 않는다).
+ * - `redirect: "manual"`을 붙여 업스트림 리다이렉트를 절대 따라가지 않는다.
+ *   따라가면 `X-Ogu-Bff-Key`가 실려 있는 요청이 리다이렉트 대상(신뢰할 수 없을
+ *   수도 있는 주소)으로 그대로 다시 나간다. 3xx 응답은 502 API_UNAVAILABLE
+ *   오류 봉투로 바꾼다.
  * - 204이거나 본문이 비어 있으면 상태만 그대로 돌려주고 본문은 null이다.
  * - JSON으로 파싱할 수 없는 본문은 원래 상태 코드를 유지한 채 오류 봉투로
  *   감싼다(5xx는 INTERNAL_ERROR, 그 외 4xx는 INVALID_REQUEST).
@@ -68,6 +76,7 @@ export async function callApi<T>(
     response = await fetch(buildUrl(path), {
       ...rest,
       headers: requestHeaders,
+      redirect: "manual",
       signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
     });
   } catch (error) {
@@ -76,6 +85,16 @@ export async function callApi<T>(
     console.error("[api-client] 업스트림 호출에 실패했다", error);
     return {
       status: isTimeout ? 504 : 502,
+      body: { success: false, data: null, error: UPSTREAM_UNAVAILABLE_ERROR },
+    };
+  }
+
+  if (isRedirectStatus(response.status)) {
+    console.error(
+      `[api-client] 업스트림이 리다이렉트를 돌려줘 따라가지 않고 오류로 바꾼다: ${response.status}`,
+    );
+    return {
+      status: 502,
       body: { success: false, data: null, error: UPSTREAM_UNAVAILABLE_ERROR },
     };
   }

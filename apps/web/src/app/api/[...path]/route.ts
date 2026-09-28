@@ -61,10 +61,13 @@ function isDeniedPath(segments: string[]): boolean {
   if (segments.length === 0) {
     return true;
   }
-  if (DENIED_TOP_LEVEL_SEGMENTS.has(segments[0])) {
+  // 대소문자를 구분하지 않고 비교한다 — Next.js 라우팅과 apps/api 둘 다
+  // 경로를 대소문자 그대로 다루므로, `/api/Auth/login`처럼 대문자가 섞인
+  // 변형도 같은 전용 라우트 대상이다.
+  if (DENIED_TOP_LEVEL_SEGMENTS.has(segments[0].toLowerCase())) {
     return true;
   }
-  return DENIED_EXACT_PATHS.has(segments.join("/"));
+  return DENIED_EXACT_PATHS.has(segments.join("/").toLowerCase());
 }
 
 function notFoundResponse(): NextResponse {

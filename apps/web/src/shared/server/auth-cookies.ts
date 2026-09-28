@@ -72,6 +72,14 @@ export function setOnboardedCookie(response: NextResponse): void {
   response.cookies.set(ONBOARDED_COOKIE, "1", BASE_COOKIE_OPTIONS);
 }
 
+/** 온보딩 표시 쿠키만 지운다(예: 가입 직후 — 새 세션은 아직 온보딩 전이다). */
+export function clearOnboardedCookie(response: NextResponse): void {
+  response.cookies.set(ONBOARDED_COOKIE, "", {
+    ...BASE_COOKIE_OPTIONS,
+    maxAge: 0,
+  });
+}
+
 /** 요청에 실려 온 세션 쿠키를 읽는다. */
 export function readSessionCookies(request: NextRequest): SessionCookies {
   return {

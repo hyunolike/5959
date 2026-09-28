@@ -238,6 +238,34 @@ describe("전용 라우트만 다뤄야 하는 경로는 404로 막는다(FR-012
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("대소문자를 바꿔도(GET /api/Auth/login) 404로 막는다", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const request = new NextRequest("http://localhost:3000/api/Auth/login");
+    const response = await GET(request, params(["Auth", "login"]));
+
+    expect(response.status).toBe(404);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("대소문자를 바꿔도(PUT /api/MEMBERS/me/onboarding) 404로 막는다", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const request = new NextRequest(
+      "http://localhost:3000/api/MEMBERS/me/onboarding",
+      { method: "PUT", headers: { origin: "http://localhost:3000" } },
+    );
+    const response = await PUT(
+      request,
+      params(["MEMBERS", "me", "onboarding"]),
+    );
+
+    expect(response.status).toBe(404);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("인코딩된 변형(auth%2Flogin을 한 세그먼트로)도 404로 막는다", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);

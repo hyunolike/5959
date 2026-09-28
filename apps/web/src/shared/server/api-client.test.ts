@@ -190,6 +190,43 @@ describe("callApi", () => {
     expect(loggedArgs).not.toContain("test-bff-key");
   });
 
+  it("redirect: manual을 fetch에 붙여 업스트림 리다이렉트를 따라가지 않는다", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse({ success: true, data: {}, error: null }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await callApi("/api/v1/members/me", "203.0.113.1");
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(init.redirect).toBe("manual");
+  });
+
+  it("업스트림이 3xx를 돌려주면 API_UNAVAILABLE 오류 봉투로 바꾸고 리다이렉트를 따라가지 않는다(X-Ogu-Bff-Key를 두 번째 요청에 싣지 않는다)", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(null, {
+        status: 302,
+        headers: { location: "http://evil.example/steal" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await callApi("/api/v1/members/me", "203.0.113.1");
+
+    expect(result).toEqual({
+      status: 502,
+      body: {
+        success: false,
+        data: null,
+        error: { code: "API_UNAVAILABLE", message: expect.any(String) },
+      },
+    });
+    // 두 번째 요청(리다이렉트를 따라간 요청)이 없어야 한다 — X-Ogu-Bff-Key 유출 방지.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("15초 안에 응답이 없으면(타임아웃) 504와 ApiResponse 오류 봉투로 바꾼다", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     vi.stubGlobal(
