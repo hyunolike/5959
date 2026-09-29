@@ -22,6 +22,8 @@ if (env.NEXT_PUBLIC_SENTRY_DSN) {
       httpHeaders: false,
       httpBodies: [],
       urlQueryParams: false,
+      stackFrameVariables: false,
+      frameContextLines: 0,
     },
     beforeSend: (event) => scrubEvent(event) as unknown as Sentry.ErrorEvent,
     beforeBreadcrumb: (breadcrumb) =>

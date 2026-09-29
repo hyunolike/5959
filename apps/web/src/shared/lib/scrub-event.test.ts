@@ -62,6 +62,66 @@ describe("scrubEvent", () => {
     expect(scrubbed.request?.env).toBeUndefined();
   });
 
+  it("US5-AC2 예외 스택 프레임의 지역 변수(vars)를 통째로 지운다(password 포함)", () => {
+    const event: ScrubbableEvent = {
+      exception: {
+        values: [
+          {
+            type: "Error",
+            stacktrace: {
+              frames: [
+                {
+                  filename: "login.ts",
+                  function: "login",
+                  vars: { password: "hunter2", email: "a@example.com" },
+                },
+                { filename: "index.ts", function: "handler" },
+              ],
+            },
+          },
+        ],
+      },
+    };
+
+    const scrubbed = scrubEvent(event);
+
+    expect(
+      scrubbed.exception?.values?.[0]?.stacktrace?.frames?.[0],
+    ).not.toHaveProperty("vars");
+    expect(
+      scrubbed.exception?.values?.[0]?.stacktrace?.frames?.[0]?.filename,
+    ).toBe("login.ts");
+    expect(
+      scrubbed.exception?.values?.[0]?.stacktrace?.frames?.[1],
+    ).not.toHaveProperty("vars");
+  });
+
+  it("US5-AC2 threads의 스택 프레임 지역 변수(vars)도 통째로 지운다", () => {
+    const event: ScrubbableEvent = {
+      threads: {
+        values: [
+          {
+            id: 0,
+            stacktrace: {
+              frames: [
+                {
+                  filename: "signup.ts",
+                  vars: { password: "hunter2" },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    };
+
+    const scrubbed = scrubEvent(event);
+
+    expect(
+      scrubbed.threads?.values?.[0]?.stacktrace?.frames?.[0],
+    ).not.toHaveProperty("vars");
+  });
+
   it("US5-AC2 요청의 cookies 필드를 지운다", () => {
     const event: ScrubbableEvent = {
       request: {

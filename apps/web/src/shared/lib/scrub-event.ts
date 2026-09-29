@@ -15,9 +15,16 @@
  *   `event.user.ip_address` 등이 자동으로 채워질 수 있다 — Sentry.init
  *   쪽에서 `userInfo: false`로 막아도, 이중 방어로 여기서도 지운다)
  * - `request.env`(런타임이 채워 넣는, 감사되지 않은 서버 환경값)
+ * - `event.exception.values[].stacktrace.frames[].vars`,
+ *   `event.threads.values[].stacktrace.frames[].vars` 전체(SDK의
+ *   `dataCollection.stackFrameVariables` 기본값이 `true`라
+ *   `localVariablesIntegration`이 스택 프레임마다 지역 변수 값을 채워
+ *   넣는다 — 예를 들어 로그인 함수가 던진 오류의 프레임에 `password`
+ *   지역 변수 값이 그대로 잡힌다. 번들러가 변수명을 바꿔버릴 수 있어
+ *   이름으로 거르지 않고 `vars` 자체를 통째로 지운다)
  *
- * 위 항목은 이벤트의 `request`, `breadcrumbs[].data`, `extra`, `contexts`
- * 어디에 있든 지운다.
+ * 위 항목은 이벤트의 `request`, `breadcrumbs[].data`, `extra`, `contexts`,
+ * `exception`, `threads` 어디에 있든 지운다.
  */
 
 const REDACTED = "[Filtered]";
@@ -53,12 +60,35 @@ export interface ScrubbableBreadcrumb {
   data?: Record<string, unknown>;
 }
 
+/** 스택 프레임의 지역 변수 값(`vars`). 변수명이 뭐든(예: `password`) 통째로 지운다. */
+export interface ScrubbableStackFrame {
+  filename?: string;
+  function?: string;
+  vars?: Record<string, unknown>;
+}
+
+export interface ScrubbableStacktrace {
+  frames?: ScrubbableStackFrame[];
+}
+
+export interface ScrubbableException {
+  type?: string;
+  stacktrace?: ScrubbableStacktrace;
+}
+
+export interface ScrubbableThread {
+  id?: number | string;
+  stacktrace?: ScrubbableStacktrace;
+}
+
 export interface ScrubbableEvent {
   request?: ScrubbableRequestData;
   breadcrumbs?: ScrubbableBreadcrumb[];
   extra?: Record<string, unknown>;
   contexts?: Record<string, unknown>;
   user?: Record<string, unknown>;
+  exception?: { values?: ScrubbableException[] };
+  threads?: { values?: ScrubbableThread[] };
 }
 
 /** 이벤트 전체(요청, breadcrumbs, extra, contexts, user)를 스크러빙한다. */
@@ -83,6 +113,18 @@ export function scrubEvent(event: ScrubbableEvent): ScrubbableEvent {
     // ip_address, email, username, id 등 뭐가 들어있든 통째로 지운다.
     delete clone.user;
   }
+  if (clone.exception?.values) {
+    clone.exception = {
+      ...clone.exception,
+      values: clone.exception.values.map(scrubException),
+    };
+  }
+  if (clone.threads?.values) {
+    clone.threads = {
+      ...clone.threads,
+      values: clone.threads.values.map(scrubThread),
+    };
+  }
 
   return clone;
 }
@@ -105,6 +147,45 @@ export function scrubBreadcrumb(
   }
 
   return clone;
+}
+
+/**
+ * 예외 하나(`event.exception.values[]`)의 스택트레이스 프레임에서 지역
+ * 변수 값을 지운다. 로그인 함수의 지역 변수 중 `password`가 그대로 값으로
+ * 잡히는 경우가 대표적이다(변수명은 번들러가 바꿔버릴 수 있어 이름으로
+ * 걸러내지 않고 `vars` 자체를 통째로 지운다).
+ */
+function scrubException(exception: ScrubbableException): ScrubbableException {
+  if (!exception.stacktrace) {
+    return exception;
+  }
+  return { ...exception, stacktrace: scrubStacktrace(exception.stacktrace) };
+}
+
+/** thread 하나(`event.threads.values[]`)의 스택트레이스도 같은 방식으로 지운다. */
+function scrubThread(thread: ScrubbableThread): ScrubbableThread {
+  if (!thread.stacktrace) {
+    return thread;
+  }
+  return { ...thread, stacktrace: scrubStacktrace(thread.stacktrace) };
+}
+
+function scrubStacktrace(
+  stacktrace: ScrubbableStacktrace,
+): ScrubbableStacktrace {
+  if (!stacktrace.frames) {
+    return stacktrace;
+  }
+  return { ...stacktrace, frames: stacktrace.frames.map(scrubStackFrame) };
+}
+
+function scrubStackFrame(frame: ScrubbableStackFrame): ScrubbableStackFrame {
+  if (!("vars" in frame)) {
+    return frame;
+  }
+  const result = { ...frame };
+  delete result.vars;
+  return result;
 }
 
 function scrubRequestData(
