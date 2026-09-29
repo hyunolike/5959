@@ -11,7 +11,8 @@ export default async function SignupPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const { next } = await searchParams;
+  const { next: nextParam } = await searchParams;
+  const next = firstValue(nextParam);
 
   return (
     <Card className="w-full max-w-sm">
@@ -22,10 +23,10 @@ export default async function SignupPage({
         오구오구에서 감정을 나누고 함께 이겨내 보세요.
       </p>
       <div className="mt-6">
-        <OAuthButtons next={firstValue(next)} />
+        <OAuthButtons next={next} />
       </div>
       <div className="mt-6">
-        <SignupForm />
+        <SignupForm next={next} />
       </div>
     </Card>
   );

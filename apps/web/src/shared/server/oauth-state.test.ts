@@ -12,7 +12,6 @@ import {
   OAUTH_STATE_COOKIE,
   OAUTH_STATE_MAX_AGE_SECONDS,
   oauthRedirectUri,
-  sanitizeNextPath,
   serializeOAuthState,
   setOAuthStateCookie,
   verifyOAuthCallback,
@@ -87,7 +86,7 @@ describe("createOAuthState", () => {
 });
 
 describe("serializeOAuthState와 verifyOAuthCallback", () => {
-  it("직렬화한 쿠키 값에 state와 code_verifier가 평문 JSON으로 드러나지 않는 형태(본문.서명)다", () => {
+  it("직렬화한 쿠키 값은 base64url 본문과 43자 HMAC 서명을 점으로 이은 형태다(본문은 서명으로 보호할 뿐 암호화하지 않는다)", () => {
     const value = serializeOAuthState(payload(), SECRET);
 
     expect(value).toMatch(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$/);
@@ -239,33 +238,6 @@ describe("serializeOAuthState와 verifyOAuthCallback", () => {
       ).toBeNull();
     },
   );
-});
-
-describe("sanitizeNextPath", () => {
-  it.each([
-    ["/home", "/home"],
-    ["/my/posts?tab=1", "/my/posts?tab=1"],
-    ["/write#draft", "/write#draft"],
-  ])("같은 출처 경로 %j는 그대로 쓴다", (next, expected) => {
-    expect(sanitizeNextPath(next)).toBe(expected);
-  });
-
-  it.each([
-    [null],
-    [undefined],
-    [""],
-    ["home"],
-    ["//evil.example"],
-    ["/\\evil.example"],
-    ["https://evil.example/home"],
-    ["javascript:alert(1)"],
-    ["/\t/evil.example"],
-    ["/\n/evil.example"],
-    [" /home"],
-    [`/${"a".repeat(1024)}`],
-  ])("안전하지 않은 값 %j는 /home으로 바꾼다", (next) => {
-    expect(sanitizeNextPath(next)).toBe("/home");
-  });
 });
 
 describe("oauthRedirectUri", () => {

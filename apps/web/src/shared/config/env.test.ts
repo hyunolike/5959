@@ -34,6 +34,7 @@ describe("env 검증", () => {
   it("VERCEL_ENV=preview에서 APP_ENV=e2e는 허용한다", async () => {
     vi.stubEnv("VERCEL_ENV", "preview");
     vi.stubEnv("APP_ENV", "e2e");
+    vi.stubEnv("OAUTH_STATE_SECRET", PRODUCTION_SECRET);
 
     await expect(loadEnv()).resolves.toMatchObject({ APP_ENV: "e2e" });
   });
@@ -65,6 +66,22 @@ describe("env 검증", () => {
     await expect(loadEnv()).resolves.toMatchObject({
       OAUTH_STATE_SECRET: PRODUCTION_SECRET,
     });
+  });
+
+  it.each(["preview", "development"])(
+    "Vercel 배포(VERCEL_ENV=%s)에서도 OAUTH_STATE_SECRET이 없으면 검증에 실패한다",
+    async (vercelEnv) => {
+      vi.stubEnv("VERCEL_ENV", vercelEnv);
+
+      await expect(loadEnv()).rejects.toThrow();
+    },
+  );
+
+  it("Vercel 미리보기 배포에서 OAUTH_STATE_SECRET을 설정하면 통과한다", async () => {
+    vi.stubEnv("VERCEL_ENV", "preview");
+    vi.stubEnv("OAUTH_STATE_SECRET", PRODUCTION_SECRET);
+
+    await expect(loadEnv()).resolves.toMatchObject({ VERCEL_ENV: "preview" });
   });
 
   it("OAUTH_STATE_SECRET은 32자보다 짧으면 검증에 실패한다", async () => {

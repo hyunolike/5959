@@ -14,7 +14,8 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const { error, next } = await searchParams;
+  const { error, next: nextParam } = await searchParams;
+  const next = firstValue(nextParam);
 
   return (
     <Card className="w-full max-w-sm">
@@ -24,10 +25,10 @@ export default async function LoginPage({
         <OAuthLoginErrorNotice error={error} />
       </div>
       <div className="mt-6">
-        <OAuthButtons next={firstValue(next)} />
+        <OAuthButtons next={next} />
       </div>
       <div className="mt-6">
-        <LoginForm />
+        <LoginForm next={next} />
       </div>
     </Card>
   );

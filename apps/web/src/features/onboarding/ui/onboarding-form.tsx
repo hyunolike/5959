@@ -6,7 +6,7 @@ import { useForm, useWatch } from "react-hook-form";
 
 import { CAREER_YEAR_LABELS, JOB_ROLE_LABELS } from "@/entities/member";
 import { ApiError } from "@/shared/api";
-import { cn } from "@/shared/lib";
+import { cn, sanitizeNextPath } from "@/shared/lib";
 import { Button, Input, Label } from "@/shared/ui";
 
 import { useNicknameCheck } from "../api/use-nickname-check";
@@ -30,8 +30,14 @@ const SELECT_CLASS_NAME =
  * 저장 시 API 오류(409 NICKNAME_TAKEN, 400 형식 위반)는 닉네임 필드에
  * 인라인으로 보여준다(US1-AC5, US1-AC6).
  */
-export function OnboardingForm() {
+interface OnboardingFormProps {
+  /** 온보딩 뒤 갈 경로. 검증을 통과하지 못하면 `/home`이다. */
+  next?: string;
+}
+
+export function OnboardingForm({ next }: OnboardingFormProps) {
   const router = useRouter();
+  const destination = sanitizeNextPath(next);
   const onboardingMutation = useOnboardingMutation();
   const {
     register,
@@ -69,12 +75,12 @@ export function OnboardingForm() {
     try {
       const member = await onboardingMutation.mutateAsync(values);
       if (member) {
-        router.push("/home");
+        router.push(destination);
       }
     } catch (error) {
       if (error instanceof ApiError) {
         if (error.code === "ALREADY_ONBOARDED") {
-          router.push("/home");
+          router.push(destination);
           return;
         }
         if (error.code === "NICKNAME_TAKEN" || error.status === 400) {

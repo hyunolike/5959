@@ -14,10 +14,11 @@ import { readSessionCookies, resolveRouteGuardAction } from "@/shared/server";
 export function proxy(request: NextRequest): NextResponse {
   const { refreshToken, onboarded } = readSessionCookies(request);
 
-  const action = resolveRouteGuardAction(request.nextUrl.pathname, {
-    hasRefreshToken: refreshToken !== undefined,
-    onboarded,
-  });
+  const action = resolveRouteGuardAction(
+    request.nextUrl.pathname,
+    { hasRefreshToken: refreshToken !== undefined, onboarded },
+    request.nextUrl.search,
+  );
 
   if (action !== null) {
     return NextResponse.redirect(new URL(action.to, request.url));

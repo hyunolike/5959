@@ -4,13 +4,13 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { env } from "@/shared/config";
+import { sanitizeNextPath, withNextPath } from "@/shared/lib";
 import {
   buildAuthorizationUrl,
   createOAuthState,
   isOAuthProvider,
   oauthRedirectUri,
   oauthStateSecret,
-  sanitizeNextPath,
   serializeOAuthState,
   setOAuthStateCookie,
   type OAuthProvider,
@@ -79,14 +79,12 @@ export async function GET(
   { params }: { params: Promise<{ provider: string }> },
 ): Promise<NextResponse> {
   const { provider } = await params;
+  const next = sanitizeNextPath(request.nextUrl.searchParams.get("next"));
   if (!isOAuthProvider(provider)) {
-    return redirect(new URL("/login", env.APP_ORIGIN));
+    return redirect(new URL(withNextPath("/login", next), env.APP_ORIGIN));
   }
 
-  const payload = createOAuthState(
-    provider,
-    sanitizeNextPath(request.nextUrl.searchParams.get("next")),
-  );
+  const payload = createOAuthState(provider, next);
 
   let target: string | URL;
   if (env.APP_ENV === "e2e") {
@@ -97,7 +95,12 @@ export async function GET(
       console.error(
         `[oauth] ${provider} client id가 설정되지 않아 외부 로그인을 시작할 수 없다`,
       );
-      return redirect(new URL("/login?error=oauth_failed", env.APP_ORIGIN));
+      return redirect(
+        new URL(
+          withNextPath("/login?error=oauth_failed", next),
+          env.APP_ORIGIN,
+        ),
+      );
     }
     target = buildAuthorizationUrl(payload, {
       clientId,

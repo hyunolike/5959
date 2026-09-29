@@ -25,8 +25,6 @@ export const OAUTH_STATE_MAX_AGE_SECONDS = 10 * 60;
 const OAUTH_STATE_MAX_AGE_MS = OAUTH_STATE_MAX_AGE_SECONDS * 1000;
 const RANDOM_TOKEN_BYTES = 32;
 const SIGNATURE_CONTEXT = "ogu_oauth.v1.";
-const DEFAULT_NEXT_PATH = "/home";
-const MAX_NEXT_PATH_LENGTH = 512;
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
@@ -43,7 +41,7 @@ export interface OAuthStatePayload {
   state: string;
   /** 구글만 PKCE를 쓴다. 카카오는 PKCE를 지원하지 않아 null이다. */
   codeVerifier: string | null;
-  /** sanitizeNextPath를 통과한 같은 출처 경로. */
+  /** `sanitizeNextPath`(shared/lib)를 통과한 같은 출처 경로. */
   next: string;
   /** 발급 시각(epoch ms). */
   issuedAt: number;
@@ -162,36 +160,6 @@ export function verifyOAuthCallback(
     return null;
   }
   return payload;
-}
-
-/**
- * 로그인 뒤 이동할 `next`를 같은 출처 경로로만 제한한다. `/`로 시작하고
- * `//`나 `/\`로 시작하지 않아야 한다(스킴이 붙은 값은 `/`로 시작할 수 없다).
- * 브라우저가 URL에서 지우는 탭, 줄바꿈 같은 제어 문자도 막는다
- * (`/\t/evil.example`이 `//evil.example`이 되는 것을 막기 위해서다). 그 밖의
- * 값은 `/home`으로 바꾼다.
- */
-export function sanitizeNextPath(next: string | null | undefined): string {
-  if (
-    typeof next !== "string" ||
-    next.length > MAX_NEXT_PATH_LENGTH ||
-    !next.startsWith("/") ||
-    next.startsWith("//") ||
-    next.startsWith("/\\") ||
-    /[\u0000-\u001f\u007f]/.test(next)
-  ) {
-    return DEFAULT_NEXT_PATH;
-  }
-  // 한 번 더 확인한다: 어떤 기준 출처에 붙여도 그 출처를 벗어나지 않아야 한다.
-  const base = "http://ogu.invalid";
-  try {
-    if (new URL(next, base).origin !== base) {
-      return DEFAULT_NEXT_PATH;
-    }
-  } catch {
-    return DEFAULT_NEXT_PATH;
-  }
-  return next;
 }
 
 /** `APP_ORIGIN + /api/auth/oauth/{provider}/callback`. API 허용 목록과 같아야 한다. */

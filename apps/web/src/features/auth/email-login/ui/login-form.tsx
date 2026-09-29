@@ -8,6 +8,7 @@ import { ApiError } from "@/shared/api";
 import { Button, Input, Label } from "@/shared/ui";
 
 import { useLoginMutation } from "../api/use-login-mutation";
+import { loginDestination } from "../model/login-destination";
 import { retryWaitMinutes } from "../model/retry-wait-minutes";
 import { loginSchema, type LoginFormValues } from "../model/schema";
 
@@ -16,12 +17,18 @@ const GENERIC_ERROR_MESSAGE =
 
 /**
  * 이메일 로그인 폼. 성공하면 온보딩 여부에 따라 `/home` 또는 `/onboarding`으로
- * 이동한다(US2-AC1; `next` 리다이렉트는 T063에서 더한다). 401(비밀번호가
+ * 이동한다(US2-AC1). 로그인 화면에 `next`가 있으면 검증한 뒤 그곳으로
+ * 돌아간다(US4-AC5). 401(비밀번호가
  * 틀렸거나 가입되지 않은 이메일)은 어느 쪽인지 구분하지 않는 같은 메시지를
  * 보여준다(US2-AC2). 429(로그인 실패 제한)는 남은 시간을 분 단위로 안내한다
  * (US2-AC3, US2-AC4).
  */
-export function LoginForm() {
+interface LoginFormProps {
+  /** 로그인 뒤 돌아갈 경로. 검증은 loginDestination이 한다. */
+  next?: string;
+}
+
+export function LoginForm({ next }: LoginFormProps) {
   const router = useRouter();
   const loginMutation = useLoginMutation();
   const {
@@ -34,7 +41,7 @@ export function LoginForm() {
   const onSubmit = handleSubmit(async (values) => {
     try {
       const member = await loginMutation.mutateAsync(values);
-      router.push(member.onboarded ? "/home" : "/onboarding");
+      router.push(loginDestination(member.onboarded, next));
     } catch (error) {
       if (error instanceof ApiError) {
         if (error.code === "INVALID_CREDENTIALS") {

@@ -119,7 +119,6 @@ describe("GET /api/auth/oauth/{provider}/callback", () => {
     const response = await callback(
       "kakao",
       "?code=provider-code&state=good-state",
-      statePayload({ next: "/my" }),
     );
 
     expectRedirect(response, "/onboarding");
@@ -185,6 +184,46 @@ describe("GET /api/auth/oauth/{provider}/callback", () => {
     expect(response.cookies.get(ONBOARDED_COOKIE)?.value).toBe("1");
     expectStateCookieCleared(response);
   });
+
+  it("처음 쓰는 계정이고 next가 있으면 온보딩 뒤 돌아가도록 /onboarding?next=로 넘긴다", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ success: true, data: authResult(false), error: null }),
+    );
+
+    const response = await callback(
+      "kakao",
+      "?code=provider-code&state=good-state",
+      statePayload({ next: "/my" }),
+    );
+
+    expectRedirect(response, "/onboarding?next=%2Fmy");
+  });
+
+  it.each([
+    "//evil.example",
+    "https://evil.example/home",
+    "/\\evil.example",
+    "/%2F%2Fevil.example",
+    "/%5Cevil.example",
+  ])(
+    "서명된 쿠키에 외부 주소 next(%j)가 들어 있어도 같은 출처 /home으로만 보낸다",
+    async (next) => {
+      fetchMock.mockResolvedValue(
+        jsonResponse({ success: true, data: authResult(true), error: null }),
+      );
+
+      const response = await callback(
+        "kakao",
+        "?code=provider-code&state=good-state",
+        statePayload({ next }),
+      );
+
+      expectRedirect(response, "/home");
+      expect(new URL(response.headers.get("location")!).origin).toBe(
+        "https://ogu.example",
+      );
+    },
+  );
 
   it("US3-AC2 next가 없으면 /home으로 보낸다", async () => {
     fetchMock.mockResolvedValue(
@@ -260,6 +299,29 @@ describe("GET /api/auth/oauth/{provider}/callback", () => {
     },
   );
 
+  it("state를 확인한 뒤의 실패는 다시 시도하면 돌아가도록 검증한 next를 /login에 남긴다", async () => {
+    const response = await callback(
+      "kakao",
+      "?error=access_denied&state=good-state",
+      statePayload({ next: "/my?tab=1" }),
+    );
+
+    expectRedirect(
+      response,
+      `/login?error=oauth_cancelled&next=${encodeURIComponent("/my?tab=1")}`,
+    );
+  });
+
+  it("쿠키의 next가 외부 주소면 /login 오류 주소에 next를 남기지 않는다", async () => {
+    const response = await callback(
+      "kakao",
+      "?error=access_denied&state=good-state",
+      statePayload({ next: "//evil.example" }),
+    );
+
+    expectRedirect(response, "/login?error=oauth_cancelled");
+  });
+
   it("state가 맞아도 code가 없으면 /login?error=oauth_failed다", async () => {
     const response = await callback("kakao", "?state=good-state");
 
@@ -306,6 +368,8 @@ describe("GET /api/auth/oauth/{provider}/callback", () => {
   it.each([
     [400, "INVALID_REQUEST"],
     [401, "OAUTH_CODE_INVALID"],
+    [409, "EMAIL_ALREADY_REGISTERED"],
+    [409, "SOMETHING_ELSE"],
     [502, "OAUTH_PROVIDER_UNAVAILABLE"],
   ])(
     "API가 %i(%s)면 /login?error=oauth_failed로 보낸다",
@@ -327,6 +391,14 @@ describe("GET /api/auth/oauth/{provider}/callback", () => {
 
   it("API에 연결할 수 없으면 /login?error=oauth_failed로 보낸다", async () => {
     fetchMock.mockRejectedValue(new TypeError("fetch failed"));
+
+    const response = await callback("kakao", "?code=c&state=good-state");
+
+    expectRedirect(response, "/login?error=oauth_failed");
+  });
+
+  it("API가 본문 없는 409면 email_registered가 아니라 oauth_failed다", async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 409 }));
 
     const response = await callback("kakao", "?code=c&state=good-state");
 

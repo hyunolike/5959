@@ -20,7 +20,8 @@
 ## 범용 프록시 `/api/[...path]`
 
 - `ogu_at`을 `Authorization: Bearer`로 바꿔 `API_ORIGIN/api/v1/...`로 전달한다. `X-Ogu-Bff-Key`와 `X-Ogu-Client-Ip`를 붙인다.
-- API가 `401`이면 `ogu_rt`로 `POST /api/v1/auth/refresh`를 한 번 부르고 원래 요청을 다시 보낸다. 응답의 `refreshToken`이 `null`(유예 구간)이면 `ogu_rt`를 건드리지 않는다. refresh도 실패하면 세 쿠키를 지우고 `401`을 돌려준다.
+- API가 `401`이면 `ogu_rt`로 `POST /api/v1/auth/refresh`를 한 번 부르고 원래 요청을 다시 보낸다. 응답의 `refreshToken`이 `null`(유예 구간)이면 `ogu_rt`를 건드리지 않는다. 갱신한 회원의 `onboarded`에 맞춰 `ogu_ob`를 설정하거나 지운다. refresh가 거절되거나(4xx) 갱신한 토큰으로도 `401`이면 세 쿠키를 지우고 `401 SESSION_EXPIRED`를 돌려준다. refresh가 API 장애(5xx, 연결 실패)로 실패하면 쿠키를 지우지 않고 그 오류를 그대로 돌려준다.
+- 요청 하나에서 refresh는 많아야 한 번이다(갱신 반복 방지). 앱의 조회가 `401`로 끝나면 브라우저는 지금 화면을 `next`로 들고 `/login`으로 간다.
 - `ogu_at`이 만료돼 없어도 `ogu_rt`가 있으면 먼저 refresh한 뒤 요청한다.
 
 ### 캐치올이 절대 그대로 넘기지 않는 경로
@@ -71,10 +72,10 @@ apps/api가 JSON이 아닌 본문을 돌려주면(예상 밖의 5xx 오류 페�
 | `/home`, `/write`, `/my`, `/settings` 이하 | `ogu_rt` 없음 | `302 /login?next=<원래 경로>` |
 | 같은 경로 | `ogu_rt` 있고 `ogu_ob` 없음 | `302 /onboarding` |
 | `/onboarding` | `ogu_rt` 없음 | `302 /login` |
-| `/onboarding` | `ogu_ob` 있음 | `302 /home` |
-| `/login`, `/signup` | `ogu_rt`, `ogu_ob` 모두 있음 | `302 /home` |
+| `/onboarding` | `ogu_ob` 있음 | `302 /home`(검증한 `next`가 있으면 그곳) |
+| `/login`, `/signup` | `ogu_rt`, `ogu_ob` 모두 있음 | `302 /home`(검증한 `next`가 있으면 그곳) |
 
-`next`는 `/`로 시작하고 `//`나 `/\`로 시작하지 않을 때만 따른다. 아니면 `/home`으로 보낸다(스펙 경계 상황).
+`next`는 `/`로 시작하고 `//`나 `/\`로 시작하지 않을 때만 따른다. 한 번 퍼센트 디코딩한 값(`/%2F%2Fevil`, `/%5Cevil`)과 제어 문자도 같은 규칙으로 막는다. 아니면 `/home`으로 보낸다(스펙 경계 상황). 검증은 `shared/lib/next-path.ts` 한 곳에서 한다. 로그인, 가입, OAuth 성공 뒤에는 이 `next`로 가고, 온보딩이 남았으면 `/onboarding?next=`로 넘겨 온보딩 뒤 그곳으로 간다. `/login?error=` 리다이렉트에도 검증한 `next`를 남긴다.
 
 ## 서버 전용 환경변수
 
@@ -84,6 +85,6 @@ apps/api가 JSON이 아닌 본문을 돌려주면(예상 밖의 5xx 오류 페�
 | `BFF_API_KEY` | `X-Ogu-Bff-Key` 값. API의 `OGU_BFF_KEY`와 같아야 한다 |
 | `APP_ORIGIN` | Origin 검사와 OAuth `redirect_uri`의 기준 주소 |
 | `KAKAO_CLIENT_ID`, `GOOGLE_CLIENT_ID` | 인가 URL 생성용(공개 값). 시크릿은 API만 가진다 |
-| `OAUTH_STATE_SECRET` | `__Host-ogu_oauth` 쿠키 HMAC 서명 키(32자 이상). 운영(`VERCEL_ENV` 또는 `APP_ENV`가 `production`)에서는 필수 |
+| `OAUTH_STATE_SECRET` | `__Host-ogu_oauth` 쿠키 HMAC 서명 키(32자 이상). Vercel 배포(`VERCEL_ENV`가 있으면 미리보기 포함)와 `APP_ENV=production`에서는 필수 |
 | `APP_ENV` | `development`, `e2e`, `production`. `e2e`면 OAuth 시작 라우트가 제공자 대신 자기 콜백으로 바로 보낸다. `VERCEL_ENV=production`과 함께 쓰면 env 검증이 빌드와 기동을 막는다 |
 | `NEXT_PUBLIC_SENTRY_DSN` | 설정했을 때만 오류 수집을 켠다 |

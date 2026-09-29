@@ -115,23 +115,23 @@ describe("GET /api/auth/oauth/{provider}", () => {
     expect(stored?.next).toBe("/home");
   });
 
-  it.each(["//evil.example", "https://evil.example", "/\\evil.example"])(
-    "next가 외부로 나가는 값(%j)이면 쿠키에 /home을 담는다",
-    async (next) => {
-      const response = await start(
-        "kakao",
-        `?next=${encodeURIComponent(next)}`,
-      );
-      const location = new URL(response.headers.get("location")!);
+  it.each([
+    "//evil.example",
+    "https://evil.example",
+    "/\\evil.example",
+    "/%2F%2Fevil.example",
+    "/%5Cevil.example",
+  ])("next가 외부로 나가는 값(%j)이면 쿠키에 /home을 담는다", async (next) => {
+    const response = await start("kakao", `?next=${encodeURIComponent(next)}`);
+    const location = new URL(response.headers.get("location")!);
 
-      const stored = storedState(
-        response,
-        "kakao",
-        location.searchParams.get("state")!,
-      );
-      expect(stored?.next).toBe("/home");
-    },
-  );
+    const stored = storedState(
+      response,
+      "kakao",
+      location.searchParams.get("state")!,
+    );
+    expect(stored?.next).toBe("/home");
+  });
 
   it("제공자 client id가 설정되지 않았으면 /login?error=oauth_failed로 보낸다", async () => {
     mockEnv.GOOGLE_CLIENT_ID = undefined;
@@ -144,6 +144,17 @@ describe("GET /api/auth/oauth/{provider}", () => {
       "https://ogu.example/login?error=oauth_failed",
     );
     expect(response.cookies.get(OAUTH_STATE_COOKIE)).toBeUndefined();
+  });
+
+  it("시작할 수 없을 때도 검증한 next를 /login 오류 주소에 남긴다", async () => {
+    mockEnv.GOOGLE_CLIENT_ID = undefined;
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const response = await start("google", "?next=%2Fmy");
+
+    expect(response.headers.get("location")).toBe(
+      "https://ogu.example/login?error=oauth_failed&next=%2Fmy",
+    );
   });
 
   it("APP_ENV가 e2e가 아니면 e2e 쿼리를 무시하고 실제 제공자로 보낸다", async () => {

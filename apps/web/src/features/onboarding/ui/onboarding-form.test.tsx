@@ -25,13 +25,13 @@ function nicknameAvailability(nickname: string) {
   });
 }
 
-function renderForm() {
+function renderForm(next?: string) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   render(
     <QueryClientProvider client={queryClient}>
-      <OnboardingForm />
+      <OnboardingForm next={next} />
     </QueryClientProvider>,
   );
 }
@@ -169,5 +169,48 @@ describe("OnboardingForm 이미 온보딩한 회원(ALREADY_ONBOARDED)", () => {
     await user.click(screen.getByRole("button", { name: "완료" }));
 
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/home"));
+  });
+});
+
+describe("OnboardingForm 완료 뒤 이동", () => {
+  it.each([
+    ["/my", "/my"],
+    [undefined, "/home"],
+    ["//evil.example", "/home"],
+  ])("next가 %j면 완료 뒤 %s로 간다", async (next, expected) => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL) => {
+        const url = input.toString();
+        if (url.includes("nickname-availability")) {
+          return Promise.resolve(nicknameAvailability("free1"));
+        }
+        return Promise.resolve(
+          jsonResponse({
+            success: true,
+            data: {
+              member: {
+                id: 1,
+                authMethod: "EMAIL",
+                email: "a@example.com",
+                nickname: "free1",
+                jobRole: "DEVELOPMENT",
+                careerYear: "YEAR_1",
+                onboarded: true,
+              },
+            },
+            error: null,
+          }),
+        );
+      }),
+    );
+
+    renderForm(next);
+    await fillJobAndCareer(user);
+    await user.type(screen.getByLabelText("닉네임"), "free1");
+    await user.click(screen.getByRole("button", { name: "완료" }));
+
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith(expected));
   });
 });

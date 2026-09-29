@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 
 import { ApiError } from "@/shared/api";
+import { withNextPath } from "@/shared/lib";
 import { Button, Input, Label } from "@/shared/ui";
 
 import { useSignupMutation } from "../api/use-signup-mutation";
@@ -15,13 +16,19 @@ const GENERIC_ERROR_MESSAGE =
   "가입 중 문제가 생겼습니다. 잠시 후 다시 시도해주세요.";
 
 /**
- * 이메일 가입 폼. 성공하면 `/onboarding`으로 이동한다(US1-AC1). API 오류는
+ * 이메일 가입 폼. 성공하면 `/onboarding`으로 이동한다(US1-AC1). 가입 화면에
+ * 검증을 통과한 `next`가 있으면 온보딩을 마친 뒤 그곳으로 가도록 넘긴다. API 오류는
  * 필드에 인라인으로 보여준다: 409(이미 가입된 이메일)는 이메일 필드에
  * (US1-AC2). 400은 이메일 형식과 비밀번호 규칙 위반을 같은 코드로 뭉뚱그리므로
  * `pickSignup400Field`로 메시지 내용을 보고 이메일/비밀번호 필드를 가른다
  * (US1-AC3).
  */
-export function SignupForm() {
+interface SignupFormProps {
+  /** 온보딩 뒤 돌아갈 경로. 검증은 withNextPath가 한다. */
+  next?: string;
+}
+
+export function SignupForm({ next }: SignupFormProps) {
   const router = useRouter();
   const signupMutation = useSignupMutation();
   const {
@@ -34,7 +41,7 @@ export function SignupForm() {
   const onSubmit = handleSubmit(async (values) => {
     try {
       await signupMutation.mutateAsync(values);
-      router.push("/onboarding");
+      router.push(withNextPath("/onboarding", next));
     } catch (error) {
       if (error instanceof ApiError) {
         if (

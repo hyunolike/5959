@@ -26,7 +26,7 @@ export const env = createEnv({
       .default("development"),
     // Vercel이 배포 환경마다 넣어 주는 값. 로컬과 CI에서는 없다.
     VERCEL_ENV: z.enum(["production", "preview", "development"]).optional(),
-    // `__Host-ogu_oauth` 쿠키 서명(HMAC) 키. 운영에서는 반드시 설정해야 하고,
+    // `__Host-ogu_oauth` 쿠키 서명(HMAC) 키. Vercel 배포(미리보기 포함)와 운영에서는 반드시 설정해야 하고,
     // 그 밖에서는 없으면 shared/server/oauth-secret.ts의 개발용 값을 쓴다.
     OAUTH_STATE_SECRET: z.string().min(32).optional(),
   },
@@ -42,8 +42,9 @@ export const env = createEnv({
       if (!isServer) {
         return;
       }
-      const isProduction =
-        values.VERCEL_ENV === "production" || values.APP_ENV === "production";
+      // Vercel에 올라간 배포(운영, 미리보기 모두)는 공개 주소라 개발용 서명 키를 쓰면 안 된다.
+      const needsOAuthStateSecret =
+        values.VERCEL_ENV !== undefined || values.APP_ENV === "production";
       if (values.VERCEL_ENV === "production" && values.APP_ENV === "e2e") {
         ctx.addIssue({
           code: "custom",
@@ -52,11 +53,12 @@ export const env = createEnv({
             "운영 배포(VERCEL_ENV=production)에서는 APP_ENV=e2e(가짜 OAuth 제공자)를 쓸 수 없다",
         });
       }
-      if (isProduction && values.OAUTH_STATE_SECRET === undefined) {
+      if (needsOAuthStateSecret && values.OAUTH_STATE_SECRET === undefined) {
         ctx.addIssue({
           code: "custom",
           path: ["OAUTH_STATE_SECRET"],
-          message: "운영에서는 OAUTH_STATE_SECRET을 설정해야 한다",
+          message:
+            "Vercel 배포(VERCEL_ENV가 있을 때)와 운영에서는 OAUTH_STATE_SECRET을 설정해야 한다",
         });
       }
     }),

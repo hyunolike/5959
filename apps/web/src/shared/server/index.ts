@@ -23,10 +23,16 @@ export {
   isOAuthProvider,
   OAUTH_STATE_COOKIE,
   oauthRedirectUri,
-  sanitizeNextPath,
   serializeOAuthState,
   setOAuthStateCookie,
   verifyOAuthCallback,
 } from "./oauth-state";
 export type { OAuthProvider, OAuthStatePayload } from "./oauth-state";
 export { oauthStateSecret } from "./oauth-secret";
+export {
+  applyRefreshedSession,
+  endSession,
+  refreshSession,
+  SESSION_EXPIRED_BODY,
+} from "./session-refresh";
+export type { SessionRefreshResult } from "./session-refresh";
