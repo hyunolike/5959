@@ -10,7 +10,11 @@ vi.mock("@/shared/config", () => ({
   },
 }));
 
-import { ACCESS_TOKEN_COOKIE } from "@/shared/server";
+import {
+  ACCESS_TOKEN_COOKIE,
+  ONBOARDED_COOKIE,
+  REFRESH_TOKEN_COOKIE,
+} from "@/shared/server";
 
 import { DELETE, GET, PATCH, POST, PUT } from "./route";
 
@@ -339,5 +343,341 @@ describe("업스트림이 본문 없이 응답하면(callApi가 body: null을 �
     expect(response.status).toBe(204);
     const text = await response.text();
     expect(text).toBe("");
+  });
+});
+
+const API_REFRESH_URL = "http://api.internal:8080/api/v1/auth/refresh";
+const API_ME_URL = "http://api.internal:8080/api/v1/members/me";
+
+function refreshedBody({
+  refreshToken = "new-refresh",
+  onboarded = true,
+}: { refreshToken?: string | null; onboarded?: boolean } = {}) {
+  return {
+    success: true,
+    data: {
+      member: { id: 1, onboarded },
+      tokens: {
+        accessToken: "new-access",
+        accessTokenExpiresAt: new Date(Date.now() + 900_000).toISOString(),
+        refreshToken,
+        refreshTokenExpiresAt: new Date(
+          Date.now() + 14 * 86_400_000,
+        ).toISOString(),
+      },
+      newMember: false,
+    },
+    error: null,
+  };
+}
+
+const unauthorizedBody = (code = "UNAUTHORIZED") => ({
+  success: false,
+  data: null,
+  error: { code, message: "인증이 필요합니다." },
+});
+
+const ME_BODY = { success: true, data: { id: 1 }, error: null };
+
+function requestWithCookies(
+  cookies: Record<string, string>,
+  init: ConstructorParameters<typeof NextRequest>[1] = {},
+) {
+  const cookie = Object.entries(cookies)
+    .map(([name, value]) => `${name}=${value}`)
+    .join("; ");
+  return new NextRequest("http://localhost:3000/api/members/me", {
+    ...init,
+    headers: { ...(init.headers as Record<string, string>), cookie },
+  });
+}
+
+function callsTo(fetchMock: ReturnType<typeof vi.fn>, url: string) {
+  return fetchMock.mock.calls.filter(([calledUrl]) => calledUrl === url);
+}
+
+function authorizationOf(call: unknown[]): string | null {
+  return ((call[1] as RequestInit).headers as Headers).get("Authorization");
+}
+
+describe("세션 갱신(US4-AC1, bff-routes.md 범용 프록시)", () => {
+  it("API가 401이면 ogu_rt로 refresh한 뒤 새 access 토큰으로 원래 요청을 한 번 다시 보내 성공한다", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(unauthorizedBody(), 401))
+      .mockResolvedValueOnce(jsonResponse(refreshedBody()))
+      .mockResolvedValueOnce(jsonResponse(ME_BODY));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await GET(
+      requestWithCookies({
+        [ACCESS_TOKEN_COOKIE]: "expired-access",
+        [REFRESH_TOKEN_COOKIE]: "old-refresh",
+      }),
+      params(["members", "me"]),
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual(ME_BODY);
+    const urls = fetchMock.mock.calls.map(([url]) => url);
+    expect(urls).toEqual([API_ME_URL, API_REFRESH_URL, API_ME_URL]);
+    expect(authorizationOf(fetchMock.mock.calls[0])).toBe(
+      "Bearer expired-access",
+    );
+    expect(authorizationOf(fetchMock.mock.calls[2])).toBe("Bearer new-access");
+    const [, refreshInit] = fetchMock.mock.calls[1] as [string, RequestInit];
+    expect(refreshInit.method).toBe("POST");
+    expect(JSON.parse(refreshInit.body as string)).toEqual({
+      refreshToken: "old-refresh",
+    });
+    expect(response.cookies.get(ACCESS_TOKEN_COOKIE)?.value).toBe("new-access");
+    expect(response.cookies.get(REFRESH_TOKEN_COOKIE)?.value).toBe(
+      "new-refresh",
+    );
+    expect(response.cookies.get(ONBOARDED_COOKIE)?.value).toBe("1");
+  });
+
+  it("다시 보낸 요청에도 원래 메서드와 본문을 그대로 싣는다", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(unauthorizedBody(), 401))
+      .mockResolvedValueOnce(jsonResponse(refreshedBody()))
+      .mockResolvedValueOnce(jsonResponse(ME_BODY));
+    vi.stubGlobal("fetch", fetchMock);
+    const requestBody = JSON.stringify({ title: "고민" });
+
+    await POST(
+      requestWithCookies(
+        {
+          [ACCESS_TOKEN_COOKIE]: "expired-access",
+          [REFRESH_TOKEN_COOKIE]: "old-refresh",
+        },
+        {
+          method: "POST",
+          headers: {
+            origin: "http://localhost:3000",
+            "content-type": "application/json",
+          },
+          body: requestBody,
+        },
+      ),
+      params(["posts"]),
+    );
+
+    const [, retried] = fetchMock.mock.calls[2] as [string, RequestInit];
+    expect(retried.method).toBe("POST");
+    expect(retried.body).toBe(requestBody);
+  });
+
+  it("refresh 응답의 refreshToken이 null이면(유예 구간) ogu_rt는 건드리지 않는다", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(unauthorizedBody(), 401))
+      .mockResolvedValueOnce(
+        jsonResponse(refreshedBody({ refreshToken: null })),
+      )
+      .mockResolvedValueOnce(jsonResponse(ME_BODY));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await GET(
+      requestWithCookies({
+        [ACCESS_TOKEN_COOKIE]: "expired-access",
+        [REFRESH_TOKEN_COOKIE]: "old-refresh",
+      }),
+      params(["members", "me"]),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.cookies.get(ACCESS_TOKEN_COOKIE)?.value).toBe("new-access");
+    expect(response.cookies.get(REFRESH_TOKEN_COOKIE)).toBeUndefined();
+    expect(response.headers.getSetCookie().join("\n")).not.toContain(
+      REFRESH_TOKEN_COOKIE,
+    );
+  });
+
+  it("갱신한 회원이 온보딩 전이면 ogu_ob를 지운다", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(jsonResponse(unauthorizedBody(), 401))
+        .mockResolvedValueOnce(
+          jsonResponse(refreshedBody({ onboarded: false })),
+        )
+        .mockResolvedValueOnce(jsonResponse(ME_BODY)),
+    );
+
+    const response = await GET(
+      requestWithCookies({
+        [ACCESS_TOKEN_COOKIE]: "expired-access",
+        [REFRESH_TOKEN_COOKIE]: "old-refresh",
+        [ONBOARDED_COOKIE]: "1",
+      }),
+      params(["members", "me"]),
+    );
+
+    const onboarded = response.cookies.get(ONBOARDED_COOKIE);
+    expect(onboarded?.value).toBe("");
+    expect(onboarded?.maxAge).toBe(0);
+  });
+
+  it("refresh도 실패하면 세 쿠키를 모두 지우고 401을 돌려주며 원래 요청은 다시 보내지 않는다", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(unauthorizedBody(), 401))
+      .mockResolvedValueOnce(
+        jsonResponse(unauthorizedBody("SESSION_EXPIRED"), 401),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await GET(
+      requestWithCookies({
+        [ACCESS_TOKEN_COOKIE]: "expired-access",
+        [REFRESH_TOKEN_COOKIE]: "stolen-or-expired",
+        [ONBOARDED_COOKIE]: "1",
+      }),
+      params(["members", "me"]),
+    );
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toMatchObject({
+      success: false,
+      error: { code: "SESSION_EXPIRED" },
+    });
+    for (const name of [
+      ACCESS_TOKEN_COOKIE,
+      REFRESH_TOKEN_COOKIE,
+      ONBOARDED_COOKIE,
+    ]) {
+      expect(response.cookies.get(name)?.maxAge).toBe(0);
+    }
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("ogu_at이 없고 ogu_rt만 있으면 먼저 refresh한 뒤 새 access 토큰으로 요청한다", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(refreshedBody()))
+      .mockResolvedValueOnce(jsonResponse(ME_BODY));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await GET(
+      requestWithCookies({ [REFRESH_TOKEN_COOKIE]: "old-refresh" }),
+      params(["members", "me"]),
+    );
+
+    expect(response.status).toBe(200);
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      API_REFRESH_URL,
+      API_ME_URL,
+    ]);
+    expect(authorizationOf(fetchMock.mock.calls[1])).toBe("Bearer new-access");
+    expect(response.cookies.get(REFRESH_TOKEN_COOKIE)?.value).toBe(
+      "new-refresh",
+    );
+  });
+
+  it("먼저 refresh한 뒤에도 API가 401이면 다시 refresh하지 않고 세 쿠키를 지운 401로 끝낸다(갱신 반복 방지)", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(refreshedBody()))
+      .mockResolvedValue(
+        jsonResponse(unauthorizedBody("SESSION_EXPIRED"), 401),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await GET(
+      requestWithCookies({ [REFRESH_TOKEN_COOKIE]: "old-refresh" }),
+      params(["members", "me"]),
+    );
+
+    expect(response.status).toBe(401);
+    expect(callsTo(fetchMock, API_REFRESH_URL)).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(response.cookies.get(REFRESH_TOKEN_COOKIE)?.maxAge).toBe(0);
+  });
+
+  it("다시 보낸 요청이 또 401이어도 refresh는 한 번뿐이다", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(unauthorizedBody(), 401))
+      .mockResolvedValueOnce(jsonResponse(refreshedBody()))
+      .mockResolvedValue(
+        jsonResponse(unauthorizedBody("SESSION_EXPIRED"), 401),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await GET(
+      requestWithCookies({
+        [ACCESS_TOKEN_COOKIE]: "expired-access",
+        [REFRESH_TOKEN_COOKIE]: "old-refresh",
+      }),
+      params(["members", "me"]),
+    );
+
+    expect(response.status).toBe(401);
+    expect(callsTo(fetchMock, API_REFRESH_URL)).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    for (const name of [
+      ACCESS_TOKEN_COOKIE,
+      REFRESH_TOKEN_COOKIE,
+      ONBOARDED_COOKIE,
+    ]) {
+      expect(response.cookies.get(name)?.maxAge).toBe(0);
+    }
+  });
+
+  it("ogu_rt가 없으면 401을 그대로 돌려주고 refresh를 부르지 않는다", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse(unauthorizedBody(), 401));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await GET(
+      requestWithCookies({ [ACCESS_TOKEN_COOKIE]: "expired-access" }),
+      params(["members", "me"]),
+    );
+
+    expect(response.status).toBe(401);
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("refresh 호출이 API 장애(502)로 실패하면 쿠키를 지우지 않고 그 오류를 돌려준다", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(unauthorizedBody(), 401))
+      .mockRejectedValueOnce(new TypeError("fetch failed"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await GET(
+      requestWithCookies({
+        [ACCESS_TOKEN_COOKIE]: "expired-access",
+        [REFRESH_TOKEN_COOKIE]: "old-refresh",
+      }),
+      params(["members", "me"]),
+    );
+
+    expect(response.status).toBe(502);
+    expect(response.headers.getSetCookie()).toEqual([]);
+  });
+
+  it("응답 본문과 쿠키 밖 어디에도 새 토큰을 싣지 않는다(FR-012)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(jsonResponse(refreshedBody()))
+        .mockResolvedValueOnce(jsonResponse(ME_BODY)),
+    );
+
+    const response = await GET(
+      requestWithCookies({ [REFRESH_TOKEN_COOKIE]: "old-refresh" }),
+      params(["members", "me"]),
+    );
+
+    const text = await response.text();
+    expect(text).not.toContain("new-access");
+    expect(text).not.toContain("new-refresh");
   });
 });
