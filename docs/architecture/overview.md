@@ -118,7 +118,7 @@ Redis는 처음 필요한 M3(SSE 팬아웃)에서 추가한다.
 | 모듈 | 책임 | 공개 파사드 | 발행 이벤트 | 구독 이벤트 |
 |---|---|---|---|---|
 | `shared` (OPEN) | 공통 응답, 예외, 설정 | - | - | - |
-| `member` | 회원, 인증, OAuth, 토큰 | `MemberApi` | `MemberWithdrawn` | - |
+| `member` | 회원, 인증(이메일/카카오/구글), 로그인 실패 제한, 세션(JWT access·refresh) | `MemberApi` | `MemberWithdrawn`(회원 탈퇴는 M1 범위 밖이라 아직 발행하지 않는다) | - |
 | `post` | 고민 글, 댓글, 공감, 숨김 처리 | `PostApi` | `PostCreated`, `CommentCreated`, `PostLiked`, `CommentLiked` | - |
 | `ai` | LLM 게이트웨이 (Spring AI, Resilience4j, 요청 제한) | `EmotionAnalyzer`, `Embedder`, `RiskClassifier`, `LetterWriter` | - | - |
 | `emotion` | 감정 분석 결과, 감정 통계 | `EmotionApi` | `EmotionAnalyzed` | `PostCreated` |
@@ -270,12 +270,15 @@ React Three Fiber로 몬스터를 코드로 만든다. 원본 그림은 쓰지 �
 
 ### 6.3 인증: BFF
 
-- access 토큰과 refresh 토큰을 모두 httpOnly 쿠키에 둔다. 브라우저 스크립트는 토큰을 읽을 수 없다.
-- 브라우저는 같은 출처의 `/api/*`만 호출한다. Next.js 라우트 핸들러가 쿠키를 `Authorization: Bearer`로 바꿔 백엔드에 전달하고, 401이면 한 번 refresh한 뒤 다시 보낸다. 동시에 여러 요청이 401을 받아도 refresh는 한 번만 한다.
-- 보호 경로는 `proxy.ts`가 렌더링 전에 세션 쿠키를 확인한다.
-- **SSE는 예외다.** Vercel 함수는 실행 시간 제한이 있어 긴 연결을 중계하기 어렵다. BFF가 30초짜리 일회용 티켓을 발급하고, 브라우저가 티켓으로 API 도메인에 직접 연결한다. 끊기면 `Last-Event-ID`로 놓친 이벤트를 다시 받는다.
+- access 토큰과 refresh 토큰을 모두 httpOnly, Secure, `__Host-` 접두사 쿠키에 둔다(`ogu_at`, `ogu_rt`, 온보딩 여부를 나타내는 `ogu_ob`). 브라우저 스크립트는 토큰을 읽을 수 없다(US4-AC6).
+- 브라우저는 같은 출처의 `/api/*`만 호출한다. `src/app/api/[...path]/route.ts`(범용 프록시)가 쿠키를 `Authorization: Bearer`로 바꿔 백엔드에 전달하고, 세션 오류 401(`UNAUTHORIZED`, `SESSION_EXPIRED`)이면 `ogu_rt`로 한 번 refresh한 뒤 다시 보낸다. 동시에 여러 요청이 401을 받아도 refresh는 한 번만 한다. `/api/auth/**`와 `/api/members/me/onboarding`(토큰이 그대로 든 응답을 돌려주는 경로)은 프록시가 API로 넘기지 않고, 대신 전용 라우트가 쿠키로 바꾸고 본문에서 토큰을 지운다.
+- 로그인 실패 제한(`member` 모듈 `LoginThrottle`, FR-004, research R6)은 Redis가 아니라 Postgres `login_attempt` 테이블에 둔다. IP와 이메일을 SHA-256으로 해시해 키로 쓰고, 비밀번호를 검증하기 전에 시도를 먼저 예약해 동시 요청도 한도 안에서만 검증에 닿는다. `ip+email` 키는 15분에 5회로 15분 차단, `email` 키(여러 IP를 묶어서)는 1시간에 20회로 1시간 차단(US2-AC3, US2-AC4).
+- refresh는 매번 새 토큰으로 교체하고, 교체 후 30초 유예 동안 직전 토큰이 다시 오면(여러 탭이 동시에 갱신한 경우) access 토큰만 새로 주고 refresh는 그대로 둔다. 유예를 지나 직전 토큰이 다시 오면 탈취로 보고 세션을 무효화한다(`SessionService.refresh`, US4-AC1~AC3, research R2).
+- 보호 경로는 `route-guard.ts`의 판단 표를 `proxy.ts`가 렌더링 전에 적용해 쿠키를 확인한다(US4-AC4, US4-AC5).
+- 카카오·구글 로그인은 상태를 10분짜리 서명된 `ogu_oauth` 쿠키(`OAUTH_STATE_SECRET`)에 담아 CSRF와 재생을 막는다. 구글은 PKCE를 쓰고, 카카오는 쓰지 않는다.
+- **SSE는 예외다.** Vercel 함수는 실행 시간 제한이 있어 긴 연결을 중계하기 어렵다. BFF가 30초짜리 일회용 티켓을 발급하고, 브라우저가 티켓으로 API 도메인에 직접 연결한다. 끊기면 `Last-Event-ID`로 놓친 이벤트를 다시 받는다. (M3에서 추가)
 
-템플릿은 access 토큰을 localStorage에 두지만 여기서는 BFF를 택했다. 근거는 [ADR-0002](../adr/0002-bff-auth.md)에 있다.
+템플릿은 access 토큰을 localStorage에 두지만 여기서는 BFF를 택했다. 근거는 [ADR-0002](../adr/0002-bff-auth.md)에 있다. 세부 계약은 `specs/002-auth/contracts/bff-routes.md`에 있다.
 
 ### 6.4 상태 관리
 

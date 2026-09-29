@@ -63,6 +63,37 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   `ddl-auto`는 `validate`다.
 - 테스트 이름 앞에 스펙 인수 조건 ID를 붙인다. 예: `US1-AC2 ...`
 
+## Auth (`member` module)
+
+- 다른 모듈에 노출하는 공개 타입은 모두 `member` 패키지 루트에 있다: `MemberApi`
+  (파사드, `getMember(memberId)`), `MemberInfo`(온보딩 전에는 `nickname`/`jobRole`/
+  `careerYear`가 null), `AuthenticatedMember`(컨트롤러 인자, `memberId`/`sessionId`/
+  `onboarded`), `JobRole`, `CareerYear`.
+- 보안 설정은 `member/infrastructure/security`에 모여 있다: `SecurityConfig`(필터
+  체인 조립), `SecurityPaths`(공개 경로·온보딩 허용 목록·`/api/v1/**` 매처),
+  `SessionCheckFilter`(JWT 서명 통과 뒤 세션 유효성 확인), `OnboardingGuard`
+  (`SessionCheckFilter` 다음에 도는 필터), `BffClientIpResolver`, `SecurityErrorWriter`.
+  요청 처리 순서: Bearer JWT 검증 → `SessionCheckFilter` → `OnboardingGuard` → 인가 규칙.
+- 로그인 실패 제한(`LoginThrottle`, FR-004, research R6)은 Postgres
+  `login_attempt` 테이블에 IP와 이메일을 SHA-256 해시한 키로 기록한다(원문을 저장하지
+  않는다). 비밀번호를 검증하기 전에 시도를 먼저 예약(reserve)해 두므로 동시 요청도
+  검증 전에 한도가 걸린다. `ip+email` 키는 15분에 5회로 15분 차단, `email` 키는
+  1시간에 20회로 1시간 차단.
+- refresh 토큰 교체(`SessionService.refresh`, US4-AC1~AC3, research R2)는 매번
+  새 refresh 토큰을 발급하고, 직전 토큰으로 교체 후 30초(`ogu.auth.session.rotation-grace`)
+  안에 다시 오면 access 토큰만 새로 준다(refresh는 그대로, 여러 탭 대응). 유예를 지나
+  직전 토큰이 다시 오면 탈취로 보고 세션을 `REUSE_DETECTED`로 무효화한다.
+- 온보딩 전(`onboarded=false`) 토큰으로도 부를 수 있는 허용 목록은
+  `SecurityPaths.ONBOARDING_ALLOWED`에 있다: `/api/v1/members/me`,
+  `/api/v1/members/nickname-availability`, `/api/v1/members/me/onboarding`,
+  `/api/v1/auth/logout`. 그 밖의 인증 필요 경로는 `OnboardingGuard`가
+  `403 ONBOARDING_REQUIRED`로 막는다.
+- 운영(`prod` 프로필) 기동 조건은 `ProdAuthSettingsCheck`가 강제한다: JWT
+  비밀키가 로컬 개발용 고정 값이면 안 되고, `OGU_BFF_KEY`가 비어 있으면 안 되고,
+  카카오·구글 client id/secret이 모두 있어야 하고, 허용 redirect URI는 전부
+  `https`여야 하고, `prod`와 `e2e` 프로필을 동시에 켤 수 없다(e2e의 비밀 값은
+  `infra/compose.e2e.yaml`에 커밋된 고정 값이라 prod에 같이 켜면 토큰을 위조할 수 있다).
+
 ## Gotchas
 
 - Kotlin can't express package-level annotations: module metadata such as
