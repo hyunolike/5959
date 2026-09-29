@@ -186,11 +186,9 @@ class SecurityIntegrationTests {
                     .response.status
 
             // 보안 필터를 지나 MVC까지 가야 한다. 401/403이면 보안 필터가 막은 것이다.
-            // 가입, 로그인, 외부 계정 로그인은 컨트롤러가 있으므로 본문 없는 요청이 400이 되고,
-            // 나머지는 아직 컨트롤러가 없어 404가 된다.
-            val expected = if (path in PATHS_WITH_CONTROLLER) BAD_REQUEST_STATUS else NO_CONTROLLER_YET_STATUS
+            // 모든 공개 경로에 컨트롤러가 있으므로 본문 없는 요청은 400이 된다.
             listOf(withoutToken, withRevokedToken, withGarbageToken).forEach { status ->
-                assertThat(status).describedAs(path).isLessThan(500).isEqualTo(expected)
+                assertThat(status).describedAs(path).isEqualTo(BAD_REQUEST_STATUS)
             }
         }
     }
@@ -227,9 +225,6 @@ class SecurityIntegrationTests {
 
     companion object {
         const val PROTECTED_PATH = "/api/v1/test-only/protected-probe"
-        private const val NO_CONTROLLER_YET_STATUS = 404
         private const val BAD_REQUEST_STATUS = 400
-        private val PATHS_WITH_CONTROLLER =
-            setOf("/api/v1/auth/signup", "/api/v1/auth/login", "/api/v1/auth/oauth/kakao")
     }
 }

@@ -2,6 +2,7 @@ package com.ogu.member.application
 
 import com.ogu.member.domain.AuthSession
 import com.ogu.member.domain.AuthSessionRepository
+import com.ogu.member.domain.MemberRepository
 import com.ogu.member.domain.SessionRevokeReason
 import com.ogu.member.infrastructure.config.AuthProperties
 import com.ogu.member.infrastructure.security.JwtIssuer
@@ -36,7 +37,8 @@ class SessionServiceTest {
                 ),
         )
     private val repository: AuthSessionRepository = mock(AuthSessionRepository::class.java)
-    private val service = SessionService(repository, JwtIssuer(properties, clock), properties, clock)
+    private val memberRepository: MemberRepository = mock(MemberRepository::class.java)
+    private val service = SessionService(repository, memberRepository, JwtIssuer(properties, clock), properties, clock)
 
     init {
         given(repository.save(any(AuthSession::class.java))).willAnswer { it.arguments[0] }

@@ -10,6 +10,7 @@ import com.ogu.member.infrastructure.security.BffClientIpResolver
 import com.ogu.member.presentation.dto.AuthResultResponse
 import com.ogu.member.presentation.dto.LoginRequest
 import com.ogu.member.presentation.dto.OAuthLoginRequest
+import com.ogu.member.presentation.dto.RefreshRequest
 import com.ogu.member.presentation.dto.SignupRequest
 import com.ogu.shared.response.ApiResponse
 import io.swagger.v3.oas.annotations.Operation
@@ -114,6 +115,25 @@ class AuthController(
     ): ApiResponse<AuthResultResponse> {
         val result = oauthLoginService.login(provider, request.code, request.redirectUri, request.codeVerifier)
         return ApiResponse.success(AuthResultResponse.of(result.member, result.tokens, newMember = result.newMember))
+    }
+
+    @Operation(
+        operationId = "refresh",
+        summary = "세션 갱신 (US4-AC1~AC3)",
+        responses = [
+            DocResponse(responseCode = "200", description = "새 토큰. 유예 구간에서는 tokens.refreshToken이 null"),
+            DocResponse(
+                responseCode = "401",
+                description = "인증 없음 또는 세션 만료, 무효 (UNAUTHORIZED, SESSION_EXPIRED)",
+            ),
+        ],
+    )
+    @PostMapping("/refresh")
+    fun refresh(
+        @RequestBody request: RefreshRequest,
+    ): ApiResponse<AuthResultResponse> {
+        val result = sessionService.refresh(request.refreshToken)
+        return ApiResponse.success(AuthResultResponse.of(result.member, result.tokens, newMember = false))
     }
 
     @Operation(

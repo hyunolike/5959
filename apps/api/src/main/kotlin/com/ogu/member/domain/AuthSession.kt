@@ -81,6 +81,30 @@ class AuthSession(
         revokeReason = reason
     }
 
+    /**
+     * refresh 토큰을 교체한다. 직전 해시와 교체 시각을 남기고 만료를 `min(now + idleTtl, absolute_expires_at)`로 다시 잡는다.
+     */
+    fun rotate(
+        newRefreshTokenHash: String,
+        now: Instant,
+        idleTtl: Duration,
+    ) {
+        previousRefreshTokenHash = refreshTokenHash
+        refreshTokenHash = newRefreshTokenHash
+        rotatedAt = now
+        expiresAt = minOf(now.plus(idleTtl), absoluteExpiresAt)
+    }
+
+    /** [hash]가 직전 토큰이고 교체한 지 [grace] 이내(경계 포함)인가. */
+    fun isWithinRotationGrace(
+        hash: String,
+        now: Instant,
+        grace: Duration,
+    ): Boolean {
+        val rotated = rotatedAt ?: return false
+        return hash == previousRefreshTokenHash && !now.isAfter(rotated.plus(grace))
+    }
+
     @Suppress("UnusedPrivateMember") // JPA 콜백으로 Hibernate가 호출한다
     @PostLoad
     @PostPersist
