@@ -168,15 +168,15 @@ description: "Task list for 002-auth (인증과 회원)"
 
 ### Tests for User Story 4 ⚠️
 
-- [ ] T058 [P] [US4] apps/api/src/test/kotlin/com/ogu/member/application/SessionRefreshTest.kt(시계 주입): data-model.md refresh 흐름도의 모든 분기 — 정상 교체와 `expires_at = min(now+14일, absolute)`, `US4-AC2 마지막 활동 뒤 14일이 지나면 SESSION_EXPIRED`, `US4-AC3 로그인 30일 뒤에는 활동 중이어도 SESSION_EXPIRED`, 교체 후 30초 안의 직전 토큰은 access만 발급(refreshToken null), 30초 뒤 직전 토큰은 세션 무효화(`REUSE_DETECTED`), 같은 토큰으로 동시 요청 두 건이 모두 로그아웃 없이 끝난다
-- [ ] T059 [P] [US4] apps/web/src/app/api/[...path]/route.test.ts: API 401 → refresh 성공 → 원래 요청 재시도 성공, refresh 응답의 `refreshToken`이 null이면 `ogu_rt` 유지, refresh 실패 → 세 쿠키 삭제와 401, `ogu_at`이 없고 `ogu_rt`만 있으면 먼저 refresh
-- [ ] T060 [P] [US4] apps/web/e2e-full/session.spec.ts(API e2e 프로필의 access TTL을 `ogu.auth.jwt.access-token-ttl=5s`로 줄인다): `US4-AC1 인증 유효 시간이 지나도 보호 기능이 그대로 동작한다`, `US4-AC4 로그아웃 상태로 /my에 들어가면 로그인 화면으로 이동한다`, `US4-AC5 로그인하면 /my로 돌아온다`, `US4-AC6 document.cookie에 ogu_ 쿠키가 없다`, 외부 주소 `next`는 `/home`으로
+- [x] T058 [P] [US4] apps/api/src/test/kotlin/com/ogu/member/application/SessionRefreshTest.kt(시계 주입): data-model.md refresh 흐름도의 모든 분기 — 정상 교체와 `expires_at = min(now+14일, absolute)`, `US4-AC2 마지막 활동 뒤 14일이 지나면 SESSION_EXPIRED`, `US4-AC3 로그인 30일 뒤에는 활동 중이어도 SESSION_EXPIRED`, 교체 후 30초 안의 직전 토큰은 access만 발급(refreshToken null), 30초 뒤 직전 토큰은 세션 무효화(`REUSE_DETECTED`), 같은 토큰으로 동시 요청 두 건이 모두 로그아웃 없이 끝난다
+- [x] T059 [P] [US4] apps/web/src/app/api/[...path]/route.test.ts: API 401 → refresh 성공 → 원래 요청 재시도 성공, refresh 응답의 `refreshToken`이 null이면 `ogu_rt` 유지, refresh 실패 → 세 쿠키 삭제와 401, `ogu_at`이 없고 `ogu_rt`만 있으면 먼저 refresh
+- [x] T060 [P] [US4] apps/web/e2e-full/session.spec.ts(API e2e 프로필의 access TTL을 `ogu.auth.jwt.access-token-ttl=5s`로 줄인다): `US4-AC1 인증 유효 시간이 지나도 보호 기능이 그대로 동작한다`, `US4-AC4 로그아웃 상태로 /my에 들어가면 로그인 화면으로 이동한다`, `US4-AC5 로그인하면 /my로 돌아온다`, `US4-AC6 document.cookie에 ogu_ 쿠키가 없다`, 외부 주소 `next`는 `/home`으로
 
 ### Implementation for User Story 4
 
-- [ ] T061 [US4] member/application/SessionService.kt에 `refresh(refreshToken)` 추가(data-model.md 흐름도, `SELECT ... FOR UPDATE`, 유예 `ogu.auth.session.rotation-grace`), AuthController `POST /api/v1/auth/refresh`. ContractTests `pendingPaths`에서 이 경로를 뺀다
-- [ ] T062 [US4] apps/web/src/app/api/[...path]/route.ts에 refresh 재시도를 추가하고, auth 라우트와 공유하는 refresh 호출을 apps/web/src/shared/server/session-refresh.ts로 분리한다
-- [ ] T063 [US4] apps/web/src/shared/server/route-guard.ts와 proxy.ts에 bff-routes.md 표의 나머지 행(`/` → `/home`, 보호 경로 → `/login?next=`, `/login`·`/signup` → `/home`)과 `next` 검증(`/`로 시작, `//`와 `/\`로 시작하지 않음)을 추가하고 route-guard.test.ts를 보강한다. 로그인, 가입, OAuth 성공 뒤 `next`로 이동하도록 T037, T049, T056의 이동 처리를 고친다
+- [x] T061 [US4] member/application/SessionService.kt에 `refresh(refreshToken)` 추가(data-model.md 흐름도, `SELECT ... FOR UPDATE`, 유예 `ogu.auth.session.rotation-grace`), AuthController `POST /api/v1/auth/refresh`. ContractTests `pendingPaths`에서 이 경로를 뺀다
+- [x] T062 [US4] apps/web/src/app/api/[...path]/route.ts에 refresh 재시도를 추가하고, auth 라우트와 공유하는 refresh 호출을 apps/web/src/shared/server/session-refresh.ts로 분리한다
+- [x] T063 [US4] apps/web/src/shared/server/route-guard.ts와 proxy.ts에 bff-routes.md 표의 나머지 행(`/` → `/home`, 보호 경로 → `/login?next=`, `/login`·`/signup` → `/home`)과 `next` 검증(`/`로 시작, `//`와 `/\`로 시작하지 않음)을 추가하고 route-guard.test.ts를 보강한다. 로그인, 가입, OAuth 성공 뒤 `next`로 이동하도록 T037, T049, T056의 이동 처리를 고친다
 
 **Checkpoint**: 세션 유지와 보호 화면 차단이 모두 동작한다
 

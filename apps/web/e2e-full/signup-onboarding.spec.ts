@@ -52,7 +52,9 @@ test("US1-AC5 대소문자만 다른 닉네임도 완료 전(사전 확인 힌�
   await page.waitForURL("**/home");
 
   // 다른 회원이 대소문자만 다른 닉네임으로 시도한다. 디바운스(400ms) 뒤
-  // 서버 확인 결과인 사전 힌트가 뜰 때까지 기다린 다음 제출한다.
+  // 서버 확인 결과인 사전 힌트가 뜰 때까지 기다린 다음 제출한다. 로그인한
+  // 회원은 /signup에서 /home으로 보내지므로(라우트 가드) 먼저 세션을 끊는다.
+  await page.context().clearCookies();
   await signup(page, uniqueEmail("dup-challenger-case"));
   await page.getByLabel("닉네임").fill(takenNickname.toUpperCase());
   await expect(page.getByText("이미 사용 중인 닉네임입니다.")).toBeVisible();
@@ -75,7 +77,9 @@ test("US1-AC5 닉네임 중복은 서버 응답(409)으로도 막혀 저장되�
   await page.waitForURL("**/home");
 
   // 사전 확인 힌트를 기다리지 않고 바로 제출해(디바운스가 끝나기 전) 서버의
-  // 409 NICKNAME_TAKEN 응답 경로를 확인한다.
+  // 409 NICKNAME_TAKEN 응답 경로를 확인한다. 로그인한 회원은 /signup에서
+  // /home으로 보내지므로(라우트 가드) 먼저 세션을 끊는다.
+  await page.context().clearCookies();
   await signup(page, uniqueEmail("dup-challenger-server"));
   await completeOnboarding(page, takenNickname);
 

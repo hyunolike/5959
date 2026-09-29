@@ -23,6 +23,8 @@ services:
       DB_PASSWORD: ogu
       JWT_SECRET: e2e-fixed-jwt-secret-for-playwright-full-tests-0123456789
       OGU_BFF_KEY: e2e-bff-key
+      # US4-AC1 e2e(session.spec.ts)가 access 토큰 만료 뒤 refresh를 실제로 거치도록 짧게 둔다(기본 15m).
+      OGU_AUTH_JWT_ACCESS_TOKEN_TTL: 5s
     depends_on:
       postgres:
         condition: service_healthy
