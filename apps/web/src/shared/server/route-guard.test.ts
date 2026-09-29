@@ -122,6 +122,10 @@ describe("resolveRouteGuardAction", () => {
       "?next=https%3A%2F%2Fevil.example",
       "?next=%2F%5Cevil.example",
       "?next=%2F%252F%252Fevil.example",
+      "?next=%2F..%2F%2Fevil.example",
+      "?next=%2F.%5C%2Fevil.example",
+      "?next=%2F.%2F%5Cevil.example",
+      "?next=%2F%252e%2F%2Fevil.example",
     ])("외부 주소 next(%s)는 /home으로 바꾼다", (search) => {
       expect(resolveRouteGuardAction("/login", ONBOARDED, search)).toEqual({
         type: "redirect",

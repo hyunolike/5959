@@ -33,9 +33,24 @@ describe("sanitizeNextPath", () => {
     ["/%5Cevil.example"],
     ["/%5cevil.example"],
     ["/%09/evil.example"],
+    // 경로 정규화(점 세그먼트, 백슬래시)를 거치면 `//host`가 되는 값.
+    ["/..//evil.example"],
+    ["/.\\/evil.example"],
+    ["/./\\evil.example"],
+    ["/%2e//evil.example"],
+    ["/%2E%2E//evil.example"],
+    ["/a/../..//evil.example"],
     ["/%E0%A4%A"],
   ])("안전하지 않은 값 %j는 /home으로 바꾼다", (next) => {
     expect(sanitizeNextPath(next)).toBe(DEFAULT_NEXT_PATH);
+  });
+
+  it.each([
+    ["/my/../home", "/home"],
+    ["/my/./posts", "/my/posts"],
+    ["/my\\posts", "/my/posts"],
+  ])("정규화한 경로 %j를 돌려준다(%s)", (next, expected) => {
+    expect(sanitizeNextPath(next)).toBe(expected);
   });
 
   it("기본값은 /home이다", () => {

@@ -8,9 +8,12 @@
  *   (`/\t/evil`이 `//evil`이 되는 것을 막는다).
  * - 한 번 퍼센트 디코딩한 값에도 같은 규칙을 적용한다(`/%2F%2Fevil`, `/%5Cevil`).
  *   중간 단계가 경로를 디코딩하면 프로토콜 상대 주소가 될 수 있어서다.
- * - 어떤 기준 출처에 붙여도 그 출처를 벗어나지 않아야 한다.
+ * - 어떤 기준 출처에 붙여도 그 출처를 벗어나지 않아야 하고, URL 규칙으로
+ *   정규화한 경로(점 세그먼트 제거, `\`를 `/`로)도 `//`나 `/\`로 시작하지
+ *   않아야 한다(`/..//evil`, `/.\/evil`, `/%2e//evil`은 정규화하면 `//evil`이다).
  *
- * 규칙에 맞지 않으면 `/home`이다.
+ * 입력 문자열이 아니라 정규화한 `pathname + search + hash`를 돌려준다. 이 값을
+ * 다른 곳에서 다시 정규화해도 결과가 바뀌지 않는다. 규칙에 맞지 않으면 `/home`이다.
  */
 export const DEFAULT_NEXT_PATH = "/home";
 
@@ -44,14 +47,25 @@ export function sanitizeNextPath(next: string | null | undefined): string {
     return DEFAULT_NEXT_PATH;
   }
   const base = "http://ogu.invalid";
+  let url: URL;
   try {
-    if (new URL(next, base).origin !== base) {
-      return DEFAULT_NEXT_PATH;
-    }
+    url = new URL(next, base);
   } catch {
     return DEFAULT_NEXT_PATH;
   }
-  return next;
+  if (url.origin !== base || !hasSafeShape(url.pathname)) {
+    return DEFAULT_NEXT_PATH;
+  }
+  let decodedPathname: string;
+  try {
+    decodedPathname = decodeURIComponent(url.pathname);
+  } catch {
+    return DEFAULT_NEXT_PATH;
+  }
+  if (!hasSafeShape(decodedPathname)) {
+    return DEFAULT_NEXT_PATH;
+  }
+  return `${url.pathname}${url.search}${url.hash}`;
 }
 
 /**
