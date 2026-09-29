@@ -151,5 +151,14 @@ describe("resolveRouteGuardAction", () => {
       expect(resolveRouteGuardAction(pathname, SIGNED_OUT)).toBeNull();
       expect(resolveRouteGuardAction(pathname, ONBOARDED)).toBeNull();
     });
+
+    it("/debug/error-probe는 로그인 여부와 상관없이 그대로 통과한다(공개 경로)", () => {
+      expect(
+        resolveRouteGuardAction("/debug/error-probe", SIGNED_OUT),
+      ).toBeNull();
+      expect(
+        resolveRouteGuardAction("/debug/error-probe", ONBOARDED),
+      ).toBeNull();
+    });
   });
 });

@@ -190,11 +190,11 @@ description: "Task list for 002-auth (인증과 회원)"
 
 ### Tests for User Story 5 ⚠️
 
-- [ ] T064 [P] [US5] apps/web/src/shared/lib/scrub-event.test.ts: `US5-AC2 오류 이벤트에서 쿠키, Authorization 헤더, password 필드를 지운다`(요청 헤더, 요청 본문 JSON 문자열, breadcrumbs의 fetch 데이터 각각)
+- [x] T064 [P] [US5] apps/web/src/shared/lib/scrub-event.test.ts: `US5-AC2 오류 이벤트에서 쿠키, Authorization 헤더, password 필드를 지운다`(요청 헤더, 요청 본문 JSON 문자열, breadcrumbs의 fetch 데이터 각각)
 
 ### Implementation for User Story 5
 
-- [ ] T065 [US5] apps/web/src/shared/lib/scrub-event.ts, apps/web/instrumentation.ts, apps/web/instrumentation-client.ts, apps/web/sentry.server.config.ts, apps/web/sentry.edge.config.ts: `NEXT_PUBLIC_SENTRY_DSN`이 있을 때만 초기화, `beforeSend`와 `beforeBreadcrumb`에 scrub-event 적용, `sendDefaultPii: false`, 소스맵 업로드 없음. apps/web/src/app/debug/error-probe/page.tsx는 `ENABLE_ERROR_PROBE !== "1"`이면 `notFound()`, 켜져 있으면 버튼을 눌러 오류를 던진다
+- [x] T065 [US5] apps/web/src/shared/lib/scrub-event.ts, apps/web/instrumentation.ts, apps/web/instrumentation-client.ts, apps/web/sentry.server.config.ts, apps/web/sentry.edge.config.ts: `NEXT_PUBLIC_SENTRY_DSN`이 있을 때만 초기화, `beforeSend`와 `beforeBreadcrumb`에 scrub-event 적용, `sendDefaultPii: false`, 소스맵 업로드 없음. apps/web/src/app/debug/error-probe/page.tsx는 `ENABLE_ERROR_PROBE !== "1"`이면 `notFound()`, 켜져 있으면 버튼을 눌러 오류를 던진다
 
 **Checkpoint**: 모든 스토리 완료
 
