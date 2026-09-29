@@ -4,13 +4,10 @@ import type { ApiResponse } from "@/shared/api";
 import {
   applyRefreshedSession,
   callApi,
-  endSession,
+  callWithSessionRefresh,
   guardOrigin,
   readSessionCookies,
-  refreshSession,
   resolveClientIp,
-  SESSION_EXPIRED_BODY,
-  type SessionRefreshResult,
 } from "@/shared/server";
 
 export const dynamic = "force-dynamic";
@@ -92,12 +89,9 @@ function notFoundResponse(): NextResponse {
  * 경로 조작(`..`, 인코딩된 `/`)을 막고, `auth/**`와 `members/me/onboarding`은
  * 전용 라우트만 다루므로 404로 막는다.
  *
- * 세션 갱신(US4-AC1): `ogu_at`이 없고 `ogu_rt`만 있으면 먼저 refresh하고,
- * API가 401이면 `ogu_rt`로 refresh한 뒤 원래 요청을 한 번만 다시 보낸다.
- * 요청 하나에서 refresh는 많아야 한 번이다(갱신 반복 방지). refresh가
- * 거절되거나 갱신한 토큰으로도 401이면 세 쿠키를 지우고 401을 돌려준다.
- * API 장애(5xx, 연결 실패)로 refresh하지 못하면 세션이 끝났는지 알 수 없으므로
- * 쿠키를 지우지 않고 그 오류를 그대로 돌려준다.
+ * 세션 갱신(US4-AC1)은 `callWithSessionRefresh`(shared/server/session-refresh.ts)
+ * 규칙을 따른다: `ogu_at`이 없고 `ogu_rt`만 있으면 먼저 refresh하고, API가
+ * 세션 오류 401이면 한 번 refresh한 뒤 원래 요청을 한 번만 다시 보낸다.
  */
 async function proxy(
   request: NextRequest,
@@ -143,36 +137,16 @@ async function proxy(
     );
   };
 
-  const cookies = readSessionCookies(request);
-  let refreshed: Extract<SessionRefreshResult, { type: "refreshed" }> | null =
-    null;
-
-  if (!cookies.accessToken && cookies.refreshToken) {
-    const outcome = await refreshSession(cookies.refreshToken, clientIp);
-    if (outcome.type !== "refreshed") {
-      return refreshFailureResponse(outcome);
-    }
-    refreshed = outcome;
+  const outcome = await callWithSessionRefresh(
+    readSessionCookies(request),
+    clientIp,
+    send,
+  );
+  if (outcome.type === "failed") {
+    return outcome.response;
   }
 
-  let result = await send(refreshed?.tokens.accessToken ?? cookies.accessToken);
-
-  if (result.status === 401 && cookies.refreshToken) {
-    if (refreshed !== null) {
-      // 방금 갱신한 토큰으로도 401이면 세션이 끝난 것이다. 다시 갱신하지 않는다.
-      return sessionExpiredResponse();
-    }
-    const outcome = await refreshSession(cookies.refreshToken, clientIp);
-    if (outcome.type !== "refreshed") {
-      return refreshFailureResponse(outcome);
-    }
-    refreshed = outcome;
-    result = await send(refreshed.tokens.accessToken);
-    if (result.status === 401) {
-      return sessionExpiredResponse();
-    }
-  }
-
+  const { result, refreshed } = outcome;
   const response =
     result.body === null
       ? new NextResponse(null, { status: result.status })
@@ -183,21 +157,6 @@ async function proxy(
     applyRefreshedSession(response, refreshed);
   }
   return response;
-}
-
-function sessionExpiredResponse(): NextResponse {
-  return endSession(NextResponse.json(SESSION_EXPIRED_BODY, { status: 401 }));
-}
-
-function refreshFailureResponse(
-  outcome: Exclude<SessionRefreshResult, { type: "refreshed" }>,
-): NextResponse {
-  if (outcome.type === "rejected") {
-    return sessionExpiredResponse();
-  }
-  return outcome.body === null
-    ? new NextResponse(null, { status: outcome.status })
-    : NextResponse.json(outcome.body, { status: outcome.status });
 }
 
 export {

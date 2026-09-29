@@ -139,3 +139,73 @@ describe("POST /api/auth/logout", () => {
     assertAllCookiesCleared(response);
   });
 });
+
+describe("POST /api/auth/logout 세션 갱신", () => {
+  function refreshOnlyRequest(): NextRequest {
+    return new NextRequest("http://localhost:3000/api/auth/logout", {
+      method: "POST",
+      headers: {
+        origin: "http://localhost:3000",
+        cookie: `${REFRESH_TOKEN_COOKIE}=old-refresh`,
+      },
+    });
+  }
+
+  it("ogu_at이 없고 ogu_rt만 있으면 먼저 refresh해 받은 access 토큰으로 서버 세션을 무효화한다", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            success: true,
+            data: {
+              member: { id: 1, onboarded: true },
+              tokens: {
+                accessToken: "refreshed-access",
+                accessTokenExpiresAt: new Date().toISOString(),
+                refreshToken: "new-refresh",
+                refreshTokenExpiresAt: new Date().toISOString(),
+              },
+              newMember: false,
+            },
+            error: null,
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await POST(refreshOnlyRequest());
+
+    expect(response.status).toBe(204);
+    const [refreshUrl] = fetchMock.mock.calls[0] as [string];
+    expect(refreshUrl).toBe("http://api.internal:8080/api/v1/auth/refresh");
+    const [logoutUrl, init] = fetchMock.mock.calls[1] as [string, RequestInit];
+    expect(logoutUrl).toBe("http://api.internal:8080/api/v1/auth/logout");
+    expect((init.headers as Headers).get("Authorization")).toBe(
+      "Bearer refreshed-access",
+    );
+    assertAllCookiesCleared(response);
+  });
+
+  it("refresh가 실패해도 204이고 세 쿠키를 지우며 logout은 부르지 않는다", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          success: false,
+          data: null,
+          error: { code: "SESSION_EXPIRED", message: "만료" },
+        }),
+        { status: 401 },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await POST(refreshOnlyRequest());
+
+    expect(response.status).toBe(204);
+    expect(fetchMock).toHaveBeenCalledOnce();
+    assertAllCookiesCleared(response);
+  });
+});

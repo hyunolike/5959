@@ -20,8 +20,8 @@
 ## 범용 프록시 `/api/[...path]`
 
 - `ogu_at`을 `Authorization: Bearer`로 바꿔 `API_ORIGIN/api/v1/...`로 전달한다. `X-Ogu-Bff-Key`와 `X-Ogu-Client-Ip`를 붙인다.
-- API가 `401`이면 `ogu_rt`로 `POST /api/v1/auth/refresh`를 한 번 부르고 원래 요청을 다시 보낸다. 응답의 `refreshToken`이 `null`(유예 구간)이면 `ogu_rt`를 건드리지 않는다. 갱신한 회원의 `onboarded`에 맞춰 `ogu_ob`를 설정하거나 지운다. refresh가 거절되거나(4xx) 갱신한 토큰으로도 `401`이면 세 쿠키를 지우고 `401 SESSION_EXPIRED`를 돌려준다. refresh가 API 장애(5xx, 연결 실패)로 실패하면 쿠키를 지우지 않고 그 오류를 그대로 돌려준다.
-- 요청 하나에서 refresh는 많아야 한 번이다(갱신 반복 방지). 앱의 조회가 `401`로 끝나면 브라우저는 지금 화면을 `next`로 들고 `/login`으로 간다.
+- API가 세션 오류 `401`(`UNAUTHORIZED`, `SESSION_EXPIRED`)이면 `ogu_rt`로 `POST /api/v1/auth/refresh`를 한 번 부르고 원래 요청을 다시 보낸다. 다른 `401` 코드는 쿠키를 건드리지 않고 그대로 전달한다. 응답의 `refreshToken`이 `null`(유예 구간)이면 `ogu_rt`를 건드리지 않는다. 갱신한 회원의 `onboarded`에 맞춰 `ogu_ob`를 설정하거나 지운다. refresh가 거절되거나(4xx) 갱신한 토큰으로도 `401`이면 세 쿠키를 지우고 `401 SESSION_EXPIRED`를 돌려준다. refresh가 API 장애(5xx, 연결 실패)로 실패하면 쿠키를 지우지 않고 그 오류를 그대로 돌려준다.
+- 요청 하나에서 refresh는 많아야 한 번이다(갱신 반복 방지). `PUT /api/auth/onboarding`도 같은 규칙(`shared/server/session-refresh.ts`의 `callWithSessionRefresh`)을 따른다. `POST /api/auth/logout`은 `ogu_at`이 없고 `ogu_rt`만 있으면 먼저 refresh해 서버 세션을 무효로 만들고, 결과와 관계없이 세 쿠키를 지우고 `204`다. 앱의 조회가 `401`로 끝나면 브라우저는 지금 화면을 `next`로 들고 `/login`으로 간다.
 - `ogu_at`이 만료돼 없어도 `ogu_rt`가 있으면 먼저 refresh한 뒤 요청한다.
 
 ### 캐치올이 절대 그대로 넘기지 않는 경로

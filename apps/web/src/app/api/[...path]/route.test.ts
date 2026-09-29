@@ -681,3 +681,52 @@ describe("세션 갱신(US4-AC1, bff-routes.md 범용 프록시)", () => {
     expect(text).not.toContain("new-refresh");
   });
 });
+
+describe("refresh 재시도 대상 401", () => {
+  it.each(["INVALID_CREDENTIALS", "OAUTH_CODE_INVALID"])(
+    "API의 401 코드가 %s(세션과 무관)면 refresh하지 않고 쿠키도 지우지 않은 채 그대로 전달한다",
+    async (code) => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue(jsonResponse(unauthorizedBody(code), 401));
+      vi.stubGlobal("fetch", fetchMock);
+
+      const response = await GET(
+        requestWithCookies({
+          [ACCESS_TOKEN_COOKIE]: "access",
+          [REFRESH_TOKEN_COOKIE]: "refresh",
+        }),
+        params(["members", "me"]),
+      );
+
+      expect(response.status).toBe(401);
+      await expect(response.json()).resolves.toMatchObject({
+        error: { code },
+      });
+      expect(fetchMock).toHaveBeenCalledOnce();
+      expect(response.headers.getSetCookie()).toEqual([]);
+    },
+  );
+
+  it("API의 401 코드가 SESSION_EXPIRED면 refresh한다", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse(unauthorizedBody("SESSION_EXPIRED"), 401),
+      )
+      .mockResolvedValueOnce(jsonResponse(refreshedBody()))
+      .mockResolvedValueOnce(jsonResponse(ME_BODY));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await GET(
+      requestWithCookies({
+        [ACCESS_TOKEN_COOKIE]: "access",
+        [REFRESH_TOKEN_COOKIE]: "refresh",
+      }),
+      params(["members", "me"]),
+    );
+
+    expect(response.status).toBe(200);
+    expect(callsTo(fetchMock, API_REFRESH_URL)).toHaveLength(1);
+  });
+});
