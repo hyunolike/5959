@@ -11,6 +11,10 @@
  * - `Authorization`, `X-Ogu-Bff-Key` 헤더
  * - `password` 필드(객체든, JSON 문자열이든, 몇 겹 중첩되어 있든)
  * - OAuth 콜백 URL의 `code`, `state` 쿼리 파라미터
+ * - `event.user` 전체(SDK의 `dataCollection.userInfo` 기본값이 `true`라
+ *   `event.user.ip_address` 등이 자동으로 채워질 수 있다 — Sentry.init
+ *   쪽에서 `userInfo: false`로 막아도, 이중 방어로 여기서도 지운다)
+ * - `request.env`(런타임이 채워 넣는, 감사되지 않은 서버 환경값)
  *
  * 위 항목은 이벤트의 `request`, `breadcrumbs[].data`, `extra`, `contexts`
  * 어디에 있든 지운다.
@@ -40,6 +44,7 @@ export interface ScrubbableRequestData {
   cookies?: Record<string, string>;
   data?: unknown;
   query_string?: ScrubbableQueryString;
+  env?: Record<string, string>;
 }
 
 export interface ScrubbableBreadcrumb {
@@ -53,9 +58,10 @@ export interface ScrubbableEvent {
   breadcrumbs?: ScrubbableBreadcrumb[];
   extra?: Record<string, unknown>;
   contexts?: Record<string, unknown>;
+  user?: Record<string, unknown>;
 }
 
-/** 이벤트 전체(요청, breadcrumbs, extra, contexts)를 스크러빙한다. */
+/** 이벤트 전체(요청, breadcrumbs, extra, contexts, user)를 스크러빙한다. */
 export function scrubEvent(event: ScrubbableEvent): ScrubbableEvent {
   const clone = structuredClone(event);
 
@@ -72,6 +78,10 @@ export function scrubEvent(event: ScrubbableEvent): ScrubbableEvent {
   }
   if (clone.contexts) {
     clone.contexts = deepScrub(clone.contexts) as Record<string, unknown>;
+  }
+  if ("user" in clone) {
+    // ip_address, email, username, id 등 뭐가 들어있든 통째로 지운다.
+    delete clone.user;
   }
 
   return clone;
@@ -116,6 +126,10 @@ function scrubRequestData(
   }
   if (result.data !== undefined) {
     result.data = deepScrub(result.data);
+  }
+  if ("env" in result) {
+    // 감사되지 않은 서버 환경값 통과 필드. REMOTE_ADDR 등 IP가 들어올 수 있다.
+    delete result.env;
   }
 
   return result;

@@ -34,6 +34,34 @@ describe("scrubEvent", () => {
     });
   });
 
+  it("US5-AC2 event.user를 통째로 지운다(ip_address 등 기본 수집 방지)", () => {
+    const event: ScrubbableEvent = {
+      user: {
+        id: "1",
+        ip_address: "203.0.113.1",
+        email: "a@example.com",
+        username: "감자",
+      },
+    };
+
+    const scrubbed = scrubEvent(event);
+
+    expect(scrubbed.user).toBeUndefined();
+  });
+
+  it("US5-AC2 요청의 env 필드(서버 환경 변수 통과값)를 지운다", () => {
+    const event: ScrubbableEvent = {
+      request: {
+        url: "https://ogu.example/",
+        env: { REMOTE_ADDR: "203.0.113.1" },
+      },
+    };
+
+    const scrubbed = scrubEvent(event);
+
+    expect(scrubbed.request?.env).toBeUndefined();
+  });
+
   it("US5-AC2 요청의 cookies 필드를 지운다", () => {
     const event: ScrubbableEvent = {
       request: {

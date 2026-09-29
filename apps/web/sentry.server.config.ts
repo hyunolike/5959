@@ -13,6 +13,16 @@ if (env.NEXT_PUBLIC_SENTRY_DSN) {
     dsn: env.NEXT_PUBLIC_SENTRY_DSN,
     // 무료 플랜 한도를 지키기 위해 오류만 수집하고 성능 추적은 끈다.
     tracesSampleRate: 0,
+    // SDK가 기본으로 모으는 사용자 정보/쿠키/헤더/요청 본문/쿼리 파라미터를
+    // 전부 끈다(과거 SDK의 `sendDefaultPii: false`에 해당 — v11부터는
+    // `dataCollection`으로 바뀌었고, 각 필드 기본값이 전부 `true`다).
+    dataCollection: {
+      userInfo: false,
+      cookies: false,
+      httpHeaders: false,
+      httpBodies: [],
+      urlQueryParams: false,
+    },
     beforeSend: (event) => scrubEvent(event) as unknown as Sentry.ErrorEvent,
     beforeBreadcrumb: (breadcrumb) =>
       scrubBreadcrumb(breadcrumb) as unknown as Sentry.Breadcrumb,
