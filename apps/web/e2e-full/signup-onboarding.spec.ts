@@ -102,3 +102,39 @@ test("US1-AC7 온보딩을 마치지 않고 /home에 가면 /onboarding으로 �
   await page.waitForURL("**/onboarding");
   await expect(page.getByRole("heading")).toContainText("프로필을 알려주세요");
 });
+
+test("US1 Independent Test 온보딩을 마친 뒤 브라우저를 닫았다 다시 열어도 /home에 남는다(세션 쿠키만 사라지고 ogu_ob는 살아남는다)", async ({
+  page,
+  browser,
+}) => {
+  const nickname = uniqueNickname("restart");
+  await signup(page, uniqueEmail("restart"));
+  await completeOnboarding(page, nickname);
+  await page.waitForURL("**/home");
+
+  // "브라우저를 닫았다 다시 열기"를 흉내 낸다: storageState()는 세션 쿠키(Max-Age
+  // 없음)도 그대로 옮기므로, 실제 재시작처럼 Max-Age(expires)가 있는 쿠키만
+  // 남기고 나머지는 버린다. ogu_ob에 Max-Age가 없던 버그가 있었다면 이 필터에서
+  // 사라져 아래 /home 방문이 /onboarding으로 되돌아갔을 것이다.
+  const state = await page.context().storageState();
+  const persistentOnly = {
+    ...state,
+    cookies: state.cookies.filter((cookie) => cookie.expires !== -1),
+  };
+  expect(
+    persistentOnly.cookies.find((cookie) => cookie.name === "__Host-ogu_ob"),
+  ).toBeDefined();
+  await page.context().close();
+
+  const restartedContext = await browser.newContext({
+    storageState: persistentOnly,
+  });
+  const restartedPage = await restartedContext.newPage();
+  await restartedPage.goto("/home");
+
+  await expect(restartedPage).toHaveURL(/\/home$/);
+  await expect(restartedPage.getByRole("heading")).toContainText(
+    `${nickname}님`,
+  );
+  await restartedContext.close();
+});

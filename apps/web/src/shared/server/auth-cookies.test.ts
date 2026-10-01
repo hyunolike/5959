@@ -117,6 +117,25 @@ describe("setOnboardedCookie", () => {
     expect(cookie?.sameSite).toBe("lax");
     expect(cookie?.path).toBe("/");
   });
+
+  it("refreshTokenExpiresAt을 주면 그 시각까지 남은 초를 Max-Age로 설정한다(브라우저를 재시작해도 유지)", () => {
+    const response = NextResponse.json({});
+
+    setOnboardedCookie(response, futureIso(3600));
+
+    const cookie = response.cookies.get(ONBOARDED_COOKIE);
+    expect(cookie?.maxAge).toBeGreaterThan(3595);
+    expect(cookie?.maxAge).toBeLessThanOrEqual(3600);
+  });
+
+  it("refreshTokenExpiresAt을 주지 않으면 Max-Age를 30일(절대 세션 한도)로 설정한다", () => {
+    const response = NextResponse.json({});
+
+    setOnboardedCookie(response);
+
+    const cookie = response.cookies.get(ONBOARDED_COOKIE);
+    expect(cookie?.maxAge).toBe(30 * 24 * 60 * 60);
+  });
 });
 
 describe("clearOnboardedCookie", () => {

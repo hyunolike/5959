@@ -197,6 +197,35 @@ describe("PUT /api/auth/onboarding", () => {
     expect(response.cookies.get(ONBOARDED_COOKIE)).toBeUndefined();
   });
 
+  it("이미 온보딩한 회원이 다시 요청하면(409 ALREADY_ONBOARDED) 오류 봉투는 그대로 전달하되 ogu_ob는 설정한다(폼이 /home으로 보내도 되돌아오지 않게)", async () => {
+    const errorBody = {
+      success: false,
+      data: null,
+      error: {
+        code: "ALREADY_ONBOARDED",
+        message: "이미 온보딩을 완료했습니다.",
+      },
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(jsonResponse(errorBody, 409)),
+    );
+
+    const response = await PUT(
+      onboardingRequest({
+        nickname: "오구",
+        jobRole: "DEVELOPMENT",
+        careerYear: "YEAR_1",
+      }),
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual(errorBody);
+    const cookie = response.cookies.get(ONBOARDED_COOKIE);
+    expect(cookie?.value).toBe("1");
+    expect(cookie?.maxAge).toBe(30 * 24 * 60 * 60);
+  });
+
   it("US1-AC6 닉네임 형식이 잘못되면 400 오류 봉투를 그대로 전달한다", async () => {
     const errorBody = {
       success: false,

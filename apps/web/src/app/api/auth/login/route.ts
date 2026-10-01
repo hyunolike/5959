@@ -79,7 +79,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   setSessionCookies(response, tokens);
   if (member.onboarded) {
-    setOnboardedCookie(response);
+    setOnboardedCookie(response, tokens.refreshTokenExpiresAt);
   } else {
     clearOnboardedCookie(response);
   }

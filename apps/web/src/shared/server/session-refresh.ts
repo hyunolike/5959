@@ -70,7 +70,7 @@ export function applyRefreshedSession(
 ): void {
   setSessionCookies(response, refreshed.tokens);
   if (refreshed.onboarded) {
-    setOnboardedCookie(response);
+    setOnboardedCookie(response, refreshed.tokens.refreshTokenExpiresAt);
   } else {
     clearOnboardedCookie(response);
   }

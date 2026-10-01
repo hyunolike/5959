@@ -98,7 +98,13 @@ function onboardingResponse(
     );
   }
   if (!apiBody.success) {
-    return withRefreshed(NextResponse.json(apiBody, { status }));
+    const errorResponse = withRefreshed(NextResponse.json(apiBody, { status }));
+    if (apiBody.error.code === "ALREADY_ONBOARDED") {
+      // 폼은 이 오류를 받아도 /home으로 이동한다(이미 끝난 온보딩이니까).
+      // ogu_ob가 없으면 라우트 가드가 그 이동을 다시 /onboarding으로 되돌린다.
+      setOnboardedCookie(errorResponse);
+    }
+    return errorResponse;
   }
 
   const { member, accessToken: newAccessToken } = apiBody.data;

@@ -12,6 +12,8 @@ export const REFRESH_TOKEN_COOKIE = "__Host-ogu_rt";
 export const ONBOARDED_COOKIE = "__Host-ogu_ob";
 
 const ACCESS_TOKEN_MAX_AGE_SECONDS = 15 * 60;
+/** 절대 세션 한도(FR-010, research). refresh 만료 시각을 모를 때 `ogu_ob`의 Max-Age로 쓴다. */
+const ABSOLUTE_SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 
 const BASE_COOKIE_OPTIONS = {
   httpOnly: true,
@@ -67,9 +69,25 @@ export function setSessionCookies(
   }
 }
 
-/** 온보딩을 마쳤다는 표시 쿠키를 심는다. */
-export function setOnboardedCookie(response: NextResponse): void {
-  response.cookies.set(ONBOARDED_COOKIE, "1", BASE_COOKIE_OPTIONS);
+/**
+ * 온보딩을 마쳤다는 표시 쿠키를 심는다. `ogu_rt`(최대 30일)보다 먼저 사라지면
+ * 온보딩을 마친 사용자가 브라우저를 재시작한 뒤 다시 /onboarding으로 밀려난다
+ * (가드는 `ogu_rt`도 함께 확인하므로, 로그아웃 뒤에도 `ogu_ob`만 살아남는 건
+ * 해롭지 않다). `refreshTokenExpiresAt`을 알 때는 그 시각까지, 모를 때는(예:
+ * 온보딩 완료 응답에는 refresh 토큰이 없다) 절대 세션 한도인 30일로 맞춘다.
+ */
+export function setOnboardedCookie(
+  response: NextResponse,
+  refreshTokenExpiresAt?: string,
+): void {
+  const maxAge =
+    refreshTokenExpiresAt !== undefined
+      ? refreshTokenMaxAgeSeconds(refreshTokenExpiresAt)
+      : ABSOLUTE_SESSION_MAX_AGE_SECONDS;
+  response.cookies.set(ONBOARDED_COOKIE, "1", {
+    ...BASE_COOKIE_OPTIONS,
+    maxAge,
+  });
 }
 
 /** 온보딩 표시 쿠키만 지운다(예: 가입 직후 — 새 세션은 아직 온보딩 전이다). */

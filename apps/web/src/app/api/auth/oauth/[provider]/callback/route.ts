@@ -124,7 +124,7 @@ export async function GET(
   );
   setSessionCookies(response, tokens);
   if (member.onboarded) {
-    setOnboardedCookie(response);
+    setOnboardedCookie(response, tokens.refreshTokenExpiresAt);
   } else {
     clearOnboardedCookie(response);
   }
