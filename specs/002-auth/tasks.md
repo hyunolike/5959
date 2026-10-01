@@ -207,7 +207,7 @@ description: "Task list for 002-auth (인증과 회원)"
 - [x] T068 [P] apps/api/AGENTS.md에 `member` 모듈의 공개 타입, 보안 설정 위치, 온보딩 가드 허용 목록을 추가하고, apps/web/docs/ARCHITECTURE.md의 BFF 절에 인증 라우트, 쿠키, 라우트 가드를 반영한다
 - [x] T069 [P] docs/architecture/overview.md 5.1 모듈 표의 `member` 행과 6.3 인증 절을 구현과 맞춘다(Postgres 기반 로그인 제한, refresh 교체와 30초 유예)
 - [x] T070 specs/002-auth/quickstart.md의 "수동 검증 시나리오"를 로컬에서 끝까지 실행하고, 다른 결과가 나오면 문서나 코드를 고친다. 로그인 API 100회와 보호 API 100회(세션 확인 포함, 미포함 비교)의 p95를 재서 plan.md 성능 목표와 비교하고 결과를 quickstart.md에 표로 남긴다
-- [ ] T071 `/speckit-analyze`로 spec, plan, tasks의 일관성을 확인하고 PR을 연다(PR 본문에 스펙 링크와 인수 조건 체크리스트, quickstart의 운영 준비 항목)
+- [x] T071 `/speckit-analyze`로 spec, plan, tasks의 일관성을 확인하고 PR을 연다(PR 본문에 스펙 링크와 인수 조건 체크리스트, quickstart의 운영 준비 항목)
 
 ---
 
