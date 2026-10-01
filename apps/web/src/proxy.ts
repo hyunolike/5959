@@ -28,5 +28,7 @@ export function proxy(request: NextRequest): NextResponse {
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  // `api`가 아니라 `api/`로 막는다 — 문자열 접두어 비교라 `api`만 쓰면 `/apiary`처럼
+  // "api"로 시작할 뿐인 일반 페이지도 매처에서 빠져 가드를 안 거치게 된다.
+  matcher: ["/((?!api/|_next/static|_next/image|favicon.ico).*)"],
 };
