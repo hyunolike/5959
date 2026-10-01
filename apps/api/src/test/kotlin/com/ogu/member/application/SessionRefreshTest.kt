@@ -239,9 +239,17 @@ class SessionRefreshTest {
         }
     }
 
+    /**
+     * 세션 행 잠금을 쥔 테스트 트랜잭션 안에서 refresh 요청 [expected]건이 그 잠금을 기다릴 때까지 기다린다.
+     *
+     * PostgreSQL은 한 트랜잭션 안에서 `pg_stat_activity`의 `state`와 `query`를 처음 읽은 순간의 스냅숏으로 고정하고
+     * `wait_event`만 매번 새로 읽는다. 첫 조회 때 아직 SQL을 보내지 않은 요청은 트랜잭션이 끝날 때까지 `query`가 빈
+     * 문자열로 보여 조건에 걸리지 않는다. 그래서 조회할 때마다 `pg_stat_clear_snapshot()`으로 스냅숏을 버린다.
+     */
     private fun awaitLockWaiters(expected: Int) {
         val deadline = System.nanoTime() + Duration.ofSeconds(10).toNanos()
         while (System.nanoTime() < deadline) {
+            jdbcTemplate.queryForList("select pg_stat_clear_snapshot()")
             val waiting =
                 jdbcTemplate.queryForObject(
                     """
@@ -253,7 +261,15 @@ class SessionRefreshTest {
             if (waiting == expected) return
             Thread.sleep(LOCK_POLL_MILLIS)
         }
-        error("refresh 요청 ${expected}건이 세션 행 잠금을 기다리지 않았다")
+        jdbcTemplate.queryForList("select pg_stat_clear_snapshot()")
+        val activity =
+            jdbcTemplate.queryForList(
+                """
+                select pid, state, wait_event_type, wait_event, left(query, 60) as query from pg_stat_activity
+                where datname = current_database() and pid <> pg_backend_pid()
+                """.trimIndent(),
+            )
+        error("refresh 요청 ${expected}건이 10초 안에 세션 행 잠금을 기다리지 않았다. pg_stat_activity: $activity")
     }
 
     private fun assertSessionExpired(action: () -> Unit) {
