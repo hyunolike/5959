@@ -8,7 +8,10 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.test.context.TestConfiguration
+import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
+import org.springframework.context.annotation.Primary
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.jdbc.core.JdbcTemplate
@@ -26,13 +29,19 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.context.WebApplicationContext
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.json.JsonMapper
+import java.time.Clock
+import java.time.Duration
+import java.time.Instant
+import java.time.ZoneId
+import java.time.ZoneOffset
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 /**
  * T042: `POST /api/v1/auth/login` (US2-AC1~AC4, FR-003, FR-004)
  */
 @SpringBootTest
-@Import(TestcontainersConfiguration::class)
+@Import(TestcontainersConfiguration::class, LoginApiTests.ClockOverride::class)
 class LoginApiTests {
     @Autowired
     lateinit var context: WebApplicationContext
@@ -45,6 +54,9 @@ class LoginApiTests {
 
     @Autowired
     lateinit var authProperties: AuthProperties
+
+    @Autowired
+    lateinit var clock: MutableClock
 
     private val jsonMapper = JsonMapper.builder().build()
 
@@ -185,6 +197,10 @@ class LoginApiTests {
     fun `429 응답에 Retry-After 헤더와 retryAfterSeconds가 있고 값이 같다`() {
         val email = uniqueEmail()
         val ip = uniqueIp()
+        // DB는 timestamptz(마이크로초)까지만 담아 반올림한다. 시계가 마이크로초보다 더 정밀한 값을 주는
+        // 환경(CI)에서 이 끝자리를 자르지 않고 차단 시각을 계산하면, 저장했다가 돌려받은 값이 올림으로
+        // 최대 1마이크로초 밀려 올라가 정확히 15분이어야 할 남은 시간이 15분 1초로 보일 수 있었다(LoginThrottle 참고).
+        clock.advance(Duration.ofNanos(789))
         repeat(5) { login(email, "wrongpass123", clientIp = ip) }
 
         val response =
@@ -202,7 +218,7 @@ class LoginApiTests {
                 .get("error")
                 .get("retryAfterSeconds")
                 .asInt()
-        assertThat(retryAfter).isEqualTo(body).isBetween(FIFTEEN_MINUTES - 5, FIFTEEN_MINUTES)
+        assertThat(retryAfter).isEqualTo(body).isEqualTo(FIFTEEN_MINUTES)
     }
 
     @Test
@@ -352,6 +368,30 @@ class LoginApiTests {
     private fun uniqueIp(): String {
         val hex = UUID.randomUUID().toString()
         return "2001:db8::${hex.take(4)}:${hex.substring(4, 8)}"
+    }
+
+    /** 테스트가 시간을 앞으로 옮길 수 있는 시계. [SessionRefreshTest]의 패턴을 그대로 따른다. */
+    class MutableClock(
+        @Volatile private var now: Instant,
+    ) : Clock() {
+        fun advance(duration: Duration) {
+            now = now.plus(duration)
+        }
+
+        override fun getZone(): ZoneId = ZoneOffset.UTC
+
+        override fun withZone(zone: ZoneId?): Clock = this
+
+        override fun instant(): Instant = now
+    }
+
+    /** 이 테스트의 컨텍스트에서만 기본 [Clock]을 대신해, 429 응답의 남은 시간 계산이 실제 시계 흐름(CI 지연)에
+     * 휘둘리지 않고 결정적이게 한다. */
+    @TestConfiguration(proxyBeanMethods = false)
+    class ClockOverride {
+        @Bean
+        @Primary
+        fun mutableClock(): MutableClock = MutableClock(Instant.now().truncatedTo(ChronoUnit.SECONDS))
     }
 
     companion object {

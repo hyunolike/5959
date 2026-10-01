@@ -8,6 +8,7 @@ import java.security.MessageDigest
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.HexFormat
 
 /**
@@ -39,7 +40,7 @@ class LoginThrottle(
         clientIp: String,
         email: String,
     ) {
-        val now = clock.instant()
+        val now = now()
         val ipEmail = reserve(ipEmailKey(clientIp, email), IP_EMAIL, now)
         val emailOnly =
             if (ipEmail.isBlocked(now)) {
@@ -64,10 +65,22 @@ class LoginThrottle(
         clientIp: String,
         email: String,
     ) {
-        val now = clock.instant()
+        val now = now()
         repository.delete(ipEmailKey(clientIp, email))
         repository.decrementIfWindowCurrent(emailKey(email), windowExpiredBefore = now.minus(EMAIL.window))
     }
+
+    /**
+     * `login_attempt.blocked_until`은 Postgres `timestamptz`라 마이크로초까지만 담고, 그보다 더 정밀한 값은
+     * 반올림해서 저장한다(research: 버그 재현 R6-bis). [Clock]이 마이크로초보다 더 정밀한 시각을 주는 환경(CI의
+     * Linux 등)에서 이걸 그대로 `blockedUntil = now.plus(block)` 계산에 쓰면, DB에 썼다가 돌려받은
+     * `blocked_until`이 원래 값보다 최대 1마이크로초 밀려 올라갈 수 있다. 그러면 [secondsUntil]의
+     * `Duration.between(now, blockedUntil)`에 0이 아닌 나노초가 남아, 정확히 창 길이(예: 900초)여야 할 남은
+     * 시간에 올림 규칙이 불필요하게 1초를 더해 버린다(간헐적으로 `Retry-After`/`retryAfterSeconds`가 901처럼
+     * 나오는 원인). `now`를 DB 저장 정밀도(마이크로초)로 미리 잘라 두면 `blockedUntil`도 항상 마이크로초에
+     * 딱 맞아 왕복 과정에서 반올림이 전혀 일어나지 않는다.
+     */
+    private fun now(): Instant = clock.instant().truncatedTo(ChronoUnit.MICROS)
 
     private fun reserve(
         key: String,

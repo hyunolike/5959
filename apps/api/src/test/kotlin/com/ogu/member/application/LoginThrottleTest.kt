@@ -183,6 +183,19 @@ class LoginThrottleTest {
     }
 
     @Test
+    fun `시계가 마이크로초보다 더 정밀해도 차단 직후 남은 시간은 정확히 창 길이다`() {
+        // DB의 timestamptz는 마이크로초까지만 담아 반올림한다. now를 마이크로초로 자르지 않고 그대로 써서
+        // blocked_until을 만들면, 저장했다가 읽어온 값이 올림으로 최대 1마이크로초 밀려 올라갈 수 있다. 그러면
+        // Duration.between(now, blockedUntil)의 나노초가 0이 아니게 되어 올림 규칙이 불필요하게 1초를 더해
+        // 정확히 15분이어야 할 남은 시간이 15분 1초로 보인다(간헐적 CI 실패의 원인).
+        clock.advance(Duration.ofNanos(789))
+
+        repeat(5) { throttle.reserve(ip, email) }
+
+        assertThat(throttledSeconds(ip, email)).isEqualTo(FIFTEEN_MINUTES)
+    }
+
+    @Test
     fun `동시에 들어온 시도 10건은 정확히 10으로 센다`() {
         val results = runConcurrently(10) { throttle.reserve("198.51.100.$it", email) }
 
