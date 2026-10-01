@@ -24,8 +24,14 @@ class ProdAuthSettingsCheck(
         check(properties.jwt.secret != LOCAL_DEV_JWT_SECRET) {
             "prod 프로필에서 ogu.auth.jwt.secret(JWT_SECRET)에 로컬 개발용 값을 쓸 수 없습니다."
         }
+        check(properties.jwt.secret != E2E_JWT_SECRET) {
+            "prod 프로필에서 ogu.auth.jwt.secret(JWT_SECRET)에 infra/compose.e2e.yaml의 고정 값을 쓸 수 없습니다."
+        }
         check(properties.bffKey.isNotBlank()) {
             "prod 프로필에서는 ogu.auth.bff-key(OGU_BFF_KEY)를 설정해야 합니다."
+        }
+        check(properties.bffKey != LOCAL_DEV_BFF_KEY) {
+            "prod 프로필에서 ogu.auth.bff-key(OGU_BFF_KEY)에 로컬 개발용 값을 쓸 수 없습니다."
         }
         checkOAuth(properties.oauth)
     }
@@ -50,5 +56,14 @@ class ProdAuthSettingsCheck(
     companion object {
         /** application-local.yml에 커밋된 값. ProdAuthSettingsCheckTest가 두 값이 같은지 확인한다. */
         const val LOCAL_DEV_JWT_SECRET = "local-dev-only-jwt-secret-do-not-use-in-production-0123456789"
+
+        /** application-local.yml에 커밋된 값. ProdAuthSettingsCheckTest가 두 값이 같은지 확인한다. */
+        const val LOCAL_DEV_BFF_KEY = "local-bff-key"
+
+        /**
+         * infra/compose.e2e.yaml에 커밋된 e2e 전용 고정 값. 누구나 저장소에서 읽을 수 있으므로
+         * prod에서 쓰면 access 토큰을 위조할 수 있다. ProdAuthSettingsCheckTest가 두 값이 같은지 확인한다.
+         */
+        const val E2E_JWT_SECRET = "e2e-fixed-jwt-secret-for-playwright-full-tests-0123456789"
     }
 }

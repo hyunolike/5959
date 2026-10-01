@@ -7,6 +7,7 @@ import org.junit.jupiter.params.provider.ValueSource
 import org.springframework.beans.factory.config.YamlPropertiesFactoryBean
 import org.springframework.boot.test.context.runner.ApplicationContextRunner
 import org.springframework.core.io.ClassPathResource
+import org.springframework.core.io.FileSystemResource
 
 class ProdAuthSettingsCheckTest {
     private val runner =
@@ -33,6 +34,28 @@ class ProdAuthSettingsCheckTest {
             .run { context ->
                 assertThat(context).hasFailed()
                 assertThat(context.startupFailure).rootCause().hasMessageContaining("ogu.auth.jwt.secret")
+            }
+    }
+
+    @Test
+    fun `prod 프로필에서 JWT 비밀키가 e2e 프로필의 고정 값이면 기동하지 않는다`() {
+        runner
+            .withInitializer { it.environment.setActiveProfiles("prod") }
+            .withPropertyValues("ogu.auth.jwt.secret=$E2E_SECRET", "ogu.auth.bff-key=prod-bff-key")
+            .run { context ->
+                assertThat(context).hasFailed()
+                assertThat(context.startupFailure).rootCause().hasMessageContaining("ogu.auth.jwt.secret")
+            }
+    }
+
+    @Test
+    fun `prod 프로필에서 BFF 키가 로컬 개발용 값(local-bff-key)이면 기동하지 않는다`() {
+        runner
+            .withInitializer { it.environment.setActiveProfiles("prod") }
+            .withPropertyValues("ogu.auth.jwt.secret=$PROD_SECRET", "ogu.auth.bff-key=local-bff-key")
+            .run { context ->
+                assertThat(context).hasFailed()
+                assertThat(context.startupFailure).rootCause().hasMessageContaining("ogu.auth.bff-key")
             }
     }
 
@@ -120,11 +143,35 @@ class ProdAuthSettingsCheckTest {
         assertThat(ProdAuthSettingsCheck.LOCAL_DEV_JWT_SECRET).isEqualTo(localYaml.getProperty("ogu.auth.jwt.secret"))
     }
 
+    @Test
+    fun `검사하는 로컬 개발용 BFF 키는 application-local yml의 값과 같다`() {
+        val localYaml =
+            YamlPropertiesFactoryBean()
+                .apply { setResources(ClassPathResource("application-local.yml")) }
+                .getObject()!!
+
+        assertThat(ProdAuthSettingsCheck.LOCAL_DEV_BFF_KEY).isEqualTo(localYaml.getProperty("ogu.auth.bff-key"))
+    }
+
+    @Test
+    fun `검사하는 e2e 고정 JWT 비밀키는 infra compose e2e yaml의 값과 같다`() {
+        // infra/compose.e2e.yaml은 이 모듈(apps/api) 밖, 저장소 루트 아래에 있어
+        // classpath 리소스가 아니다 — Gradle test 작업 디렉터리(apps/api)를 기준으로 읽는다.
+        val composeYaml =
+            YamlPropertiesFactoryBean()
+                .apply { setResources(FileSystemResource("../../infra/compose.e2e.yaml")) }
+                .getObject()!!
+
+        assertThat(ProdAuthSettingsCheck.E2E_JWT_SECRET)
+            .isEqualTo(composeYaml.getProperty("services.api.environment.JWT_SECRET"))
+    }
+
     companion object {
         private const val LOCAL_DEV_SECRET = "local-dev-only-jwt-secret-do-not-use-in-production-0123456789"
         private const val KAKAO_CALLBACK = "https://ogu.example.com/api/auth/oauth/kakao/callback"
         private const val GOOGLE_CALLBACK = "https://ogu.example.com/api/auth/oauth/google/callback"
         private const val INSECURE_GOOGLE_CALLBACK = "http://ogu.example.com/api/auth/oauth/google/callback"
         private const val PROD_SECRET = "prod-like-jwt-secret-0123456789-0123456789-abcdef"
+        private const val E2E_SECRET = "e2e-fixed-jwt-secret-for-playwright-full-tests-0123456789"
     }
 }
