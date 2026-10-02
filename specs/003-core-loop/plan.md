@@ -75,7 +75,7 @@ specs/003-core-loop/
 ├── data-model.md                # 테이블 7개, 상태 전이, HP 반영 규칙, 이벤트
 ├── quickstart.md                # 수동 시나리오 12개, 동시성, 운영 준비
 ├── contracts/
-│   └── core-loop.openapi.yaml   # 이번 추가분(경로 8개, 연산 14개). 구현 때 루트 contracts/openapi.yaml에 합친다
+│   └── core-loop.openapi.yaml   # 이번 추가분(경로 9개, 연산 14개). 구현 때 루트 contracts/openapi.yaml에 합친다
 ├── checklists/requirements.md
 └── tasks.md                     # /speckit-tasks
 ```
