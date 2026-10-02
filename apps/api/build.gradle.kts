@@ -23,6 +23,8 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
+    implementation("org.springframework.boot:spring-boot-starter-security")
+    implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
     implementation("tools.jackson.module:jackson-module-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.springframework.modulith:spring-modulith-starter-core")
@@ -37,12 +39,19 @@ dependencies {
     developmentOnly("org.springframework.boot:spring-boot-docker-compose")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    // Spring Boot 4.1부터 TestRestTemplate이 별도 모듈로 분리됨(ContractTests가 실제 HTTP로 /v3/api-docs를 읽을 때 씀)
+    testImplementation("org.springframework.boot:spring-boot-resttestclient")
+    testImplementation("org.springframework.boot:spring-boot-restclient")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.springframework.modulith:spring-modulith-starter-test")
     testImplementation("org.springframework.modulith:spring-modulith-docs")
     testImplementation("org.testcontainers:testcontainers-postgresql")
     testImplementation("org.testcontainers:testcontainers-junit-jupiter")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
+    testImplementation("org.springframework.security:spring-security-test")
+    testImplementation("io.swagger.parser.v3:swagger-parser:2.1.48")
+    // swagger-parser가 끌어오는 io.swagger:swagger-core(1.x, v2 변환용)는 JDK에서 제거된 JAXB를 참조한다
+    testRuntimeOnly("javax.xml.bind:jaxb-api:2.3.1")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

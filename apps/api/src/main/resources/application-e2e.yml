@@ -1,0 +1,31 @@
+# infra/compose.e2e.yaml가 SPRING_PROFILES_ACTIVE=e2e로 띄우는 API 컨테이너 설정.
+# JWT_SECRET, OGU_BFF_KEY는 application.yml의 공용 플레이스홀더(${JWT_SECRET}, ${OGU_BFF_KEY:})를 그대로 쓰고,
+# 값은 compose.e2e.yaml이 고정 값을 env로 넣는다(prod에서 비밀 값을 .env로 넣는 것과 같은 자리, e2e는 값 자체가 커밋된 고정값).
+# datasource는 prod와 같은 방식으로 컨테이너 네트워크 안의 Postgres 주소를 env로 받는다(로컬 profile처럼
+# spring-boot-docker-compose 자동 감지에 기대지 않는다. 이미지가 이미 compose 네트워크 안에서 뜨기 때문).
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+ogu:
+  auth:
+    oauth:
+      allowed-redirect-uris: http://localhost:3000/api/auth/oauth/kakao/callback,http://localhost:3000/api/auth/oauth/google/callback
+      # e2e는 FakeOAuthProviderClient가 제공자를 대신하므로 실제 키가 필요 없다. 바인딩만 되게 고정 값을 둔다.
+      kakao:
+        client-id: e2e-unused
+        client-secret: e2e-unused
+      google:
+        client-id: e2e-unused
+        client-secret: e2e-unused

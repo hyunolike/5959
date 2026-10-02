@@ -81,6 +81,65 @@ reads the server-only `API_ORIGIN` env var (`shared/config`, validated with
 `shared/api`'s `fetchApiHealth(env.API_ORIGIN)` and returns the result as
 JSON, so the browser only ever talks to its own origin.
 
+### Auth routes
+
+Dedicated route handlers under `src/app/api/auth/**` own the token/cookie
+translation (`src/app/api/auth/signup`, `login`, `logout`, `onboarding`,
+`oauth/[provider]`, `oauth/[provider]/callback`). Each one calls the API,
+sets or clears cookies via `shared/server/auth-cookies.ts`, and strips
+`accessToken`/`refreshToken` out of the JSON body before it reaches the
+browser. The full request/response shape per route is in
+[`contracts/bff-routes.md`](../../../specs/002-auth/contracts/bff-routes.md).
+
+The general-purpose proxy, `src/app/api/[...path]/route.ts`, forwards
+everything else to `API_ORIGIN` as `Authorization: Bearer <ogu_at>` plus
+`X-Ogu-Bff-Key` and `X-Ogu-Client-Ip`. It refuses to forward two path
+shapes so token-bearing responses never leak to the browser: any path whose
+first segment is `auth` (`/api/auth/**`) and `/api/members/me/onboarding`
+— both are served only by the dedicated routes above, which already scrub
+tokens from the body. It also validates every path segment (rejects empty,
+`.`, `..`, or segments containing `/`, `\`, `?`, `#`, including after a
+second percent-decode) before re-encoding and calling `API_ORIGIN`, to stop
+path-traversal or double-encoded-slash tricks from reaching an unintended
+API path. On a session-only `401` (`UNAUTHORIZED`, `SESSION_EXPIRED`) it
+calls refresh once via `shared/server/session-refresh.ts`
+(`callWithSessionRefresh`) and retries the original request; other `401`
+codes pass through untouched. `PUT /api/auth/onboarding` shares the same
+refresh helper.
+
+### Cookies
+
+Session state lives entirely in three `httpOnly`, `Secure`, `SameSite=Lax`
+cookies with the `__Host-` prefix (`shared/server/auth-cookies.ts`), so
+subdomains cannot shadow them and client-side scripts cannot read them
+(US4-AC6):
+
+| Cookie          | Holds           | Notes                                                                                                                       |
+| --------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `__Host-ogu_at` | access token    | 15-minute max-age                                                                                                           |
+| `__Host-ogu_rt` | refresh token   | max-age tracks the session's absolute expiry; untouched when a refresh response's `refreshToken` is `null` (rotation grace) |
+| `__Host-ogu_ob` | onboarding flag | set/cleared alongside the other two as onboarding state changes                                                             |
+
+The OAuth start route also sets a short-lived (10 min), HMAC-signed
+`__Host-ogu_oauth` cookie carrying `state`, PKCE `code_verifier` (Google
+only), and the sanitized `next` path; `shared/server/oauth-state.ts` verifies
+the signature on callback. The signing key comes from `OAUTH_STATE_SECRET`,
+which `shared/config/env.ts` requires whenever `VERCEL_ENV` is set (any
+Vercel deployment, previews included) or `APP_ENV=production` — a
+Vercel/production boot without it fails validation rather than falling back
+to the development-only secret in `shared/server/oauth-secret.ts`.
+
+### Route guards
+
+`src/shared/server/route-guard.ts` holds the pure decision table
+(`resolveRouteGuardAction`) that the routing layer (`proxy.ts`) applies
+before a protected page renders, so an unauthenticated visit to a protected
+path never flashes page content (US4-AC4): `/`, `/onboarding`, `/login`,
+`/signup`, and the protected prefixes `/home`, `/write`, `/my`, `/settings`
+each redirect based on whether `ogu_rt` and `ogu_ob` are present. A
+validated `next` query param (via `sanitizeNextPath`) sends the visitor back
+to where they started after login (US4-AC5).
+
 ## Recent-practice choices worth calling out
 
 - **Next.js 16 / React 19**, App Router, Turbopack builds.

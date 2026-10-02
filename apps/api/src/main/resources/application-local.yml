@@ -1,0 +1,13 @@
+ogu:
+  auth:
+    jwt:
+      secret: local-dev-only-jwt-secret-do-not-use-in-production-0123456789
+    bff-key: local-bff-key
+    oauth:
+      # 실제 키는 env로 넣는다. 없으면 제공자가 거절하는 자리표시 값으로 기동만 되게 한다.
+      kakao:
+        client-id: ${KAKAO_CLIENT_ID:local-kakao-client-id}
+        client-secret: ${KAKAO_CLIENT_SECRET:local-kakao-client-secret}
+      google:
+        client-id: ${GOOGLE_CLIENT_ID:local-google-client-id}
+        client-secret: ${GOOGLE_CLIENT_SECRET:local-google-client-secret}
