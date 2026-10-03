@@ -5,6 +5,18 @@ import { expect, test, type Page } from "@playwright/test";
 // 직군과 경력 조합으로 거른 피드에서 한다. 글은 바로 분석되는 머리말(`[감정:강도]`)로 쓴다.
 // `[실패]` 글은 24시간 동안 재시도 대기열에 남아 다른 스펙(write-post US1-AC3)의 재시도를 늦춘다.
 
+/**
+ * 홈의 두 조회(내 프로필, 피드)가 끝날 때까지 기다린다. 끝나기 전에 쿠키를 지우면 늦게 나간
+ * 조회가 401을 받아 로그인 화면으로 튕기고, 다음 page.goto가 ERR_ABORTED로 끊긴다.
+ */
+async function waitForHomeLoaded(page: Page) {
+  await expect(page.getByRole("heading")).toContainText("님, 반가워요");
+  const feed = page.getByRole("region", { name: "피드" });
+  await expect(
+    feed.getByRole("list").or(feed.getByText(/고민이 없어요/)),
+  ).toBeVisible();
+}
+
 const APP_ORIGIN = "http://localhost:3000";
 
 function uniqueEmail(prefix: string): string {
@@ -34,8 +46,7 @@ async function onboardNewMember(
   await page.getByLabel("경력").selectOption(careerYear);
   await page.getByRole("button", { name: "완료" }).click();
   await page.waitForURL("**/home");
-  // 홈의 조회(내 프로필, 피드)가 끝나기 전에 쿠키를 지우면 401로 로그인 화면에 튕겨 다음 이동이 끊긴다
-  await page.waitForLoadState("networkidle");
+  await waitForHomeLoaded(page);
   return nickname;
 }
 

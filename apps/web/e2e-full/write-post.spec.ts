@@ -6,6 +6,18 @@ import { expect, test, type Page } from "@playwright/test";
 // - `[실패:1] ...`: 첫 시도만 실패하고, 재시도(30초 뒤, 10초 주기 스케줄러)에서
 //   머리말을 뺀 본문 글자 수로 감정과 강도를 정한다.
 
+/**
+ * 홈의 두 조회(내 프로필, 피드)가 끝날 때까지 기다린다. 끝나기 전에 쿠키를 지우면 늦게 나간
+ * 조회가 401을 받아 로그인 화면으로 튕기고, 다음 page.goto가 ERR_ABORTED로 끊긴다.
+ */
+async function waitForHomeLoaded(page: Page) {
+  await expect(page.getByRole("heading")).toContainText("님, 반가워요");
+  const feed = page.getByRole("region", { name: "피드" });
+  await expect(
+    feed.getByRole("list").or(feed.getByText(/고민이 없어요/)),
+  ).toBeVisible();
+}
+
 function uniqueEmail(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
 }
@@ -30,8 +42,7 @@ async function signupAndOnboard(page: Page, prefix: string) {
   await page.getByLabel("경력").selectOption("YEAR_1");
   await page.getByRole("button", { name: "완료" }).click();
   await page.waitForURL("**/home");
-  // 홈의 조회(내 프로필, 피드)가 끝나기 전에 쿠키를 지우면 401로 로그인 화면에 튕겨 다음 이동이 끊긴다
-  await page.waitForLoadState("networkidle");
+  await waitForHomeLoaded(page);
 }
 
 async function writePost(page: Page, content: string, tone: string) {

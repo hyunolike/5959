@@ -5,6 +5,18 @@ import { expect, test, type Page } from "@playwright/test";
 // 콜백으로 바로 보낸다. 쿼리 e2e_id, e2e_email, e2e_outcome으로 제공자가 돌려줄
 // 결과를 고른다(apps/web/src/app/api/auth/oauth/[provider]/route.ts).
 
+/**
+ * 홈의 두 조회(내 프로필, 피드)가 끝날 때까지 기다린다. 끝나기 전에 쿠키를 지우면 늦게 나간
+ * 조회가 401을 받아 로그인 화면으로 튕기고, 다음 page.goto가 ERR_ABORTED로 끊긴다.
+ */
+async function waitForHomeLoaded(page: Page) {
+  await expect(page.getByRole("heading")).toContainText("님, 반가워요");
+  const feed = page.getByRole("region", { name: "피드" });
+  await expect(
+    feed.getByRole("list").or(feed.getByText(/고민이 없어요/)),
+  ).toBeVisible();
+}
+
 function uniqueId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -38,8 +50,7 @@ test("US3-AC1 처음 쓰는 카카오 계정으로 로그인하면 새 회원이
   const nickname = uniqueNickname("k");
   await completeOnboarding(page, nickname);
   await page.waitForURL("**/home");
-  // 홈의 조회(내 프로필, 피드)가 끝나기 전에 쿠키를 지우면 401로 로그인 화면에 튕겨 다음 이동이 끊긴다
-  await page.waitForLoadState("networkidle");
+  await waitForHomeLoaded(page);
   await expect(page.getByRole("heading")).toContainText(`${nickname}님`);
 });
 
@@ -57,15 +68,13 @@ test("US3-AC2 온보딩까지 마친 구글 계정으로 다시 로그인하면 
   const nickname = uniqueNickname("g");
   await completeOnboarding(page, nickname);
   await page.waitForURL("**/home");
-  // 홈의 조회(내 프로필, 피드)가 끝나기 전에 쿠키를 지우면 401로 로그인 화면에 튕겨 다음 이동이 끊긴다
-  await page.waitForLoadState("networkidle");
+  await waitForHomeLoaded(page);
 
   await page.context().clearCookies();
 
   await page.goto(startUrl("google", query));
   await page.waitForURL("**/home");
-  // 홈의 조회(내 프로필, 피드)가 끝나기 전에 쿠키를 지우면 401로 로그인 화면에 튕겨 다음 이동이 끊긴다
-  await page.waitForLoadState("networkidle");
+  await waitForHomeLoaded(page);
   await expect(page.getByRole("heading")).toContainText(`${nickname}님`);
 });
 
