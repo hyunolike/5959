@@ -66,11 +66,10 @@ class ContractTests {
 
         /**
          * 아직 구현되지 않은 계약 오퍼레이션("METHOD path"). 스토리가 끝날 때마다 해당 오퍼레이션을 뺀다.
-         * 003-core-loop이 이번에 계약에 더한 13개 오퍼레이션이다.
+         * 003-core-loop이 계약에 더한 13개 중 아직 구현하지 않은 오퍼레이션이다(US1에서 createPost를 뺐다).
          */
         val pendingPaths =
             setOf(
-                "POST /api/v1/posts",
                 "GET /api/v1/posts/{postId}",
                 "PATCH /api/v1/posts/{postId}",
                 "DELETE /api/v1/posts/{postId}",
