@@ -13,14 +13,21 @@ import { FeedList } from "@/widgets/feed-list";
  * (온보딩 전이면 /onboarding으로 보낸다).
  */
 export default function HomePage() {
-  const { data: member } = useMeQuery();
+  const { data: member, isError } = useMeQuery();
 
   return (
     <div className="flex w-full max-w-xl flex-col gap-6">
       <header className="flex items-center justify-between gap-4">
-        <h1 className="text-xl font-semibold text-neutral-900">
-          {member?.nickname ? `${member.nickname}님, 반가워요` : "피드"}
-        </h1>
+        <div>
+          <h1 className="text-xl font-semibold text-neutral-900">
+            {member?.nickname ? `${member.nickname}님, 반가워요` : "피드"}
+          </h1>
+          {isError ? (
+            <p role="alert" className="text-sm text-red-600">
+              프로필을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
+            </p>
+          ) : null}
+        </div>
         <div className="flex items-center gap-2">
           <Button asChild>
             <Link href="/write">고민 쓰기</Link>

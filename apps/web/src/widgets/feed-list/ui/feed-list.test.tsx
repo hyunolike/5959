@@ -114,6 +114,35 @@ describe("FeedList", () => {
     });
   });
 
+  it("US2-AC2 인기순에서 순위가 바뀌어 다음 쪽에 같은 글이 또 오면 한 번만 보여 준다", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          ok({ items: [feedItem(3), feedItem(2)], nextCursor: "NEXT" }),
+        )
+        .mockResolvedValueOnce(
+          ok({ items: [feedItem(3), feedItem(1)], nextCursor: null }),
+        ),
+    );
+
+    renderFeed();
+    await screen.findByText("고민 3");
+    observers
+      .at(-1)!
+      .callback(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      );
+
+    expect(await screen.findByText("고민 1")).toBeInTheDocument();
+    expect(screen.getAllByText("고민 3")).toHaveLength(1);
+    expect(
+      screen.getAllByRole("link").map((link) => link.getAttribute("href")),
+    ).toEqual(["/post/3", "/post/2", "/post/1"]);
+  });
+
   it("글이 없으면 빈 목록 안내를 보여 준다", async () => {
     vi.stubGlobal(
       "fetch",

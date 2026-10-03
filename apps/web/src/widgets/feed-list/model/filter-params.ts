@@ -56,3 +56,22 @@ export function toggleValue<T>(values: readonly T[], value: T): T[] {
     ? values.filter((item) => item !== value)
     : [...values, value];
 }
+
+/**
+ * 쪽들을 한 목록으로 펼치되 같은 글은 처음 나온 자리에만 둔다. 인기순은 쪽 사이에 공감 수가
+ * 바뀌면 같은 글이 다음 쪽에 또 올 수 있다(키셋 페이지네이션의 한계, research R7).
+ */
+export function uniqueItems<T extends { postId: number }>(
+  pages: readonly { items: readonly T[] }[],
+): T[] {
+  const seen = new Set<number>();
+  return pages
+    .flatMap((page) => page.items)
+    .filter((item) => {
+      if (seen.has(item.postId)) {
+        return false;
+      }
+      seen.add(item.postId);
+      return true;
+    });
+}

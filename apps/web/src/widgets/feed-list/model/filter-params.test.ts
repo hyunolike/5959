@@ -5,6 +5,7 @@ import {
   parseFeedFilter,
   toFeedSearchParams,
   toggleValue,
+  uniqueItems,
 } from "./filter-params";
 
 describe("parseFeedFilter", () => {
@@ -81,5 +82,18 @@ describe("toggleValue", () => {
   it("없으면 넣고 있으면 뺀다", () => {
     expect(toggleValue(["DESIGN"], "HR")).toEqual(["DESIGN", "HR"]);
     expect(toggleValue(["DESIGN", "HR"], "DESIGN")).toEqual(["HR"]);
+  });
+});
+
+describe("uniqueItems", () => {
+  it("US2-AC2 쪽들을 펼치며 같은 글은 처음 나온 자리에만 둔다", () => {
+    const item = (postId: number, label: string) => ({ postId, label });
+
+    expect(
+      uniqueItems([
+        { items: [item(3, "첫 쪽"), item(2, "첫 쪽")] },
+        { items: [item(3, "둘째 쪽"), item(1, "둘째 쪽")] },
+      ]),
+    ).toEqual([item(3, "첫 쪽"), item(2, "첫 쪽"), item(1, "둘째 쪽")]);
   });
 });

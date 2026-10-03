@@ -8,7 +8,11 @@ import { MonsterPlaceholder } from "@/entities/monster";
 import { PostCard, useFeedQuery, type FeedFilter } from "@/entities/post";
 import { Button, Card, Spinner } from "@/shared/ui";
 
-import { parseFeedFilter, toFeedSearchParams } from "../model/filter-params";
+import {
+  parseFeedFilter,
+  toFeedSearchParams,
+  uniqueItems,
+} from "../model/filter-params";
 import { FeedControls } from "./feed-controls";
 
 /**
@@ -49,9 +53,9 @@ function FeedItems({ filter }: { filter: FeedFilter }) {
     isFetchingNextPage,
     fetchNextPage,
   } = useFeedQuery(filter);
-  const items = data?.pages.flatMap((page) => page.items) ?? [];
+  const items = uniqueItems(data?.pages ?? []);
   const sentinel = useInfiniteScroll(
-    () => void fetchNextPage(),
+    () => void fetchNextPage({ cancelRefetch: false }),
     hasNextPage && !isFetchingNextPage,
   );
 
@@ -109,7 +113,10 @@ function FeedItems({ filter }: { filter: FeedFilter }) {
         </div>
       ) : hasNextPage ? (
         // 스크롤을 못 쓰는 환경(키보드, 보조기기)에서도 다음 쪽을 부를 수 있게 둔다
-        <Button variant="outline" onClick={() => void fetchNextPage()}>
+        <Button
+          variant="outline"
+          onClick={() => void fetchNextPage({ cancelRefetch: false })}
+        >
           더 보기
         </Button>
       ) : null}
