@@ -613,6 +613,7 @@ paths:
       summary: 글 삭제 (US4-AC2)
       responses:
         '204': { description: 삭제됨 }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -797,6 +798,7 @@ paths:
       summary: 댓글 삭제 (US4-AC3). 원 댓글이면 답글도 함께 삭제
       responses:
         '204': { description: 삭제됨 }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }

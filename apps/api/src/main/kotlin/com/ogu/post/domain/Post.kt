@@ -14,13 +14,17 @@ import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import org.hibernate.annotations.DynamicUpdate
 import java.time.Instant
 
 /**
  * 고민 글(data-model.md `posts`). 본문은 앞뒤 공백을 빼고 사람이 보는 글자 기준 1~500자다(FR-001, research R8).
  * 시각은 주입한 Clock으로 정한다(작성 제한 R9가 같은 시계로 최근 1시간을 센다).
+ * 공감 수와 댓글 수는 원자적 UPDATE로만 바꾸므로, 수정할 때 바뀐 열만 UPDATE하도록 [DynamicUpdate]를 쓴다(읽어 둔 낡은
+ * 카운터로 덮어쓰지 않게). 삭제도 `PostRepository.softDelete` 한 문장으로 한다.
  */
 @Entity
+@DynamicUpdate
 @Table(name = "posts")
 class Post private constructor(
     authorId: Long,
@@ -80,6 +84,20 @@ class Post private constructor(
 
     val isDeleted: Boolean
         get() = deletedAt != null
+
+    /**
+     * 본문이나 댓글 말투를 고친다(US4-AC1, FR-013). null인 쪽은 그대로 둔다. 본문 규칙은 작성과 같다([normalizeContent]).
+     * 몬스터는 다시 분석하지 않는다.
+     */
+    fun edit(
+        content: String?,
+        commentTone: CommentTone?,
+        now: Instant,
+    ) {
+        content?.let { this.content = normalizeContent(it) }
+        commentTone?.let { this.commentTone = it }
+        updatedAt = now
+    }
 
     companion object {
         const val CONTENT_MAX_LENGTH = 500

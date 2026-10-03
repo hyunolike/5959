@@ -17,7 +17,7 @@ import org.springframework.context.annotation.Import
  * 아직 구현하지 않은 오퍼레이션은 [pendingPaths]에 둔다(002-auth에서는 US1에서 가입, 내 프로필, 닉네임
  * 확인, 온보딩을, US2에서 로그인과 로그아웃을, US3에서 외부 계정 로그인을, US4에서 refresh를 뺐다 — 전부
  * 구현되어 지금은 비어 있다. 003-core-loop이 추가한 고민 글/피드/공감/댓글 13개 오퍼레이션도 각 스토리가
- * 컨트롤러를 추가할 때까지 여기 둔다).
+ * 컨트롤러를 추가할 때까지 여기 두었고 US4로 모두 빠졌다).
  * 각 스토리가 컨트롤러를 추가할 때마다 해당 오퍼레이션을 [pendingPaths]에서 뺀다.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -67,14 +67,9 @@ class ContractTests {
         /**
          * 아직 구현되지 않은 계약 오퍼레이션("METHOD path"). 스토리가 끝날 때마다 해당 오퍼레이션을 뺀다.
          * 003-core-loop이 계약에 더한 13개 중 아직 구현하지 않은 오퍼레이션이다(US1에서 createPost, getPostDetail을,
-         * US2에서 getFeed를, US3에서 공감과 취소, 댓글 목록과 작성, 댓글 공감과 취소를 뺐다).
+         * US2에서 getFeed를, US3에서 공감과 취소, 댓글 목록과 작성, 댓글 공감과 취소를,
+         * US4에서 글과 댓글 수정, 삭제를 빼서 지금은 비어 있다).
          */
-        val pendingPaths =
-            setOf(
-                "PATCH /api/v1/posts/{postId}",
-                "DELETE /api/v1/posts/{postId}",
-                "PATCH /api/v1/comments/{commentId}",
-                "DELETE /api/v1/comments/{commentId}",
-            )
+        val pendingPaths = emptySet<String>()
     }
 }

@@ -3,6 +3,7 @@ package com.ogu.post.presentation
 import com.ogu.member.AuthenticatedMember
 import com.ogu.post.application.PostService
 import com.ogu.post.presentation.dto.PostCreatedResponse
+import com.ogu.post.presentation.dto.PostUpdateRequest
 import com.ogu.post.presentation.dto.PostWriteRequest
 import com.ogu.shared.error.BusinessException
 import com.ogu.shared.error.ErrorCode
@@ -11,6 +12,9 @@ import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
+import org.springframework.web.bind.annotation.DeleteMapping
+import org.springframework.web.bind.annotation.PatchMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -47,5 +51,46 @@ class PostController(
             request.commentTone ?: throw BusinessException(ErrorCode.INVALID_REQUEST, "댓글 말투를 골라 주세요.")
         val postId = postService.create(member.memberId, content, commentTone)
         return ApiResponse.success(PostCreatedResponse(postId))
+    }
+
+    @Operation(
+        operationId = "updatePost",
+        summary = "글 수정 (US4-AC1). 몬스터는 바뀌지 않는다",
+        responses = [
+            DocResponse(responseCode = "204", description = "수정됨"),
+            DocResponse(responseCode = "400", description = "입력 검증 실패나 ID 형식 오류 (INVALID_REQUEST)"),
+            DocResponse(responseCode = "401", description = "인증 없음 또는 세션 만료"),
+            DocResponse(responseCode = "403", description = "온보딩 전 (ONBOARDING_REQUIRED) 또는 남의 글 (NOT_AUTHOR)"),
+            DocResponse(responseCode = "404", description = "없거나 삭제된 글 (POST_NOT_FOUND)"),
+        ],
+    )
+    @PatchMapping("/{postId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun update(
+        member: AuthenticatedMember,
+        @PathVariable postId: Long,
+        @RequestBody request: PostUpdateRequest,
+    ) {
+        postService.update(postId, member.memberId, request.content, request.commentTone)
+    }
+
+    @Operation(
+        operationId = "deletePost",
+        summary = "글 삭제 (US4-AC2)",
+        responses = [
+            DocResponse(responseCode = "204", description = "삭제됨"),
+            DocResponse(responseCode = "400", description = "ID 형식 오류 (INVALID_REQUEST)"),
+            DocResponse(responseCode = "401", description = "인증 없음 또는 세션 만료"),
+            DocResponse(responseCode = "403", description = "온보딩 전 (ONBOARDING_REQUIRED) 또는 남의 글 (NOT_AUTHOR)"),
+            DocResponse(responseCode = "404", description = "없거나 삭제된 글 (POST_NOT_FOUND)"),
+        ],
+    )
+    @DeleteMapping("/{postId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun delete(
+        member: AuthenticatedMember,
+        @PathVariable postId: Long,
+    ) {
+        postService.delete(postId, member.memberId)
     }
 }

@@ -10,6 +10,11 @@ data class CommentWriteRequest(
     val parentId: Long? = null,
 )
 
+/** 댓글 수정 요청. 본문이 빠지면 null로 받아 서비스 앞에서 400으로 거절한다. */
+data class CommentUpdateRequest(
+    val content: String? = null,
+)
+
 /** 계약의 `Comment`. 답글의 [replies]는 항상 비어 있다. */
 data class CommentResponse(
     val commentId: Long,

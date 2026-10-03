@@ -9,13 +9,16 @@ import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import org.hibernate.annotations.DynamicUpdate
 import java.time.Instant
 
 /**
  * 댓글과 답글(data-model.md `comments`, FR-008). 답글은 [parentId]에 원 댓글을 가리키고, 답글에는 다시 답글을 달 수 없다.
- * 본문은 앞뒤 공백을 빼고 사람이 보는 글자 기준 1~300자다(research R8). 공감 수는 원자적 UPDATE로만 바꾼다.
+ * 본문은 앞뒤 공백을 빼고 사람이 보는 글자 기준 1~300자다(research R8). 공감 수는 원자적 UPDATE로만 바꾸므로, 수정할 때
+ * 바뀐 열만 UPDATE하도록 [DynamicUpdate]를 쓴다.
  */
 @Entity
+@DynamicUpdate
 @Table(name = "comments")
 class Comment private constructor(
     postId: Long,
@@ -63,6 +66,15 @@ class Comment private constructor(
 
     val isReply: Boolean
         get() = parentId != null
+
+    /** 본문을 고친다(US4-AC3, FR-014). 규칙은 작성과 같다([normalizeContent]). */
+    fun edit(
+        content: String,
+        now: Instant,
+    ) {
+        this.content = normalizeContent(content)
+        updatedAt = now
+    }
 
     companion object {
         const val CONTENT_MAX_LENGTH = 300

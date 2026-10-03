@@ -7,3 +7,9 @@ data class PostWriteRequest(
     val content: String? = null,
     val commentTone: CommentTone? = null,
 )
+
+/** 글 수정 요청(계약의 `PostUpdateRequest`). 둘 다 빠지면 서비스에서 400으로 거절한다. 빠진 쪽은 그대로 둔다. */
+data class PostUpdateRequest(
+    val content: String? = null,
+    val commentTone: CommentTone? = null,
+)

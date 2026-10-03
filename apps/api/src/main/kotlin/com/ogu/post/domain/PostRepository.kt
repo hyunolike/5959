@@ -27,4 +27,17 @@ interface PostRepository : JpaRepository<Post, Long> {
         @Param("id") id: Long,
         @Param("delta") delta: Int,
     ): Int
+
+    /**
+     * 살아 있는 글을 지운다. 이 UPDATE가 posts 행을 잠근다(잠금 순서: 행 먼저, 글 잠금은 그다음). 이미 지웠으면 0이다.
+     */
+    @Modifying
+    @Query(
+        value = "update posts set deleted_at = :now, updated_at = :now where id = :id and deleted_at is null",
+        nativeQuery = true,
+    )
+    fun softDelete(
+        @Param("id") id: Long,
+        @Param("now") now: Instant,
+    ): Int
 }

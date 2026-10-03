@@ -6,11 +6,13 @@ import com.ogu.emotion.EmotionType
 import com.ogu.emotion.Intensity
 import com.ogu.post.application.CommentService
 import com.ogu.post.application.LikeService
+import com.ogu.post.application.PostService
 import com.ogu.support.CoreLoopFixture
 import com.ogu.support.HpLog
 import com.ogu.support.MemberFixture
 import com.ogu.support.MonsterDefeatedRecorder
 import org.assertj.core.api.Assertions.assertThat
+import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -58,6 +60,9 @@ class MonsterConcurrencyTest {
 
     @Autowired
     lateinit var commentService: CommentService
+
+    @Autowired
+    lateinit var postService: PostService
 
     @Autowired
     lateinit var events: ApplicationEventPublisher
@@ -185,6 +190,39 @@ class MonsterConcurrencyTest {
         assertThat(loop.hpLogs(postId).map { it.memberId to it.retroactive }).containsExactly(fan to false)
     }
 
+    @Test
+    fun `분석 중에 글을 지우면 삭제가 먼저 글 잠금을 잡고 몬스터는 만들어지지 않는다`() {
+        // 삭제는 posts 행을 UPDATE한 뒤 글 잠금을 잡는다. 생성은 그 커밋을 기다렸다가 지운 글임을 보고 건너뛴다
+        val author = members.onboarded()
+        val postId = loop.postWithoutMonster(author)
+
+        raceThroughPostLock(
+            postId,
+            first = { postService.delete(postId, author.id) },
+            second = { analysisFinished(postId) },
+        )
+
+        awaitMonsterFactoryDone(postId)
+        assertThat(loop.monster(postId)).isNull()
+        assertThat(isDeleted(postId)).isTrue()
+    }
+
+    @Test
+    fun `몬스터 생성이 먼저 글 잠금을 잡으면 삭제는 그 커밋을 기다렸다가 지운다`() {
+        // 생성이 끝난 뒤 지운 글이라 몬스터는 남지만 글은 어디에도 보이지 않는다
+        val author = members.onboarded()
+        val postId = loop.postWithoutMonster(author)
+
+        raceThroughPostLock(
+            postId,
+            first = { analysisFinished(postId) },
+            second = { postService.delete(postId, author.id) },
+        )
+
+        assertThat(loop.awaitMonster(postId).hp).isEqualTo(10)
+        assertThat(isDeleted(postId)).isTrue()
+    }
+
     /**
      * 기록을 ID 순(삽입 순)으로 이으면 [from]에서 0까지 빈틈없이 이어진다. 글 잠금 안에서 기록 삽입과 HP 감소가 함께
      * 일어나야 성립한다. 잠금이 없으면 삽입 순서와 감소 순서가 어긋나거나, 읽고 쓰는 감소라면 HP가 덜 준다.
@@ -261,6 +299,28 @@ class MonsterConcurrencyTest {
                 """.trimIndent(),
             )
         error("글 잠금 대기자가 ${expected}개가 되지 않았다. pg_stat_activity: $activity")
+    }
+
+    private fun isDeleted(postId: Long): Boolean =
+        jdbcTemplate.queryForObject(
+            "select deleted_at is not null from posts where id = ?",
+            Boolean::class.java,
+            postId,
+        )!!
+
+    /** MonsterFactory가 이 글의 EmotionAnalyzed 처리를 마쳤다(Event Publication Registry에 완료로 남았다). */
+    private fun awaitMonsterFactoryDone(postId: Long) {
+        await().atMost(LOCK_WAIT_LIMIT).pollInterval(Duration.ofMillis(LOCK_POLL_MILLIS)).until {
+            jdbcTemplate.queryForObject(
+                """
+                select count(*) from event_publication
+                where listener_id like '%MonsterFactory%' and completion_date is not null
+                  and serialized_event like ?
+                """.trimIndent(),
+                Int::class.java,
+                "%\"postId\":$postId,%",
+            ) == 1
+        }
     }
 
     /** 분석이 끝났다고 알리고(커밋) MonsterFactory가 비동기로 몬스터를 만들기 시작하게 한다. */

@@ -47,7 +47,7 @@ class CommentService(
         postRepository.findByIdAndDeletedAtIsNull(postId) ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
         Comment.normalizeContent(content)
         val parent = parentId?.let { parentOf(postId, it) }
-        val now = clock.instant().truncatedTo(ChronoUnit.MICROS)
+        val now = now()
         val comment = commentRepository.save(Comment.write(postId, authorId, parent, content, now))
         postRepository.addCommentCount(postId, 1)
         events.publishEvent(CommentCreated(postId, comment.id, authorId))
@@ -89,11 +89,49 @@ class CommentService(
         return CommentPageResponse(items, nextCursor)
     }
 
+    /** 댓글 본문을 고친다(US4-AC3, FR-014). 규칙은 작성과 같다. 없거나 지웠거나 지운 글의 댓글이면 404, 남의 댓글이면 403. */
+    @Transactional
+    fun update(
+        commentId: Long,
+        memberId: Long,
+        content: String,
+    ) {
+        ownComment(commentId, memberId).edit(content, now())
+    }
+
+    /**
+     * 댓글을 지운다(US4-AC3, FR-014). 원 댓글이면 살아 있던 답글도 같은 트랜잭션에서 지우고, 댓글 수를 실제로 지운 개수만큼
+     * 줄인다(data-model.md). HP는 돌려주지 않는다. 댓글 행을 먼저 잠그고 `posts` 행은 마지막에 잠근다(댓글 작성과 같은 순서).
+     * 그사이 다른 요청이 먼저 지웠으면 404다.
+     */
+    @Transactional
+    fun delete(
+        commentId: Long,
+        memberId: Long,
+    ) {
+        val comment = ownComment(commentId, memberId)
+        val now = now()
+        if (commentRepository.softDelete(commentId, now) == 0) throw BusinessException(ErrorCode.COMMENT_NOT_FOUND)
+        val replies = if (comment.isReply) 0 else commentRepository.softDeleteReplies(commentId, now)
+        postRepository.addCommentCount(comment.postId, -(1 + replies))
+    }
+
+    private fun ownComment(
+        commentId: Long,
+        memberId: Long,
+    ): Comment {
+        val comment = commentRepository.findLive(commentId) ?: throw BusinessException(ErrorCode.COMMENT_NOT_FOUND)
+        if (comment.authorId != memberId) throw BusinessException(ErrorCode.NOT_AUTHOR)
+        return comment
+    }
+
+    private fun now() = clock.instant().truncatedTo(ChronoUnit.MICROS)
+
     private fun parentOf(
         postId: Long,
         parentId: Long,
     ): Comment {
-        val parent = commentRepository.findByIdAndDeletedAtIsNull(parentId)
+        val parent = commentRepository.findLiveForReply(parentId)
         if (parent == null || parent.postId != postId) throw BusinessException(ErrorCode.COMMENT_NOT_FOUND)
         if (parent.isReply) throw BusinessException(ErrorCode.INVALID_PARENT_COMMENT)
         return parent

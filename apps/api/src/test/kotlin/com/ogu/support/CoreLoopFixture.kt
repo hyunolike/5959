@@ -9,6 +9,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.ResultActions
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import tools.jackson.databind.JsonNode
@@ -130,7 +131,47 @@ class CoreLoopFixture(
         return mockMvc.perform(request)
     }
 
-    /** US4(댓글 삭제 API) 전이라 저장소에서 지운다. 원 댓글이면 답글도 함께 지우고 댓글 수를 맞춘다(data-model.md). */
+    /** 글 수정 API. [body]는 그대로 JSON으로 보낸다(빠진 필드와 null을 구분해 보낼 수 있다). */
+    fun updatePost(
+        member: TestMember,
+        postId: Long,
+        body: Map<String, Any?>,
+    ): ResultActions =
+        mockMvc.perform(
+            patch("/api/v1/posts/{postId}", postId)
+                .bearer(member.accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonMapper.writeValueAsString(body)),
+        )
+
+    fun removePost(
+        member: TestMember,
+        postId: Long,
+    ): ResultActions = mockMvc.perform(delete("/api/v1/posts/{postId}", postId).bearer(member.accessToken))
+
+    fun updateComment(
+        member: TestMember,
+        commentId: Long,
+        content: String,
+    ): ResultActions =
+        mockMvc.perform(
+            patch("/api/v1/comments/{commentId}", commentId)
+                .bearer(member.accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonMapper.writeValueAsString(mapOf("content" to content))),
+        )
+
+    fun removeComment(
+        member: TestMember,
+        commentId: Long,
+    ): ResultActions = mockMvc.perform(delete("/api/v1/comments/{commentId}", commentId).bearer(member.accessToken))
+
+    fun detail(
+        member: TestMember,
+        postId: Long,
+    ): ResultActions = mockMvc.perform(get("/api/v1/posts/{postId}", postId).bearer(member.accessToken))
+
+    /** 작성자 토큰 없이 저장소에서 바로 지운다(API로 지우는 것은 [removeComment]). 원 댓글이면 답글도 함께 지우고 댓글 수를 맞춘다(data-model.md). */
     fun deleteComment(commentId: Long) {
         val postId =
             jdbcTemplate.queryForObject("select post_id from comments where id = ?", Long::class.java, commentId)
@@ -143,6 +184,7 @@ class CoreLoopFixture(
         jdbcTemplate.update("update posts set comment_count = comment_count - ? where id = ?", deleted, postId)
     }
 
+    /** 작성자 토큰 없이 저장소에서 바로 지운다(API로 지우는 것은 [removePost]). */
     fun deletePost(postId: Long) {
         jdbcTemplate.update("update posts set deleted_at = now() where id = ?", postId)
     }
