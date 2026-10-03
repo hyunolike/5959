@@ -228,6 +228,85 @@ describe("usePostDetailQuery 폴링", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it("US1-AC3 재시도 끝에 500이 나도 폴링을 멈추지 않고, 이후 몬스터가 생기면 보여 준다", async () => {
+    const serverError = () =>
+      jsonResponse(
+        {
+          success: false,
+          data: null,
+          error: { code: "INTERNAL_ERROR", message: "잠시 문제가 생겼습니다." },
+        },
+        500,
+      );
+    const responses = [
+      () => ok(detail()),
+      serverError,
+      () => ok(detail()),
+      () => ok(detail({ analysisStatus: "ANALYZED", monster: MONSTER })),
+    ];
+    const fetchMock = vi.fn(() =>
+      Promise.resolve((responses.shift() ?? (() => ok(detail())))()),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    // 이 테스트의 QueryClient는 retry: false라 500 한 번이 곧 "재시도 끝의 실패"다.
+    const { result } = renderHook(() => usePostDetailQuery(7), { wrapper });
+    await advance(0);
+    expect(result.current.data?.monster).toBeNull();
+    expect(result.current.error).toBeNull();
+
+    await advance(ANALYSIS_POLL_FAST_MS);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.current.error).toBeInstanceOf(ApiError);
+
+    await advance(ANALYSIS_POLL_FAST_MS);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+
+    await advance(ANALYSIS_POLL_FAST_MS);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(result.current.data?.monster).toEqual(MONSTER);
+  });
+
+  it("네트워크 오류가 나도 폴링을 이어 간다", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(ok(detail()))
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValue(ok(detail()));
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderHook(() => usePostDetailQuery(7), { wrapper });
+    await advance(0);
+    await advance(ANALYSIS_POLL_FAST_MS);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    await advance(ANALYSIS_POLL_FAST_MS);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("분석 중에 404(지운 글)가 나면 폴링을 멈춘다", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(ok(detail()))
+      .mockResolvedValue(
+        jsonResponse(
+          {
+            success: false,
+            data: null,
+            error: { code: "POST_NOT_FOUND", message: "글이 없습니다." },
+          },
+          404,
+        ),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderHook(() => usePostDetailQuery(7), { wrapper });
+    await advance(0);
+    await advance(ANALYSIS_POLL_FAST_MS);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    await advance(ANALYSIS_POLL_SLOW_MS * 2);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("404면 다시 부르지 않는다", async () => {
     const fetchMock = vi.fn(() =>
       Promise.resolve(

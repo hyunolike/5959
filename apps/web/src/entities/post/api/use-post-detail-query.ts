@@ -60,6 +60,15 @@ export async function fetchPostDetail(
   return body.data;
 }
 
+/**
+ * 다시 불러와도 결과가 바뀌지 않는 실패(4xx: 지운 글 404, 형식이 틀린 ID 400 등).
+ * 5xx와 네트워크 오류는 잠깐의 장애일 수 있으므로 폴링을 이어 간다. 여기서 멈추면
+ * 화면이 "분석 중"에 영영 머문다(US1-AC3).
+ */
+function isTerminalError(error: unknown): boolean {
+  return error instanceof ApiError && error.status >= 400 && error.status < 500;
+}
+
 /** 글 상세. 몬스터가 생길 때까지 R10 간격으로 다시 불러온다(FR-015, US1-AC3). */
 export function usePostDetailQuery(postId: number) {
   const [startedAt] = useState(() => Date.now());
@@ -68,7 +77,7 @@ export function usePostDetailQuery(postId: number) {
     queryKey: QUERY_KEYS.postDetail(postId),
     queryFn: () => fetchPostDetail(postId),
     refetchInterval: (query) =>
-      query.state.status === "error"
+      isTerminalError(query.state.error)
         ? false
         : analysisPollInterval(query.state.data, Date.now() - startedAt),
   });
