@@ -6,6 +6,7 @@ import com.ogu.support.MemberFixture
 import com.ogu.support.TestMember
 import com.ogu.support.bearer
 import org.assertj.core.api.Assertions.assertThat
+import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
@@ -29,6 +30,7 @@ import org.springframework.test.web.servlet.setup.DefaultMockMvcBuilder
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.context.WebApplicationContext
 import tools.jackson.databind.json.JsonMapper
+import java.time.Duration
 
 /**
  * T015: 고민 글 작성 (US1-AC1, US1-AC2, US1-AC7, FR-001, FR-018, research R7, R9).
@@ -195,7 +197,7 @@ class PostCreateApiTests {
     }
 
     @Test
-    fun `글을 쓰면 커밋 후 PostCreated가 발행된다`(scenario: Scenario) {
+    fun `글을 쓰면 커밋 후 PostCreated가 발행되어 감정 분석이 예약된다`(scenario: Scenario) {
         val member = members.onboarded()
 
         scenario
@@ -208,6 +210,18 @@ class PostCreateApiTests {
                 assertThat(event.content).isEqualTo(row["content"])
                 assertThat(event.createdAt).isEqualTo((row["created_at"] as java.sql.Timestamp).toInstant())
             }
+
+        val postId = jdbcTemplate.queryForObject(POST_ID_BY_AUTHOR, Long::class.java, member.id)
+        // 커밋 뒤 emotion 모듈의 리스너가 분석 행을 만든다
+        await().atMost(Duration.ofSeconds(10)).untilAsserted {
+            val count =
+                jdbcTemplate.queryForObject(
+                    "select count(*) from emotion_analysis where post_id = ?",
+                    Int::class.java,
+                    postId,
+                )
+            assertThat(count).isEqualTo(1)
+        }
     }
 
     private fun createPost(
@@ -238,6 +252,8 @@ class PostCreateApiTests {
         jdbcTemplate.queryForObject("select count(*) from posts where author_id = ?", Int::class.java, member.id)!!
 
     companion object {
+        private const val POST_ID_BY_AUTHOR = "select id from posts where author_id = ?"
+
         @JvmStatic
         fun invalidContents(): List<String> = listOf("", "   ", "\n\t  ", "가".repeat(501), "👍".repeat(501))
     }
