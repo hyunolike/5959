@@ -128,6 +128,8 @@ test("US3-AC1 다른 회원의 글에 공감하면 공감 수가 1 늘고 HP가 
   await expect(liked).toHaveAttribute("aria-pressed", "true");
   await expect(hpText(attacker.page)).toHaveText("HP 9/10");
 
+  // 응답이 오기 전에 새로고침하면 요청이 끊길 수 있다. 버튼이 다시 눌릴 수 있을 때까지 기다린다.
+  await expect(liked).toBeEnabled();
   // 새로고침해도 서버 값이 같다
   await attacker.page.reload();
   await expect(liked).toHaveAttribute("aria-pressed", "true");
@@ -147,6 +149,7 @@ test("US3-AC1 다른 회원의 글에 공감하면 공감 수가 1 늘고 HP가 
   ).toHaveAttribute("aria-pressed", "false");
   await attacker.page.getByRole("button", { name: "공감 0" }).click();
   await expect(liked).toHaveAttribute("aria-pressed", "true");
+  await expect(liked).toBeEnabled();
   await attacker.page.reload();
   await expect(hpText(attacker.page)).toHaveText("HP 9/10");
 });
@@ -235,6 +238,7 @@ test("US3-AC5 공격으로 HP가 0이 되면 처치된 모습으로 바뀌고, �
   await last.getByRole("button", { name: "댓글 공감 0" }).click();
   await expect(hpText(attacker.page)).toHaveText("HP 0/10");
   await expect(monster(attacker.page).getByText("처치됨")).toBeVisible();
+  await expect(last.getByRole("button", { name: "댓글 공감 1" })).toBeEnabled();
 
   // 처치된 뒤에도 댓글은 남길 수 있고 HP는 0에 머문다
   await writeCommentInUi(attacker.page, "처치 뒤 응원");
@@ -272,6 +276,9 @@ test("US3-AC8 내 글에는 공감 버튼이 없고, 댓글과 댓글 공감을 
   ).toHaveAttribute("aria-pressed", "true");
   await expect(hpText(author.page)).toHaveText("HP 7/10");
 
+  await expect(
+    author.page.getByRole("button", { name: "댓글 공감 1" }),
+  ).toBeEnabled();
   await author.page.reload();
   await expect(hpText(author.page)).toHaveText("HP 7/10");
   await expect(commentArticle(author.page, "작성자의 댓글")).toBeVisible();
@@ -284,7 +291,8 @@ test("US3-AC10 공격이 성공하면 응답을 기다리지 않고 HP 표시가
   const postId = await createAnalysedPost(author.page, "맞을 글");
   const attacker = await newMember(browser, "b");
 
-  // 맞는 반응(HP 바 흔들림)은 Web Animations API로 그린다. 몇 번 불렸는지 센다.
+  // 맞는 반응(HP 바 흔들림)은 Web Animations API로 그린다. HP 바를 품은 요소의
+  // 애니메이션만 센다(다른 요소의 애니메이션은 세지 않는다).
   await attacker.page.addInitScript(() => {
     const original = Element.prototype.animate;
     const counter = window as unknown as { __hits: number };
@@ -293,7 +301,9 @@ test("US3-AC10 공격이 성공하면 응답을 기다리지 않고 HP 표시가
       this: Element,
       ...args: Parameters<Element["animate"]>
     ) {
-      counter.__hits += 1;
+      if (this.querySelector('[role="progressbar"][aria-label="몬스터 HP"]')) {
+        counter.__hits += 1;
+      }
       return original.apply(this, args);
     };
   });
@@ -323,10 +333,23 @@ test("US3-AC10 공격이 성공하면 응답을 기다리지 않고 HP 표시가
     )
     .toBe(1);
 
+  // 응답 뒤 상세를 다시 불러와도 HP는 그대로라 다시 흔들리지 않는다(두 번 흔들리면 실패).
+  const refetched = attacker.page.waitForResponse(
+    (response) =>
+      response.request().method() === "GET" &&
+      new URL(response.url()).pathname === `/api/posts/${postId}`,
+  );
   releaseLike();
+  await refetched;
   await expect(
     attacker.page.getByRole("button", { name: "공감 1" }),
   ).toBeEnabled();
+  await expect(hpText(attacker.page)).toHaveText("HP 9/10");
+  expect(
+    await attacker.page.evaluate(
+      () => (window as unknown as { __hits: number }).__hits,
+    ),
+  ).toBe(1);
   await attacker.page.reload();
   await expect(hpText(attacker.page)).toHaveText("HP 9/10");
 });
