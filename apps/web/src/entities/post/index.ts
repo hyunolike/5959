@@ -6,10 +6,18 @@ export {
   fetchPostDetail,
   usePostDetailQuery,
 } from "./api/use-post-detail-query";
+export {
+  feedRequestPath,
+  fetchFeedPage,
+  useFeedQuery,
+} from "./api/use-feed-query";
+export { PostCard } from "./ui/post-card";
 export { COMMENT_TONE_LABELS } from "./model/types";
 export type {
   CommentTone,
+  FeedFilter,
   FeedItem,
+  FeedOrder,
   FeedPage,
   PostDetail,
 } from "./model/types";

@@ -7,4 +7,6 @@ export const QUERY_KEYS = {
   apiHealth: ["api-health"] as const,
   me: ["me"] as const,
   postDetail: (postId: number) => ["posts", postId] as const,
+  /** 정렬과 필터가 다르면 다른 목록이다. 무효화는 `["feed"]` 하나로 모든 피드를 지운다. */
+  feed: (filter: object) => ["feed", filter] as const,
 };
