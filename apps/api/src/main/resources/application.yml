@@ -90,3 +90,9 @@ ogu:
   post:
     rate-limit:
       max-per-hour: 10
+  events:
+    # 끝나지 않은 이벤트 발행(리스너 실패)을 재기동 없이 다시 보낸다(EventPublicationResubmitter)
+    resubmit:
+      enabled: true
+      interval: 1m
+      older-than: 2m
