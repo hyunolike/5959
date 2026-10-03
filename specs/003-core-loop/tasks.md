@@ -67,8 +67,8 @@ description: "Task list for 003-core-loop (핵심 루프)"
 - [x] T017 [P] [US1] apps/api/src/test/kotlin/com/ogu/emotion/application/EmotionPipelineTests.kt(가짜 분석기, 시계 주입): `US1-AC4 분석이 끝나면 감정과 강도에 맞는 최대 HP의 몬스터가 HP 가득 찬 상태로 생긴다`(강도 3단계 각각), `US1-AC5 분석기가 실패해도 글은 저장되고 회복 후 재시도로 몬스터가 생긴다`(`[실패:2]`), `US1-AC6 24시간 동안 실패하면 무기력 HP 10 기본 몬스터가 생긴다`, 스케줄러가 `SKIP LOCKED`로 같은 행을 두 번 처리하지 않는다(두 실행기 동시), 분석기가 목록에 없는 감정이나 잘못된 JSON을 주면 실패로 본다
 - [x] T018 [P] [US1] apps/api/src/test/kotlin/com/ogu/ai/infrastructure/SpringAiEmotionAnalyzerTest.kt(`MockRestServiceServer` 또는 로컬 HTTP 스텁): 요청에 프롬프트, 모델, temperature가 들어감, 정상 JSON 파싱, 20초 타임아웃은 `EmotionAnalysisFailed`, 서킷이 열리면 호출 없이 실패, 응답 원문을 로그에 남기지 않음
 - [x] T019 [P] [US1] apps/api/src/test/kotlin/com/ogu/feed/presentation/PostDetailApiTests.kt: 분석 중이면 `analysisStatus=PENDING`, `monster=null`, 분석 뒤 `ANALYZED`와 몬스터, `mine`, 삭제된 글은 404 `POST_NOT_FOUND`
-- [ ] T020 [P] [US1] apps/web/src/features/write-post/model/schema.test.ts(글자 수 1~500, 공백만 거부, 말투 필수)와 apps/web/src/entities/post/api/use-post-detail-query.test.ts(PENDING이면 3초 폴링, 2분 뒤 15초, ANALYZED면 중단)
-- [ ] T021 [P] [US1] apps/web/e2e-full/write-post.spec.ts: `US1-AC1`, `US1-AC3`(분석 중 → 새로고침 없이 몬스터), `US1-AC2`(501자 안내), `US1-AC7`(온보딩 전 /write → /onboarding)
+- [x] T020 [P] [US1] apps/web/src/features/write-post/model/schema.test.ts(글자 수 1~500, 공백만 거부, 말투 필수)와 apps/web/src/entities/post/api/use-post-detail-query.test.ts(PENDING이면 3초 폴링, 2분 뒤 15초, ANALYZED면 중단)
+- [x] T021 [P] [US1] apps/web/e2e-full/write-post.spec.ts: `US1-AC1`, `US1-AC3`(분석 중 → 새로고침 없이 몬스터), `US1-AC2`(501자 안내), `US1-AC7`(온보딩 전 /write → /onboarding)
 
 ### Implementation for User Story 1
 
@@ -77,8 +77,8 @@ description: "Task list for 003-core-loop (핵심 루프)"
 - [x] T024 [US1] emotion 모듈: domain/EmotionAnalysis(상태 전이와 `Backoff`), 리포지토리(`findDueForUpdateSkipLocked(now, limit)` 네이티브 쿼리), application/PostCreatedListener(`@ApplicationModuleListener`, 행 생성 후 첫 시도), AnalysisRunner(시도 한 번: 성공→ANALYZED, 실패→다음 시각, 기한 초과→DEFAULTED, 결과에 따라 `EmotionAnalyzed` 발행), RetryScheduler(`@Scheduled(fixedDelayString = poll-interval)`), `EmotionApi.findByPostIds`
 - [x] T025 [US1] monster 모듈: domain/Monster, MonsterRepository, application/MonsterFactory(`EmotionAnalyzed` 구독, `PostLock` 안에서 몬스터 생성. 소급 반영은 US3의 T040에서 추가), `MonsterApi.findByPostIds`
 - [x] T026 [US1] feed 모듈: presentation/FeedController `GET /api/v1/posts/{postId}`(글, 작성자, 분석 상태, 몬스터, 공감 수, 내가 공감했는지, `mine`, `myCommentCounted`는 US3 전까지 false). ContractTests `pendingPaths`에서 `getPostDetail`을 뺀다
-- [ ] T027 [P] [US1] 웹 글쓰기: apps/web/src/features/write-post/(model/schema.ts, api/use-create-post-mutation.ts, ui/write-form.tsx: 글자 수 카운터는 `grapheme.ts`, 말투 버튼 4개, 429는 "잠시 뒤 다시 써 주세요" 안내), apps/web/src/app/write/page.tsx, proxy.ts 보호 경로에 `/write`가 이미 있는지 확인. 작성 성공 시 `/post/{id}`로 이동
-- [ ] T028 [P] [US1] 웹 상세(US1 범위): apps/web/src/entities/post/api/use-post-detail-query.ts(폴링 R10), apps/web/src/widgets/post-detail/(글, 작성자, 말투, 분석 중 표시, 몬스터 자리: US5 전까지 감정 이름과 HP 바만), apps/web/src/app/post/[id]/page.tsx, 404면 "삭제된 글" 안내
+- [x] T027 [P] [US1] 웹 글쓰기: apps/web/src/features/write-post/(model/schema.ts, api/use-create-post-mutation.ts, ui/write-form.tsx: 글자 수 카운터는 `grapheme.ts`, 말투 버튼 4개, 429는 "잠시 뒤 다시 써 주세요" 안내), apps/web/src/app/write/page.tsx, proxy.ts 보호 경로에 `/write`가 이미 있는지 확인. 작성 성공 시 `/post/{id}`로 이동
+- [x] T028 [P] [US1] 웹 상세(US1 범위): apps/web/src/entities/post/api/use-post-detail-query.ts(폴링 R10), apps/web/src/widgets/post-detail/(글, 작성자, 말투, 분석 중 표시, 몬스터 자리: US5 전까지 감정 이름과 HP 바만), apps/web/src/app/post/[id]/page.tsx, 404면 "삭제된 글" 안내
 
 **Checkpoint**: 글 작성과 몬스터 탄생이 단독으로 동작한다 (MVP)
 
