@@ -147,6 +147,16 @@ class PostDetailApiTests {
     }
 
     @Test
+    fun `글 ID가 숫자가 아니면 500이 아니라 400 INVALID_REQUEST`() {
+        val viewer = members.onboarded()
+
+        mockMvc
+            .perform(get("/api/v1/posts/{postId}", "abc").bearer(viewer.accessToken))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"))
+    }
+
+    @Test
     fun `온보딩 전 회원은 403, 토큰이 없으면 401`() {
         val author = members.onboarded()
         val postId = createPost(author, "[실패] 보호된 글", "COMFORT_ME")

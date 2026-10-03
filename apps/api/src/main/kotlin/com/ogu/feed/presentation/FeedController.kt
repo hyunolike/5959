@@ -24,6 +24,7 @@ class FeedController(
         summary = "글 상세 (FR-012, FR-015). 분석 중이면 monster는 null",
         responses = [
             DocResponse(responseCode = "200", description = "글 상세"),
+            DocResponse(responseCode = "400", description = "글 ID 형식이 틀림 (INVALID_REQUEST)"),
             DocResponse(responseCode = "401", description = "인증 없음 또는 세션 만료"),
             DocResponse(responseCode = "403", description = "온보딩 전 (ONBOARDING_REQUIRED)"),
             DocResponse(responseCode = "404", description = "없거나 삭제된 글 (POST_NOT_FOUND)"),

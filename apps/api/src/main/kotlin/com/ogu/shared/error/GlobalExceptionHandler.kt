@@ -2,6 +2,7 @@ package com.ogu.shared.error
 
 import com.ogu.shared.response.ApiResponse
 import org.slf4j.LoggerFactory
+import org.springframework.beans.TypeMismatchException
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -39,6 +40,15 @@ class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException::class)
     fun handleHttpMessageNotReadable(e: HttpMessageNotReadableException): ResponseEntity<ApiResponse<Unit>> {
         log.warn("HttpMessageNotReadableException: {}", e.message)
+        return ResponseEntity
+            .status(HttpStatus.BAD_REQUEST)
+            .body(ApiResponse.error(ErrorCode.INVALID_REQUEST))
+    }
+
+    /** 경로 변수나 쿼리 파라미터의 형식이 틀렸다(예: `GET /api/v1/posts/abc`). 클라이언트 잘못이므로 400이다. */
+    @ExceptionHandler(TypeMismatchException::class)
+    fun handleTypeMismatch(e: TypeMismatchException): ResponseEntity<ApiResponse<Unit>> {
+        log.warn("TypeMismatchException: property={}, requiredType={}", e.propertyName, e.requiredType?.simpleName)
         return ResponseEntity
             .status(HttpStatus.BAD_REQUEST)
             .body(ApiResponse.error(ErrorCode.INVALID_REQUEST))
