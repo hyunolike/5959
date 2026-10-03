@@ -1,6 +1,8 @@
 package com.ogu.feed.presentation
 
 import com.ogu.TestcontainersConfiguration
+import com.ogu.monster.MonsterApi
+import com.ogu.support.CoreLoopFixture
 import com.ogu.support.MemberFixture
 import com.ogu.support.TestMember
 import com.ogu.support.bearer
@@ -41,14 +43,19 @@ class PostDetailApiTests {
     @Autowired
     lateinit var jdbcTemplate: JdbcTemplate
 
+    @Autowired
+    lateinit var monsterApi: MonsterApi
+
     private val jsonMapper = JsonMapper.builder().build()
     private lateinit var mockMvc: MockMvc
     private lateinit var members: MemberFixture
+    private lateinit var loop: CoreLoopFixture
 
     @BeforeEach
     fun setUp() {
         mockMvc = MockMvcBuilders.webAppContextSetup(context).apply<DefaultMockMvcBuilder>(springSecurity()).build()
         members = MemberFixture(mockMvc)
+        loop = CoreLoopFixture(mockMvc, jdbcTemplate, monsterApi)
     }
 
     @Test
@@ -117,6 +124,45 @@ class PostDetailApiTests {
 
         detail(viewer, postId).andExpect(jsonPath("$.data.likedByMe").value(true))
         detail(author, postId).andExpect(jsonPath("$.data.likedByMe").value(false))
+    }
+
+    @Test
+    fun `공감 API로 공감하면 likedByMe=true이고 공감 수와 HP가 바뀐다`() {
+        val author = members.onboarded()
+        val fan = members.onboarded()
+        val postId = loop.postWithMonster(author)
+
+        loop.likePost(fan, postId).andExpect(status().isOk)
+
+        detail(fan, postId)
+            .andExpect(jsonPath("$.data.likedByMe").value(true))
+            .andExpect(jsonPath("$.data.likeCount").value(1))
+            .andExpect(jsonPath("$.data.monster.hp").value(9))
+        loop.unlikePost(fan, postId).andExpect(status().isOk)
+        detail(fan, postId)
+            .andExpect(jsonPath("$.data.likedByMe").value(false))
+            .andExpect(jsonPath("$.data.likeCount").value(0))
+            .andExpect(jsonPath("$.data.monster.hp").value(9))
+    }
+
+    @Test
+    fun `내 댓글이 HP에 반영됐으면 myCommentCounted=true다`() {
+        val author = members.onboarded()
+        val commenter = members.onboarded()
+        val postId = loop.postWithMonster(author)
+        val pendingPostId = loop.postWithoutMonster(author)
+        detail(commenter, postId).andExpect(jsonPath("$.data.myCommentCounted").value(false))
+
+        loop.comment(commenter, postId)
+        loop.comment(author, postId)
+        loop.comment(commenter, pendingPostId)
+
+        detail(commenter, postId)
+            .andExpect(jsonPath("$.data.myCommentCounted").value(true))
+            .andExpect(jsonPath("$.data.commentCount").value(2))
+        // 작성자 댓글은 HP에 반영되지 않고, 몬스터가 없는 글의 댓글은 아직 반영되지 않았다
+        detail(author, postId).andExpect(jsonPath("$.data.myCommentCounted").value(false))
+        detail(commenter, pendingPostId).andExpect(jsonPath("$.data.myCommentCounted").value(false))
     }
 
     @Test

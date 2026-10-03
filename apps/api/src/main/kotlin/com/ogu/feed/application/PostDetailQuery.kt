@@ -37,8 +37,7 @@ class PostDetailQuery(
             likedByMe = postId in postApi.likedPostIds(viewerId, ids),
             commentCount = post.commentCount,
             mine = post.authorId == viewerId,
-            // US3(T044)에서 monster 모듈의 HP 기록으로 채운다
-            myCommentCounted = false,
+            myCommentCounted = monsterApi.hasCountedComment(postId, viewerId),
             createdAt = post.createdAt,
         )
     }
