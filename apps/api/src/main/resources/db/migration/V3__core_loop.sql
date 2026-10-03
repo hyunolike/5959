@@ -1,5 +1,7 @@
 -- 003-core-loop: 고민 글, 댓글, 공감, 감정 분석, 몬스터, HP 기록
 -- 스키마는 specs/003-core-loop/data-model.md 그대로 만든다.
+-- 본문 길이는 사람이 보는 글자(grapheme) 수로 애플리케이션이 검사한다(research R8). 결합 이모지는 1자라도 코드
+-- 포인트가 여러 개라 varchar(n)로는 경계가 맞지 않으므로 본문 컬럼은 text다.
 -- 제약은 모두 이름을 붙인다. 애플리케이션이 위반을 제약 이름으로 구분한다(예: post_likes_pkey → ALREADY_LIKED).
 -- 모듈 경계를 넘는 참조(emotion_analysis.post_id, monsters.post_id, monster_hp_log.member_id)에는 FK를 두지 않는다.
 
@@ -11,7 +13,7 @@ CREATE TABLE posts
   author_id           BIGINT NOT NULL,
   author_job_role     VARCHAR(20) NOT NULL,
   author_career_year  VARCHAR(20) NOT NULL,
-  content             VARCHAR(2000) NOT NULL,
+  content             TEXT NOT NULL,
   comment_tone        VARCHAR(20) NOT NULL,
   like_count          INT NOT NULL DEFAULT 0,
   comment_count       INT NOT NULL DEFAULT 0,
@@ -38,7 +40,7 @@ CREATE TABLE comments
   post_id     BIGINT NOT NULL,
   author_id   BIGINT NOT NULL,
   parent_id   BIGINT,
-  content     VARCHAR(1200) NOT NULL,
+  content     TEXT NOT NULL,
   like_count  INT NOT NULL DEFAULT 0,
   deleted_at  TIMESTAMPTZ,
   created_at  TIMESTAMPTZ NOT NULL,

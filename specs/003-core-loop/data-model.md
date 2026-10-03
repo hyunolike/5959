@@ -12,7 +12,7 @@ Flyway `V3__core_loop.sql` 하나로 만든다. 테이블마다 소유 모듈이
 | author_id | bigint | NOT NULL, FK → member.id | |
 | author_job_role | varchar(20) | NOT NULL | 작성 시점 스냅숏(research R7) |
 | author_career_year | varchar(20) | NOT NULL | 작성 시점 스냅숏 |
-| content | varchar(2000) | NOT NULL | 글자(grapheme) 1~500. 저장 전 앞뒤 공백 제거 |
+| content | text | NOT NULL | 글자(grapheme) 1~500. 저장 전 앞뒤 공백 제거. 남용 방지로 코드 포인트 5,000개까지 |
 | comment_tone | varchar(20) | NOT NULL | `VENT_WITH_ME`, `COMFORT_ME`, `WARM_ADVICE`, `MAKE_ME_LAUGH` |
 | like_count | int | NOT NULL, DEFAULT 0, CHECK ≥ 0 | |
 | comment_count | int | NOT NULL, DEFAULT 0, CHECK ≥ 0 | 살아 있는 댓글과 답글 수 |
@@ -31,7 +31,7 @@ Flyway `V3__core_loop.sql` 하나로 만든다. 테이블마다 소유 모듈이
 | post_id | bigint | NOT NULL, FK → posts.id | |
 | author_id | bigint | NOT NULL, FK → member.id | |
 | parent_id | bigint | NULL, FK → comments.id | 답글이면 원 댓글 |
-| content | varchar(1200) | NOT NULL | 글자 1~300 |
+| content | text | NOT NULL | 글자 1~300. 남용 방지로 코드 포인트 3,000개까지 |
 | like_count | int | NOT NULL, DEFAULT 0, CHECK ≥ 0 | |
 | deleted_at | timestamptz | NULL | |
 | created_at, updated_at | timestamptz | NOT NULL | |

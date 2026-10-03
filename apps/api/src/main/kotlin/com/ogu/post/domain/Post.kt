@@ -49,7 +49,7 @@ class Post private constructor(
     var authorCareerYear: CareerYear = authorCareerYear
         protected set
 
-    @Column(name = "content", nullable = false, length = 2000)
+    @Column(name = "content", nullable = false, columnDefinition = "text")
     var content: String = content
         protected set
 
@@ -83,7 +83,7 @@ class Post private constructor(
 
     companion object {
         const val CONTENT_MAX_LENGTH = 500
-        private const val STORAGE_MAX_CODE_POINTS = 2000
+        const val CONTENT_MAX_CODE_POINTS = 5000
 
         fun write(
             author: PostAuthor,
@@ -102,9 +102,10 @@ class Post private constructor(
                     "본문은 앞뒤 공백을 뺀 1자 이상 ${CONTENT_MAX_LENGTH}자 이하여야 합니다.",
                 )
             }
-            // 결합 이모지는 1자라도 코드 포인트가 여러 개라, 500자 안에서도 컬럼(varchar(2000), 코드 포인트 기준)을 넘을 수 있다.
-            if (content.codePointCount(0, content.length) > STORAGE_MAX_CODE_POINTS) {
-                throw BusinessException(ErrorCode.INVALID_REQUEST, "본문에 결합 이모지가 너무 많습니다.")
+            // 남용 방지(research R8): 결합 문자를 겹겹이 쌓은 글(Zalgo)은 글자 수는 적어도 코드 포인트가 매우 많다.
+            // LLM에 보내는 양도 이 상한으로 막는다.
+            if (content.codePointCount(0, content.length) > CONTENT_MAX_CODE_POINTS) {
+                throw BusinessException(ErrorCode.INVALID_REQUEST, "본문에 결합 문자가 너무 많습니다.")
             }
             return content
         }

@@ -106,15 +106,30 @@ class PostCreateApiTests {
     }
 
     @Test
-    fun `500자 안이라도 저장 한도(2000 코드 포인트)를 넘는 결합 이모지 글은 500이 아니라 400이다`() {
+    fun `US1-AC2 결합 이모지 500자(코드 포인트 2500개)도 저장된다`() {
         val member = members.onboarded()
+        val content = "👨‍👩‍👧".repeat(500)
 
-        // 👨‍👩‍👧는 1자이지만 코드 포인트 5개다. 500개면 2500개라 posts.content varchar(2000)에 들어가지 않는다.
-        createPost(member, "👨‍👩‍👧".repeat(500), "VENT_WITH_ME")
+        val postId = createPost(member, content, "VENT_WITH_ME").andExpect(status().isCreated).postId()
+
+        val stored = jdbcTemplate.queryForObject("select content from posts where id = ?", String::class.java, postId)
+        assertThat(stored).isEqualTo(content)
+    }
+
+    @Test
+    fun `결합 문자를 겹쳐 코드 포인트가 5000개를 넘는 글(Zalgo)은 글자 수가 적어도 400이다`() {
+        val member = members.onboarded()
+        // 글자 하나에 결합 문자 999개: 5자이지만 코드 포인트는 5000개다
+        val zalgoChar = "a" + "\u0301".repeat(999)
+        val atCap = zalgoChar.repeat(5)
+        val overCap = atCap + "\u0301"
+
+        createPost(member, atCap, "VENT_WITH_ME").andExpect(status().isCreated)
+        createPost(member, overCap, "VENT_WITH_ME")
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"))
 
-        assertThat(postCount(member)).isZero()
+        assertThat(postCount(member)).isEqualTo(1)
     }
 
     @Test

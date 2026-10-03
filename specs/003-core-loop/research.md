@@ -95,7 +95,7 @@
 
 ## R8. 글자 수 (FR-001, FR-008)
 
-**결정**: 본문 길이는 서버와 웹 모두 사용자가 보는 글자(grapheme cluster) 기준으로 센다. 서버는 `java.text.BreakIterator.getCharacterInstance()`, 웹은 `Intl.Segmenter`를 쓴다. 저장 컬럼은 여유를 두어 `varchar(2000)`(글), `varchar(1200)`(댓글)이다.
+**결정**: 본문 길이는 서버와 웹 모두 사용자가 보는 글자(grapheme cluster) 기준으로 센다. 서버는 `java.text.BreakIterator.getCharacterInstance()`, 웹은 `Intl.Segmenter`를 쓴다. 저장 컬럼은 `text`다. 결합 이모지(👨‍👩‍👧)는 1자이지만 코드 포인트가 5개라, `varchar(n)`(코드 포인트 기준)로는 500자 글이 들어가지 않을 수 있다. 대신 결합 문자를 수없이 겹친 글(Zalgo)과 LLM에 보내는 양을 막으려고 코드 포인트 상한을 따로 둔다: 글 5,000개, 댓글 3,000개. 넘으면 `400 INVALID_REQUEST`다.
 
 **근거**: 스펙 경계 상황에서 "이모지 하나는 1자"라고 했다. UTF-16 길이를 세면 이모지가 2자로 잡혀 사용자 화면의 카운터와 서버 검증이 어긋난다.
 
