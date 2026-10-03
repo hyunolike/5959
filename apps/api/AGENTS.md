@@ -66,7 +66,7 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
 ## Auth (`member` module)
 
 - 다른 모듈에 노출하는 공개 타입은 모두 `member` 패키지 루트에 있다: `MemberApi`
-  (파사드, `getMember(memberId)`), `MemberInfo`(온보딩 전에는 `nickname`/`jobRole`/
+  (파사드, `getMember(memberId)`, 일괄 조회 `getMembers(ids)`), `MemberInfo`(온보딩 전에는 `nickname`/`jobRole`/
   `careerYear`가 null), `AuthenticatedMember`(컨트롤러 인자, `memberId`/`sessionId`/
   `onboarded`), `JobRole`, `CareerYear`.
 - 보안 설정은 `member/infrastructure/security`에 모여 있다: `SecurityConfig`(필터

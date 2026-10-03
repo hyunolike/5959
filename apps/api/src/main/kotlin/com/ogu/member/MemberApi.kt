@@ -5,4 +5,7 @@ package com.ogu.member
  */
 interface MemberApi {
     fun getMember(memberId: Long): MemberInfo
+
+    /** 여러 회원을 쿼리 한 번으로 읽는다. 없는 ID는 결과에서 빠진다. */
+    fun getMembers(ids: Collection<Long>): Map<Long, MemberInfo>
 }

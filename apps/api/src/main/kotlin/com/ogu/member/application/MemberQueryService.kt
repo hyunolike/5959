@@ -18,14 +18,11 @@ import org.springframework.transaction.annotation.Transactional
 class MemberQueryService(
     private val memberRepository: MemberRepository,
 ) : MemberApi {
-    override fun getMember(memberId: Long): MemberInfo {
-        val member = getProfile(memberId)
-        return MemberInfo(
-            id = member.id,
-            nickname = member.nickname,
-            jobRole = member.jobRole,
-            careerYear = member.careerYear,
-        )
+    override fun getMember(memberId: Long): MemberInfo = getProfile(memberId).toInfo()
+
+    override fun getMembers(ids: Collection<Long>): Map<Long, MemberInfo> {
+        if (ids.isEmpty()) return emptyMap()
+        return memberRepository.findAllById(ids.toSet()).associate { it.id to it.toInfo() }
     }
 
     fun getProfile(memberId: Long): Member {
@@ -33,3 +30,11 @@ class MemberQueryService(
         return member ?: throw BusinessException(ErrorCode.NOT_FOUND)
     }
 }
+
+private fun Member.toInfo(): MemberInfo =
+    MemberInfo(
+        id = id,
+        nickname = nickname,
+        jobRole = jobRole,
+        careerYear = careerYear,
+    )
