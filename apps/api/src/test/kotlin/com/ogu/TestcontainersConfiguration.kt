@@ -1,12 +1,16 @@
 package com.ogu
 
+import com.ogu.support.TestAiConfiguration
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection
 import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Import
 import org.testcontainers.postgresql.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
 
+/** 테스트용 Postgres. 감정 분석은 실제 LLM 대신 가짜 분석기를 쓴다([TestAiConfiguration]). */
 @TestConfiguration(proxyBeanMethods = false)
+@Import(TestAiConfiguration::class)
 class TestcontainersConfiguration {
     @Bean
     @ServiceConnection

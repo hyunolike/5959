@@ -32,6 +32,24 @@ spring:
       - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration
       - org.springframework.ai.model.openai.autoconfigure.OpenAiModerationAutoConfiguration
 
+# 감정 분석 호출(ai 모듈 SpringAiEmotionAnalyzer, research R3). 서킷이 열리면 호출 없이 실패하고 emotion 모듈의 재시도 일정에 맡긴다.
+resilience4j:
+  circuitbreaker:
+    instances:
+      emotionAnalyzer:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 60s
+        permitted-number-of-calls-in-half-open-state: 2
+        automatic-transition-from-open-to-half-open-enabled: true
+  timelimiter:
+    instances:
+      emotionAnalyzer:
+        timeout-duration: ${ogu.ai.timeout}
+        cancel-running-future: true
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
