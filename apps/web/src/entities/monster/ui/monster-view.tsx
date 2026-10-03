@@ -72,19 +72,27 @@ const DETAIL_SIZES = "(min-width: 640px) 224px, 192px";
  *
  * HP가 줄면 맞는 반응을 한다(US3-AC10). 정지 이미지면 그림과 HP 바를 함께 흔들고,
  * 3D면 장면이 0.4초 흔들리며 깜빡이고 HP 바만 흔든다. 움직임 줄이기면 흔들지 않는다.
- * 3D 장면이 실패하면 그 뒤로는 정지 이미지로 그린다.
+ * 3D 장면이 실패하면 같은 글(`resetKey`)에서는 그 뒤로 정지 이미지로 그리고, 다른 글이면 다시 시도한다.
  */
 export function MonsterDisplay({
   monster,
   variant,
+  resetKey,
   className,
 }: {
   monster: MonsterView;
   variant: "detail" | "card";
+  /**
+   * 몬스터가 속한 글을 가리키는 값(글 ID). 3D가 실패하면 이 값이 같은 동안은 정지 이미지로 남고,
+   * 바뀌면(App Router가 트리를 유지한 채 다른 글로 갔을 때) 3D를 다시 시도한다.
+   */
+  resetKey?: string | number;
   className?: string;
 }) {
   const can3D = useCanRender3D();
-  const [failed3D, setFailed3D] = useState(false);
+  // 실패를 어느 글에서 겪었는지 기억한다. 다른 글이면 실패가 아니다.
+  const [failure, setFailure] = useState<{ key: typeof resetKey } | null>(null);
+  const failed3D = failure !== null && failure.key === resetKey;
   const use3D = variant === "detail" && can3D && !failed3D;
   const look = appearance(
     monster.emotion,
@@ -121,8 +129,9 @@ export function MonsterDisplay({
       >
         {use3D ? (
           <Monster3DBoundary
+            key={resetKey}
             fallback={sprite}
-            onError={() => setFailed3D(true)}
+            onError={() => setFailure({ key: resetKey })}
           >
             <LoadingSpriteContext value={sprite}>
               <Monster3D

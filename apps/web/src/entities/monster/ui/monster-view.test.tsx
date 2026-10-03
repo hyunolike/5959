@@ -182,6 +182,49 @@ describe("MonsterDisplay 3D와 정지 이미지 고르기", () => {
     );
   });
 
+  it("US5-AC4 3D가 실패한 글은 정지 이미지로 남고, 다른 글로 가면 3D를 다시 시도한다", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    scene3d.throws = true;
+    stubReducedMotion(false);
+    stubWebGL(true);
+    const MonsterDisplay = await loadDisplay();
+    const { rerender } = render(
+      <MonsterDisplay monster={ANXIETY_FULL} variant="detail" resetKey={1} />,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(
+      screen.getByRole("img", { name: "불안 몬스터, 멀쩡함" }).tagName,
+    ).toBe("IMG");
+
+    // 같은 글(1)에서 HP만 바뀌면 다시 시도하지 않고 정지 이미지로 남는다
+    scene3d.throws = false;
+    rerender(
+      <MonsterDisplay
+        monster={{ ...ANXIETY_FULL, hp: 9 }}
+        variant="detail"
+        resetKey={1}
+      />,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(screen.queryByTestId("monster-3d")).not.toBeInTheDocument();
+    expect(screen.getByText("HP 9/10")).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: "불안 몬스터, 멀쩡함" }).tagName,
+    ).toBe("IMG");
+
+    // 다른 글(2)로 가면(App Router는 같은 트리를 유지한다) 3D를 다시 시도한다
+    rerender(
+      <MonsterDisplay
+        monster={{ ...ANXIETY_FULL, emotion: "IRRITATION" }}
+        variant="detail"
+        resetKey={2}
+      />,
+    );
+    expect(await screen.findByTestId("monster-3d")).toHaveAccessibleName(
+      "짜증 몬스터, 멀쩡함",
+    );
+  });
+
   it("US5-AC4 3D 모듈을 불러오지 못하면(청크 로딩 실패) 정지 이미지로 대신한다", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     // 모듈 불러오기가 실패한다(배포 뒤 청크가 사라졌거나 네트워크 오류)

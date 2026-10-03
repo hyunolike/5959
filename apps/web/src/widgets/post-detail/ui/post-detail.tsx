@@ -75,7 +75,11 @@ function PostDetailContent({ detail }: { detail: PostDetailData }) {
     <article className="flex w-full max-w-xl flex-col gap-4">
       <Card aria-label="몬스터" className="flex flex-col gap-2">
         {monster ? (
-          <MonsterDisplay monster={monster} variant="detail" />
+          <MonsterDisplay
+            monster={monster}
+            variant="detail"
+            resetKey={detail.postId}
+          />
         ) : (
           <p
             aria-live="polite"
