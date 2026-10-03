@@ -119,7 +119,7 @@ description: "Task list for 003-core-loop (핵심 루프)"
 - [x] T037 [P] [US3] apps/api/src/test/kotlin/com/ogu/monster/MonsterRulesTests.kt: `US3-AC5 HP는 0에서 멈추고 DEFEATED, 이후 공격은 hp_before=hp_after=0으로 기록`, `MonsterDefeated`가 한 번만 발행, 몬스터가 없으면 공격은 HP 기록 없이 통과
 - [x] T038 [P] [US3] apps/api/src/test/kotlin/com/ogu/monster/MonsterConcurrencyTest.kt: `US3-AC7 서로 다른 회원 100명이 동시에 공감하면 HP가 정확히 줄고 기록이 정확한 개수다`(최대 HP 30, 100명이면 0에서 멈추고 기록 100개), 같은 회원이 댓글 두 개를 동시에 달면 HP는 3만 준다, 몬스터 생성과 공감이 동시에 와도 공감은 정확히 한 번 반영된다(생성 트랜잭션을 잠금 대기에 붙잡는 결정적 테스트. M1의 `pg_stat_clear_snapshot` 교훈을 따른다)
 - [x] T039 [P] [US3] apps/api/src/test/kotlin/com/ogu/monster/RetroactiveAttackTests.kt: `US3-AC9 분석 중에 다른 회원 둘이 공감하고 하나가 댓글을 달면 몬스터 HP는 최대 HP − 5이고 기록 3개는 retroactive=true`, 그 사이 취소된 공감과 지운 댓글은 반영하지 않음, 작성자 행동 제외, 소급 반영으로 0이 되면 DEFEATED로 생성
-- [ ] T040 [P] [US3] 웹 테스트: apps/web/src/features/like/model/optimistic-hp.test.ts(작성자, 몬스터 없음, 이미 반영된 댓글, 처치됨이면 줄이지 않음, 0 아래로 내려가지 않음), apps/web/e2e-full/attack.spec.ts(`US3-AC1`, `US3-AC2`, `US3-AC5` 처치, `US3-AC8` 작성자, `US3-AC10` 공격 직후 HP 표시 변경)
+- [x] T040 [P] [US3] 웹 테스트: apps/web/src/features/like/model/optimistic-hp.test.ts(작성자, 몬스터 없음, 이미 반영된 댓글, 처치됨이면 줄이지 않음, 0 아래로 내려가지 않음), apps/web/e2e-full/attack.spec.ts(`US3-AC1`, `US3-AC2`, `US3-AC5` 처치, `US3-AC8` 작성자, `US3-AC10` 공격 직후 HP 표시 변경)
 
 ### Implementation for User Story 3
 
@@ -127,7 +127,7 @@ description: "Task list for 003-core-loop (핵심 루프)"
 - [x] T042 [US3] post 모듈 `PostApi.attacksSoFar(postId)`: 작성자를 뺀 살아 있는 글 공감, 회원별 가장 오래된 살아 있는 댓글 하나(답글 포함), 작성자를 뺀 살아 있는 댓글 공감(지운 댓글 제외)
 - [x] T043 [US3] monster 모듈: domain/MonsterHpLog와 리포지토리(`insertIfAbsent(...) ON CONFLICT DO NOTHING RETURNING id`, 원자적 `decrementHp(id, delta) RETURNING hp_before/hp_after/status`), application/AttackListener(`PostLiked`, `CommentCreated`, `CommentLiked`를 `@EventListener`로 같은 트랜잭션에서 받아 data-model.md 반영 규칙 1~4 적용, 처치 시 `MonsterDefeated` 발행), MonsterFactory에 소급 반영 추가(`PostApi.attacksSoFar`, `retroactive=true`)
 - [x] T044 [US3] feed 모듈 상세의 `myCommentCounted`를 채운다(`MonsterApi`에 "이 회원의 COMMENT 기록이 있는가" 조회 추가)
-- [ ] T045 [P] [US3] 웹: apps/web/src/features/like/(post-like-button: 작성자에게는 숨김, comment-like-button, model/optimistic-hp.ts, mutation 성공 후 상세 쿼리 무효화), apps/web/src/entities/comment/(api/use-comments-query.ts, ui/comment-item.tsx: 답글 들여쓰기, 공감 수), apps/web/src/features/comment/(write: 300자 카운터, 답글 대상 표시 / reply), apps/web/src/widgets/post-detail에 공감과 댓글 영역을 붙이고 공격 성공 시 몬스터 맞는 반응 트리거(US5 전까지 HP 바 흔들림)
+- [x] T045 [P] [US3] 웹: apps/web/src/features/like/(post-like-button: 작성자에게는 숨김, comment-like-button, model/optimistic-hp.ts, mutation 성공 후 상세 쿼리 무효화), apps/web/src/entities/comment/(api/use-comments-query.ts, ui/comment-item.tsx: 답글 들여쓰기, 공감 수), apps/web/src/features/comment/(write: 300자 카운터, 답글 대상 표시 / reply), apps/web/src/widgets/post-detail에 공감과 댓글 영역을 붙이고 공격 성공 시 몬스터 맞는 반응 트리거(US5 전까지 HP 바 흔들림)
 
 **Checkpoint**: 핵심 루프 전체가 동작한다
 

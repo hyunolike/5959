@@ -86,7 +86,9 @@ test("US2-AC1 최신 글부터 작성자, 직군과 경력, 본문 앞부분, �
   await page.goto(`/post/${postId}`);
   await expect(page.getByText("HP 10/10")).toBeVisible({ timeout: 30_000 });
 
-  await page.goto("/home");
+  // 다른 스펙이 동시에 글을 많이 쓰면(US2-AC2는 24개) 첫 쪽 20개 밖으로 밀린다.
+  // 이 테스트만 쓰는 직군과 경력 조합으로 거른 최신순 피드에서 본다.
+  await page.goto("/home?jobRole=PLANNING&careerYear=YEAR_2");
   const item = card(page, postId);
   await expect(item).toBeVisible();
   await expect(item.getByText(nickname, { exact: true })).toBeVisible();
@@ -144,12 +146,31 @@ test("US2-AC2 피드 끝까지 내리면 다음 20개가 이어서 붙고 같은
   expect(ids).toEqual(expect.arrayContaining(mine));
 });
 
+/** 지금 로그인한 회원으로 글에 공감한다(BFF 프록시, 같은 출처). */
+async function likePost(page: Page, postId: number) {
+  const response = await page.request.post(`/api/posts/${postId}/likes`, {
+    headers: { Origin: APP_ORIGIN },
+  });
+  expect(response.status()).toBe(200);
+}
+
 test("US2-AC3 인기순을 고르면 공감 수가 많은 글부터, 같으면 최신 글부터 나온다", async ({
   page,
 }) => {
+  // 이 테스트만 쓰는 직군과 경력 조합. 공감이 많은 글을 먼저(가장 오래된 글로) 써서
+  // 최신순과 다른 순서가 나와야 통과한다.
   await onboardNewMember(page, "SALES", "YEAR_5");
-  const older = await createPost(page, "[외로움:낮음] 인기순 확인 1");
-  const newer = await createPost(page, "[외로움:낮음] 인기순 확인 2");
+  const twoLikes = await createPost(page, "[외로움:낮음] 인기순 공감 2");
+  const oneLike = await createPost(page, "[외로움:낮음] 인기순 공감 1");
+  const olderNoLike = await createPost(page, "[외로움:낮음] 인기순 공감 0 앞");
+  const newerNoLike = await createPost(page, "[외로움:낮음] 인기순 공감 0 뒤");
+
+  // 다른 회원 둘이 공감한다. 작성자는 자기 글에 공감할 수 없다.
+  await onboardNewMember(page, "MARKETING", "YEAR_1");
+  await likePost(page, twoLikes);
+  await likePost(page, oneLike);
+  await onboardNewMember(page, "MARKETING", "YEAR_1");
+  await likePost(page, twoLikes);
 
   await page.goto("/home");
   await page.getByRole("button", { name: "인기순" }).click();
@@ -177,12 +198,15 @@ test("US2-AC3 인기순을 고르면 공감 수가 많은 글부터, 같으면 �
     ).toBe(true);
   }
 
-  // 공감 0인 내 글 둘은 같은 공감 수 안에서 최신 글이 먼저다(같은 조합으로 거른다)
+  // 같은 조합으로 거르면 내 글 넷이 공감 2, 1, 0(최신), 0(오래된) 순으로 나온다.
+  // 다시 돌리면 다른 실행의 같은 조합 글이 섞일 수 있어 내 글끼리의 순서만 본다.
   await page.goto("/home?order=POPULAR&jobRole=SALES&careerYear=YEAR_5");
-  await expect(card(page, newer)).toBeVisible();
-  await expect(card(page, older)).toBeVisible();
+  await expect(card(page, olderNoLike)).toBeVisible();
+  await expect(card(page, twoLikes)).toContainText("공감 2");
+  await expect(card(page, oneLike)).toContainText("공감 1");
   const ids = await feedPostIds(page);
-  expect(ids.indexOf(newer)).toBeLessThan(ids.indexOf(older));
+  const mine = [twoLikes, oneLike, newerNoLike, olderNoLike];
+  expect(ids.filter((id) => mine.includes(id))).toEqual(mine);
 });
 
 test("US2-AC4 직군과 경력을 고르면 고른 직군 중 하나이면서 고른 경력 중 하나인 작성자의 글만 나온다", async ({
