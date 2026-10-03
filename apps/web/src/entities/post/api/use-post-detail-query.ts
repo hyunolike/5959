@@ -1,11 +1,11 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutationState, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import type { ApiResponse } from "@/shared/api";
 import { ApiError } from "@/shared/api";
-import { QUERY_KEYS } from "@/shared/config";
+import { MUTATION_KEYS, QUERY_KEYS } from "@/shared/config";
 
 import type { PostDetail } from "../model/types";
 
@@ -69,15 +69,34 @@ function isTerminalError(error: unknown): boolean {
   return error instanceof ApiError && error.status >= 400 && error.status < 500;
 }
 
-/** 글 상세. 몬스터가 생길 때까지 R10 간격으로 다시 불러온다(FR-015, US1-AC3). */
+/**
+ * 이 글을 지우는 뮤테이션(`MUTATION_KEYS.deletePost`)이 진행 중이거나 성공했는지.
+ * 지우는 동안이나 지운 직후 화면을 떠나기 전에 폴링이 돌면 404("삭제된 글이에요")가 깜박인다.
+ */
+function useDeletingOrDeleted(postId: number): boolean {
+  const statuses = useMutationState({
+    filters: { mutationKey: MUTATION_KEYS.deletePost(postId), exact: true },
+    select: (mutation) => mutation.state.status,
+  });
+  return statuses.some(
+    (status) => status === "pending" || status === "success",
+  );
+}
+
+/**
+ * 글 상세. 몬스터가 생길 때까지 R10 간격으로 다시 불러온다(FR-015, US1-AC3).
+ * 이 글을 지우고 있거나 지운 뒤에는 다시 불러오지 않는다.
+ */
 export function usePostDetailQuery(postId: number) {
   const [startedAt] = useState(() => Date.now());
+  const deleting = useDeletingOrDeleted(postId);
 
   return useQuery({
     queryKey: QUERY_KEYS.postDetail(postId),
     queryFn: () => fetchPostDetail(postId),
+    enabled: !deleting,
     refetchInterval: (query) =>
-      isTerminalError(query.state.error)
+      deleting || isTerminalError(query.state.error)
         ? false
         : analysisPollInterval(query.state.data, Date.now() - startedAt),
   });

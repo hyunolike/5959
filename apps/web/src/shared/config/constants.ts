@@ -28,4 +28,9 @@ export const QUERY_KEYS = {
  */
 export const MUTATION_KEYS = {
   attack: (postId: number) => ["attack", postId] as const,
+  /**
+   * 글 삭제. 상세 쿼리는 이 키의 뮤테이션이 진행 중이거나 성공했으면 분석 중 폴링을 멈춘다.
+   * 멈추지 않으면 지운 직후 이동하기 전에 폴링이 한 번 더 돌아 404("삭제된 글이에요")가 깜박인다.
+   */
+  deletePost: (postId: number) => ["deletePost", postId] as const,
 };

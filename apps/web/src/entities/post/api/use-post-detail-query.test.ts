@@ -1,9 +1,14 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  QueryClient,
+  QueryClientProvider,
+  useMutation,
+} from "@tanstack/react-query";
 import { act, renderHook } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/shared/api";
+import { MUTATION_KEYS } from "@/shared/config";
 
 import type { PostDetail } from "../model/types";
 import {
@@ -326,5 +331,40 @@ describe("usePostDetailQuery 폴링", () => {
     await vi.advanceTimersByTimeAsync(ANALYSIS_POLL_SLOW_MS * 2);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(result.current.error).toBeInstanceOf(ApiError);
+  });
+
+  it('분석 중인 글을 지우는 동안과 지운 뒤에는 폴링하지 않는다(이동 전에 "삭제된 글이에요"가 깜박이지 않는다)', async () => {
+    const fetchMock = vi.fn(() => Promise.resolve(ok(detail())));
+    vi.stubGlobal("fetch", fetchMock);
+    let finishDelete: () => void = () => {};
+    const deleteRequest = () =>
+      new Promise<void>((resolve) => {
+        finishDelete = resolve;
+      });
+
+    const { result } = renderHook(
+      () => ({
+        detail: usePostDetailQuery(7),
+        remove: useMutation({
+          mutationKey: MUTATION_KEYS.deletePost(7),
+          mutationFn: deleteRequest,
+        }),
+      }),
+      { wrapper },
+    );
+    await advance(0);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.current.detail.data?.monster).toBeNull();
+
+    act(() => result.current.remove.mutate());
+    await advance(ANALYSIS_POLL_FAST_MS * 2);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    await act(async () => finishDelete());
+    await advance(0);
+    expect(result.current.remove.isSuccess).toBe(true);
+    await advance(ANALYSIS_POLL_FAST_MS * 2);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.current.detail.data?.postId).toBe(7);
   });
 });
