@@ -93,7 +93,6 @@ export function WriteForm() {
             <span />
           )}
           <p
-            aria-live="polite"
             className={cn(
               "shrink-0 text-xs tabular-nums",
               overLimit ? "text-red-600" : "text-neutral-500",
@@ -101,6 +100,10 @@ export function WriteForm() {
           >
             {length}/{POST_CONTENT_MAX_LENGTH}
           </p>
+        </div>
+        {/* 카운터는 입력마다 읽히지 않게 두고, 넘었을 때만 한 번 알린다. */}
+        <div role="status" className="sr-only">
+          {overLimit ? `${POST_CONTENT_MAX_LENGTH}자를 넘었어요.` : null}
         </div>
       </div>
 
@@ -140,7 +143,11 @@ export function WriteForm() {
         </p>
       )}
 
-      <Button type="submit" disabled={isSubmitting}>
+      {/* 성공 뒤 상세로 넘어가는 동안 다시 눌러 같은 글을 또 올리지 않게 막는다. */}
+      <Button
+        type="submit"
+        disabled={isSubmitting || createPostMutation.isSuccess}
+      >
         올리기
       </Button>
     </form>

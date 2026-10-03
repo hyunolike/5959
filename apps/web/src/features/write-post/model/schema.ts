@@ -23,10 +23,12 @@ export const writePostSchema = z.object({
     .trim()
     .refine((value) => value.length > 0, "고민을 적어 주세요.")
     .refine(
-      (value) =>
-        countGraphemes(value) <= POST_CONTENT_MAX_LENGTH &&
-        Array.from(value).length <= POST_CONTENT_MAX_CODE_POINTS,
+      (value) => countGraphemes(value) <= POST_CONTENT_MAX_LENGTH,
       `${POST_CONTENT_MAX_LENGTH}자 이하로 적어 주세요.`,
+    )
+    .refine(
+      (value) => Array.from(value).length <= POST_CONTENT_MAX_CODE_POINTS,
+      "너무 긴 글이에요. 조금 줄여 주세요.",
     ),
   commentTone: z.enum(COMMENT_TONE_VALUES, {
     message: "댓글 말투를 골라 주세요.",

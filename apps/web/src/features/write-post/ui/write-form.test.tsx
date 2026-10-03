@@ -77,6 +77,43 @@ describe("WriteForm", () => {
     });
   });
 
+  it("US1-AC1 올리기에 성공하면 상세로 넘어가는 동안 다시 누를 수 없다", async () => {
+    const user = userEvent.setup({ delay: null });
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse(
+        {
+          success: true,
+          data: { postId: 42, analysisStatus: "PENDING" },
+          error: null,
+        },
+        201,
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderForm();
+    await fillAndSubmit(user, "고민");
+
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/post/42"));
+    expect(screen.getByRole("button", { name: "올리기" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "올리기" }));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("글자 수 카운터는 입력마다 읽어 주지 않고, 500자를 넘었을 때만 알린다", async () => {
+    const user = userEvent.setup({ delay: null });
+    renderForm();
+
+    await user.type(screen.getByLabelText("고민"), "고민");
+    const counter = screen.getByText("2/500");
+    expect(counter.closest("[aria-live]")).toBeNull();
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+
+    await user.click(screen.getByLabelText("고민"));
+    await user.paste("가".repeat(499));
+    expect(screen.getByRole("status")).toHaveTextContent("500자를 넘었어요.");
+  });
+
   it("말투 버튼 4개를 보여 주고 고른 말투만 눌린 상태다", async () => {
     const user = userEvent.setup({ delay: null });
     renderForm();

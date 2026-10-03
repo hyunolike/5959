@@ -50,6 +50,7 @@ describe("writePostSchema 본문 길이", () => {
     const zalgo = `a${"́".repeat(POST_CONTENT_MAX_CODE_POINTS)}`;
     const result = writePostSchema.safeParse(withContent(zalgo));
     expect(result.success).toBe(false);
+    expect(firstMessage(result)).toBe("너무 긴 글이에요. 조금 줄여 주세요.");
   });
 
   it("성공하면 앞뒤 공백을 뺀 본문을 돌려준다", () => {
