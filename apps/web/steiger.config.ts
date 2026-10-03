@@ -38,4 +38,16 @@ export default defineConfig([
       "fsd/insignificant-slice": "off",
     },
   },
+  // features/like and features/comment are separate slices on purpose: plan.md
+  // (003-core-loop, Constitution Check I and Source Code) names them as two user
+  // actions, and features/comment grows edit/delete in US4 (T049). For now only
+  // widgets/post-detail composes them, which insignificant-slice reads as "merge
+  // into the widget". Merging would put the HP rules and mutations inside a
+  // widget and break the one-action-per-feature layout.
+  {
+    files: ["./src/features/like/**", "./src/features/comment/**"],
+    rules: {
+      "fsd/insignificant-slice": "off",
+    },
+  },
 ]);

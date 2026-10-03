@@ -7,8 +7,11 @@ import {
   usePostDetailQuery,
   type PostDetail as PostDetailData,
 } from "@/entities/post";
+import { PostLikeButton } from "@/features/like";
 import { ApiError } from "@/shared/api";
 import { Card, Spinner } from "@/shared/ui";
+
+import { PostComments } from "./post-comments";
 
 /** 없거나 지운 글(404), 숫자가 아닌 글 ID(400). */
 export function PostNotFound() {
@@ -28,9 +31,10 @@ function isNotFound(error: unknown): boolean {
 }
 
 /**
- * 글 상세(FR-012의 US1 범위): 작성자, 본문, 댓글 말투, 몬스터 자리.
+ * 글 상세(FR-012): 작성자, 본문, 댓글 말투, 몬스터 자리, 공감과 댓글.
  * 몬스터가 생기기 전에는 "분석 중"을 보여 주고, `usePostDetailQuery`가 몬스터가
  * 생길 때까지 다시 불러와 새로고침 없이 바꿔 그린다(FR-015, US1-AC3).
+ * 공감과 댓글은 응답 전에 HP를 줄여 보여 주고 몬스터 자리가 맞는 반응을 한다(US3-AC10).
  */
 export function PostDetail({ postId }: { postId: number }) {
   const { data, error, isPending } = usePostDetailQuery(postId);
@@ -96,6 +100,22 @@ function PostDetailContent({ detail }: { detail: PostDetailData }) {
             {COMMENT_TONE_LABELS[detail.commentTone]}
           </dd>
         </dl>
+        <div
+          role="group"
+          aria-label="공감과 댓글 수"
+          className="flex items-center gap-3 text-xs text-neutral-600 tabular-nums"
+        >
+          {detail.mine ? (
+            <span>공감 {detail.likeCount}</span>
+          ) : (
+            <PostLikeButton detail={detail} />
+          )}
+          <span>댓글 {detail.commentCount}</span>
+        </div>
+      </Card>
+
+      <Card>
+        <PostComments postId={detail.postId} />
       </Card>
     </article>
   );
