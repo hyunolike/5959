@@ -7,10 +7,11 @@ import {
 } from "@tanstack/react-query";
 
 import type { Comment, CommentPage } from "@/entities/comment";
-import { QUERY_KEYS } from "@/shared/config";
+import { ApiError } from "@/shared/api";
+import { MUTATION_KEYS, QUERY_KEYS } from "@/shared/config";
 
 import { toggleCommentLike } from "./like-api";
-import { attackOptimistically, refreshAfterAttack } from "./optimistic-cache";
+import { attackOptimistically, settleAttack } from "./optimistic-cache";
 
 export interface CommentLikeVariables {
   commentId: number;
@@ -71,6 +72,7 @@ export function useCommentLikeMutation(postId: number) {
   const commentsKey = QUERY_KEYS.comments(postId);
 
   return useMutation({
+    mutationKey: MUTATION_KEYS.attack(postId),
     mutationFn: ({ commentId, like }: CommentLikeVariables) =>
       toggleCommentLike(commentId, like),
     onMutate: async ({ commentId, like, alreadyApplied }) => {
@@ -102,9 +104,11 @@ export function useCommentLikeMutation(postId: number) {
         : () => {};
       return { before, rollbackHp };
     },
-    onError: (_error, { commentId }, context) => {
+    onError: (error, { commentId }, context) => {
       if (!context) return;
       context.rollbackHp();
+      // 이미 공감한 댓글(409 ALREADY_LIKED)은 바라던 결과와 같으므로 공감 상태는 그대로 둔다.
+      if (error instanceof ApiError && error.code === "ALREADY_LIKED") return;
       const { before } = context;
       if (before) {
         queryClient.setQueryData<CommentPages>(commentsKey, (pages) =>
@@ -112,6 +116,7 @@ export function useCommentLikeMutation(postId: number) {
         );
       }
     },
-    onSettled: () => refreshAfterAttack(queryClient, postId),
+    onSettled: () =>
+      settleAttack(queryClient, postId, { refreshComments: true }),
   });
 }

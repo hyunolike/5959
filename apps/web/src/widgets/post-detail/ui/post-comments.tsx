@@ -9,7 +9,11 @@ import {
   type Comment,
 } from "@/entities/comment";
 import { WriteCommentForm } from "@/features/comment";
-import { attackOptimistically, CommentLikeButton } from "@/features/like";
+import {
+  attackOptimistically,
+  CommentLikeButton,
+  settleAttack,
+} from "@/features/like";
 import { Button, Spinner } from "@/shared/ui";
 
 /**
@@ -86,6 +90,9 @@ export function PostComments({ postId }: { postId: number }) {
         onReplyDone={() => setReplyTo(null)}
         onOptimisticAttack={() =>
           attackOptimistically(queryClient, postId, "COMMENT")
+        }
+        onAttackSettled={() =>
+          settleAttack(queryClient, postId, { refreshComments: true })
         }
       />
     </section>

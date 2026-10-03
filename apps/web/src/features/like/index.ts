@@ -1,7 +1,4 @@
-export {
-  attackOptimistically,
-  refreshAfterAttack,
-} from "./api/optimistic-cache";
+export { attackOptimistically, settleAttack } from "./api/optimistic-cache";
 export { useCommentLikeMutation } from "./api/use-comment-like-mutation";
 export { usePostLikeMutation } from "./api/use-post-like-mutation";
 export {

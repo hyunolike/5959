@@ -1,6 +1,7 @@
 import {
   QueryClient,
   QueryClientProvider,
+  useQuery,
   type InfiniteData,
 } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
@@ -9,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Comment, CommentPage } from "@/entities/comment";
 import type { PostDetail } from "@/entities/post";
+import { requestApi } from "@/shared/api";
 import { QUERY_KEYS } from "@/shared/config";
 
 import { attackOptimistically } from "./optimistic-cache";
@@ -99,6 +101,13 @@ const detailOf = () =>
 const commentsOf = () =>
   queryClient.getQueryData<InfiniteData<CommentPage>>(QUERY_KEYS.comments(7));
 
+function seedComments(items: Comment[]) {
+  queryClient.setQueryData<InfiniteData<CommentPage>>(QUERY_KEYS.comments(7), {
+    pages: [{ items, nextCursor: null }],
+    pageParams: [null],
+  });
+}
+
 beforeEach(() => {
   queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -175,14 +184,142 @@ describe("usePostLikeMutation", () => {
   });
 });
 
-describe("useCommentLikeMutation", () => {
-  function seedComments(items: Comment[]) {
-    queryClient.setQueryData<InfiniteData<CommentPage>>(
-      QUERY_KEYS.comments(7),
-      { pages: [{ items, nextCursor: null }], pageParams: [null] },
-    );
-  }
+describe("usePostLikeMutation 새로고침과 409", () => {
+  it("글 공감이 끝나면 상세만 다시 불러오고 댓글 목록은 건드리지 않는다", async () => {
+    queryClient.setQueryData(QUERY_KEYS.postDetail(7), detail());
+    seedComments([comment()]);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(likeResult(1, true)));
+    const { result } = renderHook(() => usePostLikeMutation(7), { wrapper });
 
+    act(() => result.current.mutate({ like: true }));
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(
+      queryClient.getQueryState(QUERY_KEYS.postDetail(7))?.isInvalidated,
+    ).toBe(true);
+    expect(
+      queryClient.getQueryState(QUERY_KEYS.comments(7))?.isInvalidated,
+    ).toBe(false);
+  });
+
+  it("US3-AC1 이미 공감한 글(409 ALREADY_LIKED)이면 공감한 상태를 그대로 두고 낙관적 HP만 되돌린다", async () => {
+    queryClient.setQueryData(QUERY_KEYS.postDetail(7), detail());
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse(
+          {
+            success: false,
+            data: null,
+            error: { code: "ALREADY_LIKED", message: "이미 공감했습니다." },
+          },
+          409,
+        ),
+      ),
+    );
+    const { result } = renderHook(() => usePostLikeMutation(7), { wrapper });
+
+    act(() => result.current.mutate({ like: true }));
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(detailOf()?.likedByMe).toBe(true);
+    expect(detailOf()?.likeCount).toBe(1);
+    // 서버는 이 공감을 이미 반영했으므로 다시 줄인 1은 되돌린다.
+    expect(detailOf()?.monster?.hp).toBe(10);
+  });
+});
+
+describe("겹친 공격", () => {
+  it("US3-AC10 공격이 겹치면 마지막 공격이 끝날 때만 다시 불러와 HP가 중간에 오르지 않고, 끝내 서버 값이 들어온다", async () => {
+    let serverHp = 10;
+    const held = new Map<string, (response: Response) => void>();
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        return new Promise<Response>((resolve) => held.set(url, resolve));
+      }
+      if (url === "/api/posts/7") {
+        return Promise.resolve(
+          jsonResponse({
+            success: true,
+            data: detail({
+              monster: { ...ALIVE, hp: serverHp },
+              likedByMe: serverHp < 10,
+              likeCount: serverHp < 10 ? 1 : 0,
+            }),
+            error: null,
+          }),
+        );
+      }
+      return Promise.resolve(
+        jsonResponse({
+          success: true,
+          data: { items: [comment()], nextCursor: null },
+          error: null,
+        }),
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    queryClient.setQueryData(QUERY_KEYS.postDetail(7), detail());
+    seedComments([comment()]);
+    const hpHistory: (number | undefined)[] = [];
+    const unsubscribe = queryClient
+      .getQueryCache()
+      .subscribe(() => hpHistory.push(detailOf()?.monster?.hp));
+    const detailGets = () =>
+      fetchMock.mock.calls.filter(([url]) => url === "/api/posts/7").length;
+
+    const { result } = renderHook(
+      () => ({
+        // 화면처럼 상세를 지켜보는 쿼리. 무효화되면 바로 다시 불러온다.
+        detail: useQuery({
+          queryKey: QUERY_KEYS.postDetail(7),
+          queryFn: () => requestApi<PostDetail>("/api/posts/7"),
+          staleTime: Infinity,
+        }),
+        postLike: usePostLikeMutation(7),
+        commentLike: useCommentLikeMutation(7),
+      }),
+      { wrapper },
+    );
+
+    act(() => result.current.postLike.mutate({ like: true }));
+    await waitFor(() => expect(detailOf()?.monster?.hp).toBe(9));
+    act(() => result.current.commentLike.mutate({ commentId: 11, like: true }));
+    await waitFor(() => expect(detailOf()?.monster?.hp).toBe(8));
+
+    // 글 공감이 먼저 끝난다. 이때 다시 불러오면 댓글 공감이 빠진 HP 9가 들어온다.
+    serverHp = 9;
+    held.get("/api/posts/7/likes")?.(likeResult(1, true));
+    await waitFor(() => expect(result.current.postLike.isSuccess).toBe(true));
+    expect(detailGets()).toBe(0);
+    expect(detailOf()?.monster?.hp).toBe(8);
+
+    serverHp = 8;
+    held.get("/api/comments/11/likes")?.(likeResult(1, true));
+    await waitFor(() =>
+      expect(result.current.commentLike.isSuccess).toBe(true),
+    );
+    await waitFor(() => expect(detailGets()).toBe(1));
+    await waitFor(() =>
+      expect(result.current.detail.data?.likedByMe).toBe(true),
+    );
+    expect(detailOf()?.monster?.hp).toBe(8);
+    // 댓글 공감이 끼어 있었으므로 댓글 목록도 다시 불러온다.
+    expect(
+      fetchMock.mock.calls.some(([url]) =>
+        String(url).startsWith("/api/posts/7/comments"),
+      ) || queryClient.getQueryState(QUERY_KEYS.comments(7))?.isInvalidated,
+    ).toBe(true);
+
+    unsubscribe();
+    const seen = hpHistory.filter((hp): hp is number => hp !== undefined);
+    seen.forEach((hp, i) => {
+      if (i > 0) expect(hp).toBeLessThanOrEqual(seen[i - 1]);
+    });
+  });
+});
+
+describe("useCommentLikeMutation", () => {
   it("US3-AC4 답글에 공감하면 그 답글의 공감 수가 늘고 HP가 1 준다", async () => {
     queryClient.setQueryData(QUERY_KEYS.postDetail(7), detail());
     seedComments([comment({ replies: [comment({ commentId: 12 })] })]);

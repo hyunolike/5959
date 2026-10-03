@@ -176,6 +176,33 @@ describe("PostLikeButton", () => {
   });
 });
 
+describe("PostLikeButton 409", () => {
+  it("US3-AC1 이미 공감한 글(409 ALREADY_LIKED)이면 안내 없이 공감한 상태로 남는다", async () => {
+    const user = userEvent.setup({ delay: null });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse(
+          {
+            success: false,
+            data: null,
+            error: { code: "ALREADY_LIKED", message: "이미 공감했습니다." },
+          },
+          409,
+        ),
+      ),
+    );
+    renderWithClient(<CachedPostLikeButton />);
+
+    await user.click(await screen.findByRole("button", { name: "공감 2" }));
+
+    const button = await screen.findByRole("button", { name: "공감 3" });
+    await waitFor(() => expect(button).toBeEnabled());
+    expect(button).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+});
+
 describe("CommentLikeButton", () => {
   it("US3-AC4 댓글의 공감 수를 보여 주고, 누르면 그 댓글에 공감한다", async () => {
     const user = userEvent.setup({ delay: null });

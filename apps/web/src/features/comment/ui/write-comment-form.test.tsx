@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { Comment } from "@/entities/comment";
@@ -34,13 +35,33 @@ const errorResponse = (status: number, code: string, message: string) =>
     status,
   );
 
-function renderForm(props: Partial<Parameters<typeof WriteCommentForm>[0]>) {
+/** 위젯처럼 답글 대상을 상태로 들고, 답글 버튼과 폼을 함께 그린다. */
+function StatefulForm() {
+  const [replyTo, setReplyTo] = useState<Comment | null>(null);
+  return (
+    <>
+      <button type="button" onClick={() => setReplyTo(PARENT)}>
+        공감러에게 답글
+      </button>
+      <WriteCommentForm
+        postId={7}
+        replyTo={replyTo}
+        onReplyDone={() => setReplyTo(null)}
+      />
+    </>
+  );
+}
+
+function renderForm(
+  props: Partial<Parameters<typeof WriteCommentForm>[0]>,
+  { stateful = false } = {},
+) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   render(
     <QueryClientProvider client={queryClient}>
-      <WriteCommentForm postId={7} {...props} />
+      {stateful ? <StatefulForm /> : <WriteCommentForm postId={7} {...props} />}
     </QueryClientProvider>,
   );
   return queryClient;
@@ -143,6 +164,41 @@ describe("WriteCommentForm", () => {
     await user.click(screen.getByRole("button", { name: "답글 취소" }));
     expect(onReplyDone).toHaveBeenCalledTimes(1);
   });
+
+  it("답글 쓰기를 취소하면 입력 칸으로 초점을 돌려 바로 댓글을 쓸 수 있다", async () => {
+    const user = userEvent.setup({ delay: null });
+    renderForm({}, { stateful: true });
+
+    await user.click(screen.getByRole("button", { name: "공감러에게 답글" }));
+    expect(screen.getByLabelText("답글")).toHaveFocus();
+    await user.click(screen.getByRole("button", { name: "답글 취소" }));
+
+    expect(screen.getByLabelText("댓글")).toHaveFocus();
+    expect(screen.queryByText("공감러님에게 답글")).not.toBeInTheDocument();
+  });
+
+  it.each([
+    [400, "INVALID_PARENT_COMMENT", "답글에는 답글을 달 수 없어요."],
+    [404, "COMMENT_NOT_FOUND", "답글을 달 댓글이 지워졌어요."],
+  ])(
+    "US3-AC3 답글이 %i %s로 거절되면 안내하고 답글 상태를 끝내 다시 쓸 때 막히지 않는다",
+    async (status, code, message) => {
+      const user = userEvent.setup({ delay: null });
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(errorResponse(status, code, "서버 문구")),
+      );
+      renderForm({}, { stateful: true });
+
+      await user.click(screen.getByRole("button", { name: "공감러에게 답글" }));
+      await user.type(screen.getByLabelText("답글"), "저도요");
+      await user.click(screen.getByRole("button", { name: "등록" }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(message);
+      expect(screen.queryByText("공감러님에게 답글")).not.toBeInTheDocument();
+      expect(screen.getByLabelText("댓글")).toHaveValue("저도요");
+    },
+  );
 
   it.each([
     [400, "INVALID_PARENT_COMMENT", "답글에는 답글을 달 수 없어요."],

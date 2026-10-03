@@ -35,6 +35,14 @@ function errorMessage(error: unknown): string {
   return GENERIC_ERROR_MESSAGE;
 }
 
+function isUnreplyable(error: unknown): boolean {
+  return (
+    error instanceof ApiError &&
+    (error.code === "COMMENT_NOT_FOUND" ||
+      error.code === "INVALID_PARENT_COMMENT")
+  );
+}
+
 /**
  * 댓글과 답글 쓰기 폼(US3-AC2, US3-AC3, FR-008). 글자 수는 사람이 보는 글자로 세어
  * 300자 기준으로 보여 준다(research R8). `replyTo`가 있으면 그 원 댓글에 다는 답글이고,
@@ -45,13 +53,18 @@ export function WriteCommentForm({
   replyTo = null,
   onReplyDone,
   onOptimisticAttack,
+  onAttackSettled,
 }: {
   postId: number;
   replyTo?: Comment | null;
   onReplyDone?: () => void;
   onOptimisticAttack?: () => () => void;
+  onAttackSettled?: () => void;
 }) {
-  const mutation = useCreateCommentMutation(postId, onOptimisticAttack);
+  const mutation = useCreateCommentMutation(postId, {
+    onOptimisticAttack,
+    onAttackSettled,
+  });
   const contentId = useId();
   const {
     register,
@@ -99,8 +112,19 @@ export function WriteCommentForm({
         return;
       }
       setError("root", { message: errorMessage(error) });
+      // 답글 대상이 지워졌거나 답글이었으면 같은 대상으로는 다시 보내도 실패한다.
+      // 답글 상태를 끝내 쓴 글은 그대로 두고 댓글로 다시 보낼 수 있게 한다.
+      if (replyTo && isUnreplyable(error)) {
+        onReplyDone?.();
+      }
     }
   });
+
+  const cancelReply = () => {
+    onReplyDone?.();
+    // 눌렀던 취소 버튼이 사라지므로 초점을 입력 칸으로 돌린다.
+    setFocus("content");
+  };
 
   return (
     <form onSubmit={onSubmit} noValidate className="flex flex-col gap-2">
@@ -109,7 +133,7 @@ export function WriteCommentForm({
           <span>{replyTo.author.nickname}님에게 답글</span>
           <button
             type="button"
-            onClick={onReplyDone}
+            onClick={cancelReply}
             aria-label="답글 취소"
             className="rounded px-1 text-neutral-500 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none"
           >

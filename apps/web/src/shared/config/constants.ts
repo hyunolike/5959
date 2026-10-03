@@ -19,3 +19,13 @@ export const QUERY_KEYS = {
   /** 모든 피드. 공감과 댓글로 공감 수, 댓글 수, HP가 바뀌면 이 키로 피드를 낡은 것으로 표시한다. */
   allFeeds: ["feed"] as const,
 };
+
+/**
+ * TanStack Query 뮤테이션 키. 한 글을 공격하는 뮤테이션(글 공감과 취소, 댓글 공감과
+ * 취소, 댓글 쓰기)은 모두 `["attack", postId]`를 쓴다. 겹친 공격 중 먼저 끝난 것이
+ * 상세를 다시 불러와 아직 응답을 기다리는 공격의 낙관적 HP를 덮지 않도록, 마지막
+ * 공격이 끝날 때만 다시 불러온다(`isMutating`으로 센다).
+ */
+export const MUTATION_KEYS = {
+  attack: (postId: number) => ["attack", postId] as const,
+};
