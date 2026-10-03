@@ -5,6 +5,7 @@ import com.ogu.monster.domain.MonsterHpLog
 import com.ogu.monster.domain.MonsterHpLogRepository
 import com.ogu.monster.domain.MonsterRepository
 import com.ogu.post.Attack
+import com.ogu.shared.lock.PostLock
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Component
 import java.time.Instant

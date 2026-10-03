@@ -3,8 +3,8 @@ package com.ogu.shared.config
 import com.ogu.TestcontainersConfiguration
 import com.ogu.emotion.application.AnalysisStore
 import com.ogu.monster.MonsterApi
-import com.ogu.monster.application.PostLock
 import com.ogu.post.PostCreated
+import com.ogu.shared.lock.PostLock
 import com.ogu.support.MemberFixture
 import com.ogu.support.TestMember
 import com.ogu.support.bearer

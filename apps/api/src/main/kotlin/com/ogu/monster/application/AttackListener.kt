@@ -7,6 +7,7 @@ import com.ogu.post.CommentCreated
 import com.ogu.post.CommentLiked
 import com.ogu.post.PostApi
 import com.ogu.post.PostLiked
+import com.ogu.shared.lock.PostLock
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
 import java.time.Clock

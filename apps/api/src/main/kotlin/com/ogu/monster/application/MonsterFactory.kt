@@ -4,6 +4,7 @@ import com.ogu.emotion.EmotionAnalyzed
 import com.ogu.monster.domain.Monster
 import com.ogu.monster.domain.MonsterRepository
 import com.ogu.post.PostApi
+import com.ogu.shared.lock.PostLock
 import org.slf4j.LoggerFactory
 import org.springframework.modulith.events.ApplicationModuleListener
 import org.springframework.stereotype.Component

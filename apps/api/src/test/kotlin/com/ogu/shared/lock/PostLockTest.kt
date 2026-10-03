@@ -1,4 +1,4 @@
-package com.ogu.monster.application
+package com.ogu.shared.lock
 
 import com.ogu.TestcontainersConfiguration
 import org.assertj.core.api.Assertions.assertThat
