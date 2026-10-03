@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
+
 import { useMeQuery } from "@/entities/member";
 import { LogoutButton } from "@/features/auth/logout";
-import { Card, Spinner } from "@/shared/ui";
+import { Button, Card, Spinner } from "@/shared/ui";
 
 export default function HomePage() {
   const { data: member, isPending, isError } = useMeQuery();
@@ -20,9 +22,11 @@ export default function HomePage() {
           {member?.nickname}님, 반가워요
         </h1>
       )}
-      <p className="mt-4 text-sm text-neutral-500">
-        고민 쓰기는 준비 중이에요.
-      </p>
+      <div className="mt-4">
+        <Button asChild>
+          <Link href="/write">고민 쓰기</Link>
+        </Button>
+      </div>
       <div className="mt-6">
         <LogoutButton />
       </div>
