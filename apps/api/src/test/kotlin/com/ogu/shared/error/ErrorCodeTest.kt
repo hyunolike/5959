@@ -49,6 +49,14 @@ class ErrorCodeTest {
                 Arguments.of(ErrorCode.OAUTH_PROVIDER_UNAVAILABLE, HttpStatus.BAD_GATEWAY),
                 Arguments.of(ErrorCode.NICKNAME_TAKEN, HttpStatus.CONFLICT),
                 Arguments.of(ErrorCode.ALREADY_ONBOARDED, HttpStatus.CONFLICT),
+                // 003-core-loop
+                Arguments.of(ErrorCode.POST_NOT_FOUND, HttpStatus.NOT_FOUND),
+                Arguments.of(ErrorCode.COMMENT_NOT_FOUND, HttpStatus.NOT_FOUND),
+                Arguments.of(ErrorCode.NOT_AUTHOR, HttpStatus.FORBIDDEN),
+                Arguments.of(ErrorCode.CANNOT_LIKE_OWN_POST, HttpStatus.FORBIDDEN),
+                Arguments.of(ErrorCode.ALREADY_LIKED, HttpStatus.CONFLICT),
+                Arguments.of(ErrorCode.INVALID_PARENT_COMMENT, HttpStatus.BAD_REQUEST),
+                Arguments.of(ErrorCode.POST_RATE_LIMITED, HttpStatus.TOO_MANY_REQUESTS),
             )
     }
 }

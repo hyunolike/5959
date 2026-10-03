@@ -1,0 +1,37 @@
+package com.ogu.shared.text
+
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
+
+/**
+ * T010: 본문 글자 수는 사람이 보는 글자(grapheme) 단위로 센다. 웹의 `Intl.Segmenter`와 같은 값을 내야 한다.
+ */
+class GraphemeTest {
+    @ParameterizedTest(name = "\"{0}\"는 {1}글자다")
+    @CsvSource(
+        "안녕하세요, 5",
+        "hello, 5",
+        "👍, 1",
+        "👨‍👩‍👧, 1",
+        "🇰🇷, 1",
+        "오늘 👍 🇰🇷, 6",
+    )
+    fun `한글, 영문, 이모지, 결합 이모지, 국기를 한 글자씩 센다`(
+        text: String,
+        expected: Int,
+    ) {
+        assertThat(Grapheme.count(text)).isEqualTo(expected)
+    }
+
+    @Test
+    fun `빈 문자열은 0글자다`() {
+        assertThat(Grapheme.count("")).isZero()
+    }
+
+    @Test
+    fun `이모지 500개는 500글자다`() {
+        assertThat(Grapheme.count("👨‍👩‍👧".repeat(500))).isEqualTo(500)
+    }
+}

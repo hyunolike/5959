@@ -26,4 +26,13 @@ enum class ErrorCode(
     OAUTH_PROVIDER_UNAVAILABLE(HttpStatus.BAD_GATEWAY, "외부 계정 제공자가 응답하지 않습니다."),
     NICKNAME_TAKEN(HttpStatus.CONFLICT, "이미 사용 중인 닉네임입니다."),
     ALREADY_ONBOARDED(HttpStatus.CONFLICT, "이미 온보딩을 완료했습니다."),
+
+    // 003-core-loop 계약(contracts/openapi.yaml)의 오류 코드
+    POST_NOT_FOUND(HttpStatus.NOT_FOUND, "글을 찾을 수 없습니다."),
+    COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "댓글을 찾을 수 없습니다."),
+    NOT_AUTHOR(HttpStatus.FORBIDDEN, "작성자만 할 수 있습니다."),
+    CANNOT_LIKE_OWN_POST(HttpStatus.FORBIDDEN, "자기 글에는 공감할 수 없습니다."),
+    ALREADY_LIKED(HttpStatus.CONFLICT, "이미 공감했습니다."),
+    INVALID_PARENT_COMMENT(HttpStatus.BAD_REQUEST, "답글은 원 댓글에만 달 수 있습니다."),
+    POST_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "글을 너무 자주 쓰고 있습니다. 잠시 후 다시 써 주세요."),
 }
