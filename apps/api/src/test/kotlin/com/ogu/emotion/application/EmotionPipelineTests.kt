@@ -46,7 +46,9 @@ import java.util.concurrent.TimeUnit
  * 가짜 분석기(research R3)와 테스트가 움직이는 시계를 쓴다. 재시도 스케줄러는 끄고 [AnalysisRunner]를 직접 돌린다.
  * 비동기 결과는 짧은 간격으로 확인하되 상한(10초)을 두고 기다린다.
  */
-@SpringBootTest(properties = ["ogu.emotion.retry.scheduler-enabled=false"])
+@SpringBootTest(
+    properties = ["ogu.emotion.retry.scheduler-enabled=false", "ogu.events.resubmit.enabled=false"],
+)
 @Import(TestcontainersConfiguration::class, EmotionPipelineTests.ClockOverride::class)
 class EmotionPipelineTests {
     @Autowired
@@ -240,6 +242,49 @@ class EmotionPipelineTests {
         assertThat(analysisRow(brokenJson)["status"]).isEqualTo("ANALYZED")
     }
 
+    @Test
+    fun `분석 전에 지운 글은 분석 없이 끝나고 몬스터가 생기지 않는다`() {
+        val postId = insertPendingPost("지울 글")
+        jdbcTemplate.update(DELETE_POST, postId)
+
+        runner.runDue()
+
+        assertThat(analyzer.callsFor(postId)).isZero()
+        assertThat(analysisRow(postId)["status"]).isEqualTo("DEFAULTED")
+        awaitMonsterFactoryDone(postId)
+        assertThat(monsterApi.findByPostIds(listOf(postId))).isEmpty()
+    }
+
+    @Test
+    fun `분석을 맡은 뒤 호출 중에 지운 글은 분석은 끝나도 몬스터가 생기지 않는다`() {
+        val postId = insertPendingPost("호출 중에 지울 글")
+        analyzer.beforeAnswer(postId) { jdbcTemplate.update(DELETE_POST, postId) }
+
+        runner.runDue()
+
+        assertThat(analyzer.callsFor(postId)).isEqualTo(1)
+        assertThat(analysisRow(postId)["status"]).isEqualTo("ANALYZED")
+        awaitMonsterFactoryDone(postId)
+        assertThat(monsterApi.findByPostIds(listOf(postId))).isEmpty()
+    }
+
+    @Test
+    fun `기한 직전에 맡은 시도가 기한을 넘겨 성공해도 다른 실행기가 기본값으로 덮지 않는다`() {
+        // 글을 쓴 지 23시간 59분 59초 된 분석
+        val postId = insertPendingPost("기한 직전 글", createdAgo = Duration.ofHours(24).minusSeconds(1))
+        analyzer.beforeAnswer(postId) {
+            // 호출이 5초 걸려 기한을 넘긴 사이 다른 실행기(스케줄러)가 돈다
+            clock.advance(Duration.ofSeconds(5))
+            runner.runDue()
+        }
+
+        runner.runDue()
+
+        assertThat(analyzer.callsFor(postId)).isEqualTo(1)
+        assertThat(analysisRow(postId)["status"]).isEqualTo("ANALYZED")
+        awaitMonster(postId)
+    }
+
     private fun createPost(content: String): Long {
         val body = mapOf("content" to content, "commentTone" to "COMFORT_ME")
         val response =
@@ -260,8 +305,11 @@ class EmotionPipelineTests {
     }
 
     /** 리스너를 거치지 않고, 지금 시도할 차례인 PENDING 분석 행과 글을 직접 만든다. */
-    private fun insertPendingPost(content: String): Long {
-        val now = Timestamp.from(clock.instant().truncatedTo(ChronoUnit.MICROS))
+    private fun insertPendingPost(
+        content: String,
+        createdAgo: Duration = Duration.ZERO,
+    ): Long {
+        val now = Timestamp.from(clock.instant().minus(createdAgo).truncatedTo(ChronoUnit.MICROS))
         val postId =
             jdbcTemplate.queryForObject(
                 """
@@ -308,6 +356,21 @@ class EmotionPipelineTests {
         return monsterApi.findByPostIds(listOf(postId)).getValue(postId)
     }
 
+    /** MonsterFactory가 이 글의 EmotionAnalyzed 처리를 마쳤다(Event Publication Registry에 완료로 남았다). */
+    private fun awaitMonsterFactoryDone(postId: Long) {
+        await().atMost(AWAIT_LIMIT).pollInterval(POLL).until {
+            jdbcTemplate.queryForObject(
+                """
+                select count(*) from event_publication
+                where listener_id like '%MonsterFactory%' and completion_date is not null
+                  and serialized_event like ?
+                """.trimIndent(),
+                Int::class.java,
+                "%\"postId\":$postId,%",
+            ) == 1
+        }
+    }
+
     @TestConfiguration(proxyBeanMethods = false)
     class ClockOverride {
         @Bean
@@ -318,5 +381,6 @@ class EmotionPipelineTests {
     companion object {
         private val AWAIT_LIMIT: Duration = Duration.ofSeconds(10)
         private val POLL: Duration = Duration.ofMillis(50)
+        private const val DELETE_POST = "update posts set deleted_at = now() where id = ?"
     }
 }

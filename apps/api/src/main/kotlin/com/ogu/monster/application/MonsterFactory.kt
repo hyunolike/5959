@@ -3,6 +3,7 @@ package com.ogu.monster.application
 import com.ogu.emotion.EmotionAnalyzed
 import com.ogu.monster.domain.Monster
 import com.ogu.monster.domain.MonsterRepository
+import com.ogu.post.PostApi
 import org.slf4j.LoggerFactory
 import org.springframework.modulith.events.ApplicationModuleListener
 import org.springframework.stereotype.Component
@@ -12,12 +13,13 @@ import java.time.temporal.ChronoUnit
 /**
  * 감정 분석이 끝나면(커밋 후, 비동기) 그 글의 몬스터를 HP 가득 찬 상태로 만든다(research R4, US1-AC4, US1-AC6).
  * 글 단위 잠금([PostLock]) 안에서 만들어, 같은 글의 공격 반영(US3 AttackListener)과 겹치지 않는다.
- * 같은 이벤트가 다시 전달돼도(Event Publication Registry 재발행) 몬스터는 하나다.
+ * 같은 이벤트가 다시 전달돼도(Event Publication Registry 재발행) 몬스터는 하나다. 그사이 지운 글에는 만들지 않는다.
  */
 @Component
 class MonsterFactory(
     private val monsterRepository: MonsterRepository,
     private val postLock: PostLock,
+    private val postApi: PostApi,
     private val clock: Clock,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -25,6 +27,11 @@ class MonsterFactory(
     @ApplicationModuleListener
     fun on(event: EmotionAnalyzed) {
         postLock.lock(event.postId)
+        if (postApi.find(event.postId) == null) {
+            // 분석 전이나 분석 중에 지운 글이다. 어디에도 보이지 않으므로 몬스터를 만들지 않는다.
+            log.info("지운 글이라 몬스터를 만들지 않습니다: postId={}", event.postId)
+            return
+        }
         if (monsterRepository.existsByPostId(event.postId)) {
             log.info("이미 몬스터가 있어 다시 만들지 않습니다: postId={}", event.postId)
             return

@@ -29,12 +29,14 @@ class ScriptedEmotionAnalyzer(
 ) : EmotionAnalyzer {
     private val calls = ConcurrentHashMap<Long, AtomicInteger>()
     private val rawResponses = ConcurrentHashMap<Long, String>()
+    private val beforeAnswer = ConcurrentHashMap<Long, () -> Unit>()
 
     override fun analyze(
         postId: Long,
         content: String,
     ): EmotionClassification {
         calls.computeIfAbsent(postId) { AtomicInteger() }.incrementAndGet()
+        beforeAnswer.remove(postId)?.invoke()
         val raw = rawResponses[postId] ?: return delegate.analyze(postId, content)
         return EmotionResponseParser.parse(raw)
     }
@@ -46,6 +48,14 @@ class ScriptedEmotionAnalyzer(
         raw: String,
     ) {
         rawResponses[postId] = raw
+    }
+
+    /** 이 글을 다음에 분석할 때 답하기 직전에 [action]을 한 번 실행한다(호출 중에 일어나는 일 흉내). */
+    fun beforeAnswer(
+        postId: Long,
+        action: () -> Unit,
+    ) {
+        beforeAnswer[postId] = action
     }
 
     fun clearRaw(postId: Long) {

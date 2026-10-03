@@ -16,6 +16,7 @@ import java.time.Instant
 class EmotionAnalysisTest {
     private val backoff = Backoff(initial = Duration.ofSeconds(30), maxInterval = Duration.ofMinutes(5))
     private val deadline = Duration.ofHours(24)
+    private val leaseGrace = Duration.ofSeconds(30)
     private val createdAt = Instant.parse("2026-10-03T00:00:00Z")
 
     @Test
@@ -112,9 +113,17 @@ class EmotionAnalysisTest {
 
         analysis.fail("TIMEOUT", createdAt.plus(deadline).minusSeconds(1), backoff, deadline)
         assertThat(analysis.nextAttemptAt).isEqualTo(createdAt.plus(deadline))
+    }
 
-        analysis.claim(createdAt.plus(deadline).minusSeconds(10), backoff, deadline)
-        assertThat(analysis.nextAttemptAt).isEqualTo(createdAt.plus(deadline))
+    @Test
+    fun `기한 직전에 맡은 시도의 임대는 기한을 호출 타임아웃과 여유만큼 넘을 수 있다`() {
+        val analysis = EmotionAnalysis.pending(POST_ID, createdAt, now = createdAt)
+        repeat(5) { analysis.fail("TIMEOUT", createdAt, backoff, deadline) }
+
+        analysis.claim(createdAt.plus(deadline).minusSeconds(1), backoff, deadline, leaseGrace)
+
+        // 다음 간격은 5분이지만 기한 + 30초(타임아웃 20초 + 여유 10초)에서 멈춘다
+        assertThat(analysis.nextAttemptAt).isEqualTo(createdAt.plus(deadline).plus(leaseGrace))
     }
 
     @Test
@@ -152,7 +161,7 @@ class EmotionAnalysisTest {
         analysis.fail("TIMEOUT", createdAt, backoff, deadline)
         val now = createdAt.plusSeconds(30)
 
-        analysis.claim(now, backoff, deadline)
+        analysis.claim(now, backoff, deadline, leaseGrace)
 
         // 실행기가 호출 중에 죽어도 이 시각에 다른 실행기가 다시 시도한다. 시도 횟수는 결과를 기록할 때만 는다.
         assertThat(analysis.nextAttemptAt).isEqualTo(now.plusSeconds(60))
@@ -170,7 +179,7 @@ class EmotionAnalysisTest {
         assertThatThrownBy { analysis.fail("TIMEOUT", createdAt, backoff, deadline) }
             .isInstanceOf(IllegalStateException::class.java)
         assertThatThrownBy { analysis.expire(createdAt) }.isInstanceOf(IllegalStateException::class.java)
-        assertThatThrownBy { analysis.claim(createdAt, backoff, deadline) }
+        assertThatThrownBy { analysis.claim(createdAt, backoff, deadline, leaseGrace) }
             .isInstanceOf(IllegalStateException::class.java)
     }
 

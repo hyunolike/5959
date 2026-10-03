@@ -6,11 +6,13 @@ import com.ogu.emotion.domain.EmotionAnalysis
 import com.ogu.emotion.domain.EmotionAnalysisRepository
 import com.ogu.post.PostApi
 import com.ogu.post.PostCreated
+import com.ogu.shared.config.AiProperties
 import org.slf4j.LoggerFactory
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
@@ -33,8 +35,12 @@ class AnalysisStore(
     private val events: ApplicationEventPublisher,
     private val properties: EmotionRetryProperties,
     private val clock: Clock,
+    aiProperties: AiProperties,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
+
+    /** 맡은 호출이 끝날 때까지 다른 실행기가 손대지 않을 시간: LLM 타임아웃 + 여유 10초. */
+    private val leaseGrace: Duration = aiProperties.timeout.plus(LEASE_MARGIN)
 
     @Transactional
     fun createPending(event: PostCreated) {
@@ -110,7 +116,7 @@ class AnalysisStore(
             events.publishEvent(analysis.expire(now))
             return null
         }
-        analysis.claim(now, properties.backoff, properties.deadline)
+        analysis.claim(now, properties.backoff, properties.deadline, leaseGrace)
         return AnalysisClaim(analysis.postId, analysis.attempts, post.content)
     }
 
@@ -125,6 +131,10 @@ class AnalysisStore(
     }
 
     private fun now(): Instant = clock.instant().truncatedTo(ChronoUnit.MICROS)
+
+    private companion object {
+        val LEASE_MARGIN: Duration = Duration.ofSeconds(10)
+    }
 }
 
 sealed interface ClaimResult {

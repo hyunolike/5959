@@ -87,15 +87,18 @@ class EmotionAnalysis private constructor(
     /**
      * 실행기가 이번 시도를 맡는다. 다음 시각을 "이번 시도가 실패했을 때의 다음 시각"으로 미리 미뤄 두므로, 호출 중에
      * 실행기가 죽어도 그 시각이 되면 다른 실행기가 다시 맡는다. 시도 횟수는 결과를 기록할 때만 는다.
+     *
+     * 이 임대는 기한을 [leaseGrace](호출 타임아웃 + 여유)만큼 넘을 수 있다. 기한 직전에 맡은 호출이 기한을 조금 넘겨
+     * 성공해도, 그사이 다른 실행기가 기본값으로 끝내 버려 성공 결과를 버리는 일이 없게 한다.
      */
     fun claim(
         now: Instant,
         backoff: Backoff,
         deadline: Duration,
+        leaseGrace: Duration,
     ) {
         checkPending()
-        // 기한을 넘기지 않는다. 기한 직전에 맡거나 실패해도 정확히 24시간이 되면 기본값으로 끝낼 수 있다.
-        nextAttemptAt = minOf(now.plus(backoff.delayAfter(attempts + 1)), postCreatedAt.plus(deadline))
+        nextAttemptAt = minOf(now.plus(backoff.delayAfter(attempts + 1)), postCreatedAt.plus(deadline).plus(leaseGrace))
     }
 
     fun succeed(
@@ -123,6 +126,7 @@ class EmotionAnalysis private constructor(
         if (isPastDeadline(now, deadline)) {
             return complete(AnalysisStatus.DEFAULTED, DEFAULT_EMOTION, DEFAULT_INTENSITY, now)
         }
+        // 기한을 넘기지 않는다. 기한 직전에 실패해도 정확히 24시간이 되면 기본값으로 끝낼 수 있다.
         nextAttemptAt = minOf(now.plus(backoff.delayAfter(attempts)), postCreatedAt.plus(deadline))
         return null
     }
