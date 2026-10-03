@@ -62,7 +62,7 @@ description: "Task list for 003-core-loop (핵심 루프)"
 
 ### Tests for User Story 1 ⚠️
 
-- [ ] T015 [P] [US1] apps/api/src/test/kotlin/com/ogu/post/presentation/PostCreateApiTests.kt: `US1-AC1 1~500자 본문과 말투로 작성하면 201과 PENDING`, `US1-AC2 빈 본문, 공백만, 501자, 말투 없음은 400`(500자 이모지 경계 포함), `US1-AC7 온보딩 전 회원은 403 ONBOARDING_REQUIRED`, 작성자 직군과 경력이 글에 스냅숏으로 저장됨, 1시간에 11번째 글은 429 `POST_RATE_LIMITED`, 커밋 후 `PostCreated`가 발행됨(`Scenario` DSL)
+- [ ] T015 [P] [US1] apps/api/src/test/kotlin/com/ogu/post/presentation/PostCreateApiTests.kt: `US1-AC1 1~500자 본문과 말투로 작성하면 201과 PENDING`, `US1-AC2 빈 본문, 공백만, 501자, 말투 없음은 400`(500자 이모지 경계 포함), `US1-AC7 온보딩 전 회원은 403 ONBOARDING_REQUIRED`, 작성자 직군과 경력이 글에 스냅숏으로 저장됨, 1시간에 11번째 글은 429 `POST_RATE_LIMITED`(FR-018, 지운 글 포함), 커밋 후 `PostCreated`가 발행됨(`Scenario` DSL)
 - [ ] T016 [P] [US1] apps/api/src/test/kotlin/com/ogu/emotion/domain/EmotionAnalysisTest.kt: 상태 전이(PENDING→ANALYZED, PENDING→PENDING 재시도, PENDING→DEFAULTED), 백오프(30s, 60s, 120s, 240s, 300s, 300s…), 24시간 경계(23:59:59는 재시도, 24:00:00은 기본값)
 - [ ] T017 [P] [US1] apps/api/src/test/kotlin/com/ogu/emotion/application/EmotionPipelineTests.kt(가짜 분석기, 시계 주입): `US1-AC4 분석이 끝나면 감정과 강도에 맞는 최대 HP의 몬스터가 HP 가득 찬 상태로 생긴다`(강도 3단계 각각), `US1-AC5 분석기가 실패해도 글은 저장되고 회복 후 재시도로 몬스터가 생긴다`(`[실패:2]`), `US1-AC6 24시간 동안 실패하면 무기력 HP 10 기본 몬스터가 생긴다`, 스케줄러가 `SKIP LOCKED`로 같은 행을 두 번 처리하지 않는다(두 실행기 동시), 분석기가 목록에 없는 감정이나 잘못된 JSON을 주면 실패로 본다
 - [ ] T018 [P] [US1] apps/api/src/test/kotlin/com/ogu/ai/infrastructure/SpringAiEmotionAnalyzerTest.kt(`MockRestServiceServer` 또는 로컬 HTTP 스텁): 요청에 프롬프트, 모델, temperature가 들어감, 정상 JSON 파싱, 20초 타임아웃은 `EmotionAnalysisFailed`, 서킷이 열리면 호출 없이 실패, 응답 원문을 로그에 남기지 않음
@@ -171,7 +171,7 @@ description: "Task list for 003-core-loop (핵심 루프)"
 - [ ] T055 ContractTests `pendingPaths`가 비어 있고 루트 계약의 모든 연산(M1 8개 + M2 14개)이 구현과 일치하는지 확인한다
 - [ ] T056 [P] `grep -rn "US[1-5]-AC[0-9]*" apps/`로 스펙의 인수 조건 30개가 모두 테스트 이름에 있는지 확인하고 빠진 것을 추가한다
 - [ ] T057 [P] 문서: apps/api/AGENTS.md(새 모듈 5개, 공개 파사드와 이벤트, 공격 반영 규칙, 분석 재시도), apps/web/docs/ARCHITECTURE.md(새 슬라이스, 폴링, 3D와 정지 이미지), docs/architecture/overview.md 5.1, 5.2, 5.3, 6.2를 구현과 맞춘다(동기 공격 반영, 소급 반영, 비동기 분석 재시도 테이블). README에 핵심 루프 소개 한 단락
-- [ ] T058 성능 측정: 글 1만 개를 넣고 피드 첫 페이지와 다음 페이지 각 100회, 공감 API 100회의 p95를 재서 specs/003-core-loop/quickstart.md에 표로 남긴다(SC-003, plan 성능 목표). 측정 환경 부하를 함께 적는다
+- [ ] T058 성능 측정: 글 1만 개를 넣고 피드 첫 페이지와 다음 페이지 각 100회, 공감 API 100회의 p95를 재서 specs/003-core-loop/quickstart.md에 표로 남긴다(SC-003, plan 성능 목표). 추가로 (1) Chrome 성능 추적(CPU 4배 감속, 모바일 뷰포트)으로 피드를 빠르게 스크롤하며 끊긴 프레임 비율을 재고(SC-005), (2) 실제 감정 분석 엔드포인트로 글 20개를 써서 몬스터가 나타나기까지의 시간 분포를 잰다(SC-001). 키가 없으면 그 사실을 적는다. 측정 환경 부하를 함께 적는다
 - [ ] T059 specs/003-core-loop/quickstart.md의 수동 시나리오 12개를 로컬에서 끝까지 실행하고, 다르면 문서나 코드를 고친다
 - [ ] T060 `/speckit-analyze`로 일관성을 확인하고 PR을 연다(스펙 링크, 인수 조건 체크리스트, 운영 준비 항목)
 
