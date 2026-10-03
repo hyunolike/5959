@@ -5,7 +5,7 @@ import { resolveRouteGuardAction } from "./route-guard";
 const SIGNED_OUT = { hasRefreshToken: false, onboarded: false };
 const NOT_ONBOARDED = { hasRefreshToken: true, onboarded: false };
 const ONBOARDED = { hasRefreshToken: true, onboarded: true };
-const PROTECTED_PATHS = ["/home", "/write", "/my", "/settings"];
+const PROTECTED_PATHS = ["/home", "/write", "/post/1", "/my", "/settings"];
 
 /**
  * bff-routes.md "라우트 가드(proxy.ts)" 표의 행마다 한 묶음씩 검증한다.

@@ -135,7 +135,7 @@ to the development-only secret in `shared/server/oauth-secret.ts`.
 (`resolveRouteGuardAction`) that the routing layer (`proxy.ts`) applies
 before a protected page renders, so an unauthenticated visit to a protected
 path never flashes page content (US4-AC4): `/`, `/onboarding`, `/login`,
-`/signup`, and the protected prefixes `/home`, `/write`, `/my`, `/settings`
+`/signup`, and the protected prefixes `/home`, `/write`, `/post`, `/my`, `/settings`
 each redirect based on whether `ogu_rt` and `ogu_ob` are present. A
 validated `next` query param (via `sanitizeNextPath`) sends the visitor back
 to where they started after login (US4-AC5).

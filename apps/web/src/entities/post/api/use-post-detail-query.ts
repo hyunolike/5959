@@ -1,0 +1,75 @@
+"use client";
+
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+
+import type { ApiResponse } from "@/shared/api";
+import { ApiError } from "@/shared/api";
+import { QUERY_KEYS } from "@/shared/config";
+
+import type { PostDetail } from "../model/types";
+
+/** research R10: 분석 중에는 3초마다 다시 불러온다. */
+export const ANALYSIS_POLL_FAST_MS = 3_000;
+/** research R10: 2분이 지나도 분석 중이면 15초 간격으로 늦춘다. */
+export const ANALYSIS_POLL_SLOW_MS = 15_000;
+export const ANALYSIS_POLL_SLOWDOWN_AFTER_MS = 2 * 60 * 1_000;
+
+/**
+ * 다음 폴링까지의 간격. `false`면 멈춘다.
+ *
+ * 몬스터가 생겼는지로 판단한다. 분석이 끝나면 몬스터는 이벤트를 받아 비동기로
+ * 만들어지므로, `analysisStatus`가 `ANALYZED`나 `DEFAULTED`여도 잠깐 `monster`가
+ * `null`일 수 있다. 그동안은 아직 분석 중으로 보고 계속 불러온다.
+ *
+ * @param elapsedMs 이 화면에서 처음 불러온 뒤 지난 시간. 서버 시각(`createdAt`)과
+ *   비교하지 않아 브라우저 시계가 틀려도 간격이 흔들리지 않는다.
+ */
+export function analysisPollInterval(
+  detail: PostDetail | undefined,
+  elapsedMs: number,
+): number | false {
+  if (!detail || detail.monster) {
+    return false;
+  }
+  return elapsedMs < ANALYSIS_POLL_SLOWDOWN_AFTER_MS
+    ? ANALYSIS_POLL_FAST_MS
+    : ANALYSIS_POLL_SLOW_MS;
+}
+
+/**
+ * 같은 출처 BFF 프록시(`/api/[...path]`)를 거쳐 글 상세를 가져온다.
+ * 없거나 지운 글은 404 `POST_NOT_FOUND`를 `ApiError`로 던진다.
+ */
+export async function fetchPostDetail(
+  postId: number,
+  fetchImpl: typeof fetch = fetch,
+): Promise<PostDetail> {
+  const response = await fetchImpl(`/api/posts/${postId}`, {
+    cache: "no-store",
+  });
+  const body = (await response.json()) as ApiResponse<PostDetail>;
+
+  if (!body.success) {
+    throw new ApiError(response.status, {
+      message: body.error.message,
+      code: body.error.code,
+    });
+  }
+
+  return body.data;
+}
+
+/** 글 상세. 몬스터가 생길 때까지 R10 간격으로 다시 불러온다(FR-015, US1-AC3). */
+export function usePostDetailQuery(postId: number) {
+  const [startedAt] = useState(() => Date.now());
+
+  return useQuery({
+    queryKey: QUERY_KEYS.postDetail(postId),
+    queryFn: () => fetchPostDetail(postId),
+    refetchInterval: (query) =>
+      query.state.status === "error"
+        ? false
+        : analysisPollInterval(query.state.data, Date.now() - startedAt),
+  });
+}
