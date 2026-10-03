@@ -39,16 +39,20 @@ function manageErrorMessage(error: unknown, action: "고치지" | "지우지") {
  * 내 댓글의 수정과 삭제 메뉴(US4-AC3, FR-014). 위젯이 `mine`인 댓글에만 붙인다.
  * 수정은 그 자리에서 작성과 같은 규칙(1~300자, 사람이 보는 글자)으로 고치고, 삭제는 화면 안
  * 확인 대화상자를 거친다. 원 댓글을 지우면 답글도 함께 지워진다고 알린다.
+ * 지우면 이 메뉴도 곧 사라지므로 초점은 위젯이 준 `focusAfterDelete`(댓글 목록 등)로 옮긴다.
  */
 export function CommentManageMenu({
   postId,
   comment,
+  focusAfterDelete,
 }: {
   postId: number;
   comment: Comment;
+  focusAfterDelete?: () => HTMLElement | null;
 }) {
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [deleted, setDeleted] = useState(false);
   const deleteMutation = useDeleteCommentMutation(postId);
   const isRoot = comment.replies.length > 0;
 
@@ -94,6 +98,7 @@ export function CommentManageMenu({
         }
         confirmLabel="삭제하기"
         pending={deleteMutation.isPending}
+        finalFocus={deleted ? focusAfterDelete : undefined}
         error={
           deleteMutation.isError
             ? manageErrorMessage(deleteMutation.error, "지우지")
@@ -102,7 +107,10 @@ export function CommentManageMenu({
         onCancel={closeDialog}
         onConfirm={() =>
           deleteMutation.mutate(comment.commentId, {
-            onSuccess: () => setConfirming(false),
+            onSuccess: () => {
+              setDeleted(true);
+              setConfirming(false);
+            },
           })
         }
       />

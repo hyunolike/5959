@@ -20,12 +20,12 @@ function renderButton(response: Response) {
   });
   queryClient.setQueryData(["posts", 7], { postId: 7 });
   queryClient.setQueryData(["feed", { order: "LATEST" }], { pages: [] });
-  render(
+  const { unmount } = render(
     <QueryClientProvider client={queryClient}>
       <DeletePostButton postId={7} />
     </QueryClientProvider>,
   );
-  return { fetchMock, confirmSpy, queryClient };
+  return { fetchMock, confirmSpy, queryClient, unmount };
 }
 
 afterEach(() => {
@@ -34,9 +34,9 @@ afterEach(() => {
 });
 
 describe("DeletePostButton", () => {
-  it("US4-AC2 확인 대화상자에서 삭제하면 DELETE를 보내고 /home으로 가며 상세 캐시를 지우고 피드를 낡게 표시한다", async () => {
+  it("US4-AC2 확인 대화상자에서 삭제하면 DELETE를 보내고 /home으로 가며, 화면을 떠난 뒤에 상세 캐시를 지우고 피드를 낡게 표시한다", async () => {
     const user = userEvent.setup({ delay: null });
-    const { fetchMock, confirmSpy, queryClient } = renderButton(
+    const { fetchMock, confirmSpy, queryClient, unmount } = renderButton(
       new Response(null, { status: 204 }),
     );
 
@@ -53,6 +53,11 @@ describe("DeletePostButton", () => {
     );
     expect(confirmSpy).not.toHaveBeenCalled();
     expect(dialog).toBeInTheDocument();
+    // 아직 상세 화면에 있는 동안 지우면 상세가 다시 불러와 404("삭제된 글이에요")가 잠깐 보인다
+    expect(queryClient.getQueryData(["posts", 7])).toEqual({ postId: 7 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    unmount();
     expect(queryClient.getQueryData(["posts", 7])).toBeUndefined();
     expect(
       queryClient.getQueryState(["feed", { order: "LATEST" }])?.isInvalidated,

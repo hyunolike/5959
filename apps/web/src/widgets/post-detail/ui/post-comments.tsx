@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import {
   CommentItem,
@@ -24,6 +24,8 @@ import { Button, Spinner } from "@/shared/ui";
 export function PostComments({ postId }: { postId: number }) {
   const queryClient = useQueryClient();
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
+  // 내 댓글을 지우면 그 메뉴가 사라지므로 초점을 댓글 목록 영역으로 옮긴다.
+  const sectionRef = useRef<HTMLElement>(null);
   const {
     data,
     isPending,
@@ -35,7 +37,12 @@ export function PostComments({ postId }: { postId: number }) {
   const comments = data?.pages.flatMap((page) => page.items) ?? [];
 
   return (
-    <section aria-label="댓글 목록" className="flex flex-col gap-4">
+    <section
+      ref={sectionRef}
+      tabIndex={-1}
+      aria-label="댓글 목록"
+      className="flex flex-col gap-4 focus-visible:outline-none"
+    >
       {isPending ? (
         <div className="flex justify-center py-2">
           <Spinner />
@@ -65,7 +72,11 @@ export function PostComments({ postId }: { postId: number }) {
                       </button>
                     )}
                     {target.mine ? (
-                      <CommentManageMenu postId={postId} comment={target} />
+                      <CommentManageMenu
+                        postId={postId}
+                        comment={target}
+                        focusAfterDelete={() => sectionRef.current}
+                      />
                     ) : null}
                   </>
                 )}

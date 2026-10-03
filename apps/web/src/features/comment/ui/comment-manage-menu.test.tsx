@@ -35,7 +35,12 @@ function renderMenu(response: Response = new Response(null, { status: 204 })) {
   keys.forEach((key) => queryClient.setQueryData(key, {}));
   render(
     <QueryClientProvider client={queryClient}>
-      <CommentManageMenu postId={7} comment={{ ...COMMENT, replies: [] }} />
+      <section aria-label="댓글 목록" tabIndex={-1} id="comments" />
+      <CommentManageMenu
+        postId={7}
+        comment={{ ...COMMENT, replies: [] }}
+        focusAfterDelete={() => document.getElementById("comments")}
+      />
     </QueryClientProvider>,
   );
   const invalidated = (key: QueryKey) =>
@@ -106,5 +111,19 @@ describe("CommentManageMenu", () => {
     await waitFor(() => expect(invalidated(["posts", 7])).toBe(true));
     expect(invalidated(["posts", 7, "comments"])).toBe(true);
     expect(confirmSpy).not.toHaveBeenCalled();
+    // 지운 댓글의 메뉴는 곧 사라지므로 초점은 댓글 목록으로 간다
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "댓글 목록" })).toHaveFocus(),
+    );
+  });
+
+  it("삭제를 취소하면 초점은 삭제 버튼으로 돌아간다", async () => {
+    const user = userEvent.setup({ delay: null });
+    renderMenu();
+
+    await user.click(screen.getByRole("button", { name: "삭제" }));
+    await user.keyboard("{Escape}");
+
+    expect(screen.getByRole("button", { name: "삭제" })).toHaveFocus();
   });
 });
