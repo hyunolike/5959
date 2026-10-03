@@ -92,15 +92,15 @@ description: "Task list for 003-core-loop (핵심 루프)"
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T029 [P] [US2] apps/api/src/test/kotlin/com/ogu/feed/presentation/FeedApiTests.kt: `US2-AC1 최신 20개와 항목 필드`, `US2-AC2 커서로 다음 20개, 중복과 누락 없음`(페이지 사이에 새 글 삽입), `US2-AC3 인기순은 공감 수 내림차순, 같으면 최신`(같은 공감 수 커서 경계 포함), `US2-AC4 직군 여러 개 OR, 경력 여러 개 OR, 둘은 AND`, `US2-AC5 삭제된 글 제외`, 본문 미리보기 50자와 "...", 분석 중 글은 `monster=null`, 쿼리 수가 4개로 고정(Hibernate 통계 또는 datasource-proxy)
-- [ ] T030 [P] [US2] apps/web/src/widgets/feed-list/model/filter-params.test.ts(필터와 정렬을 URL 검색어로 직렬화, 되돌리기)
-- [ ] T031 [P] [US2] apps/web/e2e-full/feed.spec.ts: `US2-AC1`, `US2-AC2`(스크롤로 다음 페이지), `US2-AC3`, `US2-AC4`
+- [x] T029 [P] [US2] apps/api/src/test/kotlin/com/ogu/feed/presentation/FeedApiTests.kt: `US2-AC1 최신 20개와 항목 필드`, `US2-AC2 커서로 다음 20개, 중복과 누락 없음`(페이지 사이에 새 글 삽입), `US2-AC3 인기순은 공감 수 내림차순, 같으면 최신`(같은 공감 수 커서 경계 포함), `US2-AC4 직군 여러 개 OR, 경력 여러 개 OR, 둘은 AND`, `US2-AC5 삭제된 글 제외`, 본문 미리보기 50자와 "...", 분석 중 글은 `monster=null`, 쿼리 수가 4개로 고정(Hibernate 통계 또는 datasource-proxy)
+- [x] T030 [P] [US2] apps/web/src/widgets/feed-list/model/filter-params.test.ts(필터와 정렬을 URL 검색어로 직렬화, 되돌리기)
+- [x] T031 [P] [US2] apps/web/e2e-full/feed.spec.ts: `US2-AC1`, `US2-AC2`(스크롤로 다음 페이지), `US2-AC3`, `US2-AC4`
 
 ### Implementation for User Story 2
 
-- [ ] T032 [US2] post 모듈 `PostApi.page(order, jobRoles, careerYears, cursor, size)`: 키셋 쿼리(R7, 불투명 커서 base64url), 삭제 제외
-- [ ] T033 [US2] feed 모듈 `GET /api/v1/feed`: `PostApi.page` + `MonsterApi.findByPostIds` + `EmotionApi.findByPostIds` + `MemberApi.getMembers` + 내 공감 여부 일괄 조회로 `FeedPage` 조립. size 1~50, 잘못된 커서는 400. ContractTests `pendingPaths`에서 `getFeed`를 뺀다
-- [ ] T034 [P] [US2] apps/web/src/entities/post/api/use-feed-query.ts(`useInfiniteQuery`), apps/web/src/entities/post/ui/post-card.tsx(작성자, 미리보기, 감정, 몬스터 자리: US5 전까지 감정 이름과 HP 바, 공감 수, 댓글 수), apps/web/src/widgets/feed-list/(정렬 토글, 직군과 경력 다중 선택 필터, `IntersectionObserver` 무한 스크롤, 빈 목록 안내), apps/web/src/app/home/page.tsx를 피드로 교체하고 글쓰기 버튼을 둔다
+- [x] T032 [US2] post 모듈 `PostApi.page(order, jobRoles, careerYears, cursor, size)`: 키셋 쿼리(R7, 불투명 커서 base64url), 삭제 제외
+- [x] T033 [US2] feed 모듈 `GET /api/v1/feed`: `PostApi.page` + `MonsterApi.findByPostIds` + `EmotionApi.findByPostIds` + `MemberApi.getMembers` + 내 공감 여부 일괄 조회로 `FeedPage` 조립. size 1~50, 잘못된 커서는 400. ContractTests `pendingPaths`에서 `getFeed`를 뺀다
+- [x] T034 [P] [US2] apps/web/src/entities/post/api/use-feed-query.ts(`useInfiniteQuery`), apps/web/src/entities/post/ui/post-card.tsx(작성자, 미리보기, 감정, 몬스터 자리: US5 전까지 감정 이름과 HP 바, 공감 수, 댓글 수), apps/web/src/widgets/feed-list/(정렬 토글, 직군과 경력 다중 선택 필터, `IntersectionObserver` 무한 스크롤, 빈 목록 안내), apps/web/src/app/home/page.tsx를 피드로 교체하고 글쓰기 버튼을 둔다
 
 **Checkpoint**: 피드가 단독으로 동작한다
 
