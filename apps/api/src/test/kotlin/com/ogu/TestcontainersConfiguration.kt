@@ -1,5 +1,6 @@
 package com.ogu
 
+import com.ogu.support.MonsterDefeatedRecorder
 import com.ogu.support.QueryCountConfiguration
 import com.ogu.support.TestAiConfiguration
 import org.springframework.boot.test.context.TestConfiguration
@@ -11,10 +12,10 @@ import org.testcontainers.utility.DockerImageName
 
 /**
  * 테스트용 Postgres. 감정 분석은 실제 LLM 대신 가짜 분석기를 쓴다([TestAiConfiguration]).
- * JDBC 문장 수는 [QueryCountConfiguration]이 센다.
+ * JDBC 문장 수는 [QueryCountConfiguration]이 세고, 몬스터 처치 이벤트는 [MonsterDefeatedRecorder]가 모은다.
  */
 @TestConfiguration(proxyBeanMethods = false)
-@Import(TestAiConfiguration::class, QueryCountConfiguration::class)
+@Import(TestAiConfiguration::class, QueryCountConfiguration::class, MonsterDefeatedRecorder::class)
 class TestcontainersConfiguration {
     @Bean
     @ServiceConnection

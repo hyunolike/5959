@@ -66,20 +66,15 @@ class ContractTests {
 
         /**
          * 아직 구현되지 않은 계약 오퍼레이션("METHOD path"). 스토리가 끝날 때마다 해당 오퍼레이션을 뺀다.
-         * 003-core-loop이 계약에 더한 13개 중 아직 구현하지 않은 오퍼레이션이다(US1에서 createPost, getPostDetail을 뺐다).
+         * 003-core-loop이 계약에 더한 13개 중 아직 구현하지 않은 오퍼레이션이다(US1에서 createPost, getPostDetail을,
+         * US2에서 getFeed를, US3에서 공감과 취소, 댓글 목록과 작성, 댓글 공감과 취소를 뺐다).
          */
         val pendingPaths =
             setOf(
                 "PATCH /api/v1/posts/{postId}",
                 "DELETE /api/v1/posts/{postId}",
-                "POST /api/v1/posts/{postId}/likes",
-                "DELETE /api/v1/posts/{postId}/likes/me",
-                "GET /api/v1/posts/{postId}/comments",
-                "POST /api/v1/posts/{postId}/comments",
                 "PATCH /api/v1/comments/{commentId}",
                 "DELETE /api/v1/comments/{commentId}",
-                "POST /api/v1/comments/{commentId}/likes",
-                "DELETE /api/v1/comments/{commentId}/likes/me",
             )
     }
 }
