@@ -9,6 +9,7 @@ import com.ogu.support.HpLog
 import com.ogu.support.MemberFixture
 import com.ogu.support.MonsterDefeatedRecorder
 import org.assertj.core.api.Assertions.assertThat
+import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -155,6 +156,8 @@ class RetroactiveAttackTests {
         assertThat(
             jdbcTemplate.queryForObject("select defeated_at from monsters where post_id = ?", Any::class.java, postId),
         ).isNotNull()
+        // 기록은 커밋 뒤에 담기므로 몬스터가 보인 직후에는 아직 없을 수 있다
+        await().atMost(CoreLoopFixture.AWAIT_LIMIT).until { defeated.forPost(postId).isNotEmpty() }
         assertThat(defeated.forPost(postId)).hasSize(1)
     }
 

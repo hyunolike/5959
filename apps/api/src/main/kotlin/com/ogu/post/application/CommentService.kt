@@ -62,8 +62,9 @@ class CommentService(
         viewerId: Long,
         cursor: String?,
     ): CommentPageResponse {
-        val afterId = cursor?.let(CommentCursor::decode) ?: 0L
+        // 작성과 같은 순서: 지운 글이면 커서가 틀려도 404다
         postRepository.findByIdAndDeletedAtIsNull(postId) ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
+        val afterId = cursor?.let(CommentCursor::decode) ?: 0L
         val rows =
             commentRepository.findByPostIdAndParentIdIsNullAndDeletedAtIsNullAndIdGreaterThanOrderByIdAsc(
                 postId,

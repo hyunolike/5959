@@ -2,9 +2,11 @@ package com.ogu.post.presentation
 
 import com.ogu.TestcontainersConfiguration
 import com.ogu.monster.MonsterApi
+import com.ogu.post.application.CommentService
 import com.ogu.support.CoreLoopFixture
 import com.ogu.support.HpLog
 import com.ogu.support.MemberFixture
+import com.ogu.support.QueryCounter
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -34,6 +36,9 @@ class CommentApiTests {
 
     @Autowired
     lateinit var monsterApi: MonsterApi
+
+    @Autowired
+    lateinit var commentService: CommentService
 
     private lateinit var mockMvc: MockMvc
     private lateinit var members: MemberFixture
@@ -156,13 +161,17 @@ class CommentApiTests {
         // 결합 이모지도 한 글자다(research R8)
         loop.writeComment(author, postId, "👨‍👩‍👧".repeat(300)).andExpect(status().isCreated)
         loop.writeComment(author, postId, "가".repeat(300)).andExpect(status().isCreated)
+        // 코드 포인트 상한 정확히 3,000개: 결합 문자 9개를 단 글자 300개(300자)는 받는다
+        val heavy = ("e" + "\u0301".repeat(9)).repeat(300)
+        assertThat(heavy.codePointCount(0, heavy.length)).isEqualTo(3000)
+        loop.writeComment(author, postId, heavy).andExpect(status().isCreated)
         listOf("가".repeat(301), "   ", "", "e" + "́".repeat(3000)).forEach { content ->
             loop
                 .writeComment(author, postId, content)
                 .andExpect(status().isBadRequest)
                 .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"))
         }
-        assertThat(commentCount(postId)).isEqualTo(2)
+        assertThat(commentCount(postId)).isEqualTo(3)
     }
 
     @Test
@@ -224,6 +233,28 @@ class CommentApiTests {
     }
 
     @Test
+    fun `댓글 목록은 원 댓글과 답글 수와 상관없이 쿼리 5개다`() {
+        val author = members.onboarded()
+        val others = (1..3).map { members.onboarded() }
+        val small = loop.postWithoutMonster(author)
+        loop.comment(author, small, "하나뿐인 원 댓글")
+        val large = loop.postWithoutMonster(author)
+        val roots = (1..PAGE_PLUS_ONE).map { loop.comment(others[it % others.size], large, "원 댓글 $it") }
+        roots.take(5).forEach { root -> others.forEach { loop.comment(it, large, "답글", parentId = root) } }
+        loop.likeComment(author, roots.first()).andExpect(status().isOk)
+
+        val (smallPage, smallQueries) = QueryCounter.count { commentService.list(small, author.id, null) }
+        val (largePage, largeQueries) = QueryCounter.count { commentService.list(large, author.id, null) }
+
+        assertThat(smallPage.items).hasSize(1)
+        assertThat(largePage.items).hasSize(CommentService.PAGE_SIZE)
+        assertThat(largePage.items.sumOf { it.replies.size }).isEqualTo(15)
+        // 글, 원 댓글, 답글, 공감 여부, 작성자를 한 번씩 읽는다
+        assertThat(smallQueries).isEqualTo(5)
+        assertThat(largeQueries).isEqualTo(5)
+    }
+
+    @Test
     fun `댓글 커서가 올바르지 않으면 400 INVALID_REQUEST`() {
         val author = members.onboarded()
         val postId = loop.postWithoutMonster(author)
@@ -245,6 +276,11 @@ class CommentApiTests {
         listOf(postId, Long.MAX_VALUE).forEach { id ->
             loop
                 .comments(author, id)
+                .andExpect(status().isNotFound)
+                .andExpect(jsonPath("$.error.code").value("POST_NOT_FOUND"))
+            // 커서가 틀려도 글이 없으면 404가 먼저다
+            loop
+                .comments(author, id, "abc!")
                 .andExpect(status().isNotFound)
                 .andExpect(jsonPath("$.error.code").value("POST_NOT_FOUND"))
             loop
@@ -274,4 +310,8 @@ class CommentApiTests {
 
     private fun commentCount(postId: Long): Int =
         jdbcTemplate.queryForObject("select comment_count from posts where id = ?", Int::class.java, postId)!!
+
+    private companion object {
+        const val PAGE_PLUS_ONE = CommentService.PAGE_SIZE + 1
+    }
 }
