@@ -108,19 +108,17 @@ class SpringAiEmotionAnalyzer(
         /** Resilience4j 서킷 브레이커와 타임아웃 인스턴스 이름(`resilience4j.*.instances.emotionAnalyzer`). */
         const val RESILIENCE_NAME = "emotionAnalyzer"
 
-        /** 키가 비어 있으면 SDK가 환경 변수를 찾다가 실패하므로, 로컬과 테스트에서는 자리표시 값으로 만든다(prod는 기동 검사). */
-        private const val MISSING_API_KEY = "missing-ai-api-key"
-
         fun create(
             properties: AiProperties,
             circuitBreaker: CircuitBreaker,
             timeLimiter: TimeLimiter,
         ): SpringAiEmotionAnalyzer {
+            require(properties.apiKey.isNotBlank()) { "키가 없으면 DisabledEmotionAnalyzer를 씁니다." }
             val options =
                 OpenAiChatOptions
                     .builder()
                     .baseUrl(properties.baseUrl.toString())
-                    .apiKey(properties.apiKey.ifBlank { MISSING_API_KEY })
+                    .apiKey(properties.apiKey)
                     .model(properties.model)
                     .temperature(properties.temperature)
                     .maxTokens(properties.maxTokens)
