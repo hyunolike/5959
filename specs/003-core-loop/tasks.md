@@ -139,13 +139,13 @@ description: "Task list for 003-core-loop (핵심 루프)"
 
 ### Tests for User Story 4 ⚠️
 
-- [ ] T046 [P] [US4] apps/api/src/test/kotlin/com/ogu/post/presentation/PostManageApiTests.kt: `US4-AC1 본문과 말투를 고쳐도 몬스터 감정, HP, 상태는 그대로`(처치된 몬스터 포함), `US4-AC2 삭제하면 피드와 상세에서 사라지고 상세는 404`, `US4-AC3 원 댓글을 지우면 답글도 지워지고 댓글 수가 그만큼 준다`, `US4-AC4 남의 글과 댓글 수정, 삭제는 403 NOT_AUTHOR`, 수정 검증은 작성과 같은 규칙
-- [ ] T047 [P] [US4] apps/web/e2e-full/manage.spec.ts: `US4-AC1`, `US4-AC2`, `US4-AC3`
+- [x] T046 [P] [US4] apps/api/src/test/kotlin/com/ogu/post/presentation/PostManageApiTests.kt: `US4-AC1 본문과 말투를 고쳐도 몬스터 감정, HP, 상태는 그대로`(처치된 몬스터 포함), `US4-AC2 삭제하면 피드와 상세에서 사라지고 상세는 404`, `US4-AC3 원 댓글을 지우면 답글도 지워지고 댓글 수가 그만큼 준다`, `US4-AC4 남의 글과 댓글 수정, 삭제는 403 NOT_AUTHOR`, 수정 검증은 작성과 같은 규칙
+- [x] T047 [P] [US4] apps/web/e2e-full/manage.spec.ts: `US4-AC1`, `US4-AC2`, `US4-AC3`
 
 ### Implementation for User Story 4
 
-- [ ] T048 [US4] post 모듈: `PATCH/DELETE /api/v1/posts/{id}`, `PATCH/DELETE /api/v1/comments/{id}`(작성자 확인, 원 댓글 삭제 시 답글 일괄 삭제와 카운터 감소). ContractTests `pendingPaths`가 비어야 한다
-- [ ] T049 [P] [US4] 웹: apps/web/src/features/manage-post/(글 수정 폼: 작성 폼 재사용, 삭제 확인 대화상자 후 `/home`), 댓글 수정과 삭제 메뉴(내 댓글에만)
+- [x] T048 [US4] post 모듈: `PATCH/DELETE /api/v1/posts/{id}`, `PATCH/DELETE /api/v1/comments/{id}`(작성자 확인, 원 댓글 삭제 시 답글 일괄 삭제와 카운터 감소). ContractTests `pendingPaths`가 비어야 한다
+- [x] T049 [P] [US4] 웹: apps/web/src/features/manage-post/(글 수정 폼: 작성 폼 재사용, 삭제 확인 대화상자 후 `/home`), 댓글 수정과 삭제 메뉴(내 댓글에만)
 
 ---
 
