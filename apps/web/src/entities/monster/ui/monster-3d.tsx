@@ -1,18 +1,21 @@
 "use client";
 
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
   useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
-  type ReactNode,
+  useState,
+  type RefObject,
 } from "react";
 import {
   Color,
+  ConeGeometry,
   DoubleSide,
   Quaternion,
   ShaderMaterial,
+  SphereGeometry,
   Vector3,
   type Group,
 } from "three";
@@ -172,6 +175,10 @@ function spikeDirections(count: number): Vector3[] {
 }
 
 const UP = new Vector3(0, 1, 0);
+/** 여러 번 쓰는 도형은 모듈에서 한 번만 만들어 함께 쓴다. 메시를 지울 때 버리지 않게 `dispose={null}`로 붙인다. */
+const SPIKE_GEOMETRY = new ConeGeometry(0.14, 0.42, 12);
+const UNIT_SPHERE = new SphereGeometry(1, 24, 16);
+
 const SPIKES = spikeDirections(26).map((direction) => ({
   position: direction.clone().multiplyScalar(0.92).toArray(),
   quaternion: new Quaternion().setFromUnitVectors(UP, direction).toArray(),
@@ -197,9 +204,9 @@ function Body({
               material={material}
               position={spike.position}
               quaternion={spike.quaternion}
-            >
-              <coneGeometry args={[0.14, 0.42, 12]} />
-            </mesh>
+              geometry={SPIKE_GEOMETRY}
+              dispose={null}
+            />
           ))}
         </group>
       );
@@ -342,8 +349,11 @@ function Eye({
   const pupil = look.expression === "teary" ? 0.42 : 0.55;
   return (
     <group position={[x, 0, 0]}>
-      <mesh scale={[1, sleepy ? 0.6 : 1, 0.55]}>
-        <sphereGeometry args={[size, 24, 16]} />
+      <mesh
+        geometry={UNIT_SPHERE}
+        dispose={null}
+        scale={[size, size * (sleepy ? 0.6 : 1), size * 0.55]}
+      >
         <meshBasicMaterial color={EYE_WHITE} />
       </mesh>
       <mesh
@@ -352,13 +362,22 @@ function Eye({
           look.shape === "bowed" ? -size * 0.35 : -size * 0.05,
           size * 0.42,
         ]}
-        scale={[1, sleepy ? 0.6 : 1, 0.4]}
+        geometry={UNIT_SPHERE}
+        dispose={null}
+        scale={[
+          size * pupil,
+          size * pupil * (sleepy ? 0.6 : 1),
+          size * pupil * 0.4,
+        ]}
       >
-        <sphereGeometry args={[size * pupil, 20, 12]} />
         <meshBasicMaterial color={INK} />
       </mesh>
-      <mesh position={[size * 0.22, size * 0.25, size * 0.6]}>
-        <sphereGeometry args={[size * 0.16, 12, 8]} />
+      <mesh
+        position={[size * 0.22, size * 0.25, size * 0.6]}
+        geometry={UNIT_SPHERE}
+        dispose={null}
+        scale={size * 0.16}
+      >
         <meshBasicMaterial color={EYE_WHITE} />
       </mesh>
     </group>
@@ -411,9 +430,10 @@ function Face({ look }: { look: MonsterAppearance }) {
       {look.expression === "teary" ? (
         <mesh
           position={[spread + size * 0.2, -size * 1.4, 0.04]}
-          scale={[0.7, 1, 0.5]}
+          geometry={UNIT_SPHERE}
+          dispose={null}
+          scale={[size * 0.28, size * 0.4, size * 0.2]}
         >
-          <sphereGeometry args={[size * 0.4, 16, 12]} />
           <meshBasicMaterial color={TEAR} />
         </mesh>
       ) : null}
@@ -532,13 +552,16 @@ function MonsterRig({
   const previousHp = useRef(hp);
   const pendingHit = useRef(false);
   const hitAt = useRef<number | null>(null);
+  const invalidate = useThree((state) => state.invalidate);
 
   useEffect(() => {
     if (hp < previousHp.current) {
       pendingHit.current = true;
+      // 요청할 때만 그리는 상태(쓰러짐, 화면 밖)에서도 맞는 반응을 그린다
+      invalidate();
     }
     previousHp.current = hp;
-  }, [hp]);
+  }, [hp, invalidate]);
 
   useFrame(({ clock }) => {
     if (!rig.current) return;
@@ -552,6 +575,7 @@ function MonsterRig({
       const elapsed = t - hitAt.current;
       if (elapsed < HIT_SECONDS) {
         pose = withHit(pose, elapsed);
+        invalidate();
       } else {
         hitAt.current = null;
       }
@@ -591,7 +615,8 @@ function Shadow({ look }: { look: MonsterAppearance }) {
 /**
  * 코드로 만든 3D 몬스터(US5, research R11, ADR-0003). 기본 도형과 셰이더로 감정 5종을 그리고,
  * 대기 애니메이션, HP가 줄 때 0.4초 맞는 반응(흔들림과 깜빡임), 쓰러진 모습을 보인다.
- * three가 커서 `next/dynamic`(ssr: false)으로만 불러온다(monster-view.tsx).
+ * three가 커서 `next/dynamic`(ssr: false)으로만 불러온다(monster-view.tsx). WebGL 컨텍스트를 만들지
+ * 못하면 Canvas가 던지고, monster-view.tsx의 오류 경계가 정지 이미지로 대신한다.
  * `scripts/render-monsters.ts`는 `still`로 멈춘 장면을 캡처해 정지 이미지를 만든다.
  */
 export default function Monster3D({
@@ -599,7 +624,6 @@ export default function Monster3D({
   hp,
   label,
   still = false,
-  fallback,
   onReady,
   className,
 }: {
@@ -609,32 +633,54 @@ export default function Monster3D({
   label: string;
   /** 움직임 없이 한 장면만 그린다(캡처용). */
   still?: boolean;
-  /** WebGL 컨텍스트를 만들지 못했을 때 대신 그린다. */
-  fallback?: ReactNode;
   /** 첫 장면을 그린 뒤 부른다(캡처용). */
   onReady?: () => void;
   className?: string;
 }) {
+  const wrapper = useRef<HTMLDivElement>(null);
+  const onScreen = useOnScreen(wrapper);
+  // 움직일 때만 매 프레임 그린다. 쓰러졌거나 화면 밖이면 바뀔 때만 그린다.
+  const animating = !still && !look.fallen && onScreen;
+
   return (
-    <Canvas
-      role="img"
-      aria-label={label}
-      className={className}
-      flat
-      dpr={[1, 1.5]}
-      frameloop={still ? "demand" : "always"}
-      gl={{ alpha: true, antialias: true, preserveDrawingBuffer: still }}
-      camera={{ position: [0, 0.35, 5.2], fov: 32 }}
-      fallback={fallback}
-      onCreated={({ gl }) => {
-        gl.setClearColor(0x000000, 0);
-        if (onReady) {
-          requestAnimationFrame(() => requestAnimationFrame(onReady));
-        }
-      }}
-    >
-      <Shadow look={look} />
-      <MonsterRig look={look} hp={hp} still={still} />
-    </Canvas>
+    <div ref={wrapper} className={className}>
+      <Canvas
+        role="img"
+        aria-label={label}
+        flat
+        dpr={[1, 1.5]}
+        frameloop={animating ? "always" : "demand"}
+        gl={{ alpha: true, antialias: true, preserveDrawingBuffer: still }}
+        camera={{ position: [0, 0.35, 5.2], fov: 32 }}
+        onCreated={({ gl }) => {
+          gl.setClearColor(0x000000, 0);
+          if (onReady) {
+            requestAnimationFrame(() => requestAnimationFrame(onReady));
+          }
+        }}
+      >
+        <Shadow look={look} />
+        <MonsterRig look={look} hp={hp} still={still} />
+      </Canvas>
+    </div>
   );
+}
+
+/** 요소가 화면에 보이는지. IntersectionObserver가 없으면 보인다고 본다. */
+function useOnScreen(target: RefObject<HTMLElement | null>): boolean {
+  const [onScreen, setOnScreen] = useState(true);
+
+  useEffect(() => {
+    const element = target.current;
+    if (!element || typeof IntersectionObserver === "undefined") {
+      return;
+    }
+    const observer = new IntersectionObserver((entries) => {
+      setOnScreen(entries.some((entry) => entry.isIntersecting));
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [target]);
+
+  return onScreen;
 }

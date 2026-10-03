@@ -37,6 +37,7 @@ createRoot(document.getElementById("root")!).render(
     hp={STAGE_RATIO[stage]}
     label={monsterLabel(emotion, stage)}
     still
+    className="capture"
     onReady={() => {
       (window as unknown as { __monsterReady: boolean }).__monsterReady = true;
     }}
