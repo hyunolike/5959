@@ -155,14 +155,14 @@ description: "Task list for 003-core-loop (핵심 루프)"
 
 ### Tests for User Story 5 ⚠️
 
-- [ ] T050 [P] [US5] apps/web/src/entities/monster/model/appearance.test.ts: `US5-AC1 감정 5종은 색, 형태, 움직임 파라미터가 서로 다르다`, `US5-AC2 HP 비율이 낮아질수록 크기와 채도가 줄고 금 간 정도가 늘며 0이면 쓰러짐`(단계 경계 66%, 33%, 0 포함), 같은 입력은 같은 출력(순수 함수)
-- [ ] T051 [P] [US5] apps/web/src/entities/monster/ui/monster-view.test.tsx: `US5-AC4 WebGL 미지원이나 움직임 줄이기면 정지 이미지를 렌더링한다`, `US5-AC3 피드 카드는 항상 정지 이미지이고 감정과 단계에 맞는 파일을 쓴다`
+- [x] T050 [P] [US5] apps/web/src/entities/monster/model/appearance.test.ts: `US5-AC1 감정 5종은 색, 형태, 움직임 파라미터가 서로 다르다`, `US5-AC2 HP 비율이 낮아질수록 크기와 채도가 줄고 금 간 정도가 늘며 0이면 쓰러짐`(단계 경계 66%, 33%, 0 포함), 같은 입력은 같은 출력(순수 함수)
+- [x] T051 [P] [US5] apps/web/src/entities/monster/ui/monster-view.test.tsx: `US5-AC4 WebGL 미지원이나 움직임 줄이기면 정지 이미지를 렌더링한다`, `US5-AC3 피드 카드는 항상 정지 이미지이고 감정과 단계에 맞는 파일을 쓴다`
 
 ### Implementation for User Story 5
 
-- [ ] T052 [US5] apps/web/src/entities/monster/model/appearance.ts(research R11의 감정별 형태와 단계별 변화)
-- [ ] T053 [US5] apps/web/src/entities/monster/ui/monster-3d.tsx(R3F 장면: 기본 도형과 셰이더로 감정 5종, 대기 애니메이션, 맞는 반응 0.4초, 쓰러짐), ui/monster-sprite.tsx(`/monsters/{emotion}-{stage}.png`), ui/monster-view.tsx(WebGL 감지와 `prefers-reduced-motion`으로 3D 또는 정지 이미지 선택, 3D는 `next/dynamic` `ssr: false`), index.ts. 상세와 피드 카드의 임시 몬스터 자리를 교체한다. T014에서 `entities/post`, `entities/monster`, `entities/comment`가 아직 아무 데서도 안 쓰여 steiger의 `fsd/insignificant-slice`에 걸려 `apps/web/steiger.config.ts`에 임시 override를 추가했다. 이 작업으로 세 슬라이스가 모두 실제로 쓰이게 되면(entities/post, entities/comment는 T020/T027/T028/T034/T045에서 먼저 쓰이기 시작한다) 그 override 블록을 지운다
-- [ ] T054 [US5] apps/web/scripts/render-monsters.ts(Playwright로 3D 장면을 투명 배경 512×512로 캡처, 감정 5 × 단계 4 = 20장)와 `pnpm --filter web render:monsters` 스크립트. 생성한 `apps/web/public/monsters/*.png`를 커밋한다. 첫 로딩 번들에 three가 들어가지 않았는지 `next build` 출력으로 확인한다
+- [x] T052 [US5] apps/web/src/entities/monster/model/appearance.ts(research R11의 감정별 형태와 단계별 변화)
+- [x] T053 [US5] apps/web/src/entities/monster/ui/monster-3d.tsx(R3F 장면: 기본 도형과 셰이더로 감정 5종, 대기 애니메이션, 맞는 반응 0.4초, 쓰러짐), ui/monster-sprite.tsx(`/monsters/{emotion}-{stage}.png`), ui/monster-view.tsx(WebGL 감지와 `prefers-reduced-motion`으로 3D 또는 정지 이미지 선택, 3D는 `next/dynamic` `ssr: false`), index.ts. 상세와 피드 카드의 임시 몬스터 자리를 교체한다. T014에서 `entities/post`, `entities/monster`, `entities/comment`가 아직 아무 데서도 안 쓰여 steiger의 `fsd/insignificant-slice`에 걸려 `apps/web/steiger.config.ts`에 임시 override를 추가했다. 이 작업으로 세 슬라이스가 모두 실제로 쓰이게 되면(entities/post, entities/comment는 T020/T027/T028/T034/T045에서 먼저 쓰이기 시작한다) 그 override 블록을 지운다
+- [x] T054 [US5] apps/web/scripts/render-monsters.ts(Playwright로 3D 장면을 투명 배경 512×512로 캡처, 감정 5 × 단계 4 = 20장)와 `pnpm --filter web render:monsters` 스크립트. 생성한 `apps/web/public/monsters/*.png`를 커밋한다. 첫 로딩 번들에 three가 들어가지 않았는지 `next build` 출력으로 확인한다
 
 ---
 

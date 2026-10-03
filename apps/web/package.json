@@ -16,6 +16,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:full": "playwright test --config playwright.full.config.ts",
+    "render:monsters": "node scripts/render-monsters.ts",
     "gen:api": "openapi-typescript ../../contracts/openapi.yaml -o src/shared/api/generated.ts && prettier --write src/shared/api/generated.ts"
   },
   "dependencies": {
@@ -62,6 +63,7 @@
     "steiger": "^0.6.0",
     "tailwindcss": "^4",
     "typescript": "^5",
+    "vite": "8.3.0",
     "vitest": "^4.1.10"
   }
 }
