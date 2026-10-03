@@ -21,4 +21,21 @@ export default defineConfig([
       "fsd/no-segmentless-slices": "off",
     },
   },
+  // TEMPORARY (003-core-loop T011/T014): post, monster, comment entities were
+  // added with only model/types.ts and have no consumer yet, so steiger's
+  // insignificant-slice rule flags all three as "no references". Later
+  // batches (T020/T027/T028/T034/T045/T053) wire features/widgets up to
+  // these entities, which gives steiger real references. Remove this
+  // override at T053 (specs/003-core-loop/tasks.md) once all three slices
+  // have at least one consumer.
+  {
+    files: [
+      "./src/entities/post/**",
+      "./src/entities/monster/**",
+      "./src/entities/comment/**",
+    ],
+    rules: {
+      "fsd/insignificant-slice": "off",
+    },
+  },
 ]);

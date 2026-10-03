@@ -45,10 +45,10 @@ description: "Task list for 003-core-loop (핵심 루프)"
 - [x] T008 모듈 뼈대와 공개 타입을 만든다(각 모듈 `package-info.java` 포함): `post`(`PostApi`, `PostCreated`, `PostLiked`, `CommentCreated`, `CommentLiked`, `CommentTone`, `Attack(memberId, action, targetId)`, `AttackAction`), `ai`(`EmotionAnalyzer`, `EmotionClassification(emotion, intensity, reason)`, `EmotionAnalysisFailed`), `emotion`(`EmotionApi`, `EmotionAnalyzed`, `EmotionType`, `Intensity`(`LOW`→10, `MEDIUM`→20, `HIGH`→30), `AnalysisStatus`), `monster`(`MonsterApi`, `MonsterView`, `MonsterDefeated`), `feed`(패키지만). `ModularityTests`가 통과하고, 의존 방향이 plan.md Constitution Check 표와 같아야 한다. `ai`가 `emotion` 타입을 쓰지 않도록 `EmotionClassification`은 `ai` 모듈 안의 자체 enum을 쓰고 `emotion`이 변환한다
 - [x] T009 [P] apps/api/src/main/kotlin/com/ogu/shared/error/ErrorCode.kt에 `POST_NOT_FOUND`(404), `COMMENT_NOT_FOUND`(404), `NOT_AUTHOR`(403), `CANNOT_LIKE_OWN_POST`(403), `ALREADY_LIKED`(409), `INVALID_PARENT_COMMENT`(400), `POST_RATE_LIMITED`(429)를 추가한다
 - [x] T010 [P] apps/api/src/main/kotlin/com/ogu/shared/text/Grapheme.kt와 테스트(TDD): `Grapheme.count(text)`가 `BreakIterator.getCharacterInstance()`로 글자를 센다. 한글, 영문, 이모지 1개(👍=1), 결합 이모지(👨‍👩‍👧=1), 국기(🇰🇷=1) 사례
-- [ ] T011 [P] apps/web/src/shared/lib/grapheme.ts와 테스트: `Intl.Segmenter('ko', { granularity: 'grapheme' })`로 같은 사례가 같은 값을 내야 한다
+- [x] T011 [P] apps/web/src/shared/lib/grapheme.ts와 테스트: `Intl.Segmenter('ko', { granularity: 'grapheme' })`로 같은 사례가 같은 값을 내야 한다
 - [x] T012 [P] `member` 모듈의 `MemberApi`에 `getMembers(ids: Collection<Long>): Map<Long, MemberInfo>`를 추가한다(쿼리 한 번). 테스트
 - [x] T013 apps/api/src/main/kotlin/com/ogu/monster/application/PostLock.kt: `pg_advisory_xact_lock(postId)`을 현재 트랜잭션에서 잡는 헬퍼와, 트랜잭션 밖에서 부르면 실패하는 테스트
-- [ ] T014 [P] 웹 엔티티 타입: apps/web/src/entities/post/(model/types.ts: generated.ts의 `PostDetail`, `FeedItem`, `CommentTone`과 말투 표시 문구 맵, index.ts), apps/web/src/entities/monster/(model/types.ts: `MonsterView`, `EmotionType`, 감정 한국어 이름 맵, model/hp-stage.ts와 테스트: `full`(>66%), `hurt`(>33%), `weak`(>0), `defeated`(0)), apps/web/src/entities/comment/(model/types.ts)
+- [x] T014 [P] 웹 엔티티 타입: apps/web/src/entities/post/(model/types.ts: generated.ts의 `PostDetail`, `FeedItem`, `CommentTone`과 말투 표시 문구 맵, index.ts), apps/web/src/entities/monster/(model/types.ts: `MonsterView`, `EmotionType`, 감정 한국어 이름 맵, model/hp-stage.ts와 테스트: `full`(>66%), `hurt`(>33%), `weak`(>0), `defeated`(0)), apps/web/src/entities/comment/(model/types.ts)
 
 **Checkpoint**: 스키마, 모듈 경계, 공통 타입 준비 완료
 
@@ -161,7 +161,7 @@ description: "Task list for 003-core-loop (핵심 루프)"
 ### Implementation for User Story 5
 
 - [ ] T052 [US5] apps/web/src/entities/monster/model/appearance.ts(research R11의 감정별 형태와 단계별 변화)
-- [ ] T053 [US5] apps/web/src/entities/monster/ui/monster-3d.tsx(R3F 장면: 기본 도형과 셰이더로 감정 5종, 대기 애니메이션, 맞는 반응 0.4초, 쓰러짐), ui/monster-sprite.tsx(`/monsters/{emotion}-{stage}.png`), ui/monster-view.tsx(WebGL 감지와 `prefers-reduced-motion`으로 3D 또는 정지 이미지 선택, 3D는 `next/dynamic` `ssr: false`), index.ts. 상세와 피드 카드의 임시 몬스터 자리를 교체한다
+- [ ] T053 [US5] apps/web/src/entities/monster/ui/monster-3d.tsx(R3F 장면: 기본 도형과 셰이더로 감정 5종, 대기 애니메이션, 맞는 반응 0.4초, 쓰러짐), ui/monster-sprite.tsx(`/monsters/{emotion}-{stage}.png`), ui/monster-view.tsx(WebGL 감지와 `prefers-reduced-motion`으로 3D 또는 정지 이미지 선택, 3D는 `next/dynamic` `ssr: false`), index.ts. 상세와 피드 카드의 임시 몬스터 자리를 교체한다. T014에서 `entities/post`, `entities/monster`, `entities/comment`가 아직 아무 데서도 안 쓰여 steiger의 `fsd/insignificant-slice`에 걸려 `apps/web/steiger.config.ts`에 임시 override를 추가했다. 이 작업으로 세 슬라이스가 모두 실제로 쓰이게 되면(entities/post, entities/comment는 T020/T027/T028/T034/T045에서 먼저 쓰이기 시작한다) 그 override 블록을 지운다
 - [ ] T054 [US5] apps/web/scripts/render-monsters.ts(Playwright로 3D 장면을 투명 배경 512×512로 캡처, 감정 5 × 단계 4 = 20장)와 `pnpm --filter web render:monsters` 스크립트. 생성한 `apps/web/public/monsters/*.png`를 커밋한다. 첫 로딩 번들에 three가 들어가지 않았는지 `next build` 출력으로 확인한다
 
 ---
