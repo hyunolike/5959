@@ -4,7 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef } from "react";
 
 import { CAREER_YEAR_LABELS, JOB_ROLE_LABELS } from "@/entities/member";
-import { MonsterPlaceholder } from "@/entities/monster";
+import { MonsterDisplay } from "@/entities/monster";
 import { PostCard, useFeedQuery, type FeedFilter } from "@/entities/post";
 import { Button, Card, Spinner } from "@/shared/ui";
 
@@ -100,7 +100,7 @@ function FeedItems({ filter }: { filter: FeedFilter }) {
               item={item}
               authorMeta={`${JOB_ROLE_LABELS[item.author.jobRole]} · ${CAREER_YEAR_LABELS[item.author.careerYear]}`}
               renderMonster={(monster) => (
-                <MonsterPlaceholder monster={monster} />
+                <MonsterDisplay monster={monster} variant="card" />
               )}
             />
           </li>
