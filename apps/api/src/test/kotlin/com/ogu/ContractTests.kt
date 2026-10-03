@@ -72,7 +72,6 @@ class ContractTests {
             setOf(
                 "PATCH /api/v1/posts/{postId}",
                 "DELETE /api/v1/posts/{postId}",
-                "GET /api/v1/feed",
                 "POST /api/v1/posts/{postId}/likes",
                 "DELETE /api/v1/posts/{postId}/likes/me",
                 "GET /api/v1/posts/{postId}/comments",

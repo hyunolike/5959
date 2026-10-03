@@ -1,8 +1,6 @@
 package com.ogu.feed.application
 
-import com.ogu.emotion.AnalysisStatus
 import com.ogu.emotion.EmotionApi
-import com.ogu.feed.presentation.dto.AuthorResponse
 import com.ogu.feed.presentation.dto.PostDetailResponse
 import com.ogu.member.MemberApi
 import com.ogu.monster.MonsterApi
@@ -28,19 +26,12 @@ class PostDetailQuery(
     ): PostDetailResponse {
         val post = postApi.find(postId) ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
         val ids = listOf(postId)
-        val author = memberApi.getMembers(listOf(post.authorId))[post.authorId]
         return PostDetailResponse(
             postId = post.postId,
-            author =
-                AuthorResponse(
-                    id = post.authorId,
-                    nickname = author?.nickname.orEmpty(),
-                    jobRole = post.authorJobRole,
-                    careerYear = post.authorCareerYear,
-                ),
+            author = post.author(memberApi.getMembers(listOf(post.authorId))),
             content = post.content,
             commentTone = post.commentTone,
-            analysisStatus = emotionApi.findByPostIds(ids)[postId]?.status ?: AnalysisStatus.PENDING,
+            analysisStatus = emotionApi.findByPostIds(ids)[postId].analysisStatus(),
             monster = monsterApi.findByPostIds(ids)[postId],
             likeCount = post.likeCount,
             likedByMe = postId in postApi.likedPostIds(viewerId, ids),

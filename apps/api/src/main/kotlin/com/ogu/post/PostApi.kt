@@ -7,6 +7,12 @@ interface PostApi {
     /** 살아 있는 글. 없거나 지운 글이면 null이다. */
     fun find(postId: Long): PostSummary?
 
+    /**
+     * 살아 있는 글을 키셋으로 한 쪽 읽는다(research R7). 보는 회원의 공감 여부도 같은 쿼리에서 함께 읽는다.
+     * 커서가 올바르지 않으면 400 INVALID_REQUEST.
+     */
+    fun page(query: PostPageQuery): PostPage
+
     /** [postIds] 가운데 [memberId]가 공감한 글 ID. 쿼리 한 번이다. */
     fun likedPostIds(
         memberId: Long,

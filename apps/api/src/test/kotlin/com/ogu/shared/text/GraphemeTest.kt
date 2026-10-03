@@ -34,4 +34,13 @@ class GraphemeTest {
     fun `이모지 500개는 500글자다`() {
         assertThat(Grapheme.count("👨‍👩‍👧".repeat(500))).isEqualTo(500)
     }
+
+    @Test
+    fun `앞에서부터 글자 단위로 자른다`() {
+        assertThat(Grapheme.take("👨‍👩‍👧가나다", 2)).isEqualTo("👨‍👩‍👧가")
+        assertThat(Grapheme.take("🇰🇷🇰🇷", 1)).isEqualTo("🇰🇷")
+        assertThat(Grapheme.take("가나", 5)).isEqualTo("가나")
+        assertThat(Grapheme.take("", 3)).isEmpty()
+        assertThat(Grapheme.take("가나", 0)).isEmpty()
+    }
 }

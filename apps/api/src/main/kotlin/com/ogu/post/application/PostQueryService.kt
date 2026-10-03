@@ -2,6 +2,8 @@ package com.ogu.post.application
 
 import com.ogu.post.Attack
 import com.ogu.post.PostApi
+import com.ogu.post.PostPage
+import com.ogu.post.PostPageQuery
 import com.ogu.post.PostSummary
 import com.ogu.post.domain.Post
 import com.ogu.post.domain.PostRepository
@@ -14,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional
 class PostQueryService(
     private val postRepository: PostRepository,
     private val jdbcClient: JdbcClient,
+    private val postPageReader: PostPageReader,
 ) : PostApi {
     override fun find(postId: Long): PostSummary? = postRepository.findByIdAndDeletedAtIsNull(postId)?.toSummary()
 
@@ -31,6 +34,8 @@ class PostQueryService(
             .filterNotNull()
             .toSet()
     }
+
+    override fun page(query: PostPageQuery): PostPage = postPageReader.read(query)
 
     /** US3(T042)에서 구현한다. 그 전까지 몬스터 생성(MonsterFactory)은 소급 반영을 하지 않으므로 부르지 않는다. */
     override fun attacksSoFar(postId: Long): List<Attack> = throw UnsupportedOperationException(ATTACKS_NOT_READY)
