@@ -38,6 +38,8 @@ test("US3-AC1 처음 쓰는 카카오 계정으로 로그인하면 새 회원이
   const nickname = uniqueNickname("k");
   await completeOnboarding(page, nickname);
   await page.waitForURL("**/home");
+  // 홈의 조회(내 프로필, 피드)가 끝나기 전에 쿠키를 지우면 401로 로그인 화면에 튕겨 다음 이동이 끊긴다
+  await page.waitForLoadState("networkidle");
   await expect(page.getByRole("heading")).toContainText(`${nickname}님`);
 });
 
@@ -55,11 +57,15 @@ test("US3-AC2 온보딩까지 마친 구글 계정으로 다시 로그인하면 
   const nickname = uniqueNickname("g");
   await completeOnboarding(page, nickname);
   await page.waitForURL("**/home");
+  // 홈의 조회(내 프로필, 피드)가 끝나기 전에 쿠키를 지우면 401로 로그인 화면에 튕겨 다음 이동이 끊긴다
+  await page.waitForLoadState("networkidle");
 
   await page.context().clearCookies();
 
   await page.goto(startUrl("google", query));
   await page.waitForURL("**/home");
+  // 홈의 조회(내 프로필, 피드)가 끝나기 전에 쿠키를 지우면 401로 로그인 화면에 튕겨 다음 이동이 끊긴다
+  await page.waitForLoadState("networkidle");
   await expect(page.getByRole("heading")).toContainText(`${nickname}님`);
 });
 

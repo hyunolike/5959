@@ -29,6 +29,8 @@ async function createOnboardedMember(page: Page, prefix: string) {
   await page.getByLabel("경력").selectOption("YEAR_1");
   await page.getByRole("button", { name: "완료" }).click();
   await page.waitForURL("**/home");
+  // 홈의 조회(내 프로필, 피드)가 끝나기 전에 쿠키를 지우면 401로 로그인 화면에 튕겨 다음 이동이 끊긴다
+  await page.waitForLoadState("networkidle");
   return { email, nickname };
 }
 

@@ -38,6 +38,8 @@ test("US1-AC1, US1-AC4 가입부터 온보딩 완료까지 마치면 홈으로 �
 
   await completeOnboarding(page, nickname);
   await page.waitForURL("**/home");
+  // 홈의 조회(내 프로필, 피드)가 끝나기 전에 쿠키를 지우면 401로 로그인 화면에 튕겨 다음 이동이 끊긴다
+  await page.waitForLoadState("networkidle");
   await expect(page.getByRole("heading")).toContainText(`${nickname}님`);
 });
 
@@ -50,6 +52,8 @@ test("US1-AC5 대소문자만 다른 닉네임도 완료 전(사전 확인 힌�
   await signup(page, uniqueEmail("dup-owner"));
   await completeOnboarding(page, takenNickname);
   await page.waitForURL("**/home");
+  // 홈의 조회(내 프로필, 피드)가 끝나기 전에 쿠키를 지우면 401로 로그인 화면에 튕겨 다음 이동이 끊긴다
+  await page.waitForLoadState("networkidle");
 
   // 다른 회원이 대소문자만 다른 닉네임으로 시도한다. 디바운스(400ms) 뒤
   // 서버 확인 결과인 사전 힌트가 뜰 때까지 기다린 다음 제출한다. 로그인한
@@ -75,6 +79,8 @@ test("US1-AC5 닉네임 중복은 서버 응답(409)으로도 막혀 저장되�
   await signup(page, uniqueEmail("dup-owner2"));
   await completeOnboarding(page, takenNickname);
   await page.waitForURL("**/home");
+  // 홈의 조회(내 프로필, 피드)가 끝나기 전에 쿠키를 지우면 401로 로그인 화면에 튕겨 다음 이동이 끊긴다
+  await page.waitForLoadState("networkidle");
 
   // 사전 확인 힌트를 기다리지 않고 바로 제출해(디바운스가 끝나기 전) 서버의
   // 409 NICKNAME_TAKEN 응답 경로를 확인한다. 로그인한 회원은 /signup에서
@@ -111,6 +117,8 @@ test("US1 Independent Test 온보딩을 마친 뒤 브라우저를 닫았다 다
   await signup(page, uniqueEmail("restart"));
   await completeOnboarding(page, nickname);
   await page.waitForURL("**/home");
+  // 홈의 조회(내 프로필, 피드)가 끝나기 전에 쿠키를 지우면 401로 로그인 화면에 튕겨 다음 이동이 끊긴다
+  await page.waitForLoadState("networkidle");
 
   // "브라우저를 닫았다 다시 열기"를 흉내 낸다: storageState()는 세션 쿠키(Max-Age
   // 없음)도 그대로 옮기므로, 실제 재시작처럼 Max-Age(expires)가 있는 쿠키만

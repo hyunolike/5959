@@ -40,6 +40,8 @@ async function createOnboardedMember(
   await signup(page, email);
   await completeOnboarding(page, nickname);
   await page.waitForURL("**/home");
+  // 홈의 조회(내 프로필, 피드)가 끝나기 전에 쿠키를 지우면 401로 로그인 화면에 튕겨 다음 이동이 끊긴다
+  await page.waitForLoadState("networkidle");
 
   return { email, nickname };
 }
@@ -62,6 +64,10 @@ test("US2-AC1 가입과 온보딩을 마친 사용자가 올바른 이메일과 
   await login(page, email);
 
   await page.waitForURL("**/home");
+
+  // 홈의 조회(내 프로필, 피드)가 끝나기 전에 쿠키를 지우면 401로 로그인 화면에 튕겨 다음 이동이 끊긴다
+
+  await page.waitForLoadState("networkidle");
   await expect(page.getByRole("heading")).toContainText(`${nickname}님`);
 });
 
@@ -72,6 +78,8 @@ test("US2-AC5 로그아웃하면 로그인 화면으로 이동하고, 뒤로 가
   await page.context().clearCookies();
   await login(page, email);
   await page.waitForURL("**/home");
+  // 홈의 조회(내 프로필, 피드)가 끝나기 전에 쿠키를 지우면 401로 로그인 화면에 튕겨 다음 이동이 끊긴다
+  await page.waitForLoadState("networkidle");
   await expect(page.getByRole("heading")).toContainText(`${nickname}님`);
 
   await page.getByRole("button", { name: "로그아웃" }).click();
