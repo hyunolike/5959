@@ -1,14 +1,22 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { MonsterView } from "../model/types";
 
-// 3D 장면(three, R3F)은 jsdom에서 그릴 수 없다. 고른 결과만 보이게 바꿔 둔다.
-vi.mock("./monster-3d", () => ({
-  default: ({ label }: { label: string }) => (
-    <div data-testid="monster-3d" role="img" aria-label={label} />
-  ),
-}));
+/** 가짜 3D 장면이 렌더링 중에 던질지(WebGLRenderer 생성 실패). */
+const scene3d = { throws: false };
+
+/** 3D 장면(three, R3F)은 jsdom에서 그릴 수 없다. 고른 결과만 보이게 바꿔 둔다. */
+function fakeScene() {
+  return {
+    default: ({ label }: { label: string }) => {
+      if (scene3d.throws) {
+        throw new Error("Error creating WebGL context.");
+      }
+      return <div data-testid="monster-3d" role="img" aria-label={label} />;
+    },
+  };
+}
 
 const ANXIETY_FULL: MonsterView = {
   emotion: "ANXIETY",
@@ -17,16 +25,27 @@ const ANXIETY_FULL: MonsterView = {
   status: "ALIVE",
 };
 
-function stubReducedMotion(reduce: boolean) {
+/** 움직임 줄이기 설정을 흉내 낸다. 돌려준 함수로 설정을 바꾸고 change 이벤트를 보낸다. */
+function stubReducedMotion(reduce: boolean): (next: boolean) => void {
+  let current = reduce;
+  const listeners = new Set<() => void>();
   vi.stubGlobal(
     "matchMedia",
     vi.fn((query: string) => ({
-      matches: reduce && query === "(prefers-reduced-motion: reduce)",
+      get matches() {
+        return current && query === "(prefers-reduced-motion: reduce)";
+      },
       media: query,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
+      addEventListener: (_type: string, listener: () => void) =>
+        listeners.add(listener),
+      removeEventListener: (_type: string, listener: () => void) =>
+        listeners.delete(listener),
     })),
   );
+  return (next) => {
+    current = next;
+    listeners.forEach((listener) => listener());
+  };
 }
 
 /** WebGL 컨텍스트를 만들 수 있는 기기인지 흉내 낸다. */
@@ -51,6 +70,8 @@ function spriteSrc(img: HTMLElement): string {
 let animate: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
+  scene3d.throws = false;
+  vi.doMock("./monster-3d", fakeScene);
   animate = vi.fn();
   // jsdom에는 Web Animations API가 없다.
   Object.defineProperty(HTMLElement.prototype, "animate", {
@@ -101,9 +122,84 @@ describe("MonsterDisplay 3D와 정지 이미지 고르기", () => {
     const MonsterDisplay = await loadDisplay();
     render(<MonsterDisplay monster={ANXIETY_FULL} variant="detail" />);
 
+    // 3D를 불러오는 동안에는 빈 자리 대신 정지 이미지를 보여 준다
+    const loading = screen.getByRole("img", { name: "불안 몬스터, 멀쩡함" });
+    expect(loading.tagName).toBe("IMG");
+
     const scene = await screen.findByTestId("monster-3d");
     expect(scene).toHaveAccessibleName("불안 몬스터, 멀쩡함");
     expect(document.querySelector("img")).toBeNull();
+  });
+
+  it("US5-AC4 상세를 보는 중에 움직임 줄이기를 켜면 3D에서 정지 이미지로 바꾼다", async () => {
+    const setReduced = stubReducedMotion(false);
+    stubWebGL(true);
+    const MonsterDisplay = await loadDisplay();
+    render(<MonsterDisplay monster={ANXIETY_FULL} variant="detail" />);
+    await screen.findByTestId("monster-3d");
+
+    act(() => setReduced(true));
+
+    expect(screen.queryByTestId("monster-3d")).not.toBeInTheDocument();
+    const sprite = screen.getByRole("img", { name: "불안 몬스터, 멀쩡함" });
+    expect(sprite.tagName).toBe("IMG");
+  });
+
+  it("US5-AC4 3D 장면이 렌더링 중에 실패하면(WebGL 컨텍스트 생성 실패) 정지 이미지로 대신하고 HP와 맞는 반응은 그대로다", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    scene3d.throws = true;
+    stubReducedMotion(false);
+    stubWebGL(true);
+    const MonsterDisplay = await loadDisplay();
+    const { rerender } = render(
+      <MonsterDisplay monster={ANXIETY_FULL} variant="detail" />,
+    );
+
+    await vi.waitFor(() =>
+      expect(
+        screen.getByRole("img", { name: "불안 몬스터, 멀쩡함" }).tagName,
+      ).toBe("IMG"),
+    );
+    // 잠깐 불러오는 중 이미지가 아니라 실패 뒤에도 남는 정지 이미지다
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const sprite = screen.getByRole("img", { name: "불안 몬스터, 멀쩡함" });
+    expect(sprite.tagName).toBe("IMG");
+    expect(screen.getByText("불안", { exact: true })).toBeInTheDocument();
+
+    rerender(
+      <MonsterDisplay monster={{ ...ANXIETY_FULL, hp: 9 }} variant="detail" />,
+    );
+    expect(screen.getByText("HP 9/10")).toBeInTheDocument();
+    expect(
+      screen.getByRole("progressbar", { name: "몬스터 HP" }),
+    ).toHaveAttribute("aria-valuenow", "9");
+    expect(animate).toHaveBeenCalledTimes(1);
+    // 정지 이미지로 바뀌었으니 그림과 HP 바를 함께 흔든다
+    const shaken = animate.mock.contexts[0] as HTMLElement;
+    expect(shaken).toContainElement(screen.getByRole("img"));
+    expect(shaken).toContainElement(
+      screen.getByRole("progressbar", { name: "몬스터 HP" }),
+    );
+  });
+
+  it("US5-AC4 3D 모듈을 불러오지 못하면(청크 로딩 실패) 정지 이미지로 대신한다", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    // 모듈 불러오기가 실패한다(배포 뒤 청크가 사라졌거나 네트워크 오류)
+    vi.doMock("./monster-3d", () => {
+      throw new Error("ChunkLoadError: 3D 청크를 불러오지 못했다");
+    });
+    stubReducedMotion(false);
+    stubWebGL(true);
+    const MonsterDisplay = await loadDisplay();
+    render(<MonsterDisplay monster={ANXIETY_FULL} variant="detail" />);
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const sprite = screen.getByRole("img", { name: "불안 몬스터, 멀쩡함" });
+    expect(sprite.tagName).toBe("IMG");
+    expect(screen.queryByTestId("monster-3d")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("progressbar", { name: "몬스터 HP" }),
+    ).toHaveAttribute("aria-valuenow", "10");
   });
 
   it("US5-AC3 피드 카드는 항상 정지 이미지이고 감정과 단계에 맞는 파일을 쓴다", async () => {
