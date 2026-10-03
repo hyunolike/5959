@@ -20,6 +20,17 @@ spring:
       republish-outstanding-events-on-restart: true
     runtime:
       verification-enabled: true # 기동 시에도 모듈 경계 검증 — 위반이 있으면 앱이 뜨지 않는다 (Modulith 2.0+)
+  autoconfigure:
+    # spring-ai-starter-model-openai(T003)의 spring.ai.openai.* 자동설정을 전부 끈다. api-key가 없으면
+    # 기동 자체가 실패하는데(OpenAiSetup이 ClientOptions를 즉시 만든다), 003-core-loop은 ogu.ai.*에서
+    # OpenAiApi를 직접 만들어 쓴다(Batch 4). 키가 없어도 앱과 테스트가 뜰 수 있어야 하므로 전부 뺀다.
+    exclude:
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiChatAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioSpeechAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiModerationAutoConfiguration
 
 springdoc:
   swagger-ui:

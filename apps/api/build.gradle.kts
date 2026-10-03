@@ -32,6 +32,10 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-flyway")
     implementation("org.flywaydb:flyway-database-postgresql")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
+    // 003-core-loop 감정 분석(research): Batch 4가 ogu.ai.*에서 직접 OpenAiApi를 만들어 쓴다.
+    // 스타터의 OpenAiChatAutoConfiguration은 spring.ai.openai.* 자동설정이라 여기서는 끈다(아래 application.yml 참고).
+    implementation("org.springframework.ai:spring-ai-starter-model-openai")
+    implementation("io.github.resilience4j:resilience4j-spring-boot4:2.4.0")
 
     runtimeOnly("org.springframework.modulith:spring-modulith-runtime")
     runtimeOnly("org.postgresql:postgresql")
@@ -58,6 +62,7 @@ dependencies {
 dependencyManagement {
     imports {
         mavenBom("org.springframework.modulith:spring-modulith-bom:${property("springModulithVersion")}")
+        mavenBom("org.springframework.ai:spring-ai-bom:2.0.1")
     }
 }
 
