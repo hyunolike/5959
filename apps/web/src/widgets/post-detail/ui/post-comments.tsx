@@ -8,7 +8,7 @@ import {
   useCommentsQuery,
   type Comment,
 } from "@/entities/comment";
-import { WriteCommentForm } from "@/features/comment";
+import { CommentManageMenu, WriteCommentForm } from "@/features/comment";
 import {
   attackOptimistically,
   CommentLikeButton,
@@ -19,7 +19,7 @@ import { Button, Spinner } from "@/shared/ui";
 /**
  * 글의 댓글 영역(FR-012, US3-AC2~AC4): 원 댓글과 답글 목록, 댓글 공감, 답글 달기,
  * 댓글 쓰기. 원 댓글은 50개씩 이어 불러온다. 답글에는 다시 답글을 달 수 없으므로
- * 답글 달기 버튼은 원 댓글에만 둔다.
+ * 답글 달기 버튼은 원 댓글에만 둔다. 수정과 삭제 메뉴는 내 댓글(`mine`)에만 둔다(US4-AC3, AC4).
  */
 export function PostComments({ postId }: { postId: number }) {
   const queryClient = useQueryClient();
@@ -64,6 +64,9 @@ export function PostComments({ postId }: { postId: number }) {
                         답글 달기
                       </button>
                     )}
+                    {target.mine ? (
+                      <CommentManageMenu postId={postId} comment={target} />
+                    ) : null}
                   </>
                 )}
               />

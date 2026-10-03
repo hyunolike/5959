@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { CAREER_YEAR_LABELS, JOB_ROLE_LABELS } from "@/entities/member";
 import { MonsterPlaceholder } from "@/entities/monster";
 import {
@@ -8,8 +10,9 @@ import {
   type PostDetail as PostDetailData,
 } from "@/entities/post";
 import { PostLikeButton } from "@/features/like";
+import { DeletePostButton } from "@/features/manage-post";
 import { ApiError } from "@/shared/api";
-import { Card, Spinner } from "@/shared/ui";
+import { Button, Card, Spinner } from "@/shared/ui";
 
 import { PostComments } from "./post-comments";
 
@@ -35,6 +38,7 @@ function isNotFound(error: unknown): boolean {
  * 몬스터가 생기기 전에는 "분석 중"을 보여 주고, `usePostDetailQuery`가 몬스터가
  * 생길 때까지 다시 불러와 새로고침 없이 바꿔 그린다(FR-015, US1-AC3).
  * 공감과 댓글은 응답 전에 HP를 줄여 보여 주고 몬스터 자리가 맞는 반응을 한다(US3-AC10).
+ * 내 글이면 고치기 화면으로 가는 링크와 삭제 버튼을 둔다(US4-AC1, AC2).
  */
 export function PostDetail({ postId }: { postId: number }) {
   const { data, error, isPending } = usePostDetailQuery(postId);
@@ -83,13 +87,23 @@ function PostDetailContent({ detail }: { detail: PostDetailData }) {
       </Card>
 
       <Card className="flex flex-col gap-4">
-        <header className="flex flex-col gap-0.5">
-          <p className="text-sm font-semibold text-neutral-900">
-            {author.nickname}
-          </p>
-          <p className="text-xs text-neutral-500">
-            {`${JOB_ROLE_LABELS[author.jobRole]} · ${CAREER_YEAR_LABELS[author.careerYear]}`}
-          </p>
+        <header className="flex items-start justify-between gap-2">
+          <div className="flex flex-col gap-0.5">
+            <p className="text-sm font-semibold text-neutral-900">
+              {author.nickname}
+            </p>
+            <p className="text-xs text-neutral-500">
+              {`${JOB_ROLE_LABELS[author.jobRole]} · ${CAREER_YEAR_LABELS[author.careerYear]}`}
+            </p>
+          </div>
+          {detail.mine ? (
+            <div className="flex shrink-0 items-center gap-1">
+              <Button asChild variant="ghost" size="sm">
+                <Link href={`/post/${detail.postId}/edit`}>수정</Link>
+              </Button>
+              <DeletePostButton postId={detail.postId} />
+            </div>
+          ) : null}
         </header>
         <p className="text-base whitespace-pre-wrap text-neutral-900">
           {detail.content}

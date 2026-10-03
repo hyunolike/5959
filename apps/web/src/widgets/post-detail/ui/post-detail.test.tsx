@@ -3,6 +3,10 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 import { PostDetail } from "./post-detail";
 
 const jsonResponse = (body: unknown, status = 200) =>
@@ -225,6 +229,60 @@ describe("PostDetail 공감과 댓글", () => {
 
     expect(
       await screen.findByText("첫 댓글을 남겨 주세요."),
+    ).toBeInTheDocument();
+  });
+
+  it("US4-AC1 내 글이면 수정 링크와 삭제 버튼을 보여 준다", async () => {
+    renderDetailWithComments(detail({ ...ANALYZED, mine: true }));
+
+    expect(await screen.findByRole("link", { name: "수정" })).toHaveAttribute(
+      "href",
+      "/post/7/edit",
+    );
+    expect(screen.getByRole("button", { name: "삭제" })).toBeInTheDocument();
+  });
+
+  it("US4-AC4 남의 글에는 수정과 삭제가 없다", async () => {
+    renderDetailWithComments(detail({ ...ANALYZED, mine: false }));
+
+    await screen.findByRole("article", { name: "공감러의 댓글" });
+    expect(
+      screen.queryByRole("link", { name: "수정" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "삭제" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("US4-AC3 수정과 삭제 메뉴는 내 댓글에만 있다", async () => {
+    const mineReply = {
+      ...COMMENT.replies[0],
+      commentId: 13,
+      mine: true,
+      author: { ...COMMENT.replies[0].author, nickname: "나" },
+    };
+    renderDetailWithComments(detail({ ...ANALYZED, mine: false }), [
+      { ...COMMENT, replies: [COMMENT.replies[0], mineReply] },
+    ]);
+
+    const others = await screen.findByRole("article", {
+      name: "공감러의 댓글",
+    });
+    const othersReply = screen.getByRole("article", { name: "답글러의 답글" });
+    const myReply = screen.getByRole("article", { name: "나의 답글" });
+    for (const article of [others, othersReply]) {
+      expect(
+        within(article).queryByRole("button", { name: "수정" }),
+      ).not.toBeInTheDocument();
+      expect(
+        within(article).queryByRole("button", { name: "삭제" }),
+      ).not.toBeInTheDocument();
+    }
+    expect(
+      within(myReply).getByRole("button", { name: "수정" }),
+    ).toBeInTheDocument();
+    expect(
+      within(myReply).getByRole("button", { name: "삭제" }),
     ).toBeInTheDocument();
   });
 });

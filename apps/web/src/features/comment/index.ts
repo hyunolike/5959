@@ -13,3 +13,10 @@ export type {
   WriteCommentFormValues,
 } from "./model/schema";
 export { WriteCommentForm } from "./ui/write-comment-form";
+export {
+  deleteComment,
+  updateComment,
+  useDeleteCommentMutation,
+  useUpdateCommentMutation,
+} from "./api/use-manage-comment-mutations";
+export { CommentManageMenu } from "./ui/comment-manage-menu";

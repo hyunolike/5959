@@ -9,4 +9,6 @@ export {
   writePostSchema,
 } from "./model/schema";
 export type { WritePostFormInput, WritePostFormValues } from "./model/schema";
+export { PostForm } from "./ui/post-form";
+export type { PostFormError } from "./ui/post-form";
 export { WriteForm } from "./ui/write-form";

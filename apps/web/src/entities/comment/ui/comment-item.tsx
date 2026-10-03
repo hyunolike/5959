@@ -73,7 +73,7 @@ function CommentBody({
       <p className="text-sm break-words whitespace-pre-wrap text-neutral-800">
         {comment.content}
       </p>
-      <div className="flex items-center gap-2 text-xs text-neutral-600 tabular-nums">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-600 tabular-nums">
         {renderActions ? (
           renderActions(comment, { isReply })
         ) : (
