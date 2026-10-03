@@ -140,6 +140,177 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/posts": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 고민 글 작성 (US1-AC1, AC2). 감정 분석은 비동기 */
+    post: operations["createPost"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/posts/{postId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        postId: components["parameters"]["PostId"];
+      };
+      cookie?: never;
+    };
+    /** 글 상세 (FR-012, FR-015). 분석 중이면 monster는 null */
+    get: operations["getPostDetail"];
+    put?: never;
+    post?: never;
+    /** 글 삭제 (US4-AC2) */
+    delete: operations["deletePost"];
+    options?: never;
+    head?: never;
+    /** 글 수정 (US4-AC1). 몬스터는 바뀌지 않는다 */
+    patch: operations["updatePost"];
+    trace?: never;
+  };
+  "/api/v1/feed": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 피드 (US2) */
+    get: operations["getFeed"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/posts/{postId}/likes": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        postId: components["parameters"]["PostId"];
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 글 공감 (US3-AC1, US3-AC8) */
+    post: operations["likePost"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/posts/{postId}/likes/me": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        postId: components["parameters"]["PostId"];
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** 글 공감 취소 (US3-AC6). HP는 돌아오지 않는다 */
+    delete: operations["unlikePost"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/posts/{postId}/comments": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        postId: components["parameters"]["PostId"];
+      };
+      cookie?: never;
+    };
+    /** 댓글 목록. 원 댓글 50개씩, 답글은 원 댓글 아래에 모두 */
+    get: operations["getComments"];
+    put?: never;
+    /** 댓글 또는 답글 작성 (US3-AC2, AC3) */
+    post: operations["createComment"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/comments/{commentId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        commentId: components["parameters"]["CommentId"];
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** 댓글 삭제 (US4-AC3). 원 댓글이면 답글도 함께 삭제 */
+    delete: operations["deleteComment"];
+    options?: never;
+    head?: never;
+    /** 댓글 수정 (US4-AC3) */
+    patch: operations["updateComment"];
+    trace?: never;
+  };
+  "/api/v1/comments/{commentId}/likes": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        commentId: components["parameters"]["CommentId"];
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 댓글 공감 (US3-AC4) */
+    post: operations["likeComment"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/comments/{commentId}/likes/me": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        commentId: components["parameters"]["CommentId"];
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** 댓글 공감 취소 (US3-AC6) */
+    delete: operations["unlikeComment"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -238,9 +409,115 @@ export interface components {
       email: string;
       password: string;
     };
+    /** @enum {string} */
+    CommentTone:
+      "VENT_WITH_ME" | "COMFORT_ME" | "WARM_ADVICE" | "MAKE_ME_LAUGH";
+    /** @enum {string} */
+    EmotionType:
+      "ANXIETY" | "LETHARGY" | "LONELINESS" | "SELF_DEPRECATION" | "IRRITATION";
+    /** @enum {string} */
+    AnalysisStatus: "PENDING" | "ANALYZED" | "DEFAULTED";
+    MonsterView: {
+      emotion: components["schemas"]["EmotionType"];
+      hp: number;
+      /** @enum {integer} */
+      maxHp: 10 | 20 | 30;
+      /** @enum {string} */
+      status: "ALIVE" | "DEFEATED";
+    };
+    Author: {
+      /** Format: int64 */
+      id: number;
+      nickname: string;
+      jobRole: components["schemas"]["JobRole"];
+      careerYear: components["schemas"]["CareerYear"];
+    };
+    PostWriteRequest: {
+      /** @description 앞뒤 공백을 뺀 글자(grapheme) 1~500자 */
+      content: string;
+      commentTone: components["schemas"]["CommentTone"];
+    };
+    PostUpdateRequest: {
+      content?: string;
+      commentTone?: components["schemas"]["CommentTone"];
+    };
+    PostCreated: {
+      /** Format: int64 */
+      postId: number;
+      analysisStatus: components["schemas"]["AnalysisStatus"];
+    };
+    FeedItem: {
+      /** Format: int64 */
+      postId: number;
+      author: components["schemas"]["Author"];
+      /** @description 앞 50글자. 더 길면 끝에 "..." */
+      contentPreview: string;
+      analysisStatus: components["schemas"]["AnalysisStatus"];
+      /** @description 분석 중이면 null */
+      monster?: components["schemas"]["MonsterView"] | null;
+      likeCount: number;
+      likedByMe: boolean;
+      commentCount: number;
+      /** Format: date-time */
+      createdAt: string;
+    };
+    FeedPage: {
+      items: components["schemas"]["FeedItem"][];
+      /** @description 다음 페이지가 없으면 null. 불투명 문자열 */
+      nextCursor: string | null;
+    };
+    PostDetail: {
+      /** Format: int64 */
+      postId: number;
+      author: components["schemas"]["Author"];
+      content: string;
+      commentTone: components["schemas"]["CommentTone"];
+      analysisStatus: components["schemas"]["AnalysisStatus"];
+      monster?: components["schemas"]["MonsterView"] | null;
+      likeCount: number;
+      likedByMe: boolean;
+      commentCount: number;
+      /** @description 내가 쓴 글이면 true */
+      mine: boolean;
+      /** @description 내 댓글이 이미 HP에 반영됐으면 true. 웹의 낙관적 HP 계산(research R6)에 쓴다 */
+      myCommentCounted?: boolean;
+      /** Format: date-time */
+      createdAt: string;
+    };
+    Comment: {
+      /** Format: int64 */
+      commentId: number;
+      author: components["schemas"]["Author"];
+      content: string;
+      likeCount: number;
+      likedByMe: boolean;
+      mine: boolean;
+      /** Format: date-time */
+      createdAt: string;
+      /** @description 답글(오래된 순). 답글의 replies는 항상 빈 배열이다 */
+      replies: components["schemas"]["Comment"][];
+    };
+    CommentPage: {
+      /** @description 원 댓글(오래된 순)과 각 답글 */
+      items: components["schemas"]["Comment"][];
+      nextCursor: string | null;
+    };
+    CommentWriteRequest: {
+      /** @description 앞뒤 공백을 뺀 글자 1~300자 */
+      content: string;
+      /**
+       * Format: int64
+       * @description 답글이면 원 댓글 ID
+       */
+      parentId?: number | null;
+    };
+    LikeResult: {
+      likeCount: number;
+      likedByMe: boolean;
+    };
   };
   responses: {
-    /** @description 입력 검증 실패 (INVALID_REQUEST) */
+    /** @description 입력 검증 실패 (INVALID_REQUEST). 댓글 작성에서는 INVALID_PARENT_COMMENT도 쓴다 */
     BadRequest: {
       headers: {
         [name: string]: unknown;
@@ -258,6 +535,24 @@ export interface components {
         "application/json": components["schemas"]["ErrorEnvelope"];
       };
     };
+    /** @description 온보딩 전(ONBOARDING_REQUIRED) 또는 권한 없음(NOT_AUTHOR, CANNOT_LIKE_OWN_POST) */
+    Forbidden: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        "application/json": components["schemas"]["ErrorEnvelope"];
+      };
+    };
+    /** @description 없거나 삭제된 글 또는 댓글 (POST_NOT_FOUND, COMMENT_NOT_FOUND) */
+    NotFound: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        "application/json": components["schemas"]["ErrorEnvelope"];
+      };
+    };
   };
   parameters: {
     /** @description BFF와 API가 공유하는 비밀 키. 맞을 때만 X-Ogu-Client-Ip를 믿는다. */
@@ -265,6 +560,8 @@ export interface components {
     /** @description 브라우저의 원래 IP. 로그인 실패 제한에 쓴다. */
     ClientIp: string;
     Provider: "kakao" | "google";
+    PostId: number;
+    CommentId: number;
   };
   requestBodies: never;
   headers: never;
@@ -568,6 +865,421 @@ export interface operations {
           "application/json": components["schemas"]["ErrorEnvelope"];
         };
       };
+    };
+  };
+  createPost: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PostWriteRequest"];
+      };
+    };
+    responses: {
+      /** @description 저장됨. analysisStatus는 PENDING */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["PostCreated"];
+            error: null;
+          };
+        };
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      /** @description 1시간에 10개 초과 (POST_RATE_LIMITED, research R9) */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  getPostDetail: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        postId: components["parameters"]["PostId"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 글 상세 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["PostDetail"];
+            error: null;
+          };
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      404: components["responses"]["NotFound"];
+    };
+  };
+  deletePost: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        postId: components["parameters"]["PostId"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 삭제됨 */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      404: components["responses"]["NotFound"];
+    };
+  };
+  updatePost: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        postId: components["parameters"]["PostId"];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PostUpdateRequest"];
+      };
+    };
+    responses: {
+      /** @description 수정됨 */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      404: components["responses"]["NotFound"];
+    };
+  };
+  getFeed: {
+    parameters: {
+      query?: {
+        order?: "LATEST" | "POPULAR";
+        /** @description 여러 번 줄 수 있다. 하나라도 맞으면 통과 */
+        jobRole?: components["schemas"]["JobRole"][];
+        careerYear?: components["schemas"]["CareerYear"][];
+        cursor?: string;
+        size?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 피드 페이지 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["FeedPage"];
+            error: null;
+          };
+        };
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+    };
+  };
+  likePost: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        postId: components["parameters"]["PostId"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 공감됨 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["LikeResult"];
+            error: null;
+          };
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      404: components["responses"]["NotFound"];
+      /** @description 이미 공감함 (ALREADY_LIKED) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  unlikePost: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        postId: components["parameters"]["PostId"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 취소됨. 공감하지 않은 상태여도 200 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["LikeResult"];
+            error: null;
+          };
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      404: components["responses"]["NotFound"];
+    };
+  };
+  getComments: {
+    parameters: {
+      query?: {
+        cursor?: string;
+      };
+      header?: never;
+      path: {
+        postId: components["parameters"]["PostId"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 댓글 페이지 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["CommentPage"];
+            error: null;
+          };
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      404: components["responses"]["NotFound"];
+    };
+  };
+  createComment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        postId: components["parameters"]["PostId"];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CommentWriteRequest"];
+      };
+    };
+    responses: {
+      /** @description 작성됨 */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["Comment"];
+            error: null;
+          };
+        };
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      404: components["responses"]["NotFound"];
+    };
+  };
+  deleteComment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        commentId: components["parameters"]["CommentId"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 삭제됨 */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      404: components["responses"]["NotFound"];
+    };
+  };
+  updateComment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        commentId: components["parameters"]["CommentId"];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          content: string;
+        };
+      };
+    };
+    responses: {
+      /** @description 수정됨 */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      404: components["responses"]["NotFound"];
+    };
+  };
+  likeComment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        commentId: components["parameters"]["CommentId"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 공감됨 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["LikeResult"];
+            error: null;
+          };
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      404: components["responses"]["NotFound"];
+      /** @description 이미 공감함 (ALREADY_LIKED) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  unlikeComment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        commentId: components["parameters"]["CommentId"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 취소됨 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["LikeResult"];
+            error: null;
+          };
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      404: components["responses"]["NotFound"];
     };
   };
 }

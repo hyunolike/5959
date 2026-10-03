@@ -33,6 +33,7 @@ jobs:
             web:
               - 'apps/web/**'
               - 'specs/**'
+              - 'contracts/**'
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
