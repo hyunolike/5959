@@ -54,3 +54,21 @@ ogu:
       google:
         client-id: ${GOOGLE_CLIENT_ID}
         client-secret: ${GOOGLE_CLIENT_SECRET}
+  ai:
+    base-url: ${AI_BASE_URL:https://integrate.api.nvidia.com/v1}
+    api-key: ${AI_API_KEY:}
+    model: ${AI_MODEL:qwen/qwen3-next-80b-a3b-instruct}
+    temperature: 0.1
+    max-tokens: 200
+    timeout: 20s
+    prompt-version: v1
+  emotion:
+    retry:
+      initial: 30s
+      max-interval: 5m
+      deadline: 24h
+      poll-interval: 10s
+      batch-size: 20
+  post:
+    rate-limit:
+      max-per-hour: 10
