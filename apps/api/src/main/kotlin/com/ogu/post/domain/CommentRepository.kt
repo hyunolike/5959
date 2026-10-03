@@ -22,6 +22,22 @@ interface CommentRepository : JpaRepository<Comment, Long> {
         @Param("id") id: Long,
     ): Comment?
 
+    /**
+     * 수정할 댓글을 행 잠금과 함께 읽는다. 겹친 삭제(답글 일괄 삭제 포함)가 먼저 커밋했으면 다시 평가해 null이 된다.
+     * 지운 글의 댓글도 null이다([findLive]와 같은 조건).
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+        """
+        select c from Comment c
+        where c.id = :id and c.deletedAt is null
+          and exists (select 1 from Post p where p.id = c.postId and p.deletedAt is null)
+        """,
+    )
+    fun findLiveForUpdate(
+        @Param("id") id: Long,
+    ): Comment?
+
     /** 원 댓글을 오래된 순으로 [afterId] 다음부터 읽는다(키셋, comments_post_parent_id_idx). */
     fun findByPostIdAndParentIdIsNullAndDeletedAtIsNullAndIdGreaterThanOrderByIdAsc(
         postId: Long,

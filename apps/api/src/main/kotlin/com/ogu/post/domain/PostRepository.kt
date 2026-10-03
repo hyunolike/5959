@@ -1,6 +1,8 @@
 package com.ogu.post.domain
 
+import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
@@ -8,6 +10,16 @@ import java.time.Instant
 
 interface PostRepository : JpaRepository<Post, Long> {
     fun findByIdAndDeletedAtIsNull(id: Long): Post?
+
+    /**
+     * 수정할 글을 행 잠금과 함께 읽는다. 겹친 삭제가 먼저 잠갔으면 그 커밋을 기다렸다가 다시 평가해 null이 된다(지운 글 수정은
+     * 404). 수정이 먼저 잡으면 삭제가 기다린다.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from Post p where p.id = :id and p.deletedAt is null")
+    fun findLiveForUpdate(
+        @Param("id") id: Long,
+    ): Post?
 
     /** 작성 제한(research R9)용. 지운 글도 센다(FR-018). */
     fun countByAuthorIdAndCreatedAtAfter(

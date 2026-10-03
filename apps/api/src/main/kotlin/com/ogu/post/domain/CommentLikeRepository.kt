@@ -1,5 +1,7 @@
 package com.ogu.post.domain
 
+import com.ogu.shared.error.BusinessException
+import com.ogu.shared.error.ErrorCode
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Repository
 import java.sql.Timestamp
@@ -7,7 +9,7 @@ import java.time.Instant
 
 /**
  * 댓글 공감(data-model.md `comment_likes`, PK (comment_id, member_id))과 댓글의 공감 수.
- * [PostLikeRepository]와 같은 규칙이다.
+ * [PostLikeRepository]와 같은 규칙이다. 겹친 삭제가 먼저 커밋했으면 404 COMMENT_NOT_FOUND다.
  */
 @Repository
 class CommentLikeRepository(
@@ -68,9 +70,13 @@ class CommentLikeRepository(
         delta: Int,
     ): Int =
         jdbcClient
-            .sql("update comments set like_count = like_count + :delta where id = :commentId returning like_count")
-            .param("delta", delta)
+            .sql(
+                "update comments set like_count = like_count + :delta " +
+                    "where id = :commentId and deleted_at is null returning like_count",
+            ).param("delta", delta)
             .param("commentId", commentId)
             .query(Int::class.java)
-            .single()
+            .optional()
+            // 앞서 살아 있는지 본 뒤 삭제가 먼저 커밋됐다. 예외로 트랜잭션을 되돌려 공감 행과 HP 반영이 남지 않게 한다.
+            .orElseThrow { BusinessException(ErrorCode.COMMENT_NOT_FOUND) }
 }

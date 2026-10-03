@@ -63,8 +63,8 @@ class PostService(
         if (content == null && commentTone == null) {
             throw BusinessException(ErrorCode.INVALID_REQUEST, "고칠 본문이나 댓글 말투를 주세요.")
         }
-        val post = ownPost(postId, memberId)
-        post.edit(content, commentTone, now())
+        // 행 잠금을 잡고 읽는다. 겹친 삭제가 먼저 커밋했으면 여기서 404가 되어 지운 글을 고친 뒤 204를 돌려주지 않는다.
+        ownPost(postId, memberId, postRepository::findLiveForUpdate).edit(content, commentTone, now())
     }
 
     /**
@@ -78,7 +78,7 @@ class PostService(
         postId: Long,
         memberId: Long,
     ) {
-        ownPost(postId, memberId)
+        ownPost(postId, memberId, postRepository::findByIdAndDeletedAtIsNull)
         if (postRepository.softDelete(postId, now()) == 0) throw BusinessException(ErrorCode.POST_NOT_FOUND)
         postLock.lock(postId)
     }
@@ -86,9 +86,9 @@ class PostService(
     private fun ownPost(
         postId: Long,
         memberId: Long,
+        findLive: (Long) -> Post?,
     ): Post {
-        val post =
-            postRepository.findByIdAndDeletedAtIsNull(postId) ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
+        val post = findLive(postId) ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
         if (post.authorId != memberId) throw BusinessException(ErrorCode.NOT_AUTHOR)
         return post
     }

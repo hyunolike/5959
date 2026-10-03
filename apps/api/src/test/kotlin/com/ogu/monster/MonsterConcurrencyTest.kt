@@ -191,7 +191,7 @@ class MonsterConcurrencyTest {
     }
 
     @Test
-    fun `분석 중에 글을 지우면 삭제가 먼저 글 잠금을 잡고 몬스터는 만들어지지 않는다`() {
+    fun `글 잠금이 삭제와 몬스터 생성을 줄 세운다 - 삭제가 먼저 잡으면 생성은 지운 글을 보고 건너뛴다`() {
         // 삭제는 posts 행을 UPDATE한 뒤 글 잠금을 잡는다. 생성은 그 커밋을 기다렸다가 지운 글임을 보고 건너뛴다
         val author = members.onboarded()
         val postId = loop.postWithoutMonster(author)
@@ -208,7 +208,7 @@ class MonsterConcurrencyTest {
     }
 
     @Test
-    fun `몬스터 생성이 먼저 글 잠금을 잡으면 삭제는 그 커밋을 기다렸다가 지운다`() {
+    fun `글 잠금이 삭제와 몬스터 생성을 줄 세운다 - 생성이 먼저 잡으면 삭제는 생성 커밋 뒤에 지운다`() {
         // 생성이 끝난 뒤 지운 글이라 몬스터는 남지만 글은 어디에도 보이지 않는다
         val author = members.onboarded()
         val postId = loop.postWithoutMonster(author)

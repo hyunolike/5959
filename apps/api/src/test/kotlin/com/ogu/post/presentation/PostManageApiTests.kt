@@ -34,6 +34,7 @@ import org.springframework.web.context.WebApplicationContext
 /**
  * T046: 글과 댓글 수정, 삭제(US4-AC1~AC4, FR-013, FR-014). 수정과 삭제는 몬스터를 바꾸지 않고 HP도 돌려주지 않는다.
  * 원 댓글을 지우면 살아 있던 답글도 함께 지우고 댓글 수를 실제로 지운 개수만큼 줄인다(data-model.md).
+ * 다른 요청과 겹친 수정, 삭제는 com.ogu.post.PostManageRaceTest가 본다.
  */
 @SpringBootTest
 @Import(TestcontainersConfiguration::class)
@@ -102,21 +103,6 @@ class PostManageApiTests {
             .andExpect(status().isNoContent)
 
         assertThat(loop.monster(postId)).isEqualTo(defeated)
-    }
-
-    @Test
-    fun `수정은 공감 수와 댓글 수를 덮어쓰지 않는다`() {
-        val author = members.onboarded()
-        val fan = members.onboarded()
-        val postId = loop.postWithMonster(author)
-        loop.likePost(fan, postId).andExpect(status().isOk)
-        loop.comment(fan, postId)
-
-        loop.updatePost(author, postId, mapOf("content" to "고친 본문")).andExpect(status().isNoContent)
-
-        val row = jdbcTemplate.queryForMap("select like_count, comment_count from posts where id = ?", postId)
-        assertThat(row["like_count"]).isEqualTo(1)
-        assertThat(row["comment_count"]).isEqualTo(1)
     }
 
     @ParameterizedTest
@@ -220,6 +206,29 @@ class PostManageApiTests {
             .removeComment(commenter, rootId)
             .andExpect(status().isNotFound)
             .andExpect(jsonPath("$.error.code").value("COMMENT_NOT_FOUND"))
+    }
+
+    @Test
+    fun `원 댓글을 지울 때 함께 지워진 답글은 고치거나 지우면 404 COMMENT_NOT_FOUND`() {
+        val author = members.onboarded()
+        val replier = members.onboarded()
+        val postId = loop.postWithoutMonster(author)
+        val rootId = loop.comment(author, postId, "원 댓글")
+        val replyId = loop.comment(replier, postId, "답글", parentId = rootId)
+        loop.removeComment(author, rootId).andExpect(status().isNoContent)
+
+        loop
+            .updateComment(replier, replyId, "지워진 답글 고치기")
+            .andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.error.code").value("COMMENT_NOT_FOUND"))
+        loop
+            .removeComment(replier, replyId)
+            .andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.error.code").value("COMMENT_NOT_FOUND"))
+        assertThat(commentCount(postId)).isZero()
+        val content =
+            jdbcTemplate.queryForObject("select content from comments where id = ?", String::class.java, replyId)
+        assertThat(content).isEqualTo("답글")
     }
 
     @Test

@@ -96,7 +96,11 @@ class CommentService(
         memberId: Long,
         content: String,
     ) {
-        ownComment(commentId, memberId).edit(content, now())
+        // 행 잠금을 잡고 읽는다. 겹친 삭제가 먼저 커밋했으면 여기서 404가 된다.
+        val comment =
+            commentRepository.findLiveForUpdate(commentId) ?: throw BusinessException(ErrorCode.COMMENT_NOT_FOUND)
+        if (comment.authorId != memberId) throw BusinessException(ErrorCode.NOT_AUTHOR)
+        comment.edit(content, now())
     }
 
     /**
