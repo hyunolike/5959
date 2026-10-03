@@ -7,8 +7,6 @@ import com.ogu.member.MemberApi
 import com.ogu.monster.MonsterApi
 import com.ogu.post.PostApi
 import com.ogu.post.PostPageQuery
-import com.ogu.shared.error.BusinessException
-import com.ogu.shared.error.ErrorCode
 import org.springframework.stereotype.Service
 
 /**
@@ -23,9 +21,6 @@ class FeedQuery(
     private val memberApi: MemberApi,
 ) {
     fun get(query: PostPageQuery): FeedPageResponse {
-        if (query.size !in 1..PostPageQuery.MAX_SIZE) {
-            throw BusinessException(ErrorCode.INVALID_REQUEST, "size는 1 이상 ${PostPageQuery.MAX_SIZE} 이하여야 합니다.")
-        }
         val page = postApi.page(query)
         val postIds = page.items.map { it.post.postId }
         val monsters = monsterApi.findByPostIds(postIds)

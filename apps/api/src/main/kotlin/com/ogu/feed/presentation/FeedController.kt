@@ -9,6 +9,8 @@ import com.ogu.member.CareerYear
 import com.ogu.member.JobRole
 import com.ogu.post.PostOrder
 import com.ogu.post.PostPageQuery
+import com.ogu.shared.error.BusinessException
+import com.ogu.shared.error.ErrorCode
 import com.ogu.shared.response.ApiResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
@@ -48,8 +50,8 @@ class FeedController(
         member: AuthenticatedMember,
         @RequestParam(defaultValue = "LATEST") order: PostOrder,
         @Parameter(description = "여러 번 줄 수 있다. 하나라도 맞으면 통과")
-        @RequestParam(name = "jobRole", required = false) jobRoles: List<JobRole>?,
-        @RequestParam(name = "careerYear", required = false) careerYears: List<CareerYear>?,
+        @RequestParam(name = "jobRole", required = false) jobRoles: List<JobRole?>?,
+        @RequestParam(name = "careerYear", required = false) careerYears: List<CareerYear?>?,
         @RequestParam(required = false) cursor: String?,
         @RequestParam(defaultValue = "20") size: Int,
     ): ApiResponse<FeedPageResponse> =
@@ -58,8 +60,8 @@ class FeedController(
                 PostPageQuery(
                     viewerId = member.memberId,
                     order = order,
-                    jobRoles = jobRoles.orEmpty().toSet(),
-                    careerYears = careerYears.orEmpty().toSet(),
+                    jobRoles = jobRoles.requireNoBlank(),
+                    careerYears = careerYears.requireNoBlank(),
                     cursor = cursor,
                     size = size,
                 ),
@@ -83,3 +85,12 @@ class FeedController(
         @PathVariable postId: Long,
     ): ApiResponse<PostDetailResponse> = ApiResponse.success(postDetailQuery.get(postId, member.memberId))
 }
+
+/**
+ * `?jobRole=&jobRole=HR`나 `?jobRole=,HR`처럼 빈 값이 섞이면 Spring이 null 원소로 묶는다. 모르는 이름(ASTRONAUT)과
+ * 똑같이 400 INVALID_REQUEST로 거절한다.
+ */
+private fun <T : Any> List<T?>?.requireNoBlank(): Set<T> =
+    orEmpty()
+        .map { it ?: throw BusinessException(ErrorCode.INVALID_REQUEST, "직군과 경력에 빈 값을 줄 수 없습니다.") }
+        .toSet()

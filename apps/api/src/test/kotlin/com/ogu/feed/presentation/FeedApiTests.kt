@@ -323,6 +323,47 @@ class FeedApiTests {
     }
 
     @Test
+    fun `직군이나 경력에 빈 값이 섞이면 500이 아니라 400 INVALID_REQUEST`() {
+        val viewer = members.onboarded()
+        val badFilters =
+            listOf(
+                arrayOf("jobRole" to "", "jobRole" to "HR"),
+                arrayOf("jobRole" to ",HR"),
+                arrayOf("careerYear" to "", "careerYear" to "YEAR_1"),
+                arrayOf("careerYear" to ",YEAR_1"),
+            )
+        badFilters.forEach { params ->
+            feed(viewer, *params)
+                .andExpect(status().isBadRequest)
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"))
+        }
+    }
+
+    @Test
+    fun `인기순에서 쪽 사이에 공감 수가 바뀌면 커서 위로 올라간 글은 빠지고 아래로 내려간 글은 다시 나온다`() {
+        // 키셋 페이지네이션이 받아들인 한계(research R7). 웹은 같은 글을 한 번만 보여 준다(feed-list).
+        // 이 테스트만 쓰는 직군과 경력 조합으로 거르고, US2-AC3의 공감 수보다 작은 값을 쓴다.
+        val viewer = members.onboarded()
+        val author = members.onboarded("OTHER", "YEAR_7_PLUS")
+        val a = insertPost(author, "인기 A", likeCount = SHIFT_BASE + 5)
+        val b = insertPost(author, "인기 B", likeCount = SHIFT_BASE + 4)
+        val c = insertPost(author, "인기 C", likeCount = SHIFT_BASE + 3)
+        val d = insertPost(author, "인기 D", likeCount = SHIFT_BASE + 2)
+        val filter = arrayOf("order" to "POPULAR", "jobRole" to "OTHER", "careerYear" to "YEAR_7_PLUS", "size" to "2")
+
+        val first = data(feed(viewer, *filter))
+        assertThat(ids(first)).containsExactly(a, b)
+
+        // 첫 쪽을 본 뒤 D는 커서(B) 위로 올라가고, A는 커서 아래로 내려간다
+        jdbcTemplate.update("update posts set like_count = ? where id = ?", SHIFT_BASE + 10, d)
+        jdbcTemplate.update("update posts set like_count = ? where id = ?", SHIFT_BASE + 1, a)
+        val second = data(feed(viewer, *filter, "cursor" to first.get("nextCursor").asString()))
+
+        assertThat(ids(second)).containsExactly(c, a)
+        assertThat(ids(second)).doesNotContain(d)
+    }
+
+    @Test
     fun `온보딩 전 회원은 403, 토큰이 없으면 401`() {
         feed(members.signedUp())
             .andExpect(status().isForbidden)
@@ -422,6 +463,7 @@ class FeedApiTests {
     private companion object {
         const val MAX_PAGES = 200
         const val POPULAR_BASE = 1_000_000
+        const val SHIFT_BASE = 500_000
         const val ALIVE_POSTS = "select count(*) from posts where deleted_at is null"
     }
 }
