@@ -12,3 +12,15 @@ export function hpStage(hp: number, maxHp: number): HpStage {
   if (hp * 3 > maxHp) return "hurt";
   return "weak";
 }
+
+/**
+ * [hpStage]와 같은 경계를 HP 비율로 받는다. research R11의 "66%, 33%"는 3등분의 반올림이라
+ * 정확히 2/3(예: 20/30)은 `hurt`, 정확히 1/3(예: 10/30)은 `weak`다. `hp / maxHp`와
+ * `2 / 3`은 같은 실수를 반올림한 같은 double이라 경계에서도 [hpStage]와 결과가 같다.
+ */
+export function hpStageOfRatio(hpRatio: number): HpStage {
+  if (hpRatio <= 0) return "defeated";
+  if (hpRatio > 2 / 3) return "full";
+  if (hpRatio > 1 / 3) return "hurt";
+  return "weak";
+}

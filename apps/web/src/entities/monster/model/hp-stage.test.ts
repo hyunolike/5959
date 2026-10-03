@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { hpStage } from "./hp-stage";
+import { hpStage, hpStageOfRatio } from "./hp-stage";
 
 /**
  * research.md R11: HP 단계는 `full`(66% 초과), `hurt`(33% 초과), `weak`(0 초과),
@@ -54,5 +54,15 @@ describe("hpStage", () => {
     ])("hp=%i -> %s", (hp, expected) => {
       expect(hpStage(hp, 30)).toBe(expected);
     });
+  });
+});
+
+describe("hpStageOfRatio", () => {
+  it("모든 maxHp(10, 20, 30)와 hp에서 hpStage와 같은 단계를 돌려준다", () => {
+    for (const maxHp of [10, 20, 30]) {
+      for (let hp = 0; hp <= maxHp; hp += 1) {
+        expect(hpStageOfRatio(hp / maxHp)).toBe(hpStage(hp, maxHp));
+      }
+    }
   });
 });
