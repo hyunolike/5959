@@ -1,6 +1,9 @@
 package com.ogu.ai.infrastructure
 
 import com.ogu.ai.EmotionAnalysisFailed
+import com.ogu.ai.EmotionAnalysisFailed.Kind.CIRCUIT_OPEN
+import com.ogu.ai.EmotionAnalysisFailed.Kind.TIMEOUT
+import com.ogu.ai.EmotionAnalysisFailed.Kind.UPSTREAM_ERROR
 import com.ogu.ai.EmotionAnalyzer
 import com.ogu.ai.EmotionClassification
 import com.ogu.shared.config.AiProperties
@@ -14,6 +17,8 @@ import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.chat.prompt.Prompt
 import org.springframework.ai.openai.OpenAiChatModel
 import org.springframework.ai.openai.OpenAiChatOptions
+import java.io.InterruptedIOException
+import java.net.http.HttpTimeoutException
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -38,7 +43,7 @@ class SpringAiEmotionAnalyzer(
     AutoCloseable {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    // 타임아웃이 나면 호출을 기다리지 않고 돌아온다. 남은 HTTP 호출은 SDK 타임아웃(같은 값)에 끝난다.
+    // 타임아웃이 나면 호출을 기다리지 않고 돌아온다. 남은 HTTP 호출은 SDK 타임아웃(같은 값)에 끝난다(isTimeout 참고).
     private val executor: ExecutorService = Executors.newVirtualThreadPerTaskExecutor()
 
     override fun analyze(
@@ -74,15 +79,24 @@ class SpringAiEmotionAnalyzer(
                 }
             }
         } catch (e: CallNotPermittedException) {
-            fail(postId, EmotionAnalysisFailed.Kind.CIRCUIT_OPEN, e)
+            fail(postId, CIRCUIT_OPEN, e)
         } catch (e: TimeoutException) {
-            fail(postId, EmotionAnalysisFailed.Kind.TIMEOUT, e)
+            fail(postId, TIMEOUT, e)
         } catch (e: InterruptedException) {
             Thread.currentThread().interrupt()
-            fail(postId, EmotionAnalysisFailed.Kind.UPSTREAM_ERROR, e)
+            fail(postId, UPSTREAM_ERROR, e)
         } catch (e: Exception) {
-            fail(postId, EmotionAnalysisFailed.Kind.UPSTREAM_ERROR, e)
+            fail(postId, if (isTimeout(e)) TIMEOUT else UPSTREAM_ERROR, e)
         }
+
+    /**
+     * SDK의 HTTP 타임아웃은 Resilience4j 타임아웃과 같은 값이라, 부하가 크면 SDK가 먼저 알아채고 I/O 예외로 끝낼 수 있다.
+     * 어느 쪽이 먼저 나든 같은 TIMEOUT으로 분류한다.
+     */
+    private fun isTimeout(error: Throwable): Boolean =
+        generateSequence(error) { it.cause }
+            .take(MAX_CAUSE_DEPTH)
+            .any { it is InterruptedIOException || it is HttpTimeoutException }
 
     private fun request(content: String): String? =
         chatClient
@@ -107,6 +121,8 @@ class SpringAiEmotionAnalyzer(
     companion object {
         /** Resilience4j 서킷 브레이커와 타임아웃 인스턴스 이름(`resilience4j.*.instances.emotionAnalyzer`). */
         const val RESILIENCE_NAME = "emotionAnalyzer"
+
+        private const val MAX_CAUSE_DEPTH = 10
 
         fun create(
             properties: AiProperties,

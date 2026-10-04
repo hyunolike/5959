@@ -1,9 +1,11 @@
 package com.ogu.ai.infrastructure
 
 import com.ogu.ai.EmotionAnalysisFailed
+import com.ogu.ai.EmotionAnalyzer
 import com.ogu.shared.config.AiProperties
 import com.sun.net.httpserver.HttpServer
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry
+import io.github.resilience4j.timelimiter.TimeLimiterConfig
 import io.github.resilience4j.timelimiter.TimeLimiterRegistry
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -52,15 +54,23 @@ class SpringAiAnalyzerConfigTest {
         val analyzer = analyzerWithKey("real-key")
 
         assertThat(analyzer).isInstanceOf(SpringAiEmotionAnalyzer::class.java)
-        assertThatThrownBy { analyzer.analyze(1L, "본문") }.isInstanceOf(EmotionAnalysisFailed::class.java)
+        assertThatThrownBy { analyzer.analyze(1L, "본문") }
+            .isInstanceOfSatisfying(EmotionAnalysisFailed::class.java) {
+                assertThat(it.kind).isEqualTo(EmotionAnalysisFailed.Kind.UPSTREAM_ERROR)
+            }
         assertThat(requests.get()).isEqualTo(1)
         (analyzer as SpringAiEmotionAnalyzer).close()
     }
 
-    private fun analyzerWithKey(apiKey: String) =
-        SpringAiAnalyzerConfig().springAiEmotionAnalyzer(
-            AiProperties(baseUrl = URI.create("http://127.0.0.1:${server.address.port}/v1"), apiKey = apiKey),
+    // TimeLimiterRegistry.ofDefaults()의 타임아웃은 1초다. 새 OpenAI 클라이언트의 첫 호출은 부하가 크면 1초를 넘겨
+    // 스텁에 닿기 전에 TIMEOUT으로 끝날 수 있었다. 운영(application.yml)처럼 ogu.ai.timeout을 그대로 쓴다.
+    private fun analyzerWithKey(apiKey: String): EmotionAnalyzer {
+        val baseUrl = URI.create("http://127.0.0.1:${server.address.port}/v1")
+        val properties = AiProperties(baseUrl = baseUrl, apiKey = apiKey)
+        return SpringAiAnalyzerConfig().springAiEmotionAnalyzer(
+            properties,
             CircuitBreakerRegistry.ofDefaults(),
-            TimeLimiterRegistry.ofDefaults(),
+            TimeLimiterRegistry.of(TimeLimiterConfig.custom().timeoutDuration(properties.timeout).build()),
         )
+    }
 }

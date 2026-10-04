@@ -148,6 +148,21 @@ class SpringAiEmotionAnalyzerTest {
     }
 
     @Test
+    fun `SDK의 HTTP 타임아웃이 Resilience4j 타임아웃보다 먼저 나도 TIMEOUT 실패다`() {
+        responder.set {
+            release.await(10, TimeUnit.SECONDS)
+            200 to completion(VALID_JSON)
+        }
+        // 두 타임아웃은 운영에서 같은 값이라 어느 쪽이 먼저 알아채는지는 부하에 따라 달라진다. 여기서는 SDK 쪽이 반드시 먼저 나게 한다.
+        val analyzer = analyzer(timeout = Duration.ofMillis(300), timeLimiterTimeout = Duration.ofSeconds(8))
+
+        assertThatThrownBy { analyzer.analyze(POST_ID, "본문") }
+            .isInstanceOfSatisfying(EmotionAnalysisFailed::class.java) {
+                assertThat(it.kind).isEqualTo(EmotionAnalysisFailed.Kind.TIMEOUT)
+            }
+    }
+
+    @Test
     fun `서버 오류는 UPSTREAM_ERROR 실패이고, 실패가 쌓여 서킷이 열리면 호출하지 않고 CIRCUIT_OPEN 실패다`() {
         responder.set { 500 to """{"error":{"message":"down"}}""" }
         val analyzer = analyzer()
@@ -185,7 +200,10 @@ class SpringAiEmotionAnalyzerTest {
         assertThat(SpringAiEmotionAnalyzer.RESILIENCE_NAME).isEqualTo("emotionAnalyzer")
     }
 
-    private fun analyzer(timeout: Duration = Duration.ofSeconds(20)): SpringAiEmotionAnalyzer {
+    private fun analyzer(
+        timeout: Duration = Duration.ofSeconds(20),
+        timeLimiterTimeout: Duration = timeout,
+    ): SpringAiEmotionAnalyzer {
         val properties =
             AiProperties(
                 baseUrl = URI.create("http://127.0.0.1:${server.address.port}/v1"),
@@ -210,7 +228,7 @@ class SpringAiEmotionAnalyzerTest {
         val timeLimiter =
             TimeLimiter.of(
                 SpringAiEmotionAnalyzer.RESILIENCE_NAME,
-                TimeLimiterConfig.custom().timeoutDuration(timeout).build(),
+                TimeLimiterConfig.custom().timeoutDuration(timeLimiterTimeout).build(),
             )
         return SpringAiEmotionAnalyzer.create(properties, circuitBreaker, timeLimiter).also { analyzers += it }
     }
