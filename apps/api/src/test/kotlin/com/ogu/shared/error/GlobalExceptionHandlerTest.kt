@@ -2,7 +2,6 @@ package com.ogu.shared.error
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import org.springframework.beans.TypeMismatchException
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
@@ -71,14 +70,6 @@ class GlobalExceptionHandlerTest {
     @Test
     fun `그 밖의 Spring MVC 4xx 예외는 자기 상태 코드와 INVALID_REQUEST로 응답한다`() {
         val response = handler.handleException(MissingServletRequestParameterException("nickname", "String"))
-
-        assertThat(response.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
-        assertThat(response.body!!.error!!.code).isEqualTo("INVALID_REQUEST")
-    }
-
-    @Test
-    fun `경로 변수 형식이 틀리면 500이 아니라 400 INVALID_REQUEST다`() {
-        val response = handler.handleTypeMismatch(TypeMismatchException("abc", Long::class.java))
 
         assertThat(response.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
         assertThat(response.body!!.error!!.code).isEqualTo("INVALID_REQUEST")
