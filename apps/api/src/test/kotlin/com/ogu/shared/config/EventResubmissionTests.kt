@@ -12,14 +12,19 @@ import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.ArgumentMatchers.any
 import org.mockito.ArgumentMatchers.anyLong
+import org.mockito.ArgumentMatchers.argThat
 import org.mockito.Mockito.doCallRealMethod
 import org.mockito.Mockito.doThrow
 import org.mockito.Mockito.timeout
+import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.test.system.CapturedOutput
+import org.springframework.boot.test.system.OutputCaptureExtension
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
 import org.springframework.jdbc.core.JdbcTemplate
@@ -44,8 +49,10 @@ import java.time.Instant
         "ogu.emotion.retry.scheduler-enabled=false",
         "ogu.events.resubmit.enabled=false",
         "ogu.events.resubmit.older-than=0s",
+        "ogu.events.resubmit.max-attempts=3",
     ],
 )
+@ExtendWith(OutputCaptureExtension::class)
 @Import(TestcontainersConfiguration::class)
 class EventResubmissionTests {
     @Autowired
@@ -114,6 +121,53 @@ class EventResubmissionTests {
         assertThat(monsterApi.findByPostIds(listOf(postId)).getValue(postId).maxHp).isEqualTo(20)
     }
 
+    @Test
+    fun `늘 실패하는 리스너는 최대 시도 횟수까지만 다시 보내고 그 뒤로는 건너뛰며 WARN을 한 번 남긴다`(output: CapturedOutput) {
+        doThrow(IllegalStateException("영구 장애"))
+            .`when`(analysisStore)
+            .createPending(any(PostCreated::class.java) ?: PLACEHOLDER)
+
+        val postId = createPost("[불안:낮음] 늘 실패하는 리스너")
+        verify(analysisStore, timeout(AWAIT_MILLIS).times(1)).createPending(forPost(postId))
+
+        // 시도 횟수는 처음 1번을 포함해 max-attempts(3)번이다. 그 뒤의 재전송은 이 발행을 건너뛴다.
+        repeat(2) { attempt ->
+            resubmitter.resubmit()
+            verify(analysisStore, timeout(AWAIT_MILLIS).times(attempt + 2)).createPending(forPost(postId))
+        }
+        await().atMost(AWAIT_LIMIT).pollInterval(POLL).until { completionAttempts(postId) >= 3 }
+        repeat(3) {
+            resubmitter.resubmit()
+            Thread.sleep(SETTLE_MILLIS)
+        }
+
+        verify(analysisStore, times(3)).createPending(forPost(postId))
+        assertThat(analysisRows(postId)).isZero()
+        val publicationId = publication(postId, "id")
+        val giveUp = "다시 보내지 않습니다: id=$publicationId"
+        val warnings = output.all.lines().filter { it.contains("WARN") && it.contains(giveUp) }
+        assertThat(warnings).hasSize(1)
+    }
+
+    private fun forPost(postId: Long): PostCreated = argThat<PostCreated> { it?.postId == postId } ?: PLACEHOLDER
+
+    private fun completionAttempts(postId: Long): Int = publication(postId, "completion_attempts")?.toInt() ?: 0
+
+    /** 이 글의 PostCreated 가운데 끝나지 않은 발행의 열 하나를 글자로 읽는다. */
+    private fun publication(
+        postId: Long,
+        column: String,
+    ): String? =
+        jdbcTemplate
+            .queryForList(
+                """
+                select $column::text from event_publication
+                where completion_date is null and event_type like '%PostCreated' and serialized_event like ?
+                """.trimIndent(),
+                String::class.java,
+                "%\"postId\":$postId,%",
+            ).singleOrNull()
+
     private fun analysisRows(postId: Long): Int = jdbcTemplate.queryForObject(ANALYSIS_COUNT, Int::class.java, postId)!!
 
     private fun createPost(content: String): Long {
@@ -137,6 +191,7 @@ class EventResubmissionTests {
 
     companion object {
         private const val AWAIT_MILLIS = 10_000L
+        private const val SETTLE_MILLIS = 500L
         private const val MONSTER_COUNT = "select count(*) from monsters where post_id = ?"
         private const val ANALYSIS_COUNT = "select count(*) from emotion_analysis where post_id = ?"
         private val AWAIT_LIMIT: Duration = Duration.ofSeconds(15)

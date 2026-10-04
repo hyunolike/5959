@@ -96,3 +96,4 @@ ogu:
       enabled: true
       interval: 1m
       older-than: 2m
+      max-attempts: 10 # 처음 처리를 포함한 시도 횟수. 넘으면 WARN 한 번 남기고 건너뛴다
