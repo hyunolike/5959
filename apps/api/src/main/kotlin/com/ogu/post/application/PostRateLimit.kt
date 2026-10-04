@@ -19,7 +19,7 @@ data class PostRateLimitProperties(
 /**
  * 글 작성 제한(FR-018, research R9). 회원마다 최근 1시간 안에 쓴 글(지운 글 포함)이 [PostRateLimitProperties.maxPerHour]개면
  * `429 POST_RATE_LIMITED`로 거절한다. 같은 회원의 동시 요청이 함께 통과하지 않도록 회원 단위 advisory lock을 잡고 센다.
- * 잠금은 두 정수 키 형식이라 글 단위 잠금(`PostLock`, bigint 키 하나)과 키 공간이 겹치지 않는다.
+ * 잠금은 두 정수 키 형식이고 이름공간이 글 단위 잠금(`PostLock`)과 달라 키 공간이 겹치지 않는다.
  */
 @Component
 class PostRateLimit(

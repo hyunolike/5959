@@ -9,6 +9,7 @@ import com.ogu.post.domain.CommentRepository
 import com.ogu.post.domain.PostRepository
 import com.ogu.shared.error.BusinessException
 import com.ogu.shared.error.ErrorCode
+import com.ogu.shared.lock.PostLock
 import com.ogu.support.CoreLoopFixture
 import com.ogu.support.MemberFixture
 import jakarta.persistence.EntityManager
@@ -240,7 +241,7 @@ class PostManageRaceTest {
         try {
             val futures = mutableListOf<Future<*>>()
             transactionTemplate.executeWithoutResult {
-                jdbcTemplate.queryForList(hold.sql, hold.postId)
+                jdbcTemplate.queryForList(hold.sql, *hold.params)
                 futures += executor.submit(delete)
                 awaitLockWaiter(hold.deleteWaitsOn)
                 futures += executor.submit(other)
@@ -256,20 +257,25 @@ class PostManageRaceTest {
     /** 테스트 트랜잭션이 쥐는 잠금과, 그 동안 삭제와 상대 요청이 각각 기다리는 문장(정규식). */
     private sealed class Hold(
         val sql: String,
-        val postId: Long,
+        val params: Array<Any>,
         val deleteWaitsOn: String,
         val otherWaitsOn: String,
     )
 
     private class PostLockHold(
         postId: Long,
-    ) : Hold("select pg_advisory_xact_lock(?)", postId, "pg_advisory_xact_lock", "\\mposts\\M")
+    ) : Hold(
+            "select pg_advisory_xact_lock(?, ?)",
+            arrayOf(PostLock.NAMESPACE, PostLock.key(postId)),
+            "pg_advisory_xact_lock",
+            "\\mposts\\M",
+        )
 
     private class CommentCountHold(
         postId: Long,
     ) : Hold(
             "select id from posts where id = ? for no key update",
-            postId,
+            arrayOf(postId),
             "update posts set comment_count",
             "\\mcomments\\M",
         )

@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit
 
 /**
  * T013: 글 단위 잠금(research R5). HP 반영과 몬스터 생성이 같은 글에서 겹치지 않도록 현재 트랜잭션에
- * `pg_advisory_xact_lock(postId)`을 잡고, 트랜잭션이 끝나면 풀린다.
+ * `pg_advisory_xact_lock(NAMESPACE, key(postId))`을 잡고, 트랜잭션이 끝나면 풀린다.
  */
 @SpringBootTest
 @Import(TestcontainersConfiguration::class)
@@ -55,6 +55,30 @@ class PostLockTest {
         }
     }
 
+    @Test
+    fun `bigint 키 하나를 쓰는 다른 잠금(이메일 가입 잠금의 hashtext 키)과 키 공간이 겹치지 않는다`() {
+        val postId = POST_ID + 4
+        transactionTemplate.executeWithoutResult {
+            postLock.lock(postId)
+
+            assertThat(trySingleKeyLockFromAnotherConnection(postId)).isTrue()
+        }
+    }
+
+    private fun trySingleKeyLockFromAnotherConnection(key: Long): Boolean {
+        val executor = Executors.newSingleThreadExecutor()
+        try {
+            return executor
+                .submit<Boolean> {
+                    transactionTemplate.execute {
+                        jdbcTemplate.queryForObject("select pg_try_advisory_xact_lock(?)", Boolean::class.java, key)
+                    }
+                }.get(10, TimeUnit.SECONDS)
+        } finally {
+            executor.shutdownNow()
+        }
+    }
+
     /** 다른 스레드(다른 커넥션, 다른 트랜잭션)에서 같은 키를 바로 잡을 수 있는지 본다. */
     private fun tryLockFromAnotherConnection(postId: Long): Boolean {
         val executor = Executors.newSingleThreadExecutor()
@@ -63,9 +87,10 @@ class PostLockTest {
                 .submit<Boolean> {
                     transactionTemplate.execute {
                         jdbcTemplate.queryForObject(
-                            "select pg_try_advisory_xact_lock(?)",
+                            "select pg_try_advisory_xact_lock(?, ?)",
                             Boolean::class.java,
-                            postId,
+                            PostLock.NAMESPACE,
+                            PostLock.key(postId),
                         )
                     }
                 }.get(10, TimeUnit.SECONDS)

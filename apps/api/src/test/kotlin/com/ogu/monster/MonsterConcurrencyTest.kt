@@ -7,6 +7,7 @@ import com.ogu.emotion.Intensity
 import com.ogu.post.application.CommentService
 import com.ogu.post.application.LikeService
 import com.ogu.post.application.PostService
+import com.ogu.shared.lock.PostLock
 import com.ogu.support.CoreLoopFixture
 import com.ogu.support.HpLog
 import com.ogu.support.MemberFixture
@@ -250,7 +251,11 @@ class MonsterConcurrencyTest {
         try {
             val futures = mutableListOf<Future<*>>()
             transactionTemplate.executeWithoutResult {
-                jdbcTemplate.queryForList("select pg_advisory_xact_lock(?)", postId)
+                jdbcTemplate.queryForList(
+                    "select pg_advisory_xact_lock(?, ?)",
+                    PostLock.NAMESPACE,
+                    PostLock.key(postId),
+                )
                 futures += executor.submit(first)
                 awaitPostLockWaiters(postId, 1)
                 futures += executor.submit(second)
@@ -264,9 +269,9 @@ class MonsterConcurrencyTest {
     }
 
     /**
-     * 이 글의 잠금(`pg_advisory_xact_lock(postId)`)을 기다리는 백엔드가 [expected]개가 될 때까지 기다린다.
+     * 이 글의 잠금(`pg_advisory_xact_lock(NAMESPACE, key(postId))`)을 기다리는 백엔드가 [expected]개가 될 때까지 기다린다.
      * 테스트 트랜잭션 안에서 읽으므로 `pg_stat_activity` 스냅숏이 고정되지 않게 매번 `pg_stat_clear_snapshot()`을
-     * 부른다(M1 교훈). bigint 키 잠금은 `pg_locks`에 상위 32비트가 classid, 하위 32비트가 objid로 보인다.
+     * 부른다(M1 교훈). 두 정수 키 잠금은 `pg_locks`에 첫 키가 classid, 둘째 키가 objid, objsubid 2로 보인다.
      */
     private fun awaitPostLockWaiters(
         postId: Long,
@@ -281,11 +286,11 @@ class MonsterConcurrencyTest {
                     select count(*) from pg_stat_activity a join pg_locks l on l.pid = a.pid
                     where a.datname = current_database() and a.wait_event_type = 'Lock' and a.wait_event = 'advisory'
                       and l.locktype = 'advisory' and not l.granted
-                      and l.classid::bigint = (? >> 32) and l.objid::bigint = (? & 4294967295) and l.objsubid = 1
+                      and l.classid = ?::int::oid and l.objid = ?::int::oid and l.objsubid = 2
                     """.trimIndent(),
                     Int::class.java,
-                    postId,
-                    postId,
+                    PostLock.NAMESPACE,
+                    PostLock.key(postId),
                 )
             if (waiting == expected) return
             Thread.sleep(LOCK_POLL_MILLIS)
