@@ -69,11 +69,13 @@ apps/api가 JSON이 아닌 본문을 돌려주면(예상 밖의 5xx 오류 페�
 | 경로 | 조건 | 동작 |
 |---|---|---|
 | `/` | `ogu_rt` 있음 | `302 /home` |
-| `/home`, `/write`, `/my`, `/settings` 이하 | `ogu_rt` 없음 | `302 /login?next=<원래 경로>` |
+| 보호 경로(`/home`, `/write`, `/post`, `/my`, `/settings` 이하) | `ogu_rt` 없음 | `302 /login?next=<원래 경로>` |
 | 같은 경로 | `ogu_rt` 있고 `ogu_ob` 없음 | `302 /onboarding` |
 | `/onboarding` | `ogu_rt` 없음 | `302 /login` |
 | `/onboarding` | `ogu_ob` 있음 | `302 /home`(검증한 `next`가 있으면 그곳) |
 | `/login`, `/signup` | `ogu_rt`, `ogu_ob` 모두 있음 | `302 /home`(검증한 `next`가 있으면 그곳) |
+
+보호 경로 목록은 `shared/server/route-guard.ts`의 `PROTECTED_PATH_PREFIXES`에 있다. 003-core-loop에서 `/write`(글쓰기)와 `/post`(글 상세 `/post/{id}`, 글 수정 `/post/{id}/edit`)가 들어왔다. 글 화면을 부르는 API는 온보딩을 마친 회원에게만 열려 있어서, 화면이 401이나 403을 받기 전에 가드가 로그인이나 온보딩으로 보낸다.
 
 `next`는 `/`로 시작하고 `//`나 `/\`로 시작하지 않을 때만 따른다. 한 번 퍼센트 디코딩한 값(`/%2F%2Fevil`, `/%5Cevil`)과 제어 문자도 같은 규칙으로 막는다. 아니면 `/home`으로 보낸다(스펙 경계 상황). 검증은 `shared/lib/next-path.ts` 한 곳에서 한다. 로그인, 가입, OAuth 성공 뒤에는 이 `next`로 가고, 온보딩이 남았으면 `/onboarding?next=`로 넘겨 온보딩 뒤 그곳으로 간다. `/login?error=` 리다이렉트에도 검증한 `next`를 남긴다.
 

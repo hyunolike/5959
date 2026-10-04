@@ -90,14 +90,13 @@
 - 직군과 경력 필터는 작성 시점의 작성자 프로필을 글에 스냅숏으로 저장해(`author_job_role`, `author_career_year`) 같은 테이블에서 거른다. 모듈 경계상 `member` 테이블과 조인할 수 없기 때문이다. 프로필 수정 기능이 아직 없어서 현재 값과 같다. 수정 기능이 생기면 `MemberProfileChanged` 이벤트로 스냅숏을 갱신한다.
 - `feed`는 `PostApi.page(...)`로 글 20개를 받고, `MonsterApi.findByPostIds`, `EmotionApi.findByPostIds`, `MemberApi.getMembers`를 한 번씩 불러 조합한다. 요청당 쿼리는 4개다.
 - 인덱스는 `posts (deleted, id DESC)`, `posts (deleted, like_count DESC, id DESC)`, `posts (author_job_role, author_career_year)`다.
-
 - 커서는 앞 쪽 마지막 글의 값이라, 인기순에서 쪽 사이에 공감 수가 바뀌면 순위가 커서를 넘나든 글이 어긋난다. 커서보다 위로 올라간 글은 이번 스크롤에서 빠지고(새로고침하면 보인다), 커서보다 아래로 내려간 글은 다음 쪽에 다시 온다. 서버는 이를 막지 않는 키셋의 한계로 받아들이고, 웹 피드 목록이 쪽을 펼칠 때 같은 글 ID는 처음 나온 자리에만 두어 두 번 보이지 않게 한다. 최신순은 정렬 키(`id`)가 바뀌지 않아 해당하지 않는다.
 
 **근거**: 오프셋은 새 글이 올라오면 중복과 누락이 생긴다(스펙 경계 상황). 키셋은 새 글 삽입에는 흔들리지 않지만, 인기순의 정렬 키(공감 수)가 바뀌는 경우까지 막으려면 스냅숏 시점을 커서에 담고 이력을 읽어야 해 비용이 크다. 그래서 위의 누락은 받아들이고 중복만 화면에서 없앤다. 조합 쿼리 수가 고정이라 글 1만 개에서도 SC-003(1초)를 지킨다.
 
 ## R8. 글자 수 (FR-001, FR-008)
 
-**결정**: 본문 길이는 서버와 웹 모두 사용자가 보는 글자(grapheme cluster) 기준으로 센다. 서버는 `java.text.BreakIterator.getCharacterInstance()`, 웹은 `Intl.Segmenter`를 쓴다. 저장 컬럼은 `text`다. 결합 이모지(👨‍👩‍👧)는 1자이지만 코드 포인트가 5개라, `varchar(n)`(코드 포인트 기준)로는 500자 글이 들어가지 않을 수 있다. 대신 결합 문자를 수없이 겹친 글(Zalgo)과 LLM에 보내는 양을 막으려고 코드 포인트 상한을 따로 둔다: 글 5,000개, 댓글 3,000개. 넘으면 `400 INVALID_REQUEST`다.
+**결정**: 본문 길이는 서버와 웹 모두 사용자가 보는 글자(grapheme cluster) 기준으로 센다. 서버는 `java.text.BreakIterator.getCharacterInstance(Locale.ROOT)`, 웹은 `Intl.Segmenter`를 쓴다. 저장 컬럼은 `text`다. 결합 이모지(👨‍👩‍👧)는 1자이지만 코드 포인트가 5개라, `varchar(n)`(코드 포인트 기준)로는 500자 글이 들어가지 않을 수 있다. 대신 결합 문자를 수없이 겹친 글(Zalgo)과 LLM에 보내는 양을 막으려고 코드 포인트 상한을 따로 둔다: 글 5,000개, 댓글 3,000개. 넘으면 `400 INVALID_REQUEST`다.
 
 **근거**: 스펙 경계 상황에서 "이모지 하나는 1자"라고 했다. UTF-16 길이를 세면 이모지가 2자로 잡혀 사용자 화면의 카운터와 서버 검증이 어긋난다.
 
