@@ -4,6 +4,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
+import java.util.Locale
 
 /**
  * T010: 본문 글자 수는 사람이 보는 글자(grapheme) 단위로 센다. 웹의 `Intl.Segmenter`와 같은 값을 내야 한다.
@@ -23,6 +24,22 @@ class GraphemeTest {
         expected: Int,
     ) {
         assertThat(Grapheme.count(text)).isEqualTo(expected)
+    }
+
+    @Test
+    fun `서버 기본 로캘이 달라도 같은 수를 센다`() {
+        val original = Locale.getDefault()
+        val text = "오늘 👍 🇰🇷 ภาษาไทย"
+        val expected = Grapheme.count(text)
+        try {
+            listOf(Locale.forLanguageTag("th-TH"), Locale.forLanguageTag("tr-TR"), Locale.JAPAN).forEach { locale ->
+                Locale.setDefault(locale)
+                assertThat(Grapheme.count(text)).describedAs(locale.toLanguageTag()).isEqualTo(expected)
+                assertThat(Grapheme.take(text, 4)).isEqualTo("오늘 👍")
+            }
+        } finally {
+            Locale.setDefault(original)
+        }
     }
 
     @Test
