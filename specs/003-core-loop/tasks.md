@@ -29,7 +29,7 @@ description: "Task list for 003-core-loop (핵심 루프)"
 ## Phase 1: Setup (Shared Infrastructure)
 
 - [x] T001 계약을 저장소 루트로 옮긴다(research R13). `git mv specs/002-auth/contracts/openapi.yaml contracts/openapi.yaml` 후 `specs/002-auth/contracts/openapi.yaml` 자리에 루트 파일을 가리키는 짧은 README(`specs/002-auth/contracts/README.md`)를 둔다. `specs/003-core-loop/contracts/core-loop.openapi.yaml`의 tags, paths, components(parameters, schemas, responses)를 루트 파일에 합친다. 이름이 같은 스키마(`ErrorResponse`, `ErrorEnvelope`, `JobRole`, `CareerYear`)는 루트 정의 하나만 남긴다. `info.title`을 `오구오구 API`, `info.version`을 `0.3.0`으로 바꾼다. `npx @redocly/cli lint contracts/openapi.yaml`이 오류 없이 통과해야 한다
-- [x] T002 계약 경로 참조를 루트로 바꾼다: apps/web/package.json의 `gen:api`(`../../contracts/openapi.yaml`), apps/api/src/test/kotlin/com/ogu/ContractTests.kt의 `CONTRACT_PATH`와 KDoc, .github/workflows/ci.yml의 web 경로 필터에 `contracts/**` 추가. `pnpm --filter web gen:api`로 generated.ts를 다시 만들고 커밋한다. ContractTests의 `pendingPaths`에 이번에 추가된 연산 14개를 넣어 지금은 통과하게 한다
+- [x] T002 계약 경로 참조를 루트로 바꾼다: apps/web/package.json의 `gen:api`(`../../contracts/openapi.yaml`), apps/api/src/test/kotlin/com/ogu/ContractTests.kt의 `CONTRACT_PATH`와 KDoc, .github/workflows/ci.yml의 web 경로 필터에 `contracts/**` 추가. `pnpm --filter web gen:api`로 generated.ts를 다시 만들고 커밋한다. ContractTests의 `pendingPaths`에 이번에 추가된 연산 13개를 넣어 지금은 통과하게 한다
 - [x] T003 [P] apps/api/build.gradle.kts에 Spring AI BOM `org.springframework.ai:spring-ai-bom:2.0.1`과 `spring-ai-starter-model-openai`, `io.github.resilience4j:resilience4j-spring-boot4:2.4.0`을 추가한다. `./gradlew build`가 통과해야 한다
 - [x] T004 [P] apps/web에 `three@0.186`, `@react-three/fiber@9`, `@react-three/drei@10`, `@types/three`(dev)를 추가한다. 빌드와 기존 테스트가 통과해야 한다
 - [x] T005 [P] apps/api/src/main/resources/application.yml에 `ogu.ai` 블록을 추가한다: `base-url`(`${AI_BASE_URL:https://integrate.api.nvidia.com/v1}`), `api-key`(`${AI_API_KEY:}`), `model`(`${AI_MODEL:qwen/qwen3-next-80b-a3b-instruct}`), `temperature: 0.1`, `max-tokens: 200`, `timeout: 20s`, `prompt-version: v1`. `ogu.emotion.retry`: `initial: 30s`, `max-interval: 5m`, `deadline: 24h`, `poll-interval: 10s`, `batch-size: 20`. `ogu.post.rate-limit`: `max-per-hour: 10`. infra/.env.example과 infra/compose.prod.yaml에 `AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL`을 연결한다. ProdAuthSettingsCheck(또는 새 ProdAiSettingsCheck)가 prod에서 `ogu.ai.api-key`가 비면 기동을 실패시키고 테스트한다. CI 스모크 테스트 단계에 가짜 `AI_API_KEY`를 넘긴다
@@ -168,8 +168,8 @@ description: "Task list for 003-core-loop (핵심 루프)"
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T055 ContractTests `pendingPaths`가 비어 있고 루트 계약의 모든 연산(M1 8개 + M2 14개)이 구현과 일치하는지 확인한다
-- [ ] T056 [P] `grep -rn "US[1-5]-AC[0-9]*" apps/`로 스펙의 인수 조건 30개가 모두 테스트 이름에 있는지 확인하고 빠진 것을 추가한다
+- [x] T055 ContractTests `pendingPaths`가 비어 있고 루트 계약의 모든 연산(M1 8개 + M2 13개)이 구현과 일치하는지 확인한다
+- [x] T056 [P] `grep -rn "US[1-5]-AC[0-9]*" apps/`로 스펙의 인수 조건 30개가 모두 테스트 이름에 있는지 확인하고 빠진 것을 추가한다
 - [ ] T057 [P] 문서: apps/api/AGENTS.md(새 모듈 5개, 공개 파사드와 이벤트, 공격 반영 규칙, 분석 재시도), apps/web/docs/ARCHITECTURE.md(새 슬라이스, 폴링, 3D와 정지 이미지), docs/architecture/overview.md 5.1, 5.2, 5.3, 6.2를 구현과 맞춘다(동기 공격 반영, 소급 반영, 비동기 분석 재시도 테이블). README에 핵심 루프 소개 한 단락
 - [ ] T058 성능 측정: 글 1만 개를 넣고 피드 첫 페이지와 다음 페이지 각 100회, 공감 API 100회의 p95를 재서 specs/003-core-loop/quickstart.md에 표로 남긴다(SC-003, plan 성능 목표). 추가로 (1) Chrome 성능 추적(CPU 4배 감속, 모바일 뷰포트)으로 피드를 빠르게 스크롤하며 끊긴 프레임 비율을 재고(SC-005), (2) 실제 감정 분석 엔드포인트로 글 20개를 써서 몬스터가 나타나기까지의 시간 분포를 잰다(SC-001). 키가 없으면 그 사실을 적는다. 측정 환경 부하를 함께 적는다
 - [ ] T059 specs/003-core-loop/quickstart.md의 수동 시나리오 12개를 로컬에서 끝까지 실행하고, 다르면 문서나 코드를 고친다
