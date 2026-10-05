@@ -88,8 +88,12 @@ function useDeletingOrDeleted(postId: number): boolean {
  * 이 글을 지우고 있거나 지운 뒤에는 폴링하지 않는다. 쿼리 자체는 끄지 않는다. 성공한 삭제
  * 뮤테이션은 gcTime(5분) 동안 캐시에 남으므로, 끄면 그동안 같은 글을 다시 열 때 데이터 없이
  * 멈춘 쿼리가 되어 "삭제된 글이에요" 대신 로딩만 보인다.
+ * 글 고치기 화면처럼 몬스터를 보여 주지 않는 곳은 `{ poll: false }`로 폴링을 끈다.
  */
-export function usePostDetailQuery(postId: number) {
+export function usePostDetailQuery(
+  postId: number,
+  { poll = true }: { poll?: boolean } = {},
+) {
   const [startedAt] = useState(() => Date.now());
   const deleting = useDeletingOrDeleted(postId);
 
@@ -97,7 +101,7 @@ export function usePostDetailQuery(postId: number) {
     queryKey: QUERY_KEYS.postDetail(postId),
     queryFn: () => fetchPostDetail(postId),
     refetchInterval: (query) =>
-      deleting || isTerminalError(query.state.error)
+      !poll || deleting || isTerminalError(query.state.error)
         ? false
         : analysisPollInterval(query.state.data, Date.now() - startedAt),
   });

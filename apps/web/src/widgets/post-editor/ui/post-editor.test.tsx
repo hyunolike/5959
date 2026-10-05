@@ -96,6 +96,22 @@ describe("PostEditor", () => {
     );
   });
 
+  it("분석 중인 글을 고칠 때는 상세를 다시 부르지 않는다", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const fetchMock = renderEditor(
+        detail({ analysisStatus: "PENDING", monster: null }),
+      );
+
+      expect(await screen.findByLabelText("고민")).toHaveValue("원래 고민");
+      await vi.advanceTimersByTimeAsync(10_000);
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("US4-AC4 내 글이 아니면 폼을 보여 주지 않는다", async () => {
     renderEditor(detail({ mine: false }));
 

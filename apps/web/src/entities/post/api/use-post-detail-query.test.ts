@@ -220,6 +220,21 @@ describe("usePostDetailQuery 폴링", () => {
     expect(fetchMock.mock.calls.length).toBe(callsAtTwoMinutes + 2);
   });
 
+  it("poll: false면 분석 중이어도 다시 부르지 않는다(글 고치기 화면)", async () => {
+    const fetchMock = vi.fn(() => Promise.resolve(ok(detail())));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(
+      () => usePostDetailQuery(7, { poll: false }),
+      { wrapper },
+    );
+    await advance(0);
+    expect(result.current.data?.analysisStatus).toBe("PENDING");
+
+    await vi.advanceTimersByTimeAsync(ANALYSIS_POLL_FAST_MS * 5);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("처음부터 몬스터가 있으면 다시 부르지 않는다", async () => {
     const fetchMock = vi.fn(() =>
       Promise.resolve(

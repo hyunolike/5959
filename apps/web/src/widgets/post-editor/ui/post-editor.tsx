@@ -23,7 +23,10 @@ function Notice({ message }: { message: string }) {
  */
 export function PostEditor({ postId }: { postId: number }) {
   const router = useRouter();
-  const { data, error, isPending } = usePostDetailQuery(postId);
+  // 고치는 동안에는 몬스터를 보여 주지 않으므로 분석 중이어도 다시 부르지 않는다.
+  const { data, error, isPending } = usePostDetailQuery(postId, {
+    poll: false,
+  });
   const mutation = useUpdatePostMutation(postId);
 
   if (isPending) {
