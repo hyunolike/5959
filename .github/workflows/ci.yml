@@ -29,6 +29,7 @@ jobs:
           filters: |
             api:
               - 'apps/api/**'
+              - 'contracts/**'
               - '.github/workflows/ci.yml'
             web:
               - 'apps/web/**'
