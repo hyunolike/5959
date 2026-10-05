@@ -72,7 +72,7 @@ class MonsterNotificationTests {
         val postId = loop.postWithMonster(author)
 
         val row = awaitTypes(author.id, "MONSTER_SPAWNED").single()
-        support.awaitListenersIdle()
+        support.awaitListenersIdle(postId)
         assertThat(support.notificationsOf(author.id)).containsExactly(row)
         assertThat(row.postId).isEqualTo(postId)
         assertThat(row.monsterId).isEqualTo(monsterId(postId))
@@ -111,12 +111,12 @@ class MonsterNotificationTests {
             .containsExactly(0 to 0)
 
         awaitTypes(author.id, "MONSTER_DEFEATED")
-        support.awaitListenersIdle()
+        support.awaitListenersIdle(postId)
         // 응원한 회원까지 기록에 들어간 뒤 처치 이벤트가 다시 와도 받는 사람은 그대로다
         scenario
             .publish(MonsterDefeated(postId, monsterId))
-            .andWaitForStateChange { support.incompletePublications() == 0 }
-        support.awaitListenersIdle()
+            .andWaitForStateChange { support.incompletePublications(postId) == 0 }
+        support.awaitListenersIdle(postId)
 
         val toAuthor = support.notificationsOf(author.id, *MONSTER_TYPES)
         assertThat(toAuthor.map { it.type }).containsExactly("MONSTER_SPAWNED", "MONSTER_DEFEATED")
@@ -149,7 +149,7 @@ class MonsterNotificationTests {
         assertThat(loop.hpLogs(postId).last().let { Triple(it.memberId, it.hpBefore, it.hpAfter) })
             .isEqualTo(Triple(finisher.id, 1, 0))
         val row = awaitTypes(finisher.id, "MONSTER_DEFEATED_TOGETHER").single()
-        support.awaitListenersIdle()
+        support.awaitListenersIdle(postId)
         assertThat(support.notificationsOf(finisher.id)).containsExactly(row)
         assertThat(row.monsterId).isEqualTo(monsterId(postId))
     }
@@ -167,7 +167,7 @@ class MonsterNotificationTests {
             .publish(EmotionAnalyzed(postId, EmotionType.ANXIETY, Intensity.LOW, defaulted = false))
             .andWaitForStateChange { support.notificationsOf(author.id, "MONSTER_DEFEATED") }
 
-        support.awaitListenersIdle()
+        support.awaitListenersIdle(postId)
         assertThat(loop.monster(postId)!!.status).isEqualTo(MonsterStatus.DEFEATED)
         val toAuthor = support.notificationsOf(author.id, *MONSTER_TYPES)
         assertThat(toAuthor.map { it.type }).containsExactly("MONSTER_SPAWNED", "MONSTER_DEFEATED")
@@ -186,9 +186,9 @@ class MonsterNotificationTests {
         val monsterId = UNSEEN_MONSTER_BASE + postId
 
         scenario
-            .publish(MonsterDefeated(postId, monsterId))
+            .publish(MonsterDefeated(postId, monsterId, retroactive = true))
             .andWaitForStateChange { support.notificationsOf(author.id, "MONSTER_DEFEATED") }
-        support.awaitListenersIdle()
+        support.awaitListenersIdle(postId)
         val before = support.notificationsOf(author.id)
         assertThat(before.map { it.type to it.dedupKey })
             .containsExactly("MONSTER_SPAWNED" to "SPAWNED:$monsterId", "MONSTER_DEFEATED" to "DEFEATED:$monsterId")
@@ -197,11 +197,32 @@ class MonsterNotificationTests {
 
         scenario
             .publish(MonsterSpawned(postId, monsterId, defaulted = false))
-            .andWaitForStateChange { support.incompletePublications() == 0 }
+            .andWaitForStateChange { support.incompletePublications(postId) == 0 }
 
-        support.awaitListenersIdle()
+        support.awaitListenersIdle(postId)
         assertThat(support.notificationsOf(author.id)).isEqualTo(before)
         assertThat(support.lastSeq(author.id)).isEqualTo(lastSeq)
+    }
+
+    @Test
+    fun `생성 알림이 보관 기간이 지나 지워진 뒤 처치되면 처치 알림만 받고 나타났어요를 다시 받지 않는다`() {
+        val author = members.onboarded()
+        val (first, second, third) = (1..3).map { members.onboarded() }
+        val postId = loop.postWithMonster(author)
+        val spawned = awaitTypes(author.id, "MONSTER_SPAWNED").single()
+        support.awaitListenersIdle(postId)
+        // 정리 작업이 90일 지난 생성 알림을 지운 상태
+        jdbcTemplate.update("delete from notification where id = ?", spawned.id)
+
+        likeAndComment(first, postId)
+        likeAndComment(second, postId)
+        loop.comment(third, postId)
+
+        awaitTypes(author.id, "MONSTER_DEFEATED")
+        support.awaitListenersIdle(postId)
+        assertThat(support.notificationsOf(author.id, *MONSTER_TYPES).map { it.type })
+            .containsExactly("MONSTER_DEFEATED")
+        assertThat(support.notificationsOf(third.id).map { it.type }).containsExactly("MONSTER_DEFEATED_TOGETHER")
     }
 
     @Test
@@ -213,12 +234,12 @@ class MonsterNotificationTests {
 
         scenario
             .publish(MonsterSpawned(postId, monsterId, defaulted = false))
-            .andWaitForStateChange { support.incompletePublications() == 0 }
+            .andWaitForStateChange { support.incompletePublications(postId) == 0 }
         scenario
             .publish(MonsterDefeated(postId, monsterId))
-            .andWaitForStateChange { support.incompletePublications() == 0 }
+            .andWaitForStateChange { support.incompletePublications(postId) == 0 }
 
-        support.awaitListenersIdle()
+        support.awaitListenersIdle(postId)
         assertThat(support.notificationsOf(author.id)).isEmpty()
     }
 

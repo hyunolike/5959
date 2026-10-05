@@ -49,8 +49,10 @@ class NotificationEventListener(
     }
 
     /**
-     * 글쓴이와 HP를 실제로 줄인 회원(research R9). 두 리스너의 실행 순서는 보장되지 않으므로 글쓴이의 생성 알림이 없으면
-     * 먼저 만든다. 같은 카운터 잠금 아래에서 차례로 쓰므로 번호가 "나타났어요" 다음 "처치됐어요"가 된다(research R8).
+     * 글쓴이와 HP를 실제로 줄인 회원(research R9). 소급 반영으로 생성과 처치가 한 트랜잭션에서 함께 나간 경우(R8)에만
+     * 두 리스너의 실행 순서가 정해지지 않으므로, 그때만 글쓴이의 생성 알림을 먼저 만든다. 같은 카운터 잠금 아래에서 차례로
+     * 쓰므로 번호가 "나타났어요" 다음 "처치됐어요"가 된다. 따로 처치된 몬스터는 생성 알림을 다시 만들지 않는다. 보관 기간이
+     * 지나 지워진 생성 알림이 새로 생겨 "나타났어요"가 다시 뜨는 일을 막기 위해서다.
      */
     @ApplicationModuleListener
     fun on(event: MonsterDefeated) {
@@ -66,8 +68,8 @@ class NotificationEventListener(
                 )
             }
         val toAuthor =
-            listOf(
-                NotificationDraft.spawned(authorId, event.postId, event.monsterId),
+            listOfNotNull(
+                NotificationDraft.spawned(authorId, event.postId, event.monsterId).takeIf { event.retroactive },
                 NotificationDraft.defeated(NotificationType.MONSTER_DEFEATED, authorId, event.postId, event.monsterId),
             )
         writer.writeAll(toAuthor + together)

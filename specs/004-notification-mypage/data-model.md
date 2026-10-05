@@ -126,7 +126,7 @@ stateDiagram-v2
 1. 글이 지워졌으면(`PostApi.find(postId) == null`) 만들지 않는다.
 2. 행동한 회원과 받는 사람이 같으면 만들지 않는다. 몬스터 알림(`MONSTER_SPAWNED`, `MONSTER_DEFEATED`, `MONSTER_DEFEATED_TOGETHER`)은 행동한 회원이 없으므로 이 규칙을 적용하지 않는다.
 3. 받는 사람의 카운터 행을 잠그고 번호를 받은 뒤 쓴다. 여러 명이면 회원 ID 오름차순이다.
-4. 멱등 키나 참여자 키에 걸리면 아무것도 바꾸지 않고, 신호도 보내지 않는다.
+4. 멱등 키나 참여자 키에 걸리면 아무것도 바꾸지 않고, 신호도 보내지 않는다. 멱등 키가 이미 있으면 번호도 받지 않는다. 다만 확인과 삽입 사이에 같은 알림이 먼저 커밋되면(소급 처치에서 생성과 처치 리스너가 겹친 경우, research R8) 받은 번호가 빈 채로 남는다. 재전송은 `seq >` 비교라 해가 없다.
 5. 커밋 뒤 훅에서 쓴 회원마다 Redis 채널 `ogu:notification`에 `{memberId}:n:{seq}`를 발행한다. 내용은 싣지 않고, 발행이 실패해도 알림은 남는다(research R5).
 
 ### 연결 표
@@ -152,7 +152,7 @@ stateDiagram-v2
 | `CommentCreated(postId, commentId, memberId)` | post | monster, **notification** | 위와 같음 | 구독 추가 |
 | `CommentLiked(postId, commentId, memberId)` | post | monster | 같은 트랜잭션 동기 | 없음(댓글 공감은 알리지 않는다) |
 | `MonsterSpawned(postId, monsterId, defaulted)` | monster | notification | 커밋 후 비동기 | **새 이벤트**. `MonsterFactory`가 몬스터 저장 직후 발행 |
-| `MonsterDefeated(postId, monsterId)` | monster | notification | 커밋 후 비동기 | 구독 추가 |
+| `MonsterDefeated(postId, monsterId, retroactive)` | monster | notification | 커밋 후 비동기 | 구독 추가. `retroactive`는 생성과 같은 트랜잭션에서 소급 반영으로 처치됐는지(research R8) |
 
 `notification`의 리스너는 모두 `@ApplicationModuleListener`다. 실패하면 Event Publication Registry에 남고 `EventPublicationResubmitter`가 다시 보낸다. 같은 이벤트가 여러 번 와도 위의 생성 규칙 4가 결과를 하나로 만든다.
 
