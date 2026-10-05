@@ -93,7 +93,7 @@ class NotificationFailureIsolationTests {
         assertThat(loop.monster(postId)!!.hp).isEqualTo(10 - 1 - 3)
         verify(writer, timeout(AWAIT_MILLIS)).addLike(author.id, postId, fan.id)
         verify(writer, timeout(AWAIT_MILLIS)).writeAll(commentDrafts())
-        await().atMost(NotificationTestSupport.AWAIT_LIMIT).until { support.incompletePublications() >= 2 }
+        await().atMost(NotificationTestSupport.AWAIT_LIMIT).until { support.incompletePublications(postId) >= 2 }
         assertThat(support.notificationsOf(author.id, "POST_LIKE", "POST_COMMENT")).isEmpty()
         assertThat(jdbcTemplate.queryForObject(LIKE_COUNT, Int::class.java, postId, fan.id)).isEqualTo(1)
     }
@@ -111,9 +111,8 @@ class NotificationFailureIsolationTests {
         val commentId = loop.comment(commenter, postId)
 
         verify(writer, timeout(AWAIT_MILLIS)).writeAll(anyList() ?: emptyList())
-        val publication = "\"commentId\":$commentId,"
         await().atMost(NotificationTestSupport.AWAIT_LIMIT).until {
-            support.incompletePublicationsWith(publication) == 1
+            support.incompletePublications("commentId", commentId) == 1
         }
         assertThat(support.notificationsOf(author.id)).isEmpty()
 
@@ -121,13 +120,13 @@ class NotificationFailureIsolationTests {
             resubmitter.resubmit()
             assertThat(support.notificationsOf(author.id)).isNotEmpty()
         }
-        support.awaitListenersIdle()
+        support.awaitListenersIdle(postId)
         resubmitter.resubmit()
 
         val row = support.notificationsOf(author.id).single()
         assertThat(row.type).isEqualTo("POST_COMMENT")
         assertThat(row.commentId).isEqualTo(commentId)
-        assertThat(support.incompletePublicationsWith(publication)).isZero()
+        assertThat(support.incompletePublications("commentId", commentId)).isZero()
     }
 
     /** 댓글 알림을 쓰려던 호출(몬스터 생성 알림 호출과 구분한다). */

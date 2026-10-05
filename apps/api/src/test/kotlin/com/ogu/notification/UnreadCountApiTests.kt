@@ -77,7 +77,7 @@ class UnreadCountApiTests {
         loop.comment(fan, postId)
         loop.likePost(fan, postId).andExpect(status().isOk)
         await().atMost(NotificationTestSupport.AWAIT_LIMIT).until { support.notificationsOf(author.id).size == 2 }
-        support.awaitListenersIdle()
+        support.awaitListenersIdle(postId)
         val rows = support.notificationsOf(author.id)
 
         unreadCount(author)
@@ -110,6 +110,16 @@ class UnreadCountApiTests {
     @Test
     fun `인증 없이 부르면 401`() {
         mockMvc.perform(get(PATH)).andExpect(status().isUnauthorized)
+    }
+
+    @Test
+    fun `온보딩 전 회원은 403 ONBOARDING_REQUIRED`() {
+        val member = members.signedUp()
+
+        unreadCount(member)
+            .andExpect(status().isForbidden)
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.code").value("ONBOARDING_REQUIRED"))
     }
 
     private fun unreadCount(member: TestMember) = mockMvc.perform(get(PATH).bearer(member.accessToken))

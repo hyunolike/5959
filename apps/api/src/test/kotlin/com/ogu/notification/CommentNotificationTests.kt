@@ -68,7 +68,7 @@ class CommentNotificationTests {
         val commentId = loop.comment(commenter, postId)
 
         val rows = awaitCommentNotifications(author.id, 1)
-        support.awaitListenersIdle()
+        support.awaitListenersIdle(postId)
         assertThat(support.notificationsOf(author.id, *COMMENT_TYPES)).isEqualTo(rows)
         val row = rows.single()
         assertThat(row.type).isEqualTo("POST_COMMENT")
@@ -93,7 +93,7 @@ class CommentNotificationTests {
 
         awaitCommentNotifications(author.id, 2)
         awaitCommentNotifications(commenter.id, 1)
-        support.awaitListenersIdle()
+        support.awaitListenersIdle(postId)
         val toAuthor = support.notificationsOf(author.id, *COMMENT_TYPES)
         assertThat(toAuthor.map { it.type to it.commentId })
             .containsExactly("POST_COMMENT" to commentId, "POST_REPLY" to replyId)
@@ -118,7 +118,7 @@ class CommentNotificationTests {
         loop.comment(author, postId, parentId = othersComment)
 
         awaitCommentNotifications(commenter.id, 1)
-        support.awaitListenersIdle()
+        support.awaitListenersIdle(postId)
         assertThat(support.notificationsOf(author.id, *COMMENT_TYPES).map { it.commentId })
             .containsExactly(othersComment)
         // 글쓴이의 답글은 원 댓글 주인에게만 간다
@@ -135,7 +135,7 @@ class CommentNotificationTests {
         val replyId = loop.comment(replier, postId, parentId = authorsComment)
 
         awaitCommentNotifications(author.id, 1)
-        support.awaitListenersIdle()
+        support.awaitListenersIdle(postId)
         val row = support.notificationsOf(author.id, *COMMENT_TYPES).single()
         assertThat(row.type).isEqualTo("POST_REPLY")
         assertThat(row.commentId).isEqualTo(replyId)
@@ -151,7 +151,7 @@ class CommentNotificationTests {
         val replyId = loop.comment(commenter, postId, parentId = commentId)
 
         awaitCommentNotifications(author.id, 2)
-        support.awaitListenersIdle()
+        support.awaitListenersIdle(postId)
         assertThat(support.notificationsOf(author.id, *COMMENT_TYPES).map { it.type to it.commentId })
             .containsExactly("POST_COMMENT" to commentId, "POST_REPLY" to replyId)
         assertThat(support.notificationsOf(commenter.id)).isEmpty()
@@ -166,7 +166,7 @@ class CommentNotificationTests {
         val commentIds = (1..3).map { loop.comment(commenter, postId, "댓글 $it") }
 
         awaitCommentNotifications(author.id, 3)
-        support.awaitListenersIdle()
+        support.awaitListenersIdle(postId)
         val rows = support.notificationsOf(author.id, *COMMENT_TYPES)
         assertThat(rows.map { it.commentId }).containsExactlyInAnyOrderElementsOf(commentIds)
         assertThat(rows.map { it.type }).containsOnly("POST_COMMENT")
@@ -185,12 +185,13 @@ class CommentNotificationTests {
 
         scenario
             .publish(CommentCreated(livePost, deletedComment, commenter.id))
-            .andWaitForStateChange { support.incompletePublications() == 0 }
+            .andWaitForStateChange { support.incompletePublications(livePost) == 0 }
         scenario
             .publish(CommentCreated(deletedPost, commentOnDeletedPost, commenter.id))
-            .andWaitForStateChange { support.incompletePublications() == 0 }
+            .andWaitForStateChange { support.incompletePublications(deletedPost) == 0 }
 
-        support.awaitListenersIdle()
+        support.awaitListenersIdle(livePost)
+        support.awaitListenersIdle(deletedPost)
         assertThat(support.notificationsOf(author.id)).isEmpty()
         assertThat(support.lastSeq(author.id)).isZero()
     }
@@ -208,9 +209,9 @@ class CommentNotificationTests {
 
             scenario
                 .publish(CommentCreated(postId, commentId, commenter.id))
-                .andWaitForStateChange { support.incompletePublications() == 0 }
+                .andWaitForStateChange { support.incompletePublications(postId) == 0 }
 
-            support.awaitListenersIdle()
+            support.awaitListenersIdle(postId)
             assertThat(support.notificationsOf(author.id)).containsExactly(first)
             assertThat(support.lastSeq(author.id)).isEqualTo(first.seq)
             await()
