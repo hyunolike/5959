@@ -21,6 +21,8 @@ object SecurityPaths {
             "/actuator/health",
             // 004: Redis 상태만 따로 보는 헬스 그룹(research R5). 상세는 보이지 않고 상태만 준다
             "/actuator/health/realtime",
+            // 004: 실시간 알림 스트림. 브라우저가 Bearer 없이 일회용 연결 표(ticket)로 바로 붙는다(research R3)
+            "/api/v1/notifications/stream",
         )
 
     /** springdoc이 켜져 있을 때(`springdoc.api-docs.enabled`, 기본 true)만 공개한다. 운영은 이 설정이 false다. */

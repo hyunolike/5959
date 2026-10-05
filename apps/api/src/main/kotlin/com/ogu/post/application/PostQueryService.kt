@@ -6,9 +6,11 @@ import com.ogu.post.CommentSummary
 import com.ogu.post.PostApi
 import com.ogu.post.PostPage
 import com.ogu.post.PostPageQuery
+import com.ogu.post.PostPreview
 import com.ogu.post.PostSummary
 import com.ogu.post.domain.Post
 import com.ogu.post.domain.PostRepository
+import com.ogu.shared.text.Grapheme
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -65,6 +67,21 @@ class PostQueryService(
             }.optional()
             .orElse(null)
 
+    override fun previews(postIds: Collection<Long>): Map<Long, PostPreview> {
+        if (postIds.isEmpty()) return emptyMap()
+        return jdbcClient
+            .sql("select id, content, deleted_at is not null as deleted from posts where id in (:postIds)")
+            .param("postIds", postIds.toSet())
+            .query { rs, _ ->
+                PostPreview(
+                    postId = rs.getLong("id"),
+                    contentPreview = Grapheme.take(rs.getString("content"), PREVIEW_LENGTH),
+                    deleted = rs.getBoolean("deleted"),
+                )
+            }.list()
+            .associateBy { it.postId }
+    }
+
     private fun Post.toSummary(): PostSummary =
         PostSummary(
             postId = id,
@@ -79,6 +96,9 @@ class PostQueryService(
         )
 
     private companion object {
+        /** 알림 미리보기 글자 수(사람이 보는 글자 단위). */
+        const val PREVIEW_LENGTH = 50
+
         /** 살아 있는 글의 살아 있는 댓글. 답글이면 원 댓글 주인도 함께 읽는다(원 댓글을 지우면 답글도 함께 지워진다). */
         val FIND_COMMENT =
             """
