@@ -27,6 +27,12 @@ class GraphemeTest {
     }
 
     @Test
+    fun `상한을 주면 그 수에 이르는 즉시 세기를 멈춘다`() {
+        assertThat(Grapheme.count("가".repeat(1_000), limit = 501)).isEqualTo(501)
+        assertThat(Grapheme.count("오늘 👍", limit = 10)).isEqualTo(4)
+    }
+
+    @Test
     fun `서버 기본 로캘이 달라도 같은 수를 센다`() {
         val original = Locale.getDefault()
         val text = "오늘 👍 🇰🇷 ภาษาไทย"

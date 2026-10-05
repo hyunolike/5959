@@ -92,18 +92,21 @@ class Comment private constructor(
         /** 앞뒤 공백을 빼고 1~300자인지 검사한다. 어기면 400 INVALID_REQUEST. */
         fun normalizeContent(raw: String): String {
             val content = raw.trim()
-            val length = Grapheme.count(content)
-            if (length !in 1..CONTENT_MAX_LENGTH) {
-                throw BusinessException(
-                    ErrorCode.INVALID_REQUEST,
-                    "댓글은 앞뒤 공백을 뺀 1자 이상 ${CONTENT_MAX_LENGTH}자 이하여야 합니다.",
-                )
-            }
+            // 싼 검사부터 한다. 코드 포인트가 상한을 넘으면 글자 분할은 상한 바로 위까지만 한다. 메시지는 글자 수가
+            // 넘쳤는지에 따라 가르므로, 검사 순서를 바꿔도 오류 코드와 메시지는 그대로다.
             // 남용 방지(research R8): 결합 문자를 겹겹이 쌓은 글은 글자 수가 적어도 코드 포인트가 매우 많다.
             if (content.codePointCount(0, content.length) > CONTENT_MAX_CODE_POINTS) {
+                if (Grapheme.count(content, limit = CONTENT_MAX_LENGTH + 1) > CONTENT_MAX_LENGTH) throw tooLong()
                 throw BusinessException(ErrorCode.INVALID_REQUEST, "댓글에 결합 문자가 너무 많습니다.")
             }
+            if (Grapheme.count(content) !in 1..CONTENT_MAX_LENGTH) throw tooLong()
             return content
         }
+
+        private fun tooLong() =
+            BusinessException(
+                ErrorCode.INVALID_REQUEST,
+                "댓글은 앞뒤 공백을 뺀 1자 이상 ${CONTENT_MAX_LENGTH}자 이하여야 합니다.",
+            )
     }
 }

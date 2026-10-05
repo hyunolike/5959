@@ -9,12 +9,16 @@ import java.util.Locale
  * 않도록 [Locale.ROOT]로 고정한다.
  */
 object Grapheme {
-    fun count(text: String): Int {
+    /** [limit]에 이르면 더 세지 않고 [limit]을 돌려준다. 상한만 알면 되는 검사에서 긴 입력을 끝까지 나누지 않는다. */
+    fun count(
+        text: String,
+        limit: Int = Int.MAX_VALUE,
+    ): Int {
         if (text.isEmpty()) return 0
         val iterator = BreakIterator.getCharacterInstance(Locale.ROOT)
         iterator.setText(text)
         var count = 0
-        while (iterator.next() != BreakIterator.DONE) count++
+        while (count < limit && iterator.next() != BreakIterator.DONE) count++
         return count
     }
 
