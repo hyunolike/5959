@@ -109,7 +109,16 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   실패하면 DOWN, 한 번 성공하면 UP으로 바꾸고, 바뀔 때만 애플리케이션 이벤트 `RealtimeConnectionChanged(state)`를
   낸다. 구독 컨테이너의 오류 처리기는 리스너 예외만 받고 Lettuce는 끊긴 구독을 조용히 다시 붙이므로, 안전망 주기
   전환(60초와 5초)과 복구 뒤 따라잡기는 이 이벤트를 듣고 한다.
-  알림 번호(`NotificationSequenceRepository.next`)는 트랜잭션 안에서만 받는다. 읽는 쿼리는 보관 기간 조건을
+  알림 생성(004 US1)은 `notification/application/NotificationEventListener`가 `PostLiked`, `CommentCreated`,
+  `MonsterSpawned`, `MonsterDefeated`를 `@ApplicationModuleListener`(커밋 뒤 비동기, 새 트랜잭션)로 받아 한다. 그래서
+  알림 실패가 댓글, 공감, HP 반영을 되돌리지 않고(FR-003), 끝나지 않은 발행은 재전송된다. 글 노출은 `PostApi.find`
+  하나로만 보고, 댓글 받는 사람은 `PostApi.findComment`로 정한다. 쓰기는 `NotificationWriter`가 리스너 트랜잭션 안에서
+  한다: 멱등 키(`COMMENT:{id}`, `SPAWNED:{id}`, `DEFEATED:{id}`)가 이미 있으면 번호도 받지 않고 건너뛰고, 여러 회원이면
+  회원 ID 오름차순으로 번호를 받는다. 공감 묶음은 참여자 키에 걸리면 리스너 트랜잭션 전체를 rollback-only로 돌린다
+  (예외가 아니라서 발행은 완료로 남는다). 처치 알림은 글쓴이의 `SPAWNED`가 없으면 먼저 만들어 번호 순서를 고정한다.
+  `MonsterFactory`는 몬스터 저장 직후 `MonsterSpawned`를 내고, 소급 반영으로 처치되면 그 뒤에 `MonsterDefeated`가 나간다.
+  알림 번호(`NotificationSequenceRepository.next`)와 공감 묶음 갱신(`NotificationRepository.upsertLikeGroup`)은 트랜잭션
+  안에서만 부를 수 있다. 읽는 쿼리는 보관 기간 조건을
   `NotificationRetention.condition("n")`처럼 별칭을 붙여 쓴다.
 
 ## Core loop (`post`, `ai`, `emotion`, `monster`, `feed`)
@@ -119,10 +128,10 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
 
 | 모듈 | 공개 파사드와 타입 | 발행 이벤트 | 받는 이벤트 |
 |---|---|---|---|
-| `post` | `PostApi`(`find`, `page`, `likedPostIds`, `attacksSoFar`), `PostSummary`, `PostPage`, `Attack`, `AttackAction` | `PostCreated`(커밋 후), `PostLiked`, `CommentCreated`, `CommentLiked`(같은 트랜잭션) | - |
+| `post` | `PostApi`(`find`, `page`, `likedPostIds`, `attacksSoFar`, `findComment`), `PostSummary`, `PostPage`, `Attack`, `AttackAction`, `CommentSummary` | `PostCreated`(커밋 후), `PostLiked`, `CommentCreated`, `CommentLiked`(같은 트랜잭션) | - |
 | `ai` | `EmotionAnalyzer`, `EmotionClassification`, `EmotionAnalysisFailed` | - | - |
 | `emotion` | `EmotionApi`(`findByPostIds`), `EmotionView`, `AnalysisStatus` | `EmotionAnalyzed` | `PostCreated` |
-| `monster` | `MonsterApi`(`findByPostIds`, `hasCountedComment`), `MonsterView` | `MonsterDefeated` | `EmotionAnalyzed`, `PostLiked`, `CommentCreated`, `CommentLiked` |
+| `monster` | `MonsterApi`(`findByPostIds`, `hasCountedComment`, `damagerIds`), `MonsterView` | `MonsterSpawned`, `MonsterDefeated` | `EmotionAnalyzed`, `PostLiked`, `CommentCreated`, `CommentLiked` |
 | `feed` | 없음(HTTP API만) | - | - |
 
 `post`는 몬스터를 모른다. 글에 감정과 몬스터를 붙여 보여 주는 일은 `feed`가
