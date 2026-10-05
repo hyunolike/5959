@@ -430,6 +430,23 @@ class FlywayMigrationTests {
         insertTicket(memberId, session, expiresOffsetSeconds = 30)
     }
 
+    @Test
+    fun `연결 표는 없는 회원을 가리킬 수 없다`() {
+        assertThatThrownBy {
+            insertTicket(memberId = -1L, sessionId = UUID.randomUUID(), expiresOffsetSeconds = 30)
+        }.hasMessageContaining("sse_ticket_member_id_fkey")
+    }
+
+    @Test
+    fun `알림 전달 기록의 마지막 번호가 음수면 체크 제약으로 거부된다`() {
+        assertThatThrownBy {
+            jdbcTemplate.update(
+                "insert into notification_sequence (member_id, last_seq) values (?, -1)",
+                nextPostId(),
+            )
+        }.hasMessageContaining("notification_sequence_last_seq_check")
+    }
+
     private fun indexDef(name: String): String =
         jdbcTemplate.queryForObject("select indexdef from pg_indexes where indexname = ?", String::class.java, name)!!
 
