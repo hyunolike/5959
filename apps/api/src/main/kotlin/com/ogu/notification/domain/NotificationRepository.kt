@@ -8,7 +8,7 @@ import java.sql.Timestamp
 import java.time.Instant
 
 /**
- * 알림 `notification` 저장소. 읽는 쿼리와 읽음 처리는 모두 [NotificationRetention.CONDITION]으로 보관 기간 안의 알림만 본다.
+ * 알림 `notification` 저장소. 읽는 쿼리와 읽음 처리는 모두 [NotificationRetention.condition]으로 보관 기간 안의 알림만 본다.
  * 번호(`seq`)는 쓰기 전에 [NotificationSequenceRepository.next]로 받는다.
  */
 @Repository
@@ -48,6 +48,10 @@ class NotificationRepository(
      * 안 읽은 공감 묶음에 공감 하나를 더하고 그 묶음 ID를 돌려준다(research R7). 묶음이 있으면 인원을 하나 올리고 최근 회원,
      * 번호, 갱신 시각을 바꾼다. 없으면 인원 1로 새로 만든다. `ON CONFLICT`는 부분 유일 인덱스
      * `notification_unread_like_group_key`의 조건식을 그대로 되풀이한다. 다음에는 그 ID로 참여자를 넣는다.
+     *
+     * 보관 기간이 지났지만 정리 작업이 아직 지우지 않은 안 읽은 묶음은 부분 유일 인덱스를 계속 차지한다. 그대로 두면 새 공감이
+     * 보이지 않는 묶음에 더해지고 곧 함께 지워진다. 그래서 같은 트랜잭션에서 그 묶음을 먼저 읽음으로 돌려 자리를 비운다.
+     * 이미 화면에서 빠진 알림이라 받는 사람이 보는 것은 바뀌지 않는다.
      */
     fun upsertLikeGroup(
         receiverId: Long,
@@ -55,8 +59,20 @@ class NotificationRepository(
         actorId: Long,
         seq: Long,
         now: Instant,
-    ): Long =
+    ): Long {
         jdbcClient
+            .sql(
+                """
+                update notification n set read_at = :now
+                where n.receiver_id = :receiverId and n.post_id = :postId and n.type = 'POST_LIKE'
+                  and n.read_at is null and not (${NotificationRetention.condition("n")})
+                """.trimIndent(),
+            ).param("now", Timestamp.from(now))
+            .param("receiverId", receiverId)
+            .param("postId", postId)
+            .params(retention.params())
+            .update()
+        return jdbcClient
             .sql(
                 """
                 insert into notification (receiver_id, type, post_id, latest_actor_id, seq, created_at, updated_at)
@@ -75,6 +91,7 @@ class NotificationRepository(
             .param("now", Timestamp.from(now))
             .query(Long::class.java)
             .single()
+    }
 
     /** 목록 한 쪽. `seq` 내림차순 키셋이고 [beforeSeq]가 있으면 그보다 작은 번호만 본다. */
     fun findPage(
@@ -82,13 +99,13 @@ class NotificationRepository(
         beforeSeq: Long?,
         size: Int,
     ): List<Notification> {
-        val keyset = if (beforeSeq == null) "" else "and seq < :beforeSeq"
+        val keyset = if (beforeSeq == null) "" else "and n.seq < :beforeSeq"
         return jdbcClient
             .sql(
                 """
-                select * from notification
-                where receiver_id = :receiverId and ${NotificationRetention.CONDITION} $keyset
-                order by seq desc
+                select n.* from notification n
+                where n.receiver_id = :receiverId and ${NotificationRetention.condition("n")} $keyset
+                order by n.seq desc
                 limit :size
                 """.trimIndent(),
             ).param("receiverId", receiverId)
@@ -108,9 +125,9 @@ class NotificationRepository(
         jdbcClient
             .sql(
                 """
-                select * from notification
-                where receiver_id = :receiverId and seq > :afterSeq and ${NotificationRetention.CONDITION}
-                order by seq
+                select n.* from notification n
+                where n.receiver_id = :receiverId and n.seq > :afterSeq and ${NotificationRetention.condition("n")}
+                order by n.seq
                 limit :limit
                 """.trimIndent(),
             ).param("receiverId", receiverId)
@@ -125,8 +142,8 @@ class NotificationRepository(
         jdbcClient
             .sql(
                 """
-                select count(*) from notification
-                where receiver_id = :receiverId and read_at is null and ${NotificationRetention.CONDITION}
+                select count(*) from notification n
+                where n.receiver_id = :receiverId and n.read_at is null and ${NotificationRetention.condition("n")}
                 """.trimIndent(),
             ).param("receiverId", receiverId)
             .params(retention.params())
@@ -143,9 +160,9 @@ class NotificationRepository(
             jdbcClient
                 .sql(
                     """
-                    update notification set read_at = :now
-                    where id = :id and receiver_id = :receiverId and read_at is null
-                      and ${NotificationRetention.CONDITION}
+                    update notification n set read_at = :now
+                    where n.id = :id and n.receiver_id = :receiverId and n.read_at is null
+                      and ${NotificationRetention.condition("n")}
                     """.trimIndent(),
                 ).param("now", Timestamp.from(now))
                 .param("id", id)
@@ -158,8 +175,8 @@ class NotificationRepository(
                 .sql(
                     """
                     select exists (
-                        select 1 from notification
-                        where id = :id and receiver_id = :receiverId and ${NotificationRetention.CONDITION}
+                        select 1 from notification n
+                        where n.id = :id and n.receiver_id = :receiverId and ${NotificationRetention.condition("n")}
                     )
                     """.trimIndent(),
                 ).param("id", id)
@@ -179,9 +196,9 @@ class NotificationRepository(
         jdbcClient
             .sql(
                 """
-                update notification set read_at = :now
-                where receiver_id = :receiverId and read_at is null and seq <= :upToSeq
-                  and ${NotificationRetention.CONDITION}
+                update notification n set read_at = :now
+                where n.receiver_id = :receiverId and n.read_at is null and n.seq <= :upToSeq
+                  and ${NotificationRetention.condition("n")}
                 """.trimIndent(),
             ).param("now", Timestamp.from(now))
             .param("receiverId", receiverId)

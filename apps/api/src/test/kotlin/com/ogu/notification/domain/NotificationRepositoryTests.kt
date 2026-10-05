@@ -2,6 +2,7 @@ package com.ogu.notification.domain
 
 import com.ogu.TestcontainersConfiguration
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -46,17 +47,17 @@ class NotificationRepositoryTests {
         val b = nextId()
 
         assertThat(sequences.current(a)).isZero()
-        assertThat(sequences.next(a)).isEqualTo(1L)
-        assertThat(sequences.next(a)).isEqualTo(2L)
-        assertThat(sequences.next(b)).isEqualTo(1L)
+        assertThat(nextSeq(a)).isEqualTo(1L)
+        assertThat(nextSeq(a)).isEqualTo(2L)
+        assertThat(nextSeq(b)).isEqualTo(1L)
         assertThat(sequences.current(a)).isEqualTo(2L)
     }
 
     @Test
     fun `같은 받는 사람과 멱등 키의 알림은 한 번만 들어가고 두 번째는 null이다`() {
         val receiver = nextId()
-        val first = notifications.insertIfAbsent(comment(receiver, commentId = 1L, seq = sequences.next(receiver)))
-        val second = notifications.insertIfAbsent(comment(receiver, commentId = 1L, seq = sequences.next(receiver)))
+        val first = notifications.insertIfAbsent(comment(receiver, commentId = 1L, seq = nextSeq(receiver)))
+        val second = notifications.insertIfAbsent(comment(receiver, commentId = 1L, seq = nextSeq(receiver)))
 
         assertThat(first).isNotNull()
         assertThat(second).isNull()
@@ -72,9 +73,9 @@ class NotificationRepositoryTests {
         val postId = nextId()
         val now = now()
 
-        val group = notifications.upsertLikeGroup(receiver, postId, actorId = 101L, seq = sequences.next(receiver), now)
+        val group = notifications.upsertLikeGroup(receiver, postId, actorId = 101L, seq = nextSeq(receiver), now)
         assertThat(participants.insertIfAbsent(postId, likerId = 101L, notificationId = group, now)).isTrue()
-        val same = notifications.upsertLikeGroup(receiver, postId, actorId = 102L, seq = sequences.next(receiver), now)
+        val same = notifications.upsertLikeGroup(receiver, postId, actorId = 102L, seq = nextSeq(receiver), now)
         assertThat(participants.insertIfAbsent(postId, likerId = 102L, notificationId = same, now)).isTrue()
 
         assertThat(same).isEqualTo(group)
@@ -86,7 +87,7 @@ class NotificationRepositoryTests {
 
         // 읽은 뒤에 온 공감은 새 묶음이다
         notifications.markRead(group, receiver, now)
-        val fresh = notifications.upsertLikeGroup(receiver, postId, actorId = 103L, seq = sequences.next(receiver), now)
+        val fresh = notifications.upsertLikeGroup(receiver, postId, actorId = 103L, seq = nextSeq(receiver), now)
         assertThat(fresh).isNotEqualTo(group)
     }
 
@@ -95,7 +96,7 @@ class NotificationRepositoryTests {
         val receiver = nextId()
         val postId = nextId()
         val now = now()
-        val group = notifications.upsertLikeGroup(receiver, postId, actorId = 7L, seq = sequences.next(receiver), now)
+        val group = notifications.upsertLikeGroup(receiver, postId, actorId = 7L, seq = nextSeq(receiver), now)
 
         assertThat(participants.insertIfAbsent(postId, likerId = 7L, notificationId = group, now)).isTrue()
         assertThat(participants.insertIfAbsent(postId, likerId = 7L, notificationId = group, now)).isFalse()
@@ -106,7 +107,7 @@ class NotificationRepositoryTests {
         val receiver = nextId()
         val postId = nextId()
         val now = now()
-        val group = notifications.upsertLikeGroup(receiver, postId, actorId = 7L, seq = sequences.next(receiver), now)
+        val group = notifications.upsertLikeGroup(receiver, postId, actorId = 7L, seq = nextSeq(receiver), now)
         participants.insertIfAbsent(postId, likerId = 7L, notificationId = group, now)
 
         transactionTemplate.executeWithoutResult { status ->
@@ -139,7 +140,7 @@ class NotificationRepositoryTests {
     @Test
     fun `하나 읽음은 처음이면 MARKED, 다시 하면 ALREADY_READ, 남의 알림이면 NOT_FOUND다`() {
         val receiver = nextId()
-        val id = notifications.insertIfAbsent(comment(receiver, commentId = 5L, seq = sequences.next(receiver)))!!
+        val id = notifications.insertIfAbsent(comment(receiver, commentId = 5L, seq = nextSeq(receiver)))!!
 
         assertThat(notifications.markRead(id, receiver + 1, now())).isEqualTo(ReadOutcome.NOT_FOUND)
         assertThat(readAt(id)).isNull()
@@ -152,7 +153,7 @@ class NotificationRepositoryTests {
     fun `모두 읽음은 upToSeq 이하만 읽음으로 바꾼다`() {
         val receiver = nextId()
         repeat(3) {
-            notifications.insertIfAbsent(comment(receiver, commentId = it + 10L, seq = sequences.next(receiver)))
+            notifications.insertIfAbsent(comment(receiver, commentId = it + 10L, seq = nextSeq(receiver)))
         }
 
         assertThat(notifications.markAllRead(receiver, upToSeq = 2L, now())).isEqualTo(2)
@@ -163,7 +164,7 @@ class NotificationRepositoryTests {
     fun `목록은 seq 내림차순 키셋이고 재전송은 seq 오름차순이다`() {
         val receiver = nextId()
         repeat(5) {
-            notifications.insertIfAbsent(comment(receiver, commentId = it + 20L, seq = sequences.next(receiver)))
+            notifications.insertIfAbsent(comment(receiver, commentId = it + 20L, seq = nextSeq(receiver)))
         }
 
         assertThat(notifications.findPage(receiver, beforeSeq = null, size = 2).map { it.seq }).containsExactly(5L, 4L)
@@ -173,6 +174,47 @@ class NotificationRepositoryTests {
         assertThat(notifications.findAfterSeq(receiver, afterSeq = 2L, limit = 2).map { it.seq })
             .containsExactly(3L, 4L)
     }
+
+    @Test
+    fun `번호 받기는 트랜잭션 밖에서 부르면 거부된다(커밋 순서와 번호 순서를 같게 하는 행 잠금이 커밋까지 남아야 한다)`() {
+        val member = nextId()
+
+        // @Repository의 예외 변환이 IllegalStateException을 InvalidDataAccessApiUsageException으로 감싼다
+        assertThatThrownBy { sequences.next(member) }.hasMessageContaining("트랜잭션 안에서만")
+        assertThat(sequences.current(member)).isZero()
+        assertThat(nextSeq(member)).isEqualTo(1L)
+    }
+
+    @Test
+    fun `보관 기간이 지났지만 아직 지우지 않은 안 읽은 묶음이 있어도 새 공감은 보이는 새 묶음을 만든다`() {
+        val receiver = nextId()
+        val postId = nextId()
+        val expiredAt = now().minus(Duration.ofDays(90).plusMinutes(1))
+        val expired = notifications.upsertLikeGroup(receiver, postId, actorId = 7L, seq = nextSeq(receiver), expiredAt)
+        participants.insertIfAbsent(postId, likerId = 7L, notificationId = expired, expiredAt)
+        val lastDelivered = sequences.current(receiver)
+
+        val fresh =
+            transactionTemplate.execute {
+                notifications.upsertLikeGroup(receiver, postId, actorId = 8L, seq = sequences.next(receiver), now())
+            }!!
+
+        assertThat(fresh).isNotEqualTo(expired)
+        val visible = notifications.findPage(receiver, beforeSeq = null, size = 10).single()
+        assertThat(visible.id).isEqualTo(fresh)
+        assertThat(visible.actorCount).isEqualTo(1)
+        assertThat(visible.latestActorId).isEqualTo(8L)
+        assertThat(notifications.findAfterSeq(receiver, afterSeq = lastDelivered, limit = 10).map { it.id })
+            .containsExactly(fresh)
+        assertThat(notifications.countUnread(receiver)).isEqualTo(1L)
+        // 지난 묶음은 그대로 보관 기간 밖에 남아 정리 작업이 지운다
+        val old =
+            jdbcTemplate.queryForMap("select actor_count, read_at from notification where id = ?", expired)
+        assertThat(old["actor_count"]).isEqualTo(1)
+        assertThat(old["read_at"]).isNotNull()
+    }
+
+    private fun nextSeq(member: Long): Long = transactionTemplate.execute { sequences.next(member) }!!
 
     private fun comment(
         receiver: Long,
@@ -196,7 +238,7 @@ class NotificationRepositoryTests {
     ): Long {
         val createdAt = now().minus(age)
         return notifications.insertIfAbsent(
-            comment(receiver, commentId = nextId(), seq = sequences.next(receiver)).copy(createdAt = createdAt),
+            comment(receiver, commentId = nextId(), seq = nextSeq(receiver)).copy(createdAt = createdAt),
         )!!
     }
 

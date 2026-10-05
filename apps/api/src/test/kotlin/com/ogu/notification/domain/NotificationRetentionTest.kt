@@ -1,6 +1,7 @@
 package com.ogu.notification.domain
 
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import java.sql.Timestamp
 import java.time.Clock
@@ -32,7 +33,15 @@ class NotificationRetentionTest {
 
     @Test
     fun `SQL 조건은 기준 시각보다 늦게 만든 알림만 남긴다`() {
-        assertThat(NotificationRetention.CONDITION).isEqualTo("created_at > :retentionCutoff")
+        assertThat(NotificationRetention.condition("n")).isEqualTo("n.created_at > :retentionCutoff")
         assertThat(retention.params()).containsEntry("retentionCutoff", Timestamp.from(retention.cutoff()))
+    }
+
+    @Test
+    fun `SQL 조건의 별칭은 식별자만 받는다`() {
+        listOf("", "n.x", "n; drop table notification", "1n").forEach { alias ->
+            assertThatThrownBy { NotificationRetention.condition(alias) }
+                .isInstanceOf(IllegalArgumentException::class.java)
+        }
     }
 }
