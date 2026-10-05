@@ -153,7 +153,8 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   작게(예: 0) 되돌려 1분 주기 재전송이 다시 맡게 한다.
 - **운영 기동 조건.** AI 키 검사는 `shared/config/ProdAiSettingsCheck`에 있다.
   인증 쪽 검사(`ProdAuthSettingsCheck`)는 `member`에 있으니 둘을 함께 본다.
-  `prod`에서 `AI_API_KEY`가 비어 있으면 앱이 뜨지 않는다.
+  `prod`에서 `AI_API_KEY`나 `AI_MODEL`이 비어 있으면 앱이 뜨지 않는다. `AI_BASE_URL`은
+  비우면 바인딩에서 기본 주소로 돌아가고, compose도 같은 기본값을 채운다.
 - **글자 수.** 본문은 사람이 보는 글자 단위로 센다(`shared/text/Grapheme`,
   `BreakIterator`를 `Locale.ROOT`로 고정). 웹의 `Intl.Segmenter`와 같은 값을 낸다.
 - 경로 변수나 쿼리 파라미터 형식이 틀리면(`MethodArgumentTypeMismatchException`)

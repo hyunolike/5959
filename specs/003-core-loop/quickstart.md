@@ -117,4 +117,4 @@ Playwright Chromium에 CDP로 `Emulation.setCPUThrottlingRate`를 4로 걸고 Pi
 ## 운영 준비 (저장소 소유자)
 
 1. 감정 분석 공급자 키를 발급한다. 기본값은 NVIDIA NIM 무료 엔드포인트다(build.nvidia.com에서 API 키 발급).
-2. VM `/opt/ogu/.env`에 `AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL`을 넣는다(값이 비면 prod 기동이 실패하도록 구현한다).
+2. VM `/opt/ogu/.env`에 `AI_API_KEY`를 넣는다. 키가 비어 있으면 prod 기동이 실패한다. `AI_BASE_URL`과 `AI_MODEL`은 빼 두거나 비워 두면 `compose.prod.yaml`의 기본값(NVIDIA NIM 엔드포인트와 `qwen/qwen3-next-80b-a3b-instruct`)으로 뜨고, 다른 공급자를 쓸 때만 넣는다.
