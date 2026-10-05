@@ -36,6 +36,8 @@ dependencies {
     // 스타터의 OpenAiChatAutoConfiguration은 spring.ai.openai.* 자동설정이라 여기서는 끈다(아래 application.yml 참고).
     implementation("org.springframework.ai:spring-ai-starter-model-openai")
     implementation("io.github.resilience4j:resilience4j-spring-boot4:2.4.0")
+    // 004-notification-mypage 실시간 알림의 인스턴스 간 신호(research R5). Lettuce 클라이언트를 쓴다.
+    implementation("org.springframework.boot:spring-boot-starter-data-redis")
 
     runtimeOnly("org.springframework.modulith:spring-modulith-runtime")
     runtimeOnly("org.postgresql:postgresql")
@@ -51,6 +53,8 @@ dependencies {
     testImplementation("org.springframework.modulith:spring-modulith-docs")
     testImplementation("org.testcontainers:testcontainers-postgresql")
     testImplementation("org.testcontainers:testcontainers-junit-jupiter")
+    // Redis(redis:7.4-alpine) 컨테이너. 버전은 Spring Boot BOM이 관리하고 @ServiceConnection을 지원한다
+    testImplementation("com.redis:testcontainers-redis")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation("io.swagger.parser.v3:swagger-parser:2.1.48")

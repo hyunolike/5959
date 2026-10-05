@@ -21,6 +21,12 @@ spring:
         # 기본값 1이면 감정 분석 재시도(RetryScheduler, 한 번에 LLM 호출 최대 20건)가 도는 동안
         # 이벤트 재전송(EventPublicationResubmitter)과 로그인 기록 정리가 그 뒤에서 기다린다.
         size: 2
+  data:
+    redis:
+      # 004 실시간 알림의 인스턴스 간 신호(research R5). prod에서 REDIS_URL이 없거나 localhost면 기동하지 않는다
+      # (ProdAuthSettingsCheck). 명령이 1초 안에 끝나지 않으면 발행은 WARN만 남기고 넘어간다.
+      url: ${REDIS_URL:redis://localhost:6379}
+      timeout: 1s
   modulith:
     events:
       republish-outstanding-events-on-restart: true
@@ -55,6 +61,16 @@ resilience4j:
       emotionAnalyzer:
         timeout-duration: ${ogu.ai.timeout}
         cancel-running-future: true
+
+management:
+  endpoint:
+    health:
+      group:
+        # Redis 지표는 이 그룹(/actuator/health/realtime)으로만 본다. 기본 그룹(/actuator/health, 배포 롤백 기준)에서는
+        # RedisHealthGroupConfig가 뺀다. Redis가 내려가도 알림은 DB에 저장되므로 API를 롤백하지 않는다(research R5).
+        # 그룹 이름은 지표 이름(redis)과 같을 수 없다(Spring Boot가 이름 충돌로 기동을 막는다).
+        realtime:
+          include: redis
 
 springdoc:
   swagger-ui:
@@ -103,3 +119,19 @@ ogu:
       interval: 1m
       older-than: 2m
       max-attempts: 10 # 처음 처리를 포함한 시도 횟수. 넘으면 WARN 한 번 남기고 건너뛴다
+  # 004 실시간 알림(research R2~R5, R10)
+  notification:
+    heartbeat: 25s
+    connection-lifetime: 15m
+    max-connections-per-member: 5
+    retention: 90d
+    safety-drain-interval: 60s
+    outage-drain-interval: 5s
+    purge-cron: "0 0 4 * * *" # Asia/Seoul 기준 매일 새벽 4시
+    purge-batch-size: 1000
+    writer-threads: 4
+  stream-ticket:
+    ttl: 30s
+  sse:
+    # 스트림에 바로 붙는 브라우저의 출처(콤마 구분). prod에서 비면 기동하지 않는다(ProdAuthSettingsCheck)
+    allowed-origins: ${OGU_SSE_ALLOWED_ORIGINS:}

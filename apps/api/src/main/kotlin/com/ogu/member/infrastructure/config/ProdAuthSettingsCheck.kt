@@ -3,6 +3,7 @@ package com.ogu.member.infrastructure.config
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
 import org.springframework.core.env.Environment
+import java.net.URI
 
 /**
  * 운영(prod 프로필)에서 인증 비밀 값이 빠졌거나 저장소에 커밋된 개발용 값이면 기동을 막는다.
@@ -10,6 +11,8 @@ import org.springframework.core.env.Environment
  * 커밋된 JWT 비밀키로는 누구나 access 토큰을 위조할 수 있고, BFF 키가 비면 로그인 실패 제한이 BFF 주소 하나로 묶인다.
  * e2e 프로필과 동시에 켜는 조합도 막는다 — e2e의 JWT_SECRET/OGU_BFF_KEY는 infra/compose.e2e.yaml에
  * 저장소째 커밋된 고정 값이라, prod에 같이 켜지면 누구나 access 토큰을 위조할 수 있다.
+ * 004부터는 실시간 알림 설정도 본다. Redis 주소(REDIS_URL)가 없어 로컬 기본값(localhost)으로 떨어지면
+ * 인스턴스 간 신호가 조용히 끊기고, 스트림 허용 출처(OGU_SSE_ALLOWED_ORIGINS)가 비면 브라우저가 스트림에 붙지 못한다.
  */
 @Configuration(proxyBeanMethods = false)
 @Profile("prod")
@@ -34,6 +37,18 @@ class ProdAuthSettingsCheck(
             "prod 프로필에서 ogu.auth.bff-key(OGU_BFF_KEY)에 로컬 개발용 값을 쓸 수 없습니다."
         }
         checkOAuth(properties.oauth)
+        checkRealtime(environment)
+    }
+
+    private fun checkRealtime(environment: Environment) {
+        val redisUrl = environment.getProperty(REDIS_URL_PROPERTY).orEmpty().trim()
+        val redisHost = runCatching { URI(redisUrl).host }.getOrNull().orEmpty()
+        check(redisHost.isNotBlank() && redisHost !in LOCAL_HOSTS) {
+            "prod 프로필에서는 $REDIS_URL_PROPERTY(REDIS_URL)를 localhost가 아닌 Redis 주소로 설정해야 합니다."
+        }
+        check(!environment.getProperty(SSE_ALLOWED_ORIGINS_PROPERTY).isNullOrBlank()) {
+            "prod 프로필에서는 $SSE_ALLOWED_ORIGINS_PROPERTY(OGU_SSE_ALLOWED_ORIGINS)를 설정해야 합니다."
+        }
     }
 
     private fun checkOAuth(oauth: AuthProperties.OAuth) {
@@ -54,6 +69,10 @@ class ProdAuthSettingsCheck(
     }
 
     companion object {
+        private const val REDIS_URL_PROPERTY = "spring.data.redis.url"
+        private const val SSE_ALLOWED_ORIGINS_PROPERTY = "ogu.sse.allowed-origins"
+        private val LOCAL_HOSTS = setOf("localhost", "127.0.0.1", "[::1]", "::1")
+
         /** application-local.yml에 커밋된 값. ProdAuthSettingsCheckTest가 두 값이 같은지 확인한다. */
         const val LOCAL_DEV_JWT_SECRET = "local-dev-only-jwt-secret-do-not-use-in-production-0123456789"
 
