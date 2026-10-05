@@ -71,7 +71,7 @@ class LikeNotificationTests {
         loop.likePost(c, postId).andExpect(status().isOk)
         val second = awaitLikeGroup(author.id) { it.actorCount == 2 }
 
-        support.awaitListenersIdle()
+        support.awaitListenersIdle(postId)
         val rows = support.notificationsOf(author.id)
         assertThat(rows).containsExactly(second)
         assertThat(second.id).isEqualTo(first.id)
@@ -92,14 +92,14 @@ class LikeNotificationTests {
         val postId = loop.postWithoutMonster(author)
         loop.likePost(b, postId).andExpect(status().isOk)
         val group = awaitLikeGroup(author.id) { it.actorCount == 1 }
-        support.awaitListenersIdle()
+        support.awaitListenersIdle(postId)
 
         loop.unlikePost(b, postId).andExpect(status().isOk)
         loop.likePost(b, postId).andExpect(status().isOk)
         loop.unlikePost(b, postId).andExpect(status().isOk)
         loop.likePost(b, postId).andExpect(status().isOk)
 
-        support.awaitListenersIdle()
+        support.awaitListenersIdle(postId)
         assertThat(support.notificationsOf(author.id)).containsExactly(group)
         assertThat(support.lastSeq(author.id)).isEqualTo(group.seq)
         assertThat(support.participants(postId)).containsExactly(b.id to group.id)
@@ -120,7 +120,7 @@ class LikeNotificationTests {
         loop.unlikePost(b, postId).andExpect(status().isOk)
         loop.likePost(b, postId).andExpect(status().isOk)
 
-        support.awaitListenersIdle()
+        support.awaitListenersIdle(postId)
         val rows = support.notificationsOf(author.id)
         assertThat(rows.map { Triple(it.id, it.actorCount, it.read) })
             .containsExactly(Triple(readGroup.id, 1, true), Triple(newGroup.id, 1, false))
@@ -142,7 +142,7 @@ class LikeNotificationTests {
         loop.likeComment(author, commentId).andExpect(status().isOk)
 
         await().atMost(NotificationTestSupport.AWAIT_LIMIT).until { support.notificationsOf(author.id).isNotEmpty() }
-        support.awaitListenersIdle()
+        support.awaitListenersIdle(postId)
         assertThat(support.notificationsOf(author.id).map { it.type }).containsExactly("POST_COMMENT")
         assertThat(support.notificationsOf(commenter.id)).isEmpty()
     }
@@ -156,9 +156,9 @@ class LikeNotificationTests {
 
         scenario
             .publish(PostLiked(postId, fan.id))
-            .andWaitForStateChange { support.incompletePublications() == 0 }
+            .andWaitForStateChange { support.incompletePublications(postId) == 0 }
 
-        support.awaitListenersIdle()
+        support.awaitListenersIdle(postId)
         assertThat(support.notificationsOf(author.id)).isEmpty()
         assertThat(support.lastSeq(author.id)).isZero()
         assertThat(support.participants(postId)).isEmpty()

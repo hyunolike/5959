@@ -7,9 +7,7 @@ import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.data.redis.listener.ChannelTopic
 import org.springframework.data.redis.listener.RedisMessageListenerContainer
 import org.springframework.jdbc.core.JdbcTemplate
-import java.sql.Timestamp
 import java.time.Duration
-import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -36,7 +34,6 @@ class NotificationTestSupport(
     private val redis: StringRedisTemplate,
     private val container: RedisMessageListenerContainer,
 ) {
-    private val since = Instant.now().minusSeconds(1)
     private val received = CopyOnWriteArrayList<String>()
     private val listener = MessageListener { message, _ -> received += String(message.body) }
 
@@ -85,32 +82,32 @@ class NotificationTestSupport(
         jdbcTemplate.update("update notification set read_at = now() where id = ?", notificationId)
     }
 
-    /** 이 도우미를 만든 뒤 알림 리스너로 간 이벤트 발행이 모두 끝날 때까지 기다린다. */
-    fun awaitListenersIdle() {
-        await().atMost(AWAIT_LIMIT).pollInterval(POLL).until { incompletePublications() == 0 }
+    /** 이 글에 관한 이벤트 가운데 알림 리스너로 간 발행이 모두 끝날 때까지 기다린다. */
+    fun awaitListenersIdle(postId: Long) {
+        await().atMost(AWAIT_LIMIT).pollInterval(POLL).until { incompletePublications(postId) == 0 }
     }
 
-    fun incompletePublications(): Int =
-        jdbcTemplate.queryForObject(
-            """
-            select count(*) from event_publication
-            where listener_id like '%NotificationEventListener%' and completion_date is null
-              and publication_date >= ?
-            """.trimIndent(),
-            Int::class.java,
-            Timestamp.from(since),
-        )!!
+    /** 이 글(`postId`)에 관한 이벤트 가운데 알림 리스너로 가서 아직 끝나지 않은 발행 수. 모든 알림 이벤트는 글 ID를 싣는다. */
+    fun incompletePublications(postId: Long): Int = incompletePublications("postId", postId)
 
-    /** 알림 리스너로 간 이벤트 가운데 직렬화한 내용에 [fragment]가 들어 있고 아직 끝나지 않은 발행 수. */
-    fun incompletePublicationsWith(fragment: String): Int =
+    /**
+     * 알림 리스너로 가서 아직 끝나지 않은 발행 가운데 직렬화한 이벤트의 [field] 값이 [value]인 것의 수. 필드 순서와
+     * 공백에 기대지 않도록 JSON으로 읽어 비교한다. 다른 테스트가 남긴 발행은 ID가 달라 섞이지 않는다.
+     */
+    fun incompletePublications(
+        field: String,
+        value: Long,
+    ): Int =
         jdbcTemplate.queryForObject(
             """
             select count(*) from event_publication
-            where listener_id like '%NotificationEventListener%' and completion_date is null
-              and serialized_event like ?
+            where listener_id like 'com.ogu.notification.application.NotificationEventListener.%'
+              and completion_date is null
+              and (serialized_event::jsonb ->> ?) = ?
             """.trimIndent(),
             Int::class.java,
-            "%$fragment%",
+            field,
+            value.toString(),
         )!!
 
     /** 알림 채널 구독을 건다. 구독이 실제로 걸릴 때까지 표지를 보내 본다. */
