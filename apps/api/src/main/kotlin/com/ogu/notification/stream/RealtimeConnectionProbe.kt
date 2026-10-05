@@ -8,10 +8,11 @@ import org.springframework.stereotype.Component
 class RealtimeConnectionProbe(
     private val state: RealtimeConnectionState,
 ) {
-    @Scheduled(initialDelay = PROBE_INTERVAL_MS, fixedDelay = PROBE_INTERVAL_MS)
+    @Scheduled(initialDelayString = PROBE_INTERVAL, fixedDelayString = PROBE_INTERVAL)
     fun probe() = state.probe()
 
     companion object {
-        const val PROBE_INTERVAL_MS = 5_000L
+        /** 기본 5초. 테스트는 `ogu.notification.probe-interval`로 줄인다. */
+        const val PROBE_INTERVAL = "\${ogu.notification.probe-interval:5s}"
     }
 }
