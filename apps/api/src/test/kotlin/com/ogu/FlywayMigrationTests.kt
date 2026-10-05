@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.jdbc.core.JdbcTemplate
+import java.util.UUID
 import java.util.concurrent.atomic.AtomicLong
 
 @SpringBootTest
@@ -214,6 +215,271 @@ class FlywayMigrationTests {
         )
     }
 
+    @Test
+    fun `V4 마이그레이션이 알림, 전달 기록, 공감 묶음 참여자, 연결 표 테이블과 인덱스를 만든다`() {
+        val tableNames =
+            jdbcTemplate.queryForList(
+                "select table_name from information_schema.tables where table_schema = 'public' and table_name in " +
+                    "('notification', 'notification_sequence', 'like_notification_participant', 'sse_ticket')",
+                String::class.java,
+            )
+        assertThat(tableNames).containsExactlyInAnyOrder(
+            "notification",
+            "notification_sequence",
+            "like_notification_participant",
+            "sse_ticket",
+        )
+
+        val indexes =
+            jdbcTemplate.queryForList(
+                "select indexname from pg_indexes where schemaname = 'public'",
+                String::class.java,
+            )
+        assertThat(indexes).contains(
+            "posts_author_live_idx",
+            "comments_author_live_idx",
+            "post_likes_member_created_idx",
+            "monster_hp_log_member_monster_idx",
+            "notification_unread_like_group_key",
+            "notification_unread_idx",
+            "notification_created_at_idx",
+            "like_notification_participant_notification_id_idx",
+            "sse_ticket_expires_at_idx",
+        )
+        assertThat(indexDef("posts_author_live_idx"))
+            .contains("(author_id, id DESC)")
+            .contains("WHERE (deleted_at IS NULL)")
+        assertThat(indexDef("comments_author_live_idx"))
+            .contains("(author_id, id DESC)")
+            .contains("WHERE (deleted_at IS NULL)")
+        assertThat(indexDef("post_likes_member_created_idx")).contains("(member_id, created_at DESC, post_id DESC)")
+        assertThat(indexDef("monster_hp_log_member_monster_idx")).contains("(member_id, monster_id)")
+        assertThat(indexDef("notification_unread_like_group_key"))
+            .startsWith("CREATE UNIQUE INDEX")
+            .contains("(receiver_id, post_id)")
+            .contains("'POST_LIKE'")
+            .contains("read_at IS NULL")
+        assertThat(indexDef("notification_unread_idx")).contains("(receiver_id)").contains("WHERE (read_at IS NULL)")
+    }
+
+    @Test
+    fun `V4 제약에는 모두 이름이 붙어 있다`() {
+        val constraints =
+            jdbcTemplate.queryForList(
+                "select conname from pg_constraint where conname in " +
+                    "('notification_receiver_seq_key', 'notification_receiver_dedup_key', " +
+                    "'notification_sequence_pkey', 'like_notification_participant_pkey', " +
+                    "'like_notification_participant_notification_id_fkey', 'sse_ticket_pkey', " +
+                    "'sse_ticket_member_id_fkey', 'sse_ticket_expiry_check')",
+                String::class.java,
+            )
+        assertThat(constraints).containsExactlyInAnyOrder(
+            "notification_receiver_seq_key",
+            "notification_receiver_dedup_key",
+            "notification_sequence_pkey",
+            "like_notification_participant_pkey",
+            "like_notification_participant_notification_id_fkey",
+            "sse_ticket_pkey",
+            "sse_ticket_member_id_fkey",
+            "sse_ticket_expiry_check",
+        )
+    }
+
+    @Test
+    fun `안 읽은 공감 묶음은 같은 받는 사람과 글에 하나뿐이고, 읽은 뒤에는 새 묶음을 허용한다`() {
+        val receiverId = nextPostId()
+        val postId = nextPostId()
+        val first = insertNotification(receiverId, type = "POST_LIKE", postId = postId, dedupKey = null)
+
+        assertThatThrownBy {
+            insertNotification(receiverId, type = "POST_LIKE", postId = postId, dedupKey = null)
+        }.hasMessageContaining("notification_unread_like_group_key")
+
+        jdbcTemplate.update("update notification set read_at = now() where id = ?", first)
+        insertNotification(receiverId, type = "POST_LIKE", postId = postId, dedupKey = null)
+    }
+
+    @Test
+    fun `안 읽은 공감 묶음 유일 인덱스는 같은 조건식을 되풀이한 ON CONFLICT로 쓸 수 있다`() {
+        val receiverId = nextPostId()
+        val postId = nextPostId()
+        insertNotification(receiverId, type = "POST_LIKE", postId = postId, dedupKey = null)
+
+        val updated =
+            jdbcTemplate.update(
+                """
+                insert into notification (receiver_id, type, post_id, latest_actor_id, seq, created_at, updated_at)
+                values (?, 'POST_LIKE', ?, 7, ?, now(), now())
+                on conflict (receiver_id, post_id) where type = 'POST_LIKE' and read_at is null
+                do update set actor_count = notification.actor_count + 1
+                """.trimIndent(),
+                receiverId,
+                postId,
+                SEQ.incrementAndGet(),
+            )
+
+        assertThat(updated).isEqualTo(1)
+        val actorCount =
+            jdbcTemplate.queryForObject(
+                "select actor_count from notification where receiver_id = ? and post_id = ?",
+                Int::class.java,
+                receiverId,
+                postId,
+            )
+        assertThat(actorCount).isEqualTo(2)
+    }
+
+    @Test
+    fun `같은 받는 사람에게 같은 멱등 키의 알림은 두 번 들어가지 않는다`() {
+        val receiverId = nextPostId()
+        insertNotification(receiverId, type = "POST_COMMENT", postId = nextPostId(), dedupKey = "COMMENT:1")
+
+        assertThatThrownBy {
+            insertNotification(receiverId, type = "POST_REPLY", postId = nextPostId(), dedupKey = "COMMENT:1")
+        }.hasMessageContaining("notification_receiver_dedup_key")
+    }
+
+    @Test
+    fun `같은 받는 사람의 seq는 겹칠 수 없다`() {
+        val receiverId = nextPostId()
+        insertNotification(receiverId, type = "POST_COMMENT", postId = 1L, dedupKey = "COMMENT:1", seq = 1L)
+
+        assertThatThrownBy {
+            insertNotification(receiverId, type = "POST_COMMENT", postId = 1L, dedupKey = "COMMENT:2", seq = 1L)
+        }.hasMessageContaining("notification_receiver_seq_key")
+    }
+
+    @Test
+    fun `공감 묶음이 아닌 알림의 actor_count가 1이 아니면 체크 제약으로 거부된다`() {
+        assertThatThrownBy {
+            insertNotification(
+                nextPostId(),
+                type = "POST_COMMENT",
+                postId = nextPostId(),
+                dedupKey = "COMMENT:9",
+                actorCount = 2,
+            )
+        }.hasMessageContaining("notification_actor_count_like_only_check")
+    }
+
+    @Test
+    fun `actor_count가 0이면 체크 제약으로 거부된다`() {
+        assertThatThrownBy {
+            insertNotification(nextPostId(), type = "POST_LIKE", postId = nextPostId(), dedupKey = null, actorCount = 0)
+        }.hasMessageContaining("notification_actor_count_check")
+    }
+
+    @Test
+    fun `공감 묶음에 멱등 키가 있으면 체크 제약으로 거부된다`() {
+        assertThatThrownBy {
+            insertNotification(nextPostId(), type = "POST_LIKE", postId = nextPostId(), dedupKey = "LIKE:1")
+        }.hasMessageContaining("notification_like_dedup_key_check")
+    }
+
+    @Test
+    fun `알림 종류 7종 밖의 type은 체크 제약으로 거부된다`() {
+        assertThatThrownBy {
+            insertNotification(nextPostId(), type = "COMMENT_LIKE", postId = nextPostId(), dedupKey = "X:1")
+        }.hasMessageContaining("notification_type_check")
+    }
+
+    @Test
+    fun `알림을 지우면 공감 묶음 참여자 행이 함께 지워진다`() {
+        val postId = nextPostId()
+        val notificationId = insertNotification(nextPostId(), type = "POST_LIKE", postId = postId, dedupKey = null)
+        jdbcTemplate.update(
+            "insert into like_notification_participant (post_id, liker_id, notification_id, created_at) " +
+                "values (?, 7, ?, now())",
+            postId,
+            notificationId,
+        )
+
+        jdbcTemplate.update("delete from notification where id = ?", notificationId)
+
+        val left =
+            jdbcTemplate.queryForObject(
+                "select count(*) from like_notification_participant where post_id = ?",
+                Int::class.java,
+                postId,
+            )
+        assertThat(left).isZero()
+    }
+
+    @Test
+    fun `공감 묶음 참여자의 notification_id가 NULL이면 거부된다`() {
+        assertThatThrownBy {
+            jdbcTemplate.update(
+                "insert into like_notification_participant (post_id, liker_id, notification_id, created_at) " +
+                    "values (?, 7, null, now())",
+                nextPostId(),
+            )
+        }.hasMessageContaining("null value in column \"notification_id\"")
+    }
+
+    @Test
+    fun `연결 표의 만료 시각이 만든 시각보다 늦지 않으면 체크 제약으로 거부된다`() {
+        val memberId = insertMember(authMethod = "KAKAO", email = "ticket@ogu.dev")
+        val session = UUID.randomUUID()
+
+        assertThatThrownBy {
+            insertTicket(memberId, session, expiresOffsetSeconds = 0)
+        }.hasMessageContaining("sse_ticket_expiry_check")
+        assertThatThrownBy {
+            insertTicket(memberId, session, expiresOffsetSeconds = -1)
+        }.hasMessageContaining("sse_ticket_expiry_check")
+        insertTicket(memberId, session, expiresOffsetSeconds = 30)
+    }
+
+    private fun indexDef(name: String): String =
+        jdbcTemplate.queryForObject("select indexdef from pg_indexes where indexname = ?", String::class.java, name)!!
+
+    @Suppress("LongParameterList")
+    private fun insertNotification(
+        receiverId: Long,
+        type: String,
+        postId: Long,
+        dedupKey: String?,
+        actorCount: Int = 1,
+        seq: Long = SEQ.incrementAndGet(),
+    ): Long =
+        jdbcTemplate.queryForObject(
+            """
+            insert into notification (receiver_id, type, post_id, latest_actor_id, actor_count, dedup_key, seq,
+                                      created_at, updated_at)
+            values (?, ?, ?, 7, ?, ?, ?, now(), now())
+            returning id
+            """.trimIndent(),
+            Long::class.java,
+            receiverId,
+            type,
+            postId,
+            actorCount,
+            dedupKey,
+            seq,
+        )!!
+
+    private fun insertTicket(
+        memberId: Long,
+        sessionId: UUID,
+        expiresOffsetSeconds: Int,
+    ) {
+        jdbcTemplate.update(
+            """
+            insert into sse_ticket (token_hash, member_id, session_id, created_at, expires_at)
+            values (?, ?, ?, timestamptz '2026-01-01 00:00:00+00',
+                    timestamptz '2026-01-01 00:00:00+00' + make_interval(secs => ?))
+            """.trimIndent(),
+            UUID
+                .randomUUID()
+                .toString()
+                .replace("-", "")
+                .padEnd(64, '0'),
+            memberId,
+            sessionId,
+            expiresOffsetSeconds,
+        )
+    }
+
     private fun nextPostId(): Long = POST_ID_SEQUENCE.incrementAndGet()
 
     private fun insertMonster(
@@ -271,5 +537,6 @@ class FlywayMigrationTests {
     companion object {
         // 같은 컨텍스트를 공유하는 다른 테스트와 겹치지 않도록 큰 값에서 시작한다
         private val POST_ID_SEQUENCE = AtomicLong(9_000_000_000L + System.nanoTime() % 1_000_000_000L)
+        private val SEQ = AtomicLong()
     }
 }
