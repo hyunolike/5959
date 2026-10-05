@@ -367,4 +367,45 @@ describe("usePostDetailQuery 폴링", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(result.current.detail.data?.postId).toBe(7);
   });
+
+  it("지운 뒤 상세 캐시를 지우고 같은 글을 다시 열면 다시 불러와 404(삭제된 글)로 끝난다", async () => {
+    const notFound = jsonResponse(
+      {
+        success: false,
+        data: null,
+        error: { code: "POST_NOT_FOUND", message: "글이 없습니다." },
+      },
+      404,
+    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(ok(detail()))
+      .mockResolvedValue(notFound);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const first = renderHook(
+      () => ({
+        detail: usePostDetailQuery(7),
+        remove: useMutation({
+          mutationKey: MUTATION_KEYS.deletePost(7),
+          mutationFn: () => Promise.resolve(),
+        }),
+      }),
+      { wrapper },
+    );
+    await advance(0);
+    await act(async () => first.result.current.remove.mutate());
+    await advance(0);
+    expect(first.result.current.remove.isSuccess).toBe(true);
+    first.unmount();
+    // 화면을 떠나면 forgetDeletedPost가 상세 캐시를 지운다. 성공한 뮤테이션은 캐시에 남아 있다.
+    queryClient.removeQueries({ queryKey: ["posts", 7] });
+
+    const again = renderHook(() => usePostDetailQuery(7), { wrapper });
+    await advance(0);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(again.result.current.error).toBeInstanceOf(ApiError);
+    expect((again.result.current.error as ApiError).status).toBe(404);
+    expect(again.result.current.isPending).toBe(false);
+  });
 });

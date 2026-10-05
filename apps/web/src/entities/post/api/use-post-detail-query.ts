@@ -85,7 +85,9 @@ function useDeletingOrDeleted(postId: number): boolean {
 
 /**
  * 글 상세. 몬스터가 생길 때까지 R10 간격으로 다시 불러온다(FR-015, US1-AC3).
- * 이 글을 지우고 있거나 지운 뒤에는 다시 불러오지 않는다.
+ * 이 글을 지우고 있거나 지운 뒤에는 폴링하지 않는다. 쿼리 자체는 끄지 않는다. 성공한 삭제
+ * 뮤테이션은 gcTime(5분) 동안 캐시에 남으므로, 끄면 그동안 같은 글을 다시 열 때 데이터 없이
+ * 멈춘 쿼리가 되어 "삭제된 글이에요" 대신 로딩만 보인다.
  */
 export function usePostDetailQuery(postId: number) {
   const [startedAt] = useState(() => Date.now());
@@ -94,7 +96,6 @@ export function usePostDetailQuery(postId: number) {
   return useQuery({
     queryKey: QUERY_KEYS.postDetail(postId),
     queryFn: () => fetchPostDetail(postId),
-    enabled: !deleting,
     refetchInterval: (query) =>
       deleting || isTerminalError(query.state.error)
         ? false
