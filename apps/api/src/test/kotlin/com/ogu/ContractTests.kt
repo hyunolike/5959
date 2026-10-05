@@ -17,7 +17,11 @@ import org.springframework.context.annotation.Import
  * 아직 구현하지 않은 오퍼레이션은 [pendingPaths]에 둔다(002-auth에서는 US1에서 가입, 내 프로필, 닉네임
  * 확인, 온보딩을, US2에서 로그인과 로그아웃을, US3에서 외부 계정 로그인을, US4에서 refresh를 뺐다 — 전부
  * 구현되어 지금은 비어 있다. 003-core-loop이 추가한 고민 글/피드/공감/댓글 13개 오퍼레이션도 각 스토리가
- * 컨트롤러를 추가할 때까지 여기 두었고 US4로 모두 빠졌다).
+ * 컨트롤러를 추가할 때까지 여기 두었고 US4로 모두 빠졌다). 004-notification-mypage가 추가한 알림, 마이페이지,
+ * 프로필 수정 11개 오퍼레이션도 각 스토리가 컨트롤러를 추가할 때까지 여기 둔다.
+ * 실시간 스트림(`GET /api/v1/notifications/stream`)은 응답 형식(`text/event-stream`)까지만 계약으로 비교하고,
+ * 그 안의 SSE 이벤트 형식(`notification`, `unread-count`, 하트비트)은 보지 않는다. 이벤트 형식은 SSE 통합 테스트가
+ * 맡는다(004 research R15).
  * 각 스토리가 컨트롤러를 추가할 때마다 해당 오퍼레이션을 [pendingPaths]에서 뺀다.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -69,7 +73,22 @@ class ContractTests {
          * 003-core-loop이 계약에 더한 13개 중 아직 구현하지 않은 오퍼레이션이다(US1에서 createPost, getPostDetail을,
          * US2에서 getFeed를, US3에서 공감과 취소, 댓글 목록과 작성, 댓글 공감과 취소를,
          * US4에서 글과 댓글 수정, 삭제를 빼서 지금은 비어 있다).
+         * 004-notification-mypage가 더한 11개는 알림(US1, US2), 마이페이지(US3, US4), 프로필 수정(US5)을
+         * 구현하는 스토리가 각자 뺀다.
          */
-        val pendingPaths = emptySet<String>()
+        val pendingPaths =
+            setOf(
+                "GET /api/v1/notifications", // getNotifications
+                "PUT /api/v1/notifications/{notificationId}/read", // markNotificationRead
+                "POST /api/v1/notifications/read-all", // markAllNotificationsRead
+                "GET /api/v1/notifications/unread-count", // getUnreadNotificationCount
+                "POST /api/v1/notifications/stream-tickets", // issueStreamTicket
+                "GET /api/v1/notifications/stream", // streamNotifications
+                "PATCH /api/v1/members/me", // updateMyProfile
+                "GET /api/v1/members/me/posts", // getMyPosts
+                "GET /api/v1/members/me/comments", // getMyComments
+                "GET /api/v1/members/me/liked-posts", // getMyLikedPosts
+                "GET /api/v1/members/me/emotion-stats", // getMyEmotionStats
+            )
     }
 }

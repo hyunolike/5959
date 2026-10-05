@@ -103,7 +103,8 @@ export interface paths {
     delete?: never;
     options?: never;
     head?: never;
-    patch?: never;
+    /** 프로필 수정 (US5-AC1~AC4). 온보딩을 마친 회원만 */
+    patch: operations["updateMyProfile"];
     trace?: never;
   };
   "/api/v1/members/nickname-availability": {
@@ -306,6 +307,191 @@ export interface paths {
     post?: never;
     /** 댓글 공감 취소 (US3-AC6) */
     delete: operations["unlikeComment"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/notifications": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 알림 목록 (US2-AC1, AC2). 최신순 20개씩, 보관 기간(90일) 안의 것만 */
+    get: operations["getNotifications"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/notifications/{notificationId}/read": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        notificationId: components["parameters"]["NotificationId"];
+      };
+      cookie?: never;
+    };
+    get?: never;
+    /** 알림 하나 읽음 (US2-AC3, AC6). 이미 읽었어도 204 */
+    put: operations["markNotificationRead"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/notifications/read-all": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 모두 읽음 (US2-AC4). upToSeq 이하만 바꾼다 */
+    post: operations["markAllNotificationsRead"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/notifications/unread-count": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 안 읽은 알림 수 (FR-009) */
+    get: operations["getUnreadNotificationCount"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/notifications/stream-tickets": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 실시간 연결용 일회용 티켓 발급 (FR-006). BFF 전용 라우트만 부른다 */
+    post: operations["issueStreamTicket"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/notifications/stream": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 실시간 알림 스트림 (US1-AC1~AC8, FR-004~FR-006)
+     * @description Server-Sent Events. 브라우저가 API 도메인에 바로 붙는다. Bearer는 받지 않고 ticket으로 인증한다.
+     *     CORS는 OGU_SSE_ALLOWED_ORIGINS의 출처만 허용하고 자격 증명은 쓰지 않는다.
+     *
+     *     이벤트 형식:
+     *     - `event: notification`, `id: {seq}`, `data: StreamNotificationEvent(JSON)`.
+     *       새 알림이나 묶음 갱신이다. lastEventId 이후 것은 연결 직후 seq 순서로 다시 보낸다.
+     *     - `event: unread-count`, id 없음, `data: StreamUnreadCountEvent(JSON)`. 읽음 처리로 수가 바뀌었을 때.
+     *     - `: hb` 주석 줄. 25초마다 보내는 하트비트다.
+     *
+     *     서버는 15분 뒤 연결을 닫는다. 웹은 새 티켓과 마지막 id로 다시 붙는다(research R14).
+     *     회원 한 명의 동시 연결은 5개까지이고, 넘으면 가장 오래된 연결을 닫는다.
+     */
+    get: operations["streamNotifications"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/members/me/posts": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 내가 쓴 글 (US3-AC1, AC4). 최신순, 지운 글 제외 */
+    get: operations["getMyPosts"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/members/me/comments": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 내 댓글과 답글 (US3-AC2, AC4). 최신순, 지운 댓글과 지운 글의 댓글 제외 */
+    get: operations["getMyComments"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/members/me/liked-posts": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 공감한 글 (US3-AC3, AC4). 공감한 시각의 최신순, 취소한 공감과 지운 글 제외 */
+    get: operations["getMyLikedPosts"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/members/me/emotion-stats": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 감정 통계 (US4-AC1~AC5) */
+    get: operations["getMyEmotionStats"];
+    put?: never;
+    post?: never;
+    delete?: never;
     options?: never;
     head?: never;
     patch?: never;
@@ -515,6 +701,162 @@ export interface components {
       likeCount: number;
       likedByMe: boolean;
     };
+    /**
+     * @description POST_COMMENT 내 글의 댓글, POST_REPLY 내 글의 답글, COMMENT_REPLY 내 댓글의 답글,
+     *     POST_LIKE 내 글 공감(묶음), MONSTER_SPAWNED 몬스터 생성, MONSTER_DEFEATED 내 몬스터 처치,
+     *     MONSTER_DEFEATED_TOGETHER 함께 공격한 몬스터 처치
+     * @enum {string}
+     */
+    NotificationType:
+      | "POST_COMMENT"
+      | "POST_REPLY"
+      | "COMMENT_REPLY"
+      | "POST_LIKE"
+      | "MONSTER_SPAWNED"
+      | "MONSTER_DEFEATED"
+      | "MONSTER_DEFEATED_TOGETHER";
+    NotificationActor: {
+      /** Format: int64 */
+      id: number;
+      /** @description 지금 닉네임 */
+      nickname: string;
+    };
+    NotificationPost: {
+      /** Format: int64 */
+      postId: number;
+      /** @description 앞 50글자 */
+      contentPreview: string;
+    };
+    Notification: {
+      /** Format: int64 */
+      notificationId: number;
+      /**
+       * Format: int64
+       * @description 회원별 전달 순서 번호. SSE 이벤트 id와 같고, 모두 읽음의 upToSeq로 쓴다
+       */
+      seq: number;
+      type: components["schemas"]["NotificationType"];
+      /** Format: int64 */
+      postId: number;
+      /** @description 글이 지워졌으면 null. 화면은 "삭제된 글"로 보인다(US2-AC5) */
+      post: components["schemas"]["NotificationPost"] | null;
+      /**
+       * Format: int64
+       * @description 댓글과 답글 알림일 때만 있다
+       */
+      commentId?: number | null;
+      /** @description 가장 최근 행동한 회원. 몬스터 알림은 null */
+      actor: components["schemas"]["NotificationActor"] | null;
+      /** @description 공감 묶음의 인원 수. 다른 종류는 1 */
+      actorCount: number;
+      read: boolean;
+      /** Format: date-time */
+      createdAt: string;
+      /**
+       * Format: date-time
+       * @description 마지막 갱신 시각. 공감 묶음은 마지막 공감 시각이다
+       */
+      updatedAt: string;
+    };
+    NotificationPage: {
+      /** @description seq 내림차순(최신순). 묶인 공감은 마지막 공감 기준으로 위에 온다 */
+      items: components["schemas"]["Notification"][];
+      nextCursor: string | null;
+    };
+    UnreadCount: {
+      /** @description 안 읽은 알림 수. 99를 넘으면 화면이 "99+"로 보인다 */
+      count: number;
+      /**
+       * Format: int64
+       * @description 이 회원의 마지막 전달 번호. 알림이 없으면 0
+       */
+      latestSeq: number;
+    };
+    ReadAllRequest: {
+      /**
+       * Format: int64
+       * @description 이 번호 이하의 안 읽은 알림만 읽음으로 바꾼다(US2-AC4)
+       */
+      upToSeq: number;
+    };
+    ReadAllResult: {
+      /** @description 이번에 읽음이 된 알림 수 */
+      updated: number;
+      /** @description 처리 뒤 남은 안 읽은 수 */
+      unreadCount: number;
+    };
+    StreamTicket: {
+      /** @description 32바이트 난수의 base64url. 30초 안에 한 번만 쓸 수 있다 */
+      ticket: string;
+      /** Format: date-time */
+      expiresAt: string;
+    };
+    /**
+     * @description SSE `event: notification`의 data. SSE `id`는 notification.seq다.
+     *     웹은 notificationId로 덮어쓰고 그 항목을 맨 위로 올린다(묶음 갱신 포함).
+     */
+    StreamNotificationEvent: {
+      notification: components["schemas"]["Notification"];
+      unreadCount: number;
+    };
+    /** @description SSE `event: unread-count`의 data. id가 없고 재전송하지 않는다 */
+    StreamUnreadCountEvent: {
+      unreadCount: number;
+    };
+    MyComment: {
+      /** Format: int64 */
+      commentId: number;
+      /** Format: int64 */
+      postId: number;
+      /** @description 댓글이 달린 글의 앞 50글자 */
+      postContentPreview: string;
+      content: string;
+      /** @description 답글이면 true */
+      reply: boolean;
+      /** Format: date-time */
+      createdAt: string;
+    };
+    MyCommentPage: {
+      items: components["schemas"]["MyComment"][];
+      nextCursor: string | null;
+    };
+    EmotionShare: {
+      emotion: components["schemas"]["EmotionType"];
+      count: number;
+      /** @description 정수 퍼센트. 다섯 항목의 합은 100이고 몬스터가 없으면 모두 0이다(US4-AC1) */
+      percent: number;
+    };
+    WeeklyEmotionCount: {
+      /**
+       * Format: date
+       * @description 한국 시간 월요일 날짜
+       */
+      weekStart: string;
+      /** @description 감정 5종을 EmotionType 순서대로 모두 담는다. 글이 없던 주는 모두 0 */
+      counts: {
+        emotion: components["schemas"]["EmotionType"];
+        count: number;
+      }[];
+    };
+    EmotionStats: {
+      /** @description 지우지 않은 내 글의 몬스터 수 */
+      totalMonsters: number;
+      defeatedMonsters: number;
+      /** @description 내가 HP를 줄인 다른 사람의 몬스터 가운데 처치된 수(US4-AC5) */
+      defeatedTogether: number;
+      distribution: components["schemas"]["EmotionShare"][];
+      /** @description 가장 많이 나타난 감정. 같으면 가장 최근 몬스터의 감정. 몬스터가 없으면 null */
+      topEmotion: components["schemas"]["EmotionType"] | null;
+      /** @description 최근 8주(이번 주 포함), 오래된 주부터 */
+      weekly: components["schemas"]["WeeklyEmotionCount"][];
+    };
+    /** @description 보낸 항목만 바꾼다 */
+    ProfileUpdateRequest: {
+      /** @description M1과 같은 규칙. 앞뒤 공백을 뺀 완성형 한글, 영문, 숫자 1~10자. 대소문자만 다른 닉네임도 중복이다 */
+      nickname?: string;
+      jobRole?: components["schemas"]["JobRole"];
+      careerYear?: components["schemas"]["CareerYear"];
+    };
   };
   responses: {
     /** @description 입력 검증 실패 (INVALID_REQUEST). 댓글 작성에서는 INVALID_PARENT_COMMENT도 쓴다 */
@@ -562,6 +904,10 @@ export interface components {
     Provider: "kakao" | "google";
     PostId: number;
     CommentId: number;
+    NotificationId: number;
+    /** @description 앞 쪽 응답의 nextCursor. 불투명 문자열이다 */
+    Cursor: string;
+    Size: number;
   };
   requestBodies: never;
   headers: never;
@@ -793,6 +1139,47 @@ export interface operations {
         };
       };
       401: components["responses"]["Unauthorized"];
+    };
+  };
+  updateMyProfile: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ProfileUpdateRequest"];
+      };
+    };
+    responses: {
+      /** @description 저장됨 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["MemberProfile"];
+            error: null;
+          };
+        };
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      /** @description 닉네임 중복, 대소문자만 다른 경우 포함 (NICKNAME_TAKEN) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
     };
   };
   checkNickname: {
@@ -1288,6 +1675,320 @@ export interface operations {
       401: components["responses"]["Unauthorized"];
       403: components["responses"]["Forbidden"];
       404: components["responses"]["NotFound"];
+    };
+  };
+  getNotifications: {
+    parameters: {
+      query?: {
+        /** @description 앞 쪽 응답의 nextCursor. 불투명 문자열이다 */
+        cursor?: components["parameters"]["Cursor"];
+        size?: components["parameters"]["Size"];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 알림 페이지 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["NotificationPage"];
+            error: null;
+          };
+        };
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+    };
+  };
+  markNotificationRead: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        notificationId: components["parameters"]["NotificationId"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 읽음으로 바뀜 */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      /** @description 없거나 다른 회원의 알림이거나 보관 기간이 지남 (NOTIFICATION_NOT_FOUND) */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  markAllNotificationsRead: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ReadAllRequest"];
+      };
+    };
+    responses: {
+      /** @description 처리됨 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["ReadAllResult"];
+            error: null;
+          };
+        };
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+    };
+  };
+  getUnreadNotificationCount: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 안 읽은 수와 마지막 번호 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["UnreadCount"];
+            error: null;
+          };
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+    };
+  };
+  issueStreamTicket: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 발급됨. 30초 안에 한 번만 쓸 수 있다 */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["StreamTicket"];
+            error: null;
+          };
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+    };
+  };
+  streamNotifications: {
+    parameters: {
+      query: {
+        /** @description issueStreamTicket이 준 일회용 티켓 */
+        ticket: string;
+        /** @description 마지막으로 받은 이벤트 id(seq). 새 EventSource는 헤더를 붙일 수 없어 쿼리로 넘긴다 */
+        lastEventId?: number;
+      };
+      header?: {
+        /** @description 표준 재연결 헤더. 쿼리와 함께 오면 헤더를 쓴다 */
+        "Last-Event-ID"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 스트림 시작 */
+      200: {
+        headers: {
+          "Cache-Control"?: "no-store";
+          /** @description 중간 프록시가 스트림을 버퍼에 담지 않게 한다 */
+          "X-Accel-Buffering"?: "no";
+          [name: string]: unknown;
+        };
+        content: {
+          "text/event-stream": string;
+        };
+      };
+      400: components["responses"]["BadRequest"];
+      /** @description 티켓이 없거나, 이미 쓰였거나, 만료됐거나, 발급한 세션이 끝남 (STREAM_TICKET_INVALID) */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  getMyPosts: {
+    parameters: {
+      query?: {
+        /** @description 앞 쪽 응답의 nextCursor. 불투명 문자열이다 */
+        cursor?: components["parameters"]["Cursor"];
+        size?: components["parameters"]["Size"];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 글 페이지. 항목은 피드와 같다 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["FeedPage"];
+            error: null;
+          };
+        };
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+    };
+  };
+  getMyComments: {
+    parameters: {
+      query?: {
+        /** @description 앞 쪽 응답의 nextCursor. 불투명 문자열이다 */
+        cursor?: components["parameters"]["Cursor"];
+        size?: components["parameters"]["Size"];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 댓글 페이지 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["MyCommentPage"];
+            error: null;
+          };
+        };
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+    };
+  };
+  getMyLikedPosts: {
+    parameters: {
+      query?: {
+        /** @description 앞 쪽 응답의 nextCursor. 불투명 문자열이다 */
+        cursor?: components["parameters"]["Cursor"];
+        size?: components["parameters"]["Size"];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 글 페이지. 항목은 피드와 같다 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["FeedPage"];
+            error: null;
+          };
+        };
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+    };
+  };
+  getMyEmotionStats: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 감정 통계 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["EmotionStats"];
+            error: null;
+          };
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
     };
   };
 }
