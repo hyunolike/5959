@@ -81,7 +81,6 @@ class ContractTests {
                 "GET /api/v1/notifications", // getNotifications
                 "PUT /api/v1/notifications/{notificationId}/read", // markNotificationRead
                 "POST /api/v1/notifications/read-all", // markAllNotificationsRead
-                "GET /api/v1/notifications/unread-count", // getUnreadNotificationCount
                 "POST /api/v1/notifications/stream-tickets", // issueStreamTicket
                 "GET /api/v1/notifications/stream", // streamNotifications
                 "PATCH /api/v1/members/me", // updateMyProfile
