@@ -104,7 +104,13 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   Lettuce는 연결이 끊긴 동안 명령을 바로 거절한다(`shared/config/RedisClientConfig`, `REJECT_COMMANDS`).
   알림 신호(`notification/stream`)는 커밋 뒤에만 `ogu:notification` 채널로 나가고(`RedisSignalPublisher`, 전용
   스레드 하나에서 보내 요청 스레드가 기다리지 않는다), 구독 컨테이너는 `NotificationSubscriptionStarter`가 시작한다.
-  첫 구독이 실패해도 기동을 막지 않고 5초마다 다시 시도한다.
+  첫 구독이 실패해도 기동을 막지 않고 5초마다 다시 시도한다(경고는 1분에 한 번).
+  Redis 장애 판정은 `RealtimeConnectionState`가 한다. `RealtimeConnectionProbe`가 5초마다 PING을 보내 연속 2번
+  실패하면 DOWN, 한 번 성공하면 UP으로 바꾸고, 바뀔 때만 애플리케이션 이벤트 `RealtimeConnectionChanged(state)`를
+  낸다. 구독 컨테이너의 오류 처리기는 리스너 예외만 받고 Lettuce는 끊긴 구독을 조용히 다시 붙이므로, 안전망 주기
+  전환(60초와 5초)과 복구 뒤 따라잡기는 이 이벤트를 듣고 한다.
+  알림 번호(`NotificationSequenceRepository.next`)는 트랜잭션 안에서만 받는다. 읽는 쿼리는 보관 기간 조건을
+  `NotificationRetention.condition("n")`처럼 별칭을 붙여 쓴다.
 
 ## Core loop (`post`, `ai`, `emotion`, `monster`, `feed`)
 

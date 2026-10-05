@@ -1,6 +1,7 @@
 package com.ogu.notification.stream
 
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.data.redis.connection.RedisConnectionFactory
@@ -38,11 +39,16 @@ class NotificationRedisConfig {
             setConnectionFactory(connectionFactory)
             isAutoStartup = false
             setRecoveryInterval(RECOVERY_INTERVAL.toMillis())
-            setErrorHandler { e ->
-                log.warn("알림 신호 구독에 실패했습니다. {}초 뒤 다시 붙습니다: {}", RECOVERY_INTERVAL.seconds, e.message)
-            }
+            // 리스너가 던진 예외만 여기로 온다(구독 끊김은 오지 않는다. 장애 판정은 RealtimeConnectionState가 한다)
+            setErrorHandler { e -> log.warn("알림 신호를 처리하다 오류가 났습니다: {}", e.message) }
             addMessageListener(subscriber, ChannelTopic(NotificationSignal.CHANNEL))
         }
+
+    @Bean
+    fun realtimeConnectionState(
+        connectionFactory: RedisConnectionFactory,
+        events: ApplicationEventPublisher,
+    ): RealtimeConnectionState = RealtimeConnectionState(RealtimeConnectionState.redisPing(connectionFactory), events)
 
     companion object {
         const val SIGNAL_EXECUTOR = "notificationSignalExecutor"

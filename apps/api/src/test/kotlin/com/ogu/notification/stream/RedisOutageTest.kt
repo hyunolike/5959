@@ -103,6 +103,32 @@ class RedisOutageTest {
         }
     }
 
+    @Test
+    fun `PING 탐지기는 Redis가 없으면 두 번 만에 DOWN, 뜨면 UP으로 바꾼다`() {
+        val port = unusedPort()
+        val factory = connectionFactory("localhost", port)
+        val events = CopyOnWriteArrayList<Any>()
+        val state = RealtimeConnectionState(RealtimeConnectionState.redisPing(factory), { events += it })
+        try {
+            repeat(2) { state.probe() }
+            assertThat(state.current).isEqualTo(RealtimeConnection.DOWN)
+
+            LateRedis(port).use { late ->
+                late.start()
+                await().atMost(Duration.ofSeconds(20)).until {
+                    state.probe()
+                    state.current == RealtimeConnection.UP
+                }
+            }
+            assertThat(events).containsExactly(
+                RealtimeConnectionChanged(RealtimeConnection.DOWN),
+                RealtimeConnectionChanged(RealtimeConnection.UP),
+            )
+        } finally {
+            factory.destroy()
+        }
+    }
+
     private fun connectionFactory(
         host: String,
         port: Int,
