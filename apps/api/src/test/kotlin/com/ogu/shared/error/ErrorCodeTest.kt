@@ -57,6 +57,9 @@ class ErrorCodeTest {
                 Arguments.of(ErrorCode.ALREADY_LIKED, HttpStatus.CONFLICT),
                 Arguments.of(ErrorCode.INVALID_PARENT_COMMENT, HttpStatus.BAD_REQUEST),
                 Arguments.of(ErrorCode.POST_RATE_LIMITED, HttpStatus.TOO_MANY_REQUESTS),
+                // 004-notification-mypage
+                Arguments.of(ErrorCode.NOTIFICATION_NOT_FOUND, HttpStatus.NOT_FOUND),
+                Arguments.of(ErrorCode.STREAM_TICKET_INVALID, HttpStatus.UNAUTHORIZED),
             )
     }
 }

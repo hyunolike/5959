@@ -35,4 +35,8 @@ enum class ErrorCode(
     ALREADY_LIKED(HttpStatus.CONFLICT, "이미 공감했습니다."),
     INVALID_PARENT_COMMENT(HttpStatus.BAD_REQUEST, "답글은 원 댓글에만 달 수 있습니다."),
     POST_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "글을 너무 자주 쓰고 있습니다. 잠시 후 다시 써 주세요."),
+
+    // 004-notification-mypage 계약(contracts/openapi.yaml)의 오류 코드
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "알림을 찾을 수 없습니다."),
+    STREAM_TICKET_INVALID(HttpStatus.UNAUTHORIZED, "실시간 연결 표가 유효하지 않습니다. 다시 연결해 주세요."),
 }
