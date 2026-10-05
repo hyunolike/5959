@@ -145,7 +145,12 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   `shared/config/EventPublicationResubmitter`가 1분마다, 2분보다 오래된 것만 다시
   보낸다. 처음 처리를 포함해 10번(`ogu.events.resubmit.max-attempts`) 실패한
   발행은 Spring Modulith 2.1의 `ResubmissionOptions` 필터로 건너뛰고 WARN을 한 번
-  남긴다. 행은 지우지 않으니 원인을 고친 뒤 직접 다시 보낸다.
+  남긴다. 상한은 프로세스 하나 안에서만 지켜진다.
+  `spring.modulith.events.republish-outstanding-events-on-restart: true`라서 재시작(배포)
+  때마다 끝나지 않은 발행은 상한에 걸린 것까지 모두 한 번씩 다시 나가고, WARN 중복
+  방지도 메모리에 있어 재시작하면 다시 한 번 남는다. 행은 지우지 않으므로 원인을 고친
+  뒤에는 앱을 재시작하거나, 그 행의 `event_publication.completion_attempts`를 상한보다
+  작게(예: 0) 되돌려 1분 주기 재전송이 다시 맡게 한다.
 - **운영 기동 조건.** AI 키 검사는 `shared/config/ProdAiSettingsCheck`에 있다.
   인증 쪽 검사(`ProdAuthSettingsCheck`)는 `member`에 있으니 둘을 함께 본다.
   `prod`에서 `AI_API_KEY`가 비어 있으면 앱이 뜨지 않는다.

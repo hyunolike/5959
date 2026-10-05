@@ -55,7 +55,7 @@ cd apps/api && ./gradlew test --tests "*MonsterConcurrencyTest*" --rerun-tasks
 
 ## 성능 측정
 
-2026-10-05에 로컬에서 쟀다(T058). Docker 이미지 빌드가 이 기기에서 멈추므로 API는 호스트에서 jar(`java -jar build/libs/api.jar`, JDK 21, `e2e` 프로필)로 띄우고, DB는 따로 띄운 `pgvector/pgvector:pg17` 컨테이너를 썼다. 웹은 `pnpm build && pnpm start`(APP_ENV=e2e)다. 기기는 8코어 Mac이고, 같은 기기에서 다른 세션의 빌드와 테스트가 함께 돌아 부하(load average, 1분/5분/15분)가 30~90으로 매우 높았다. 아래 수치는 이 부하를 그대로 받은 값이라 실제 서버보다 나쁘게 나온 쪽으로 봐야 한다.
+2026-10-05에 로컬에서 쟀다(T058). Docker 이미지 빌드가 이 기기에서 멈추므로 API는 호스트에서 jar(`java -jar build/libs/api.jar`, JDK 21, `e2e` 프로필)로 띄우고, DB는 따로 띄운 `pgvector/pgvector:pg17` 컨테이너를 썼다. 웹은 `pnpm build && pnpm start`(APP_ENV=e2e)다. 기기는 8코어 Mac이고, 같은 기기에서 다른 세션의 빌드와 테스트가 함께 돌아 1분 부하(load average)가 30~90으로 매우 높았다. 아래 수치는 이 부하를 그대로 받은 값이라 실제 서버보다 나쁘게 나온 쪽으로 봐야 한다.
 
 ### 피드와 공감 API (SC-003, plan 성능 목표)
 
@@ -70,6 +70,8 @@ cd apps/api && ./gradlew test --tests "*MonsterConcurrencyTest*" --rerun-tasks
 | 피드 최신순, 개발 1년차 필터 | 100 | 30.2 | 95.3 | 156.8 | 185.0 | p95 1000 이하 | 71.1 → 67.1 |
 | 글 공감(서로 다른 글 100개, HP 반영 포함) | 100 | 30.3 | 96.1 | 223.0 | 1984.2 | p95 300 이하 | 67.1 → 63.4 |
 | 글 공감 취소 | 100 | 13.6 | 32.2 | 41.2 | 55.6 | p95 300 이하 | (같은 구간) |
+
+표의 부하는 측정 구간 앞뒤의 1분 부하다. 글 공감의 최대 1,984ms는 100번 가운데 한 번 튄 값으로, p99가 223ms인 것에 비춰 보면 기기 부하가 60을 넘던 때의 스케줄링 지연으로 본다.
 
 ### 피드 스크롤 끊김 (SC-005)
 

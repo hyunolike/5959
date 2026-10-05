@@ -200,7 +200,7 @@ sequenceDiagram
 - 공감과 댓글 이벤트(`PostLiked`, `CommentCreated`, `CommentLiked`)는 `monster`가 `@EventListener`로 post 트랜잭션 안에서 동기로 받는다. 공감 저장과 HP 감소가 함께 성공하거나 함께 실패해야 하기 때문이다. 몬스터가 아직 없으면 반영하지 않고, 몬스터를 만들 때 `PostApi.attacksSoFar`로 그때까지의 공격을 소급 반영한다.
 - 잠금 순서는 언제나 `posts`나 `comments` 행을 먼저 잠그고 글 잠금(`PostLock`, advisory lock)을 나중에 잡는다. 공격 반영은 잠금을 잡은 뒤에 몬스터를 찾으므로, 생성과 겹쳐도 공격은 소급 반영과 생성 뒤 감소 가운데 정확히 한 곳에만 들어간다.
 - AI 재시도는 Resilience4j가 아니라 `emotion_analysis` 테이블이 맡는다. 실패하면 `next_attempt_at`을 `min(30초 x 2^(n-1), 5분)` 뒤로 미루고, 스케줄러가 `FOR UPDATE SKIP LOCKED`로 행을 맡아 다시 시도한다. 글을 쓴 지 24시간이 지나면 기본값으로 끝낸다. Resilience4j는 호출 한 번에 20초 타임아웃과 서킷 브레이커만 건다. 서킷이 열리면 호출 없이 실패로 기록하고 다음 시각을 기다린다.
-- Event Publication Registry가 이벤트를 `event_publication` 테이블에 기록한다. 비동기 리스너가 실패하면 미완료로 남고, 재전송 스케줄러가 1분마다 2분보다 오래된 것을 다시 보낸다. 처음 처리를 포함해 10번 실패하면 더 보내지 않고 WARN을 남긴다.
+- Event Publication Registry가 이벤트를 `event_publication` 테이블에 기록한다. 비동기 리스너가 실패하면 미완료로 남고, 재전송 스케줄러가 1분마다 2분보다 오래된 것을 다시 보낸다. 처음 처리를 포함해 10번 실패하면 더 보내지 않고 WARN을 남긴다. 이 상한은 프로세스 하나 안에서만 지켜진다. 재시작(배포) 때는 `republish-outstanding-events-on-restart`가 상한에 걸린 발행까지 다시 한 번 보내고, 메모리에 둔 WARN 중복 방지도 처음부터 다시 센다. 원인을 고친 뒤에는 재시작하거나 그 발행의 `completion_attempts`를 0으로 되돌려 재전송 스케줄러가 다시 맡게 한다.
 - 분석이 끝나기 전에는 글의 `analysisStatus`가 `PENDING`이다. 프론트엔드는 "분석 중" 상태를 보여 주고, 몬스터가 생길 때까지 상세를 3초마다(2분 뒤부터 15초마다) 다시 불러온다. SSE 알림은 M3에서 들인다.
 - 위험 감지(`safety`)는 M4에서 같은 `PostCreated`를 받아 붙는다(5.6).
 
