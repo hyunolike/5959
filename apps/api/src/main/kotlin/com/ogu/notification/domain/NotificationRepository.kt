@@ -3,6 +3,7 @@ package com.ogu.notification.domain
 import org.springframework.jdbc.core.RowMapper
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Repository
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.sql.ResultSet
 import java.sql.Timestamp
 import java.time.Instant
@@ -45,6 +46,22 @@ class NotificationRepository(
             .orElse(null)
 
     /**
+     * 이 받는 사람에게 같은 멱등 키의 알림이 이미 있는가. 보관 기간과 상관없이 본다(유일 키도 그렇다). 이미 있으면 번호를
+     * 받지 않고 건너뛰어, 같은 이벤트가 다시 와도 번호에 빈칸이 생기지 않게 한다. 겹친 처리는 [insertIfAbsent]가 막는다.
+     */
+    fun existsByDedupKey(
+        receiverId: Long,
+        dedupKey: String,
+    ): Boolean =
+        jdbcClient
+            .sql(
+                "select exists (select 1 from notification where receiver_id = :receiverId and dedup_key = :dedupKey)",
+            ).param("receiverId", receiverId)
+            .param("dedupKey", dedupKey)
+            .query(Boolean::class.java)
+            .single()
+
+    /**
      * 안 읽은 공감 묶음에 공감 하나를 더하고 그 묶음 ID를 돌려준다(research R7). 묶음이 있으면 인원을 하나 올리고 최근 회원,
      * 번호, 갱신 시각을 바꾼다. 없으면 인원 1로 새로 만든다. `ON CONFLICT`는 부분 유일 인덱스
      * `notification_unread_like_group_key`의 조건식을 그대로 되풀이한다. 다음에는 그 ID로 참여자를 넣는다.
@@ -52,6 +69,8 @@ class NotificationRepository(
      * 보관 기간이 지났지만 정리 작업이 아직 지우지 않은 안 읽은 묶음은 부분 유일 인덱스를 계속 차지한다. 그대로 두면 새 공감이
      * 보이지 않는 묶음에 더해지고 곧 함께 지워진다. 그래서 같은 트랜잭션에서 그 묶음을 먼저 읽음으로 돌려 자리를 비운다.
      * 이미 화면에서 빠진 알림이라 받는 사람이 보는 것은 바뀌지 않는다.
+     *
+     * 참여자 키에 걸리면 호출한 쪽이 이 갱신까지 되돌려야 하므로 트랜잭션 안에서만 부를 수 있다.
      */
     fun upsertLikeGroup(
         receiverId: Long,
@@ -60,6 +79,9 @@ class NotificationRepository(
         seq: Long,
         now: Instant,
     ): Long {
+        check(TransactionSynchronizationManager.isActualTransactionActive()) {
+            "공감 묶음은 번호를 받은 트랜잭션 안에서만 고친다"
+        }
         jdbcClient
             .sql(
                 """

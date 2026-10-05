@@ -73,9 +73,9 @@ class NotificationRepositoryTests {
         val postId = nextId()
         val now = now()
 
-        val group = notifications.upsertLikeGroup(receiver, postId, actorId = 101L, seq = nextSeq(receiver), now)
+        val group = upsertInTx(receiver, postId, actorId = 101L, seq = nextSeq(receiver), now)
         assertThat(participants.insertIfAbsent(postId, likerId = 101L, notificationId = group, now)).isTrue()
-        val same = notifications.upsertLikeGroup(receiver, postId, actorId = 102L, seq = nextSeq(receiver), now)
+        val same = upsertInTx(receiver, postId, actorId = 102L, seq = nextSeq(receiver), now)
         assertThat(participants.insertIfAbsent(postId, likerId = 102L, notificationId = same, now)).isTrue()
 
         assertThat(same).isEqualTo(group)
@@ -87,7 +87,7 @@ class NotificationRepositoryTests {
 
         // 읽은 뒤에 온 공감은 새 묶음이다
         notifications.markRead(group, receiver, now)
-        val fresh = notifications.upsertLikeGroup(receiver, postId, actorId = 103L, seq = nextSeq(receiver), now)
+        val fresh = upsertInTx(receiver, postId, actorId = 103L, seq = nextSeq(receiver), now)
         assertThat(fresh).isNotEqualTo(group)
     }
 
@@ -96,7 +96,7 @@ class NotificationRepositoryTests {
         val receiver = nextId()
         val postId = nextId()
         val now = now()
-        val group = notifications.upsertLikeGroup(receiver, postId, actorId = 7L, seq = nextSeq(receiver), now)
+        val group = upsertInTx(receiver, postId, actorId = 7L, seq = nextSeq(receiver), now)
 
         assertThat(participants.insertIfAbsent(postId, likerId = 7L, notificationId = group, now)).isTrue()
         assertThat(participants.insertIfAbsent(postId, likerId = 7L, notificationId = group, now)).isFalse()
@@ -107,7 +107,7 @@ class NotificationRepositoryTests {
         val receiver = nextId()
         val postId = nextId()
         val now = now()
-        val group = notifications.upsertLikeGroup(receiver, postId, actorId = 7L, seq = nextSeq(receiver), now)
+        val group = upsertInTx(receiver, postId, actorId = 7L, seq = nextSeq(receiver), now)
         participants.insertIfAbsent(postId, likerId = 7L, notificationId = group, now)
 
         transactionTemplate.executeWithoutResult { status ->
@@ -186,11 +186,21 @@ class NotificationRepositoryTests {
     }
 
     @Test
+    fun `공감 묶음 갱신은 트랜잭션 밖에서 부르면 거부되고 아무것도 쓰지 않는다`() {
+        val receiver = nextId()
+        val postId = nextId()
+
+        assertThatThrownBy { notifications.upsertLikeGroup(receiver, postId, actorId = 101L, seq = 1L, now()) }
+            .hasMessageContaining("트랜잭션 안에서만")
+        assertThat(notifications.findPage(receiver, beforeSeq = null, size = 10)).isEmpty()
+    }
+
+    @Test
     fun `보관 기간이 지났지만 아직 지우지 않은 안 읽은 묶음이 있어도 새 공감은 보이는 새 묶음을 만든다`() {
         val receiver = nextId()
         val postId = nextId()
         val expiredAt = now().minus(Duration.ofDays(90).plusMinutes(1))
-        val expired = notifications.upsertLikeGroup(receiver, postId, actorId = 7L, seq = nextSeq(receiver), expiredAt)
+        val expired = upsertInTx(receiver, postId, actorId = 7L, seq = nextSeq(receiver), expiredAt)
         participants.insertIfAbsent(postId, likerId = 7L, notificationId = expired, expiredAt)
         val lastDelivered = sequences.current(receiver)
 
@@ -215,6 +225,14 @@ class NotificationRepositoryTests {
     }
 
     private fun nextSeq(member: Long): Long = transactionTemplate.execute { sequences.next(member) }!!
+
+    private fun upsertInTx(
+        receiverId: Long,
+        postId: Long,
+        actorId: Long,
+        seq: Long,
+        now: Instant,
+    ): Long = transactionTemplate.execute { notifications.upsertLikeGroup(receiverId, postId, actorId, seq, now) }!!
 
     private fun comment(
         receiver: Long,
