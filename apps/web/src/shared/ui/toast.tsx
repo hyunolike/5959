@@ -16,7 +16,8 @@ export interface ToastItem {
 
 /**
  * 화면 오른쪽 아래에 쌓이는 짧은 알림. `toasts`는 최신이 앞이고 화면에서도 최신이 위에 온다.
- * 각 토스트는 뜬 지 4초 뒤 `onDismiss`로 닫히고, 누르면 `onClick`을 실행한 뒤 닫힌다.
+ * 각 토스트는 뜬 지 4초 뒤 `onDismiss`로 닫히고, 누르면 `onClick`을 실행한 뒤 닫힌다. 마우스가 올라가 있거나
+ * 초점이 안에 있는 동안은 시간이 멈춘다. 닫기 버튼("알림 닫기")이나 Escape로 바로 닫을 수 있다.
  * 읽어 주기 영역(`aria-live`)은 토스트가 없어도 남겨 두어 새 토스트를 화면 낭독기가 알린다.
  */
 export function Toaster({
@@ -52,28 +53,70 @@ function Toast({
     dismissRef.current = onDismiss;
   });
 
+  // 마우스가 올라가 있거나 초점이 안에 있는 동안은 멈추고, 풀리면 남은 시간만큼 더 보여 준다.
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const paused = hovered || focused;
+  const remainingRef = useRef(TOAST_DURATION_MS);
+
   useEffect(() => {
+    if (paused) {
+      return;
+    }
+    const startedAt = Date.now();
     const timer = setTimeout(
       () => dismissRef.current(toast.id),
-      TOAST_DURATION_MS,
+      remainingRef.current,
     );
-    return () => clearTimeout(timer);
-  }, [toast.id]);
+    return () => {
+      clearTimeout(timer);
+      remainingRef.current = Math.max(
+        0,
+        remainingRef.current - (Date.now() - startedAt),
+      );
+    };
+  }, [paused, toast.id]);
 
   return (
-    <button
-      type="button"
-      onClick={() => {
-        toast.onClick?.();
-        onDismiss(toast.id);
+    <div
+      className="pointer-events-auto flex w-full items-start rounded-lg border border-neutral-200 bg-white shadow-lg"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocus={() => setFocused(true)}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setFocused(false);
+        }
       }}
-      className={cn(
-        "pointer-events-auto w-full rounded-lg border border-neutral-200 bg-white px-4 py-3 text-left text-sm text-neutral-900 shadow-lg",
-        "hover:bg-neutral-50 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none",
-      )}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          onDismiss(toast.id);
+        }
+      }}
     >
-      {toast.message}
-    </button>
+      <button
+        type="button"
+        onClick={() => {
+          toast.onClick?.();
+          onDismiss(toast.id);
+        }}
+        className={cn(
+          "min-w-0 flex-1 rounded-l-lg px-4 py-3 text-left text-sm text-neutral-900",
+          "hover:bg-neutral-50 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none",
+        )}
+      >
+        {toast.message}
+      </button>
+      <button
+        type="button"
+        aria-label="알림 닫기"
+        onClick={() => onDismiss(toast.id)}
+        className="m-1 rounded-md px-2 py-2 text-sm text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none"
+      >
+        <span aria-hidden="true">×</span>
+      </button>
+    </div>
   );
 }
 
