@@ -153,7 +153,9 @@
 
 **결정**: `monster`의 `MonsterFactory`가 몬스터를 저장한 직후 같은 트랜잭션에서 `MonsterSpawned(postId, monsterId, defaulted)`를 발행한다. `notification`은 이것을 받아 글쓴이에게 `MONSTER_SPAWNED`를 만든다. 기본 몬스터(분석 24시간 실패)도 똑같이 알린다(US1-AC3).
 
-분석 전 공격만으로 생성과 동시에 처치되는 경우(경계 상황), 같은 트랜잭션에서 `MonsterSpawned`와 `MonsterDefeated`가 차례로 나간다. 두 비동기 리스너가 실행되는 순서는 보장되지 않으므로, `MonsterDefeated` 처리는 글쓴이의 `SPAWNED:{monsterId}` 알림이 없으면 먼저 만들고 나서 처치 알림을 만든다. 둘 다 같은 카운터 잠금 아래에서 만들어지므로 번호가 "나타났어요" 다음 "처치됐어요" 순서가 된다. 뒤늦게 온 `MonsterSpawned`는 유일 키에 걸려 아무것도 하지 않는다.
+분석 전 공격만으로 생성과 동시에 처치되는 경우(경계 상황), 같은 트랜잭션에서 `MonsterSpawned`와 `MonsterDefeated(retroactive = true)`가 차례로 나간다. 두 비동기 리스너가 실행되는 순서는 보장되지 않으므로, `retroactive = true`인 `MonsterDefeated` 처리만 글쓴이의 `SPAWNED:{monsterId}` 알림이 없으면 먼저 만들고 나서 처치 알림을 만든다. 둘 다 같은 카운터 잠금 아래에서 만들어지므로 번호가 "나타났어요" 다음 "처치됐어요" 순서가 된다. 뒤늦게 온 `MonsterSpawned`는 유일 키에 걸려 아무것도 하지 않는다(그 사이 받은 번호는 빈 채로 남지만 재전송은 `>` 비교라 해가 없다, R4).
+
+생성 뒤 따로 처치된 몬스터(`retroactive = false`)는 생성 알림을 다시 만들지 않는다. 생성이 먼저 커밋됐으므로 생성 알림은 이미 있거나 곧 생기고, 90일이 지나 정리 작업이 지운 생성 알림을 처치가 다시 만들면 글쓴이에게 "나타났어요"가 거짓으로 새로 뜨기 때문이다. 이 경우 생성 리스너가 실패해 재전송을 기다리는 동안 처치되면 두 알림의 번호 순서가 뒤바뀔 수 있으나, 둘 다 빠짐없이 전달된다.
 
 **근거**:
 - `EmotionAnalyzed`를 받으면 몬스터가 실제로 생겼는지(지운 글이면 만들지 않는다) 알 수 없고, `notification → emotion` 의존이 새로 생긴다. `monster`의 이벤트를 받으면 overview 그래프의 `notification → monster` 안에서 끝난다.

@@ -163,7 +163,10 @@ class RetroactiveAttackTests {
         val monsterId =
             jdbcTemplate.queryForObject("select id from monsters where post_id = ?", Long::class.java, postId)!!
         assertThat(defeated.monsterEventsFor(postId))
-            .containsExactly(MonsterSpawned(postId, monsterId, defaulted = false), MonsterDefeated(postId, monsterId))
+            .containsExactly(
+                MonsterSpawned(postId, monsterId, defaulted = false),
+                MonsterDefeated(postId, monsterId, retroactive = true),
+            )
     }
 
     @Test

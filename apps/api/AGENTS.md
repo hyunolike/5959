@@ -115,7 +115,8 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   하나로만 보고, 댓글 받는 사람은 `PostApi.findComment`로 정한다. 쓰기는 `NotificationWriter`가 리스너 트랜잭션 안에서
   한다: 멱등 키(`COMMENT:{id}`, `SPAWNED:{id}`, `DEFEATED:{id}`)가 이미 있으면 번호도 받지 않고 건너뛰고, 여러 회원이면
   회원 ID 오름차순으로 번호를 받는다. 공감 묶음은 참여자 키에 걸리면 리스너 트랜잭션 전체를 rollback-only로 돌린다
-  (예외가 아니라서 발행은 완료로 남는다). 처치 알림은 글쓴이의 `SPAWNED`가 없으면 먼저 만들어 번호 순서를 고정한다.
+  (예외가 아니라서 발행은 완료로 남는다). 소급 처치(`MonsterDefeated.retroactive`)일 때만 처치 알림이 글쓴이의 `SPAWNED`를 먼저 만들어 번호 순서를 고정한다.
+  따로 처치되면 다시 만들지 않는다(90일 정리로 지워진 생성 알림이 되살아나지 않게).
   `MonsterFactory`는 몬스터 저장 직후 `MonsterSpawned`를 내고, 소급 반영으로 처치되면 그 뒤에 `MonsterDefeated`가 나간다.
   알림 번호(`NotificationSequenceRepository.next`)와 공감 묶음 갱신(`NotificationRepository.upsertLikeGroup`)은 트랜잭션
   안에서만 부를 수 있다. 읽는 쿼리는 보관 기간 조건을
