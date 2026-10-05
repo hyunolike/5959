@@ -1,9 +1,10 @@
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import type { ApiResponse, components } from "@/shared/api";
 import { ApiError } from "@/shared/api";
+import { QUERY_KEYS } from "@/shared/config";
 
 import type { WritePostFormValues } from "../model/schema";
 
@@ -34,8 +35,13 @@ export async function createPost(
   return body.data;
 }
 
+/** 성공하면 새 글이 피드 맨 위에 보이도록 모든 피드(`["feed"]`)를 낡은 것으로 표시한다. */
 export function useCreatePostMutation() {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: (values: WritePostFormValues) => createPost(values),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.allFeeds }),
   });
 }
