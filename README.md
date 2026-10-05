@@ -76,6 +76,8 @@ cd apps/api && ./gradlew bootRun        # PostgreSQL은 compose로 자동 기동
 pnpm install && pnpm --filter web dev   # http://localhost:3000
 ```
 
+감정 분석 키(`AI_API_KEY`)가 없으면 글이 계속 "분석 중"에 머물고 몬스터가 생기지 않습니다. 실제 분석을 보려면 키를 환경 변수로 넣고, 키 없이 시연만 하려면 API를 `SPRING_PROFILES_ACTIVE=local,e2e ./gradlew bootRun`으로 띄워 본문 길이나 `[불안:높음]` 같은 머리말로 감정을 정하는 가짜 분석기를 씁니다.
+
 원본 저장소에 올라온 변경을 다시 받아오려면 아래 명령을 실행합니다.
 
 ```bash
