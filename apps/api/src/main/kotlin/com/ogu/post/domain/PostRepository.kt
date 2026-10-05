@@ -32,9 +32,15 @@ interface PostRepository : JpaRepository<Post, Long> {
         since: Instant,
     ): Post?
 
-    /** 댓글 수를 한 문장으로 바꾼다. 동시에 단 댓글끼리 서로의 증가를 덮어쓰지 않는다. */
+    /**
+     * 살아 있는 글의 댓글 수를 한 문장으로 바꾼다. 동시에 단 댓글끼리 서로의 증가를 덮어쓰지 않는다. 겹친 삭제가 행을
+     * 먼저 잠갔으면 그 커밋을 기다렸다가 다시 평가해 0이 된다.
+     */
     @Modifying
-    @Query(value = "update posts set comment_count = comment_count + :delta where id = :id", nativeQuery = true)
+    @Query(
+        value = "update posts set comment_count = comment_count + :delta where id = :id and deleted_at is null",
+        nativeQuery = true,
+    )
     fun addCommentCount(
         @Param("id") id: Long,
         @Param("delta") delta: Int,

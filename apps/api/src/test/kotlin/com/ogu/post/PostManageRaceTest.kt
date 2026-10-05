@@ -205,6 +205,65 @@ class PostManageRaceTest {
         assertThat(content).isEqualTo("원래 댓글")
     }
 
+    @Test
+    fun `삭제가 먼저 커밋되면 겹친 댓글 작성은 404 POST_NOT_FOUND이고 댓글도 댓글 수도 HP도 남지 않는다`() {
+        val author = members.onboarded()
+        val fan = members.onboarded()
+        val postId = loop.postWithMonster(author)
+
+        val (deleted, written) =
+            raceBehindDelete(
+                hold = PostLockHold(postId),
+                delete = { postService.delete(postId, author.id) },
+                other = { commentService.write(postId, fan.id, "지우는 글에 단 댓글", null) },
+            )
+
+        assertThat(deleted.isSuccess).isTrue()
+        assertThat(errorCodeOf(written)).isEqualTo(ErrorCode.POST_NOT_FOUND)
+        assertThat(count("select count(*) from comments where post_id = ?", postId)).isZero()
+        assertThat(count("select comment_count from posts where id = ?", postId)).isZero()
+        assertThat(loop.monster(postId)!!.hp).isEqualTo(10)
+        assertThat(loop.hpLogs(postId)).isEmpty()
+    }
+
+    /**
+     * 댓글 공감은 posts 행을 잠그지 않으므로 글 삭제를 행에서 기다리지 않는다. 테스트 트랜잭션이 삭제처럼 deleted_at을
+     * 바꾸고 글 잠금을 쥔 채 멈춘 사이에, 공감이 앞선 "살아 있음" 확인을 통과해 글 잠금을 기다리게 한 뒤 커밋한다.
+     */
+    @Test
+    fun `글 잠금을 기다리는 사이 글이 지워지면 댓글 공감은 HP를 줄이지 않는다`() {
+        val author = members.onboarded()
+        val commenter = members.onboarded()
+        val fan = members.onboarded()
+        val postId = loop.postWithMonster(author)
+        val commentId = loop.comment(commenter, postId, "남의 댓글")
+        val hp = loop.monster(postId)!!.hp
+        val logs = loop.hpLogs(postId)
+
+        val executor = Executors.newSingleThreadExecutor()
+        val liked =
+            try {
+                lateinit var future: Future<*>
+                transactionTemplate.executeWithoutResult {
+                    jdbcTemplate.update("update posts set deleted_at = now() where id = ?", postId)
+                    jdbcTemplate.queryForList(
+                        "select pg_advisory_xact_lock(?, ?)",
+                        PostLock.NAMESPACE,
+                        PostLock.key(postId),
+                    )
+                    future = executor.submit { likeService.likeComment(commentId, fan.id) }
+                    awaitLockWaiter("pg_advisory_xact_lock")
+                }
+                runCatching { future.get(10, TimeUnit.SECONDS) }.map { }.unwrapCause()
+            } finally {
+                executor.shutdownNow()
+            }
+
+        assertThat(liked.isSuccess).isTrue()
+        assertThat(loop.monster(postId)!!.hp).isEqualTo(hp)
+        assertThat(loop.hpLogs(postId)).isEqualTo(logs)
+    }
+
     private fun errorCodeOf(result: Result<Unit>): ErrorCode? {
         val failure = result.exceptionOrNull() as? BusinessException
         return failure?.errorCode

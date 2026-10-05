@@ -51,6 +51,9 @@ class AttackListener(
         if (post == null || post.authorId == attack.memberId) return
         // 잠금을 잡은 뒤에 몬스터를 찾아야 한다. 먼저 찾으면 커밋 전인 생성을 놓치고, 생성도 이 공격을 보지 못한다.
         postLock.lock(postId)
+        // 앞의 확인과 잠금 사이에 삭제가 커밋됐을 수 있다. 댓글 공감은 posts 행을 잠그지 않아 삭제를 행에서 기다리지
+        // 않으므로, 삭제가 쥔 글 잠금이 풀린 뒤 다시 확인한다.
+        if (postApi.find(postId) == null) return
         // 규칙 2: 몬스터가 없으면 반영하지 않는다. 몬스터를 만들 때 소급 반영된다(FR-006a).
         val monsterId = monsterRepository.findIdByPostId(postId) ?: return
         val now = clock.instant().truncatedTo(ChronoUnit.MICROS)

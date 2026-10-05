@@ -49,7 +49,8 @@ class CommentService(
         val parent = parentId?.let { parentOf(postId, it) }
         val now = now()
         val comment = commentRepository.save(Comment.write(postId, authorId, parent, content, now))
-        postRepository.addCommentCount(postId, 1)
+        // 앞의 확인 뒤에 글이 지워졌으면 0행이다. 404로 끝내 방금 넣은 댓글도 함께 되돌린다.
+        if (postRepository.addCommentCount(postId, 1) == 0) throw BusinessException(ErrorCode.POST_NOT_FOUND)
         events.publishEvent(CommentCreated(postId, comment.id, authorId))
         val author = memberApi.getMember(authorId)
         return comment.toResponse(mapOf(authorId to author), authorId, liked = emptySet(), replies = emptyList())
