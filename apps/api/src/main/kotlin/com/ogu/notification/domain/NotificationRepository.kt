@@ -1,0 +1,214 @@
+package com.ogu.notification.domain
+
+import org.springframework.jdbc.core.RowMapper
+import org.springframework.jdbc.core.simple.JdbcClient
+import org.springframework.stereotype.Repository
+import java.sql.ResultSet
+import java.sql.Timestamp
+import java.time.Instant
+
+/**
+ * 알림 `notification` 저장소. 읽는 쿼리와 읽음 처리는 모두 [NotificationRetention.CONDITION]으로 보관 기간 안의 알림만 본다.
+ * 번호(`seq`)는 쓰기 전에 [NotificationSequenceRepository.next]로 받는다.
+ */
+@Repository
+class NotificationRepository(
+    private val jdbcClient: JdbcClient,
+    private val retention: NotificationRetention,
+) {
+    /**
+     * 멱등 키로 한 번만 넣는다(research R6). 같은 받는 사람과 키가 이미 있으면 아무것도 하지 않고 null이다. 그때는 신호도
+     * 보내지 않는다.
+     */
+    fun insertIfAbsent(notification: NewNotification): Long? =
+        jdbcClient
+            .sql(
+                """
+                insert into notification (receiver_id, type, post_id, comment_id, monster_id, latest_actor_id,
+                                          dedup_key, seq, created_at, updated_at)
+                values (:receiverId, :type, :postId, :commentId, :monsterId, :actorId,
+                        :dedupKey, :seq, :createdAt, :createdAt)
+                on conflict on constraint notification_receiver_dedup_key do nothing
+                returning id
+                """.trimIndent(),
+            ).param("receiverId", notification.receiverId)
+            .param("type", notification.type.name)
+            .param("postId", notification.postId)
+            .param("commentId", notification.commentId)
+            .param("monsterId", notification.monsterId)
+            .param("actorId", notification.actorId)
+            .param("dedupKey", notification.dedupKey)
+            .param("seq", notification.seq)
+            .param("createdAt", Timestamp.from(notification.createdAt))
+            .query(Long::class.java)
+            .optional()
+            .orElse(null)
+
+    /**
+     * 안 읽은 공감 묶음에 공감 하나를 더하고 그 묶음 ID를 돌려준다(research R7). 묶음이 있으면 인원을 하나 올리고 최근 회원,
+     * 번호, 갱신 시각을 바꾼다. 없으면 인원 1로 새로 만든다. `ON CONFLICT`는 부분 유일 인덱스
+     * `notification_unread_like_group_key`의 조건식을 그대로 되풀이한다. 다음에는 그 ID로 참여자를 넣는다.
+     */
+    fun upsertLikeGroup(
+        receiverId: Long,
+        postId: Long,
+        actorId: Long,
+        seq: Long,
+        now: Instant,
+    ): Long =
+        jdbcClient
+            .sql(
+                """
+                insert into notification (receiver_id, type, post_id, latest_actor_id, seq, created_at, updated_at)
+                values (:receiverId, 'POST_LIKE', :postId, :actorId, :seq, :now, :now)
+                on conflict (receiver_id, post_id) where type = 'POST_LIKE' and read_at is null
+                do update set actor_count = notification.actor_count + 1,
+                              latest_actor_id = excluded.latest_actor_id,
+                              seq = excluded.seq,
+                              updated_at = excluded.updated_at
+                returning id
+                """.trimIndent(),
+            ).param("receiverId", receiverId)
+            .param("postId", postId)
+            .param("actorId", actorId)
+            .param("seq", seq)
+            .param("now", Timestamp.from(now))
+            .query(Long::class.java)
+            .single()
+
+    /** 목록 한 쪽. `seq` 내림차순 키셋이고 [beforeSeq]가 있으면 그보다 작은 번호만 본다. */
+    fun findPage(
+        receiverId: Long,
+        beforeSeq: Long?,
+        size: Int,
+    ): List<Notification> {
+        val keyset = if (beforeSeq == null) "" else "and seq < :beforeSeq"
+        return jdbcClient
+            .sql(
+                """
+                select * from notification
+                where receiver_id = :receiverId and ${NotificationRetention.CONDITION} $keyset
+                order by seq desc
+                limit :size
+                """.trimIndent(),
+            ).param("receiverId", receiverId)
+            .params(retention.params())
+            .apply { if (beforeSeq != null) param("beforeSeq", beforeSeq) }
+            .param("size", size)
+            .query(ROW_MAPPER)
+            .list()
+    }
+
+    /** 재전송(research R4). [afterSeq]보다 큰 번호를 오름차순으로 본다. 묶음은 마지막 상태로 한 번만 나온다. */
+    fun findAfterSeq(
+        receiverId: Long,
+        afterSeq: Long,
+        limit: Int,
+    ): List<Notification> =
+        jdbcClient
+            .sql(
+                """
+                select * from notification
+                where receiver_id = :receiverId and seq > :afterSeq and ${NotificationRetention.CONDITION}
+                order by seq
+                limit :limit
+                """.trimIndent(),
+            ).param("receiverId", receiverId)
+            .param("afterSeq", afterSeq)
+            .params(retention.params())
+            .param("limit", limit)
+            .query(ROW_MAPPER)
+            .list()
+
+    /** 안 읽은 수(research R11). 부분 인덱스 `notification_unread_idx`를 쓴다. */
+    fun countUnread(receiverId: Long): Long =
+        jdbcClient
+            .sql(
+                """
+                select count(*) from notification
+                where receiver_id = :receiverId and read_at is null and ${NotificationRetention.CONDITION}
+                """.trimIndent(),
+            ).param("receiverId", receiverId)
+            .params(retention.params())
+            .query(Long::class.java)
+            .single()
+
+    /** 하나 읽음(research R11). 남의 알림이나 보관 기간이 지난 알림은 존재 여부를 알리지 않고 [ReadOutcome.NOT_FOUND]다. */
+    fun markRead(
+        id: Long,
+        receiverId: Long,
+        now: Instant,
+    ): ReadOutcome {
+        val marked =
+            jdbcClient
+                .sql(
+                    """
+                    update notification set read_at = :now
+                    where id = :id and receiver_id = :receiverId and read_at is null
+                      and ${NotificationRetention.CONDITION}
+                    """.trimIndent(),
+                ).param("now", Timestamp.from(now))
+                .param("id", id)
+                .param("receiverId", receiverId)
+                .params(retention.params())
+                .update()
+        if (marked == 1) return ReadOutcome.MARKED
+        val exists =
+            jdbcClient
+                .sql(
+                    """
+                    select exists (
+                        select 1 from notification
+                        where id = :id and receiver_id = :receiverId and ${NotificationRetention.CONDITION}
+                    )
+                    """.trimIndent(),
+                ).param("id", id)
+                .param("receiverId", receiverId)
+                .params(retention.params())
+                .query(Boolean::class.java)
+                .single()
+        return if (exists) ReadOutcome.ALREADY_READ else ReadOutcome.NOT_FOUND
+    }
+
+    /** 모두 읽음(research R11). [upToSeq] 이하만 바꾸고, 바꾼 행 수를 돌려준다. */
+    fun markAllRead(
+        receiverId: Long,
+        upToSeq: Long,
+        now: Instant,
+    ): Int =
+        jdbcClient
+            .sql(
+                """
+                update notification set read_at = :now
+                where receiver_id = :receiverId and read_at is null and seq <= :upToSeq
+                  and ${NotificationRetention.CONDITION}
+                """.trimIndent(),
+            ).param("now", Timestamp.from(now))
+            .param("receiverId", receiverId)
+            .param("upToSeq", upToSeq)
+            .params(retention.params())
+            .update()
+
+    private companion object {
+        val ROW_MAPPER =
+            RowMapper { rs: ResultSet, _: Int ->
+                Notification(
+                    id = rs.getLong("id"),
+                    receiverId = rs.getLong("receiver_id"),
+                    type = NotificationType.valueOf(rs.getString("type")),
+                    postId = rs.getLong("post_id"),
+                    commentId = rs.nullableLong("comment_id"),
+                    monsterId = rs.nullableLong("monster_id"),
+                    latestActorId = rs.nullableLong("latest_actor_id"),
+                    actorCount = rs.getInt("actor_count"),
+                    dedupKey = rs.getString("dedup_key"),
+                    seq = rs.getLong("seq"),
+                    readAt = rs.getTimestamp("read_at")?.toInstant(),
+                    createdAt = rs.getTimestamp("created_at").toInstant(),
+                    updatedAt = rs.getTimestamp("updated_at").toInstant(),
+                )
+            }
+
+        fun ResultSet.nullableLong(column: String): Long? = getLong(column).takeUnless { wasNull() }
+    }
+}
