@@ -123,4 +123,51 @@ run_deploy v2 && status=0 || status=$?
 assert ".env에 API_DOMAIN이 없으면 배포하지 않고 종료 코드 2로 끝난다" \
   '[[ $status -eq 2 ]] && grep -q "API_DOMAIN" "$WORK/out.log" && [[ ! -f "$WORK/docker.log" ]]'
 
+# 004 운영 준비(quickstart 1, 4): compose와 Caddyfile을 정적으로 검사한다.
+# compose 파일에서 최상위 서비스 하나의 블록(다음 서비스나 최상위 키 전까지)을 뽑는다.
+service_block() {
+  awk -v name="$1" '
+    $0 ~ "^  " name ":$" { inside = 1; next }
+    inside && ($0 ~ /^  [^ #]/ || $0 ~ /^[^ #]/) { inside = 0 }
+    inside { print }
+  ' "$2"
+}
+
+# 서비스 블록의 depends_on에서 대상 서비스의 condition 값을 뽑는다.
+# 아래 assert의 eval 문자열 안에서만 부르므로 shellcheck는 사용처를 보지 못한다
+# shellcheck disable=SC2329
+depends_condition() {
+  awk -v target="$2" '
+    /^    depends_on:/ { deps = 1; next }
+    deps && /^    [^ ]/ { deps = 0 }
+    deps && $0 ~ "^      " target ":$" { want = 1; next }
+    want && /condition:/ { print $2; exit }
+  ' <<< "$1"
+}
+
+# 아래 변수는 assert의 eval 문자열 안에서만 쓴다
+PROD_COMPOSE="$ROOT/compose.prod.yaml"
+# shellcheck disable=SC2034
+CADDYFILE="$ROOT/Caddyfile"
+WORK="$(mktemp -d)" # assert가 실패하면 출력하는 로그 자리
+: > "$WORK/out.log"
+# shellcheck disable=SC2034
+redis_block="$(service_block redis "$PROD_COMPOSE")"
+# shellcheck disable=SC2034
+api_block="$(service_block api "$PROD_COMPOSE")"
+
+assert "운영 compose에 redis 서비스가 있고 포트를 공개하지 않는다" \
+  '[[ -n "$redis_block" ]] && ! grep -q "ports:" <<< "$redis_block"'
+
+assert "운영 redis는 디스크에 저장하지 않는다(--save \"\", --appendonly no)" \
+  'grep -qF -- "--save \"\"" <<< "$redis_block" && grep -qF -- "--appendonly no" <<< "$redis_block"'
+
+assert "api는 redis에 service_started로만 의존한다(Redis 장애가 기동을 막지 않는다)" \
+  '[[ "$(depends_condition "$api_block" redis)" == "service_started" ]]'
+
+assert "Caddyfile은 알림 스트림 경로를 압축에서 뺀다" \
+  'grep -qE "^[[:space:]]*@compressible not path /api/v1/notifications/stream$" "$CADDYFILE" \
+    && grep -qE "^[[:space:]]*encode @compressible " "$CADDYFILE" \
+    && ! grep -qE "^[[:space:]]*encode zstd" "$CADDYFILE"'
+
 exit "$failures"
