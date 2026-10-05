@@ -1,5 +1,7 @@
 # Data Model: 알림과 마이페이지 (004-notification-mypage)
 
+용어: 스펙의 "연결 표"는 `sse_ticket`(API `StreamTicket`, 문서의 "티켓")이고, "알림 전달 기록"은 `notification_sequence`(회원별 카운터 행, 그 값이 `seq`)이며, 웹 BFF 라우트는 `stream-ticket`, API 경로는 `stream-tickets`다.
+
 Flyway `V4__notification_mypage.sql` 하나로 만든다. 새 테이블은 4개이고, 기존 테이블에는 마이페이지 조회용 인덱스만 더한다. 테이블마다 소유 모듈이 있고, 다른 모듈은 파사드를 거친다. 003과 같이 제약에는 모두 이름을 붙이고, 모듈 경계를 넘는 참조에는 FK를 두지 않는다.
 
 ## notification 모듈
@@ -25,7 +27,7 @@ Flyway `V4__notification_mypage.sql` 하나로 만든다. 새 테이블은 4개�
 제약과 인덱스:
 - `notification_receiver_seq_key UNIQUE (receiver_id, seq)`: 목록 키셋(`seq DESC`)과 재전송(`seq >`)을 같이 맡는다.
 - `notification_receiver_dedup_key UNIQUE (receiver_id, dedup_key)`: NULL은 서로 겹치지 않으므로 공감 묶음에는 걸리지 않는다.
-- `notification_unread_like_group_key UNIQUE (receiver_id, post_id) WHERE type = 'POST_LIKE' AND read_at IS NULL`: 안 읽은 공감 묶음은 글마다 하나(research R7).
+- `notification_unread_like_group_key UNIQUE (receiver_id, post_id) WHERE type = 'POST_LIKE' AND read_at IS NULL`: 안 읽은 공감 묶음은 글마다 하나(research R7). 조건이 붙어 있어 제약이 아니라 유일 인덱스(`CREATE UNIQUE INDEX`)로 만들고, `ON CONFLICT`는 같은 조건식을 되풀이한다.
 - `notification_unread_idx (receiver_id) WHERE read_at IS NULL`: 안 읽은 수.
 - `notification_created_at_idx (created_at)`: 정리 작업.
 - 체크: `type`은 아래 7종, `type = 'POST_LIKE' OR actor_count = 1`, `type <> 'POST_LIKE' OR dedup_key IS NULL`.
@@ -62,6 +64,7 @@ Flyway `V4__notification_mypage.sql` 하나로 만든다. 새 테이블은 4개�
 
 - 기본 키 `(post_id, liker_id)`가 "같은 회원의 같은 글 공감은 한 번만 알린다"를 보장한다. 받는 사람은 글쓴이 한 명이라 키에 넣지 않는다.
 - 인덱스: `(notification_id)`(CASCADE 삭제용).
+- 쓰기 순서: 묶음 갱신 또는 생성 → 그 ID로 참여자 삽입. 참여자 키에 걸리면 트랜잭션 전체를 되돌린다(research R7).
 
 ## member 모듈
 
@@ -121,7 +124,7 @@ stateDiagram-v2
 ### 알림 생성 규칙
 
 1. 글이 지워졌으면(`PostApi.find(postId) == null`) 만들지 않는다.
-2. 행동한 회원과 받는 사람이 같으면 만들지 않는다.
+2. 행동한 회원과 받는 사람이 같으면 만들지 않는다. 몬스터 알림(`MONSTER_SPAWNED`, `MONSTER_DEFEATED`, `MONSTER_DEFEATED_TOGETHER`)은 행동한 회원이 없으므로 이 규칙을 적용하지 않는다.
 3. 받는 사람의 카운터 행을 잠그고 번호를 받은 뒤 쓴다. 여러 명이면 회원 ID 오름차순이다.
 4. 멱등 키나 참여자 키에 걸리면 아무것도 바꾸지 않고, 신호도 보내지 않는다.
 5. 커밋 뒤 훅에서 쓴 회원마다 Redis 채널 `ogu:notification`에 `{memberId}:n:{seq}`를 발행한다. 내용은 싣지 않고, 발행이 실패해도 알림은 남는다(research R5).
@@ -160,7 +163,7 @@ stateDiagram-v2
 - `previews(postIds): Map<Long, PostPreview>`: 지운 글도 포함해 `postId`, `contentPreview`(앞 50글자), `deleted`. 알림 목록이 쓴다
 - `pageByAuthor(authorId, cursor, size): PostPage`: 내가 쓴 글(`id DESC`)
 - `pageLikedBy(memberId, cursor, size): PostPage`: 공감한 글(공감 시각 `DESC`)
-- `pageCommentsByAuthor(authorId, cursor, size): MyCommentPage`: 내 댓글(`id DESC`), 항목마다 `commentId`, `postId`, `content`, `isReply`, `createdAt`, 글 본문 앞부분
+- `pageCommentsByAuthor(authorId, cursor, size): MyCommentPage`: 내 댓글(`id DESC`), 항목마다 `commentId`, `postId`, `content`, `isReply`, `createdAt`, 글 본문 앞부분. HTTP 응답에서는 계약대로 `reply`로 내보낸다(`@JsonProperty("reply")`)
 - `liveRefsByAuthor(authorId): List<PostRef(postId, createdAt)>`: 통계용
 - `liveIds(postIds): Set<Long>`: 그 가운데 살아 있는 글
 

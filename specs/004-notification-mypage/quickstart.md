@@ -51,7 +51,7 @@ grep -rn "US1-AC6" apps/                 # 인수 조건에서 테스트 찾기
 | 10 | A가 알림을 25개 이상 만든 뒤 `/notifications` 열기 | 최신 20개, 각 항목에 종류, 닉네임, 글 앞부분, 시각, 읽음 표시 | US2-AC1 |
 | 11 | 목록 끝까지 스크롤 | 나머지가 이어 붙고 같은 알림이 두 번 보이지 않음 | US2-AC2 |
 | 12 | 안 읽은 알림 하나를 누름 | 글 상세로 이동, 배지가 하나 줆, 돌아오면 읽음 표시 | US2-AC3 |
-| 13 | "모두 읽음"을 누르는 순간 B가 공감(개발자 도구로 요청을 느리게 하면 쉽다) | 누르기 전까지의 알림은 읽음, 그 뒤 온 공감은 안 읽은 채 배지 1 | US2-AC4 |
+| 13 | "모두 읽음"을 누르는 순간 C가 A의 다른 글(8번의 글)에 처음 공감(이미 공감한 회원은 다시 알리지 않으므로 B나 D는 쓰지 않는다. 개발자 도구로 요청을 느리게 하면 쉽다) | 누르기 전까지의 알림은 읽음, 그 뒤 온 공감은 안 읽은 채 배지 1 | US2-AC4 |
 | 14 | A가 알림이 걸린 글을 지운 뒤 그 알림을 누름 | 목록에 "삭제된 글"로 남고, 누르면 "삭제된 글이에요" 안내 | US2-AC5 |
 | 15 | B의 토큰으로 A의 알림 ID에 `PUT /api/v1/notifications/{id}/read` | 404 `NOTIFICATION_NOT_FOUND`, A의 알림은 그대로 안 읽음 | US2-AC6 |
 | 16 | A가 `/my?tab=posts` | 지운 글을 뺀 내 글이 최신순, 감정, 몬스터 HP, 공감 수, 댓글 수, 시각 | US3-AC1 |
@@ -91,7 +91,7 @@ Redis 장애는 `./gradlew test --tests "*RedisOutageStreamTest*"`로 본다. �
 
 ## 운영 준비 (저장소 소유자)
 
-1. **Redis 컨테이너를 compose에 더한다**(research R5). `infra/compose.prod.yaml`에 아래 서비스를 넣고, `api`에 `depends_on: redis: condition: service_healthy`와 `REDIS_URL`을 더한다. `compose.e2e.yaml`과 로컬 `apps/api/compose.yaml`에도 같은 서비스를 비밀번호 없이 넣는다.
+1. **Redis 컨테이너를 compose에 더한다**(research R5). `infra/compose.prod.yaml`에 아래 서비스를 넣고, `api`에 `depends_on: redis: condition: service_started`(Redis 장애가 API 기동을 막지 않게)와 `REDIS_URL`을 더한다. `compose.e2e.yaml`과 로컬 `apps/api/compose.yaml`에도 같은 서비스를 비밀번호 없이 넣는다.
 
    ```yaml
    redis:
