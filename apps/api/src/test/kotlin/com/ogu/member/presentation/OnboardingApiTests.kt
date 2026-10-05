@@ -17,6 +17,7 @@ import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfig
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.ResultActions
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
@@ -260,6 +261,26 @@ class OnboardingApiTests {
             .andExpect(status().isForbidden)
             .andExpect(jsonPath("$.success").value(false))
             .andExpect(jsonPath("$.error.code").value("ONBOARDING_REQUIRED"))
+    }
+
+    @Test
+    fun `온보딩 전 토큰으로 내 프로필을 PATCH하면 403 ONBOARDING_REQUIRED이고 프로필은 그대로다`() {
+        val member = signupMember()
+
+        mockMvc
+            .perform(
+                patch("/api/v1/members/me")
+                    .bearer(member.accessToken)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""{"nickname":"skipper","jobRole":"HR","careerYear":"YEAR_1"}"""),
+            ).andExpect(status().isForbidden)
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.code").value("ONBOARDING_REQUIRED"))
+
+        me(member.accessToken)
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.nickname").isEmpty)
+            .andExpect(jsonPath("$.data.onboarded").value(false))
     }
 
     private fun signupMember(): SignedUp {
