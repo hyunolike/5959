@@ -7,7 +7,7 @@ Guidance for AI coding agents working in this repository.
 오구오구 백엔드: Kotlin + Spring Boot + Spring Modulith 모듈러 모놀리스.
 kotlin-spring-modulith-template에서 이식했다. 단일 Gradle 모듈이며 루트 패키지는
 `com.ogu`. 지금 모듈은 `shared`(OPEN), `member`, `post`, `ai`, `emotion`,
-`monster`, `feed` 일곱 개다. 모듈 목록과 의존 방향은
+`monster`, `feed`, `notification`(004) 여덟 개다. 모듈 목록과 의존 방향은
 `docs/architecture/overview.md` 5.1절을 따른다.
 
 ## Commands
@@ -85,7 +85,8 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   안에 다시 오면 access 토큰만 새로 준다(refresh는 그대로, 여러 탭 대응). 유예를 지나
   직전 토큰이 다시 오면 탈취로 보고 세션을 `REUSE_DETECTED`로 무효화한다.
 - 온보딩 전(`onboarded=false`) 토큰으로도 부를 수 있는 허용 목록은
-  `SecurityPaths.ONBOARDING_ALLOWED`에 있다: `/api/v1/members/me`,
+  `SecurityPaths.ONBOARDING_ALLOWED`에 있다: `GET /api/v1/members/me`(메서드까지 본다.
+  같은 경로의 `PATCH` 프로필 수정은 온보딩 뒤에만 된다, 004 research R13),
   `/api/v1/members/nickname-availability`, `/api/v1/members/me/onboarding`,
   `/api/v1/auth/logout`. 그 밖의 인증 필요 경로는 `OnboardingGuard`가
   `403 ONBOARDING_REQUIRED`로 막는다.
@@ -100,6 +101,10 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   `/actuator/health`(배포 롤백 기준)에는 Redis 지표가 없다(`shared/config/RedisHealthGroupConfig`).
   Redis 상태는 `/actuator/health/realtime`으로 따로 본다. 테스트는 `TestcontainersConfiguration`의
   `redis:7.4-alpine`에 붙는다.
+  Lettuce는 연결이 끊긴 동안 명령을 바로 거절한다(`shared/config/RedisClientConfig`, `REJECT_COMMANDS`).
+  알림 신호(`notification/stream`)는 커밋 뒤에만 `ogu:notification` 채널로 나가고(`RedisSignalPublisher`, 전용
+  스레드 하나에서 보내 요청 스레드가 기다리지 않는다), 구독 컨테이너는 `NotificationSubscriptionStarter`가 시작한다.
+  첫 구독이 실패해도 기동을 막지 않고 5초마다 다시 시도한다.
 
 ## Core loop (`post`, `ai`, `emotion`, `monster`, `feed`)
 
