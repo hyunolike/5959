@@ -105,4 +105,80 @@ describe("Toast", () => {
     expect(region).toHaveAttribute("aria-live", "polite");
     expect(region).toBeEmptyDOMElement();
   });
+
+  it("마우스를 올려 둔 동안은 사라지지 않고, 떠나면 남은 시간이 지나야 사라진다", () => {
+    render(<Harness />);
+    showToast();
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    const toast = screen.getByRole("button", { name: "알림 1" });
+    fireEvent.mouseEnter(toast.parentElement!);
+    act(() => {
+      vi.advanceTimersByTime(10_000);
+    });
+    expect(screen.getByText("알림 1")).toBeInTheDocument();
+
+    fireEvent.mouseLeave(toast.parentElement!);
+    act(() => {
+      vi.advanceTimersByTime(TOAST_DURATION_MS - 1000 - 1);
+    });
+    expect(screen.getByText("알림 1")).toBeInTheDocument();
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(screen.queryByText("알림 1")).not.toBeInTheDocument();
+  });
+
+  it("초점이 토스트 안에 있는 동안은 사라지지 않는다", () => {
+    render(<Harness />);
+    showToast();
+
+    act(() => {
+      screen.getByRole("button", { name: "알림 1" }).focus();
+    });
+    act(() => {
+      vi.advanceTimersByTime(10_000);
+    });
+    expect(screen.getByText("알림 1")).toBeInTheDocument();
+
+    act(() => {
+      screen.getByRole("button", { name: "알림 1" }).blur();
+    });
+    act(() => {
+      vi.advanceTimersByTime(TOAST_DURATION_MS);
+    });
+    expect(screen.queryByText("알림 1")).not.toBeInTheDocument();
+  });
+
+  it("닫기 버튼을 누르면 콜백 없이 그 토스트만 닫는다", () => {
+    const onOpen = vi.fn();
+    render(<Harness onOpen={onOpen} />);
+    showToast();
+    showToast();
+
+    const closeButtons = screen.getAllByRole("button", { name: "알림 닫기" });
+    expect(closeButtons).toHaveLength(2);
+    fireEvent.click(closeButtons[0]!);
+
+    expect(onOpen).not.toHaveBeenCalled();
+    expect(screen.queryByText("알림 2")).not.toBeInTheDocument();
+    expect(screen.getByText("알림 1")).toBeInTheDocument();
+  });
+
+  it("초점이 있는 토스트에서 Escape를 누르면 그 토스트를 닫는다", () => {
+    render(<Harness />);
+    showToast();
+    showToast();
+
+    const second = screen.getByRole("button", { name: "알림 2" });
+    act(() => {
+      second.focus();
+    });
+    fireEvent.keyDown(second, { key: "Escape" });
+
+    expect(screen.queryByText("알림 2")).not.toBeInTheDocument();
+    expect(screen.getByText("알림 1")).toBeInTheDocument();
+  });
 });
