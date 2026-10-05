@@ -69,7 +69,7 @@
 - 묶인 공감 알림(R7)에 새 공감이 들어오면 같은 행을 고치면서 `seq`를 새 번호로 올린다. 행은 하나 그대로이고 번호만 커진다.
 - 재전송은 `WHERE receiver_id = :me AND seq > :lastEventId AND created_at >= now() - 90일 ORDER BY seq`다. 묶음 알림은 마지막 상태로 한 번만 다시 온다.
 - 웹은 알림을 `id`(알림 ID)로 덮어쓴다. 같은 묶음이 번호를 바꿔 다시 오면 목록의 기존 항목을 지우고 맨 위에 둔다.
-- `lastEventId` 없이 처음 붙으면 지금의 `last_seq`부터 시작한다. 지난 알림은 목록 API가 보여 준다.
+- 웹은 첫 연결에도 unread-count의 `latestSeq`를 `lastEventId`로 넘긴다. `lastEventId`가 아예 없으면 지금의 `last_seq`부터 시작한다. 지난 알림은 목록 API가 보여 준다.
 
 **근거**:
 - 카운터 행 잠금은 커밋까지 유지된다. 그래서 같은 회원의 번호 N+1은 N을 받은 트랜잭션이 끝난 뒤에야 나온다. 커밋 순서와 번호 순서가 같으므로, "N+1을 보낸 뒤 N이 늦게 커밋되어 영영 빠지는" 일이 생기지 않는다. 전역 시퀀스(`nextval`)는 커밋 순서를 보장하지 않아 이 문제가 생긴다.
@@ -92,9 +92,10 @@
 
 **Redis가 내려가 있을 때**:
 - 알림 생성은 Redis와 무관하게 DB 트랜잭션으로 끝난다. 알림은 만들어지고 저장되며, 목록과 안 읽은 수 API도 그대로 동작한다.
-- 실시간 전달만 느려진다. 구독이 끊긴 것을 알아채면 안전망 주기를 60초에서 5초로 줄이고, 구독이 돌아오면 60초로 되돌린다. 그동안 SC-001(3초 안 95%)은 지키지 못할 수 있지만 빠지는 알림은 없다.
+- 실시간 전달만 느려진다. 구독이 끊긴 것을 알아채면(컨테이너 오류 콜백이나 5초 PING 실패 2회) 안전망 주기를 60초에서 5초로 줄이고, 구독이 돌아오면 60초로 되돌린다. 그동안 SC-001(3초 안 95%)은 지키지 못할 수 있지만 빠지는 알림은 없다.
 - 다시 연결한 화면은 언제나 DB에서 `lastEventId` 이후를 받으므로 Redis 장애가 알림 손실로 이어지지 않는다.
 - Actuator의 Redis 헬스 지표는 `/actuator/health` 판단에서 뺀다. 배포 스크립트가 헬스 체크 실패로 API를 롤백하지 않게 하기 위해서다. Redis 상태는 별도 그룹(`/actuator/health/redis`)과 로그로 본다.
+- API는 Redis 없이도 기동한다(compose는 `service_started`로만 기다린다).
 
 **근거**:
 - 사용자 요구사항이 overview의 Redis 도입 시점(M3 SSE 팬아웃)을 따르라고 명시했다. M5 레이드가 보스 HP를 Redis Lua로 원자적으로 줄이고(overview 5.4), 요청 제한도 Bucket4j와 Redis로 옮길 예정이라(overview 5.8) 같은 컨테이너를 그대로 다시 쓴다.
@@ -136,10 +137,9 @@
 - 묶음은 `(받는 사람, 글)`마다 안 읽은 `POST_LIKE` 알림 하나다. 부분 유일 인덱스 `UNIQUE (receiver_id, post_id) WHERE type = 'POST_LIKE' AND read_at IS NULL`로 강제한다.
 - 처리 순서(한 트랜잭션):
   1. 받는 사람(글쓴이)의 카운터 행을 잠그고 번호를 받는다. 이 잠금이 같은 회원의 묶음 갱신을 줄 세운다.
-  2. 참여자 표 `like_notification_participant(post_id, liker_id)`에 `ON CONFLICT DO NOTHING`으로 넣는다. 들어가지 않았으면(이미 알린 공감) 트랜잭션을 되돌려 번호도 쓰지 않는다.
-  3. 안 읽은 묶음이 있으면 `actor_count + 1`, `latest_actor_id`, `seq`, `updated_at`을 바꾼다. 없으면 새 묶음을 만든다(`actor_count = 1`).
-  4. 참여자 행에 묶음 ID를 적는다.
-- 읽음과 겹치는 경우: 읽음 처리의 `UPDATE`와 3단계의 `UPDATE ... WHERE read_at IS NULL`은 같은 행 잠금을 두고 줄을 선다. 읽음이 먼저 커밋되면 3단계는 0행이 되어 새 묶음을 만들고, 공감이 먼저면 번호가 올라가 "모두 읽음"의 기준 번호(R11)보다 커지므로 안 읽은 채로 남는다.
+  2. 안 읽은 묶음이 있으면 `actor_count + 1`, `latest_actor_id`, `seq`, `updated_at`을 바꾼다. 없으면 새 묶음을 만든다(`actor_count = 1`).
+  3. 그 묶음 ID로 참여자 표 `like_notification_participant(post_id, liker_id)`에 `ON CONFLICT DO NOTHING`으로 넣는다. 0행이면(이미 알린 공감) 트랜잭션 전체를 되돌려 번호와 묶음 갱신을 모두 취소한다.
+- 읽음과 겹치는 경우: 읽음 처리의 `UPDATE`와 2단계의 `UPDATE ... WHERE read_at IS NULL`은 같은 행 잠금을 두고 줄을 선다. 읽음이 먼저 커밋되면 2단계는 0행이 되어 새 묶음을 만들고, 공감이 먼저면 번호가 올라가 "모두 읽음"의 기준 번호(R11)보다 커지므로 안 읽은 채로 남는다.
 
 **근거**:
 - 참여자 기본 키가 `(post_id, liker_id)`라서 공감, 취소, 재공감을 반복해도 알림은 처음 한 번뿐이다(경계 상황). 묶음이 바뀌어도(읽은 뒤 새 묶음) 같은 회원은 다시 세지 않는다.
@@ -173,7 +173,7 @@
 
 **결정**:
 - 목록, 안 읽은 수, 재전송, 읽음 처리는 모두 `created_at >= now() - 90일`인 알림만 본다. 정리 작업이 늦어도 화면에는 보관 기간이 정확히 지켜진다.
-- `NotificationPurgeJob`이 매일 04:00(한국 시간)에 90일이 지난 알림을 1,000행씩 지운다. 참여자 행은 FK `ON DELETE CASCADE`로 함께 지워진다. 같은 작업이 하루 지난 `sse_ticket` 행과(member 모듈 쪽 작업으로 따로 둔다), 7일이 지난 완료된 이벤트 발행(`CompletedEventPublications.deletePublicationsOlderThan`)도 지운다.
+- `NotificationPurgeJob`이 매일 04:00(한국 시간)에 90일이 지난 알림을 1,000행씩 지운다. 참여자 행은 FK `ON DELETE CASCADE`로 함께 지워진다. 같은 작업이 7일이 지난 완료된 이벤트 발행(`CompletedEventPublications.deletePublicationsOlderThan`)도 지운다. 하루 지난 `sse_ticket` 행은 `member` 모듈의 `SseTicketCleanupJob`이 따로 지운다.
 - 인스턴스가 둘이어도 지우기는 멱등이라 ShedLock 없이 둔다.
 
 **근거**:

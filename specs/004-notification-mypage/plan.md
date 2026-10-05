@@ -53,7 +53,7 @@ API에는 `notification` 모듈을 추가한다. 알림은 도메인 이벤트�
 | I. 경계는 테스트로 강제한다 | 새 모듈 `notification`은 `post`, `monster`, `member`에만 의존한다. overview 5.1의 `notification → post, monster`에 닉네임과 연결 표 때문에 `notification → member`가 더해지지만, `member`는 아무것도 의존하지 않아 순환이 없다. 몬스터 생성 알림은 `emotion`이 아니라 `monster`의 새 이벤트 `MonsterSpawned`로 받아 `notification → emotion`을 만들지 않는다(R1, R8). 감정 통계는 `emotion`이 `monster`를 알면 순환이 되므로 `feed`가 조합한다. 웹은 `entities/notification`, `entities/emotion-stats`, `features/notification-stream`, `features/read-notification`, `features/edit-profile`, `widgets/notification-bell`, `widgets/notification-list`, `widgets/my-activity`, `widgets/emotion-stats-panel`을 FSD 규칙대로 두고 steiger가 검사한다 | 통과 |
 | II. 계약이 코드보다 먼저다 | `contracts/notification-mypage.openapi.yaml`(경로 11개, 연산 11개)을 먼저 확정했고 Redocly 검증을 통과했다(경고 2개는 003과 같은 `info-license`, `localhost` 서버). SSE 스트림도 `text/event-stream`과 이벤트 data 스키마로 계약에 적었다. 구현 첫 작업이 루트 누적 계약에 합치고 타입을 생성하는 것이다 | 통과 |
 | III. 인수 조건은 곧 테스트다 | 인수 조건 27개(US1 8, US2 6, US3 4, US4 5, US5 4)에 테스트 ID를 붙인다. 실시간 전달(US1-AC1, AC6, AC7)은 API SSE 통합 테스트와 e2e-full 둘 다에서 검증한다. 수동 절차는 quickstart 28단계에 모든 ID를 담았다 | 통과 |
-| IV. 사용자 안전이 기능보다 먼저다 | 위기 감지는 M4다. M3는 참여를 늘리는 기능(알림)이 들어가지만 레이드처럼 경쟁이나 몰림을 만드는 기능이 아니고, 위기 신호 알림은 M4에서 같은 알림 체계에 붙인다(스펙 Assumptions). M4 전까지 위험 글이 알림으로 퍼지지 않도록 별도 장치가 없다는 점은 M2와 같은 수준의 공백으로 남긴다 | 통과(주의) |
+| IV. 사용자 안전이 기능보다 먼저다 | 위기 감지는 M4다. M3는 참여를 늘리는 기능(알림)이 들어가지만 레이드처럼 경쟁이나 몰림을 만드는 기능이 아니고, 위기 신호 알림은 M4에서 같은 알림 체계에 붙인다(스펙 Assumptions). M4 전까지 위험 글이 알림으로 퍼지지 않도록 별도 장치가 없다는 점은 M2와 같은 수준의 공백으로 남긴다. 알림은 이미 그 글에 관여한 회원(글쓴이, 댓글 주인, HP를 줄인 회원)에게만 가고 새 독자에게 글을 퍼뜨리지 않는다. 토스트와 목록은 받는 사람 자신의 글 앞부분만 보이고 남의 댓글 본문은 싣지 않는다. 생성 규칙 1과 목록 미리보기는 `PostApi.find`/`previews` 하나로 글의 노출 여부를 판단하므로, M4가 숨김을 더하면 숨긴 글은 새 알림이 생기지 않고 "삭제된 글"로 보인다 | 예외(정당화, Complexity Tracking 참고) |
 | V. AI 장애가 핵심 흐름을 막지 않는다 | 이 마일스톤은 AI를 새로 부르지 않는다. 몬스터 생성 알림은 분석이 끝난 뒤의 이벤트라 분석 장애와 무관하고, 기본 몬스터(24시간)도 같은 알림을 낸다 | 통과 |
 | VI. 무료 인프라 안에서 운영한다 | Redis는 관리형 서비스가 아니라 기존 VM의 compose 안 컨테이너다(메모리 상한 64MB, 저장 없음). overview 4절의 계획(M3 SSE 팬아웃)과 같고, 새 외부 서비스나 유료 기능이 없어 추가 비용은 0원이다(SC-006, R5). VM의 연결 수천 개는 서블릿 비동기라 스레드를 쥐지 않는다(R2) | 통과 |
 
@@ -64,7 +64,7 @@ API에는 `notification` 모듈을 추가한다. 알림은 도메인 이벤트�
 - Redis는 신호만 나르고 데이터의 원천이 아니다. Redis가 없어도 알림은 저장되고 재전송된다(R5).
 - 계약의 모든 JSON 응답이 `ApiResponse` 봉투를 따른다. 스트림만 `text/event-stream`이고, 스트림을 열기 전의 오류(티켓)는 봉투를 쓴다.
 - 프로필 수정이 `/api/v1/members/me`(온보딩 전 허용 경로)에 `PATCH`로 붙으므로, 허용 목록을 `GET`에만 맞춰 온보딩을 건너뛰는 길을 막는다(R13).
-- 위반 사항이 없어 Complexity Tracking은 비운다.
+- 원칙 IV의 예외 하나를 Complexity Tracking에 적었다(ADR-0005). 그 밖의 위반은 없다.
 
 ## Project Structure
 
@@ -109,7 +109,7 @@ apps/api/src/main/kotlin/com/ogu/
 │   ├── domain/        Notification, NotificationType, NotificationSequence, LikeParticipant, 리포지토리
 │   ├── application/   NotificationEventListener(4종), NotificationWriter(번호, 멱등, 묶음, 커밋 뒤 발행 예약),
 │   │                  NotificationQueryService(목록, 안 읽은 수), NotificationReadService, NotificationPurgeJob
-│   ├── stream/        SseHub(회원별 연결, 따라잡기), RedisSignalPublisher, RedisSignalSubscriber(구독, 복구 뒤 따라잡기),
+│   ├── stream/        NotificationSignal.kt(채널 ogu:notification, 신호 형식), SseHub(회원별 연결, 따라잡기), RedisSignalPublisher, RedisSignalSubscriber(구독, 복구 뒤 따라잡기),
 │   │                  SafetyDrain(60초, Redis 장애 중 5초),
 │   │                  StreamHeartbeat, StreamCorsConfig
 │   └── presentation/  NotificationController, NotificationStreamController, dto
@@ -158,4 +158,6 @@ docs/architecture/overview.md                    # 5.1 notification 의존과 �
 
 ## Complexity Tracking
 
-위반 사항 없음.
+| 위반 | 필요한 이유 | 더 단순한 대안을 버린 이유 |
+|---|---|---|
+| Constitution IV: 참여 기능(알림)을 위기 감지(M4)보다 먼저 출시 | 로드맵상 M3가 M4보다 앞서고, M4의 위험 알림이 이 알림 체계 위에 붙는다 | M4를 먼저 하면 위험 알림을 보낼 채널이 없다. 완화: 관여자에게만 전달, 타인 본문 미노출, 노출 판단 단일 지점. 근거는 [ADR-0005](../../docs/adr/0005-notifications-before-safety.md) |

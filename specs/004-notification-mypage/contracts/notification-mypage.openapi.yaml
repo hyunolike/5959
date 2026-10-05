@@ -503,6 +503,9 @@ paths:
           headers:
             Cache-Control:
               schema: { type: string, const: no-store }
+            X-Accel-Buffering:
+              description: 중간 프록시가 스트림을 버퍼에 담지 않게 한다
+              schema: { type: string, const: 'no' }
           content:
             text/event-stream:
               schema:
