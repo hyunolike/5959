@@ -149,6 +149,24 @@ class EventResubmissionTests {
         assertThat(warnings).hasSize(1)
     }
 
+    @Test
+    fun `PostCreated 발행 기록에는 글 본문을 남기지 않는다`() {
+        val content = "[불안:낮음] 이벤트 기록에 남으면 안 되는 본문"
+        val postId = createPost(content)
+
+        val serialized =
+            jdbcTemplate.queryForList(
+                """
+                select serialized_event from event_publication
+                where event_type like '%PostCreated' and serialized_event like ?
+                """.trimIndent(),
+                String::class.java,
+                "%\"postId\":$postId,%",
+            )
+        assertThat(serialized).hasSize(1)
+        assertThat(serialized.single()).doesNotContain(content).doesNotContain("\"content\"")
+    }
+
     private fun forPost(postId: Long): PostCreated = argThat<PostCreated> { it?.postId == postId } ?: PLACEHOLDER
 
     private fun completionAttempts(postId: Long): Int = publication(postId, "completion_attempts")?.toInt() ?: 0
@@ -198,6 +216,6 @@ class EventResubmissionTests {
         private val POLL: Duration = Duration.ofMillis(200)
 
         /** Mockito 매처는 null을 돌려주므로 Kotlin의 non-null 인자 자리에 넣을 자리표시 값. */
-        private val PLACEHOLDER = PostCreated(0, 0, "", Instant.EPOCH)
+        private val PLACEHOLDER = PostCreated(0, 0, Instant.EPOCH)
     }
 }

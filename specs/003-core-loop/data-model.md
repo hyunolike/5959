@@ -132,7 +132,7 @@ stateDiagram-v2
 
 | 이벤트 | 발행 | 구독 | 전달 방식 |
 |---|---|---|---|
-| `PostCreated(postId, authorId, content, createdAt)` | post | emotion | 커밋 후 비동기 |
+| `PostCreated(postId, authorId, createdAt)` | post | emotion | 커밋 후 비동기 |
 | `PostLiked(postId, memberId)` | post | monster | 같은 트랜잭션 동기 |
 | `CommentCreated(postId, commentId, memberId)` | post | monster | 같은 트랜잭션 동기 |
 | `CommentLiked(postId, commentId, memberId)` | post | monster | 같은 트랜잭션 동기 |

@@ -221,8 +221,7 @@ class PostCreateApiTests {
             .matching { it.authorId == member.id }
             .toArriveAndVerify { event ->
                 val row = jdbcTemplate.queryForMap("select content, created_at from posts where id = ?", event.postId)
-                assertThat(event.content).isEqualTo("발행 확인")
-                assertThat(event.content).isEqualTo(row["content"])
+                assertThat(row["content"]).isEqualTo("발행 확인")
                 assertThat(event.createdAt).isEqualTo((row["created_at"] as java.sql.Timestamp).toInstant())
             }
 

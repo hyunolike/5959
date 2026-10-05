@@ -45,7 +45,7 @@ class PostService(
 
         val author = PostAuthor(authorId, jobRole, careerYear)
         val post = postRepository.save(Post.write(author, normalized, commentTone, now))
-        events.publishEvent(PostCreated(post.id, authorId, post.content, post.createdAt))
+        events.publishEvent(PostCreated(post.id, authorId, post.createdAt))
         return post.id
     }
 

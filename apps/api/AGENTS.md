@@ -151,6 +151,8 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   방지도 메모리에 있어 재시작하면 다시 한 번 남는다. 행은 지우지 않으므로 원인을 고친
   뒤에는 앱을 재시작하거나, 그 행의 `event_publication.completion_attempts`를 상한보다
   작게(예: 0) 되돌려 1분 주기 재전송이 다시 맡게 한다.
+  끝난 발행도 `event_publication`에 계속 쌓이므로, 이벤트에는 글 본문 같은 내용을 싣지 않고
+  ID만 담는다. 끝난 행을 지우거나 완료 모드를 바꾸는 보존 정책은 아직 없고 다음 작업으로 남겨 두었다.
 - **운영 기동 조건.** AI 키 검사는 `shared/config/ProdAiSettingsCheck`에 있다.
   인증 쪽 검사(`ProdAuthSettingsCheck`)는 `member`에 있으니 둘을 함께 본다.
   `prod`에서 `AI_API_KEY`나 `AI_MODEL`이 비어 있으면 앱이 뜨지 않는다. `AI_BASE_URL`은
