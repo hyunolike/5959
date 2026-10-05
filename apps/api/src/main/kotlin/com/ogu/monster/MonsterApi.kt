@@ -13,4 +13,10 @@ interface MonsterApi {
         postId: Long,
         memberId: Long,
     ): Boolean
+
+    /**
+     * 이 몬스터의 HP를 실제로 줄인 회원(004 research R9, 명확화 1). 기록이 여럿이어도 한 번이고, 처치 뒤 남긴 응원
+     * (`hp_before = hp_after = 0`)만 있는 회원은 빠진다.
+     */
+    fun damagerIds(monsterId: Long): Set<Long>
 }

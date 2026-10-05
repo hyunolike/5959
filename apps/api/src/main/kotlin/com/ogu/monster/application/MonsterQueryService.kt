@@ -22,4 +22,6 @@ class MonsterQueryService(
         postId: Long,
         memberId: Long,
     ): Boolean = hpLogRepository.existsComment(postId, memberId)
+
+    override fun damagerIds(monsterId: Long): Set<Long> = hpLogRepository.damagerIds(monsterId)
 }

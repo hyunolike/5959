@@ -2,6 +2,7 @@ package com.ogu.post.application
 
 import com.ogu.post.Attack
 import com.ogu.post.AttackAction
+import com.ogu.post.CommentSummary
 import com.ogu.post.PostApi
 import com.ogu.post.PostPage
 import com.ogu.post.PostPageQuery
@@ -50,6 +51,20 @@ class PostQueryService(
                 Attack(rs.getLong("member_id"), AttackAction.valueOf(rs.getString("action")), rs.getLong("target_id"))
             }.list()
 
+    override fun findComment(commentId: Long): CommentSummary? =
+        jdbcClient
+            .sql(FIND_COMMENT)
+            .param("commentId", commentId)
+            .query { rs, _ ->
+                CommentSummary(
+                    postId = rs.getLong("post_id"),
+                    authorId = rs.getLong("author_id"),
+                    parentId = rs.getLong("parent_id").takeUnless { rs.wasNull() },
+                    parentAuthorId = rs.getLong("parent_author_id").takeUnless { rs.wasNull() },
+                )
+            }.optional()
+            .orElse(null)
+
     private fun Post.toSummary(): PostSummary =
         PostSummary(
             postId = id,
@@ -64,6 +79,16 @@ class PostQueryService(
         )
 
     private companion object {
+        /** 살아 있는 글의 살아 있는 댓글. 답글이면 원 댓글 주인도 함께 읽는다(원 댓글을 지우면 답글도 함께 지워진다). */
+        val FIND_COMMENT =
+            """
+            select c.post_id, c.author_id, c.parent_id, parent.author_id as parent_author_id
+            from comments c
+                join posts p on p.id = c.post_id and p.deleted_at is null
+                left join comments parent on parent.id = c.parent_id
+            where c.id = :commentId and c.deleted_at is null
+            """.trimIndent()
+
         val ATTACKS_SO_FAR =
             """
             with post as (select id, author_id from posts where id = :postId and deleted_at is null)

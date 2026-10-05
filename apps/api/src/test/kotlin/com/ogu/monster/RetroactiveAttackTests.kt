@@ -159,6 +159,11 @@ class RetroactiveAttackTests {
         // 기록은 커밋 뒤에 담기므로 몬스터가 보인 직후에는 아직 없을 수 있다
         await().atMost(CoreLoopFixture.AWAIT_LIMIT).until { defeated.forPost(postId).isNotEmpty() }
         assertThat(defeated.forPost(postId)).hasSize(1)
+        // 같은 트랜잭션에서 생성 이벤트가 처치 이벤트보다 먼저 나간다(004 research R8)
+        val monsterId =
+            jdbcTemplate.queryForObject("select id from monsters where post_id = ?", Long::class.java, postId)!!
+        assertThat(defeated.monsterEventsFor(postId))
+            .containsExactly(MonsterSpawned(postId, monsterId, defaulted = false), MonsterDefeated(postId, monsterId))
     }
 
     @Test

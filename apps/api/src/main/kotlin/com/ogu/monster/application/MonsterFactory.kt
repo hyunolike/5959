@@ -1,11 +1,13 @@
 package com.ogu.monster.application
 
 import com.ogu.emotion.EmotionAnalyzed
+import com.ogu.monster.MonsterSpawned
 import com.ogu.monster.domain.Monster
 import com.ogu.monster.domain.MonsterRepository
 import com.ogu.post.PostApi
 import com.ogu.shared.lock.PostLock
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.modulith.events.ApplicationModuleListener
 import org.springframework.stereotype.Component
 import java.time.Clock
@@ -17,6 +19,7 @@ import java.time.temporal.ChronoUnit
  * 글 단위 잠금([PostLock]) 안에서 만들고 그때까지 쌓인 공격을 소급 반영해, 같은 글의 공격 반영([AttackListener])과
  * 겹쳐도 공격이 빠지거나 두 번 들어가지 않는다(research R4).
  * 같은 이벤트가 다시 전달돼도(Event Publication Registry 재발행) 몬스터는 하나다. 그사이 지운 글에는 만들지 않는다.
+ * 몬스터를 저장한 직후 같은 트랜잭션에서 [MonsterSpawned]를 발행한다(알림 모듈이 커밋 뒤 받는다).
  */
 @Component
 class MonsterFactory(
@@ -24,6 +27,7 @@ class MonsterFactory(
     private val postLock: PostLock,
     private val postApi: PostApi,
     private val attacks: MonsterAttacks,
+    private val events: ApplicationEventPublisher,
     private val clock: Clock,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -42,6 +46,8 @@ class MonsterFactory(
         }
         val now = clock.instant().truncatedTo(ChronoUnit.MICROS)
         val monster = monsterRepository.save(Monster.spawn(event.postId, event.emotion, event.intensity, now))
+        // 소급 반영으로 처치되면 같은 트랜잭션에서 MonsterDefeated가 뒤따른다. 생성이 언제나 먼저 나간다(004 research R8).
+        events.publishEvent(MonsterSpawned(event.postId, monster.id, event.defaulted))
         applyRetroactiveAttacks(monster, now)
     }
 
