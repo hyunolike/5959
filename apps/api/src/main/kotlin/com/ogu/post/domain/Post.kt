@@ -118,8 +118,8 @@ class Post private constructor(
             // 남용 방지(research R8): 결합 문자를 겹겹이 쌓은 글(Zalgo)은 글자 수는 적어도 코드 포인트가 매우 많다.
             // LLM에 보내는 양도 이 상한으로 막는다.
             if (content.codePointCount(0, content.length) > CONTENT_MAX_CODE_POINTS) {
-                if (Grapheme.count(content, limit = CONTENT_MAX_LENGTH + 1) > CONTENT_MAX_LENGTH) throw tooLong()
-                throw BusinessException(ErrorCode.INVALID_REQUEST, "본문에 결합 문자가 너무 많습니다.")
+                val tooLong = Grapheme.count(content, limit = CONTENT_MAX_LENGTH + 1) > CONTENT_MAX_LENGTH
+                throw if (tooLong) tooLong() else BusinessException(ErrorCode.INVALID_REQUEST, "본문에 결합 문자가 너무 많습니다.")
             }
             if (Grapheme.count(content) !in 1..CONTENT_MAX_LENGTH) throw tooLong()
             return content

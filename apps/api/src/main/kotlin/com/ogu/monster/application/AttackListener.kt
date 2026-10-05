@@ -53,9 +53,9 @@ class AttackListener(
         postLock.lock(postId)
         // 앞의 확인과 잠금 사이에 삭제가 커밋됐을 수 있다. 댓글 공감은 posts 행을 잠그지 않아 삭제를 행에서 기다리지
         // 않으므로, 삭제가 쥔 글 잠금이 풀린 뒤 다시 확인한다.
-        if (postApi.find(postId) == null) return
+        val stillLive = postApi.find(postId) != null
         // 규칙 2: 몬스터가 없으면 반영하지 않는다. 몬스터를 만들 때 소급 반영된다(FR-006a).
-        val monsterId = monsterRepository.findIdByPostId(postId) ?: return
+        val monsterId = (if (stillLive) monsterRepository.findIdByPostId(postId) else null) ?: return
         val now = clock.instant().truncatedTo(ChronoUnit.MICROS)
         attacks.apply(postId, monsterId, attack, retroactive = false, now = now)
     }
