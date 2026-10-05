@@ -76,6 +76,25 @@ class OnboardingGuardTest {
         assertThat(result.response.status).isEqualTo(403)
     }
 
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = ["PATCH", "PUT", "POST", "DELETE"])
+    fun `온보딩 전 토큰으로 내 프로필을 GET 밖의 메서드로 부르면 403 ONBOARDING_REQUIRED다`(method: String) {
+        authenticate(onboarded = false)
+
+        val result = run(method, "/api/v1/members/me")
+
+        assertThat(result.passed).isFalse()
+        assertThat(result.response.status).isEqualTo(403)
+        assertThat(result.response.contentAsString).contains("\"code\":\"ONBOARDING_REQUIRED\"")
+    }
+
+    @Test
+    fun `온보딩을 마친 토큰은 내 프로필을 PATCH로 부를 수 있다`() {
+        authenticate(onboarded = true)
+
+        assertThat(run("PATCH", "/api/v1/members/me").passed).isTrue()
+    }
+
     @Test
     fun `온보딩을 마친 토큰은 어느 API든 통과한다`() {
         authenticate(onboarded = true)
