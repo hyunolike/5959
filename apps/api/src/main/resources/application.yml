@@ -15,6 +15,12 @@ spring:
     properties:
       hibernate:
         default_batch_fetch_size: 100
+  task:
+    scheduling:
+      pool:
+        # 기본값 1이면 감정 분석 재시도(RetryScheduler, 한 번에 LLM 호출 최대 20건)가 도는 동안
+        # 이벤트 재전송(EventPublicationResubmitter)과 로그인 기록 정리가 그 뒤에서 기다린다.
+        size: 2
   modulith:
     events:
       republish-outstanding-events-on-restart: true
