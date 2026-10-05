@@ -23,6 +23,7 @@ import org.springframework.context.annotation.Import
 import org.springframework.context.annotation.Primary
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity
+import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
@@ -46,6 +47,8 @@ import java.util.concurrent.TimeUnit
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration::class, StreamTicketApiTests.ClockOverride::class)
+// 이 클래스만의 설정이라 다른 테스트와 컨텍스트를 나누지 않는다. 끝나면 닫아 컨테이너와 메모리를 돌려준다
+@DirtiesContext
 class StreamTicketApiTests {
     @Autowired
     lateinit var context: WebApplicationContext

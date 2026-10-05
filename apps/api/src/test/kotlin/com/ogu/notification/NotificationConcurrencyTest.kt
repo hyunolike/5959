@@ -29,12 +29,14 @@ import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.context.annotation.Import
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity
+import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean
 import org.springframework.test.web.servlet.setup.DefaultMockMvcBuilder
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.transaction.support.TransactionTemplate
 import org.springframework.web.context.WebApplicationContext
+import java.sql.Connection
 import java.time.Duration
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
@@ -43,6 +45,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
+import javax.sql.DataSource
 import kotlin.random.Random
 
 /**
@@ -57,6 +60,8 @@ import kotlin.random.Random
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration::class)
+// 이 클래스만의 설정이라 다른 테스트와 컨텍스트를 나누지 않는다. 끝나면 닫아 컨테이너와 메모리를 돌려준다
+@DirtiesContext
 class NotificationConcurrencyTest {
     @Autowired
     lateinit var context: WebApplicationContext
@@ -75,6 +80,9 @@ class NotificationConcurrencyTest {
 
     @Autowired
     lateinit var transactionTemplate: TransactionTemplate
+
+    @Autowired
+    lateinit var dataSource: DataSource
 
     @Autowired
     lateinit var hub: SseHub
@@ -128,11 +136,15 @@ class NotificationConcurrencyTest {
         val actor = insertMembers(1).single()
         val violations = CopyOnWriteArrayList<List<Long>>()
         val done = AtomicBoolean()
+        // 쓰는 쪽과 풀을 다투지 않게 지켜보는 쪽은 연결 하나를 따로 쥐고 쉬지 않고 읽는다
+        val watcherConnection = dataSource.connection
         val watcher =
             Thread.ofPlatform().start {
-                while (!done.get()) {
-                    val committed = seqsOf(receiver)
-                    if (committed != (1L..committed.size.toLong()).toList()) violations += committed
+                watcherConnection.use { connection ->
+                    while (!done.get()) {
+                        val committed = committedSeqs(connection, receiver)
+                        if (committed != (1L..committed.size.toLong()).toList()) violations += committed
+                    }
                 }
             }
 
@@ -242,6 +254,19 @@ class NotificationConcurrencyTest {
         postId: Long = POST_ID,
     ): NotificationDraft = NotificationDraft.comment(NotificationType.POST_COMMENT, receiver, postId, commentId, actor)
 
+    private fun committedSeqs(
+        connection: Connection,
+        receiver: Long,
+    ): List<Long> {
+        val sql = "select seq from notification where receiver_id = ? order by seq"
+        return connection.prepareStatement(sql).use { statement ->
+            statement.setLong(1, receiver)
+            statement.executeQuery().use { rs ->
+                generateSequence { if (rs.next()) rs.getLong(1) else null }.toList()
+            }
+        }
+    }
+
     private fun seqsOf(receiver: Long): List<Long> =
         jdbcTemplate.queryForList(
             "select seq from notification where receiver_id = ? order by seq",
@@ -323,8 +348,8 @@ class NotificationConcurrencyTest {
 
     private companion object {
         const val FANS = 100
-        const val WRITES = 60
-        const val MAX_HOLD_MILLIS = 15L
+        const val WRITES = 200
+        const val MAX_HOLD_MILLIS = 20L
         const val RECEIVERS = 3
         const val ROUNDS = 30
         const val MAX_THREADS = 32

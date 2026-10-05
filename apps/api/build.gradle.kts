@@ -109,6 +109,9 @@ configurations.matching { it.name == "detekt" }.all {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    // Spring 테스트 컨텍스트는 설정마다 캐시된다(각각 수십 MB). 004의 SSE, 서버 두 대, Redis 장애 테스트까지 더하면
+    // Gradle 기본값(512MB)으로는 전체 테스트 중에 힙이 모자란다
+    maxHeapSize = "1g"
 }
 
 tasks.bootJar {
