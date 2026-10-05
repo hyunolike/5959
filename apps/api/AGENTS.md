@@ -121,6 +121,21 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   알림 번호(`NotificationSequenceRepository.next`)와 공감 묶음 갱신(`NotificationRepository.upsertLikeGroup`)은 트랜잭션
   안에서만 부를 수 있다. 읽는 쿼리는 보관 기간 조건을
   `NotificationRetention.condition("n")`처럼 별칭을 붙여 쓴다.
+  실시간 전달(004 US1, research R2~R5)은 `notification/stream`에 있다. 브라우저는 BFF가 받아 준 일회용 연결 표로
+  `GET /api/v1/notifications/stream?ticket=...&lastEventId=...`에 바로 붙는다(공개 경로라 Bearer를 받지 않는다). 표는
+  `member`가 발급하고 소비한다(`MemberApi.issueStreamTicket`, `consumeStreamTicket`, 원문 32바이트 base64url,
+  `sse_ticket`에는 SHA-256만, 30초, 조건부 `UPDATE ... RETURNING` 한 문장으로 한 번만, 소비 뒤 세션 유효 확인).
+  `SseTicketCleanupJob`이 만료된 지 하루 지난 표를 지운다. `SseHub`는 회원별 연결(5개 상한, 넘으면 가장 오래된 것을 닫음)과
+  연결별 마지막 전송 번호를 들고, 보낼 것은 언제나 DB에서 `seq > 마지막 번호`로 읽는다(Redis 신호는 힌트). 새 연결은
+  허브에 먼저 등록한 뒤 재전송한다. 이 순서를 바꾸면 재전송 쿼리와 구독 사이에 커밋된 알림이 안전망 주기까지 빠진다.
+  쓰기는 전용 실행기(`notificationStreamExecutor`, 4스레드)가 하고, 연결마다 한 번에 하나만 돈다. 하트비트(`: hb`, 25초)와
+  안전망(`SafetyDrain`, 60초, Redis DOWN이면 5초, UP으로 돌아오면 모든 연결을 한 번 따라잡음)은 `StreamTimer` 스레드 하나가
+  시각만 맞춘다. 이 타이머는 `TaskScheduler` 빈이 아니다(빈이면 Boot가 `@Scheduled`용 기본 스케줄러를 만들지 않는다).
+  같은 이유로 `spring.task.execution.mode: force`를 두어 모듈의 실행기 빈이 있어도 `@Async`와 `@ApplicationModuleListener`가
+  Boot의 `applicationTaskExecutor`를 쓰게 한다. 연결은 수명(15분)이 지나면 서버가 닫고, 종료 때 허브가 먼저 닫아 우아한
+  종료가 열린 스트림을 기다리지 않는다. CORS는 스트림 경로에만 `ogu.sse.allowed-origins`를 허용하고 자격 증명은 쓰지 않는다
+  (`StreamCorsConfig`). 테스트는 `support/SseTestClient`(JDK `HttpClient`, `ofLines()`)로 실제 스트림을 읽고,
+  서버 두 대와 Redis 장애는 `support/AppInstance`로 직접 띄운다.
 
 ## Core loop (`post`, `ai`, `emotion`, `monster`, `feed`)
 
@@ -129,7 +144,7 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
 
 | 모듈 | 공개 파사드와 타입 | 발행 이벤트 | 받는 이벤트 |
 |---|---|---|---|
-| `post` | `PostApi`(`find`, `page`, `likedPostIds`, `attacksSoFar`, `findComment`), `PostSummary`, `PostPage`, `Attack`, `AttackAction`, `CommentSummary` | `PostCreated`(커밋 후), `PostLiked`, `CommentCreated`, `CommentLiked`(같은 트랜잭션) | - |
+| `post` | `PostApi`(`find`, `page`, `likedPostIds`, `attacksSoFar`, `findComment`, `previews`), `PostSummary`, `PostPage`, `Attack`, `AttackAction`, `CommentSummary` | `PostCreated`(커밋 후), `PostLiked`, `CommentCreated`, `CommentLiked`(같은 트랜잭션) | - |
 | `ai` | `EmotionAnalyzer`, `EmotionClassification`, `EmotionAnalysisFailed` | - | - |
 | `emotion` | `EmotionApi`(`findByPostIds`), `EmotionView`, `AnalysisStatus` | `EmotionAnalyzed` | `PostCreated` |
 | `monster` | `MonsterApi`(`findByPostIds`, `hasCountedComment`, `damagerIds`), `MonsterView` | `MonsterSpawned`, `MonsterDefeated` | `EmotionAnalyzed`, `PostLiked`, `CommentCreated`, `CommentLiked` |
