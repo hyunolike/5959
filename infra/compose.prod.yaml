@@ -40,9 +40,15 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
       OTEL_RESOURCE_ATTRIBUTES: deployment.environment.name=production,service.version=${API_TAG}
+      # 004 실시간 알림(research R5). REDIS_URL이 없거나 localhost면, OGU_SSE_ALLOWED_ORIGINS가 비면 기동하지 않는다
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      OGU_SSE_ALLOWED_ORIGINS: ${OGU_SSE_ALLOWED_ORIGINS}
     depends_on:
       postgres:
         condition: service_healthy
+      # Redis 장애가 API 기동을 막지 않게 컨테이너가 뜨기만 기다린다(service_healthy를 쓰지 않는다)
+      redis:
+        condition: service_started
 
   postgres:
     image: pgvector/pgvector:pg17
@@ -55,6 +61,21 @@ services:
       - pg-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      retries: 10
+
+  # 004 실시간 알림의 인스턴스 간 신호만 나른다(research R5). 키를 저장하지 않아 디스크에 쓰지 않고,
+  # 포트를 열지 않아 compose 내부 네트워크의 api만 붙는다.
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: >
+      redis-server --requirepass ${REDIS_PASSWORD}
+      --maxmemory 64mb --maxmemory-policy noeviction
+      --save "" --appendonly no
+    mem_limit: 128m
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD} --no-auth-warning ping | grep -q PONG"]
       interval: 5s
       retries: 10
 

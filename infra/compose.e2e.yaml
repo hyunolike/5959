@@ -25,6 +25,24 @@ services:
       OGU_BFF_KEY: e2e-bff-key
       # US4-AC1 e2e(session.spec.ts)가 access 토큰 만료 뒤 refresh를 실제로 거치도록 짧게 둔다(기본 15m).
       OGU_AUTH_JWT_ACCESS_TOKEN_TTL: 5s
+      # 004 실시간 알림. 브라우저는 http://localhost:3000(Playwright 웹 서버)에서 스트림에 바로 붙는다
+      REDIS_URL: redis://redis:6379
+      OGU_SSE_ALLOWED_ORIGINS: http://localhost:3000
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_started
+
+  # 운영과 같은 Redis를 비밀번호 없이 띄운다(research R5)
+  redis:
+    image: redis:7.4-alpine
+    command: >
+      redis-server
+      --maxmemory 64mb --maxmemory-policy noeviction
+      --save "" --appendonly no
+    mem_limit: 128m
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 5s
+      retries: 10
