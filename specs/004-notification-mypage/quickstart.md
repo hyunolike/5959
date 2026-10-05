@@ -5,7 +5,7 @@
 ## 준비
 
 ```bash
-# API: e2e 프로필은 가짜 감정 분석기를 쓴다(003 research R3). 실시간 전달은 Postgres LISTEN/NOTIFY라 추가 컨테이너가 없다
+# API: e2e 프로필은 가짜 감정 분석기를 쓴다(003 research R3). bootRun이 compose.yaml로 Postgres와 Redis를 함께 띄운다
 cd apps/api && SPRING_PROFILES_ACTIVE=local,e2e OGU_SSE_ALLOWED_ORIGINS=http://localhost:3000 ./gradlew bootRun
 
 # 웹. SSE_PUBLIC_ORIGIN은 브라우저가 스트림에 바로 붙을 API 주소다(없으면 API_ORIGIN)
@@ -78,7 +78,9 @@ cd apps/api && ./gradlew test --tests "*TwoInstanceStreamTest*" --rerun-tasks
 
 - 서로 다른 회원 100명이 같은 글에 동시에 공감하면 안 읽은 공감 묶음이 하나이고 `actor_count`가 100이다(SC-005). 회원의 `seq`는 겹치지 않고 커지는 순서로 커밋된다.
 - 연결을 끊은 동안 알림 50건(공감 묶음 갱신 포함)을 만들고 마지막 번호로 다시 붙으면, 받은 이벤트의 알림 ID 집합이 DB의 그 구간과 같고 같은 번호가 두 번 오지 않는다(SC-002).
-- 컨텍스트 두 개(A, B)를 같은 DB에 띄우고 A에 붙은 채 B에서 알림을 만들면 A로 온다. A를 닫고 B에 마지막 번호로 붙으면 그 사이 알림이 빠짐없이 온다(SC-003).
+- 컨텍스트 두 개(A, B)를 같은 DB와 Redis에 띄우고 A에 붙은 채 B에서 알림을 만들면 A로 온다. A를 닫고 B에 마지막 번호로 붙으면 그 사이 알림이 빠짐없이 온다(SC-003).
+
+Redis 장애는 `./gradlew test --tests "*RedisOutageStreamTest*"`로 본다. 수동으로는 웹에서 A로 접속한 채 `docker compose stop redis`를 하고 B로 공감한다. 공감은 성공하고, A의 화면에는 늦어도 5초(줄어든 안전망 주기) 안에 알림이 뜬다. `docker compose start redis` 뒤에는 다시 3초 안에 온다.
 
 수동으로 재시작을 확인하려면 API를 띄운 채 웹에서 A로 접속하고, API를 멈춘 사이 DB에 직접 알림이 생기도록 B로 공감한 뒤(API가 내려가 있으면 공감도 안 되므로, 두 번째 API를 `--server.port=8081`로 띄워 B가 거기로 공감) 첫 API를 다시 띄운다. A의 화면은 재시도 뒤 붙으면서 그 알림을 한 번 받는다.
 
@@ -89,8 +91,30 @@ cd apps/api && ./gradlew test --tests "*TwoInstanceStreamTest*" --rerun-tasks
 
 ## 운영 준비 (저장소 소유자)
 
-1. **Redis 컨테이너는 추가하지 않는다.** 인스턴스 간 전달은 Postgres `LISTEN/NOTIFY`로 한다(research R5). `compose.prod.yaml`에 새 서비스가 없고 월 비용도 그대로 0원이다. 이 결정은 ADR-0005로 남기고 overview 4절의 "Redis는 M3에서 추가"를 M5로 고친다.
+1. **Redis 컨테이너를 compose에 더한다**(research R5). `infra/compose.prod.yaml`에 아래 서비스를 넣고, `api`에 `depends_on: redis: condition: service_healthy`와 `REDIS_URL`을 더한다. `compose.e2e.yaml`과 로컬 `apps/api/compose.yaml`에도 같은 서비스를 비밀번호 없이 넣는다.
+
+   ```yaml
+   redis:
+     image: redis:7.4-alpine
+     restart: unless-stopped
+     command: >
+       redis-server --requirepass ${REDIS_PASSWORD}
+       --maxmemory 64mb --maxmemory-policy noeviction
+       --save "" --appendonly no
+     mem_limit: 128m
+     healthcheck:
+       test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD} --no-auth-warning ping | grep -q PONG"]
+       interval: 5s
+       retries: 10
+   ```
+
+   - **저장하지 않는다**(`--save ""`, `--appendonly no`). M3에서 Redis는 pub/sub 신호만 나르고 키를 하나도 저장하지 않는다. 신호는 원래 한 번 전달되면 끝이고, 내용과 순서는 Postgres에 있어 Redis를 비운 채 다시 띄워도 잃는 것이 없다. RDB나 AOF는 디스크 쓰기와 볼륨만 늘린다. M5에서 보스 HP를 담을 때 다시 정하는데, overview 5.4대로 HP는 Postgres 스냅숏과 로그로 복구하므로 그때도 저장 없이 갈 수 있는지 먼저 본다.
+   - **메모리**: `maxmemory 64mb`와 `noeviction`, 컨테이너 상한 128MB. pub/sub는 키를 쓰지 않아 실제 사용량은 수 MB이고, 느린 구독자의 출력 버퍼는 기본 한도(`client-output-buffer-limit pubsub 32mb 8mb 60`)가 끊는다.
+   - **포트는 열지 않는다.** compose 내부 네트워크에서 `api`만 붙는다. 그래도 같은 VM의 다른 컨테이너를 생각해 비밀번호를 건다.
+   - 월 비용은 그대로 0원이다(SC-006).
 2. VM `/opt/ogu/.env`와 `compose.prod.yaml`의 `api.environment`에 새 값을 넣는다.
+   - `REDIS_PASSWORD`: 32자 이상 난수. `.env`에만 둔다.
+   - `REDIS_URL`: `redis://:${REDIS_PASSWORD}@redis:6379`(compose가 조합한다). `spring.data.redis.url`로 들어간다. `prod`에서 비어 있으면 기동이 실패한다.
    - `OGU_SSE_ALLOWED_ORIGINS`: 웹 출처(예: `https://5959.vercel.app`). 비어 있으면 `prod` 기동이 실패한다(`ProdAuthSettingsCheck`에 검사 추가).
 3. Vercel 프로젝트 환경 변수에 `SSE_PUBLIC_ORIGIN`(예: `https://api.도메인`)을 넣는다. `API_ORIGIN`과 같다면 생략해도 된다.
 4. `infra/Caddyfile`에서 스트림 경로를 압축에서 뺀다. Caddy는 `text/event-stream` 응답을 바로 흘려보내고, 응답 타임아웃 기본값이 없어 따로 늘리지 않는다.
@@ -103,5 +127,6 @@ cd apps/api && ./gradlew test --tests "*TwoInstanceStreamTest*" --rerun-tasks
    }
    ```
 
-5. 배포 뒤 확인: 브라우저에서 로그인하고 개발자 도구의 네트워크 탭에서 `stream` 요청이 `200 text/event-stream`으로 열려 있고, 25초마다 데이터가 조금씩 오는지 본다. 다른 계정으로 공감해 3초 안에 토스트가 뜨는지 본다.
-6. 기존 데이터에는 이관이 없다. `V4__notification_mypage.sql`은 테이블과 인덱스만 만든다. 큰 테이블에 인덱스를 만들지만 지금 데이터 규모(글 수천 개)에서는 잠금 시간이 짧다.
+5. 헬스 체크: Redis가 내려가도 알림은 저장되므로 `/actuator/health`(배포 스크립트의 롤백 기준)에는 Redis를 넣지 않는다(기본 그룹이 Redis 지표를 빼도록 설정하고, Redis 지표는 따로 조회한다). Redis 상태는 compose 헬스 체크와 `/actuator/health/redis`, `docker compose ps`로 본다.
+6. 배포 뒤 확인: 브라우저에서 로그인하고 개발자 도구의 네트워크 탭에서 `stream` 요청이 `200 text/event-stream`으로 열려 있고, 25초마다 데이터가 조금씩 오는지 본다. 다른 계정으로 공감해 3초 안에 토스트가 뜨는지 본다.
+7. 기존 데이터에는 이관이 없다. `V4__notification_mypage.sql`은 테이블과 인덱스만 만든다. 큰 테이블에 인덱스를 만들지만 지금 데이터 규모(글 수천 개)에서는 잠금 시간이 짧다.
