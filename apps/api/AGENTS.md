@@ -94,6 +94,12 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   카카오·구글 client id/secret이 모두 있어야 하고, 허용 redirect URI는 전부
   `https`여야 하고, `prod`와 `e2e` 프로필을 동시에 켤 수 없다(e2e의 비밀 값은
   `infra/compose.e2e.yaml`에 커밋된 고정 값이라 prod에 같이 켜면 토큰을 위조할 수 있다).
+  004부터는 `spring.data.redis.url`(`REDIS_URL`)이 없거나 localhost이면, `ogu.sse.allowed-origins`
+  (`OGU_SSE_ALLOWED_ORIGINS`)가 비면 뜨지 않는다.
+- Redis(004, research R5)는 실시간 알림의 인스턴스 간 신호만 나른다. API는 Redis 없이도 뜨고,
+  `/actuator/health`(배포 롤백 기준)에는 Redis 지표가 없다(`shared/config/RedisHealthGroupConfig`).
+  Redis 상태는 `/actuator/health/realtime`으로 따로 본다. 테스트는 `TestcontainersConfiguration`의
+  `redis:7.4-alpine`에 붙는다.
 
 ## Core loop (`post`, `ai`, `emotion`, `monster`, `feed`)
 

@@ -18,6 +18,8 @@ object SecurityPaths {
             "/api/v1/auth/oauth/**",
             "/api/v1/auth/refresh",
             "/actuator/health",
+            // 004: Redis 상태만 따로 보는 헬스 그룹(research R5). 상세는 보이지 않고 상태만 준다
+            "/actuator/health/realtime",
         )
 
     /** springdoc이 켜져 있을 때(`springdoc.api-docs.enabled`, 기본 true)만 공개한다. 운영은 이 설정이 false다. */

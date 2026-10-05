@@ -94,7 +94,7 @@
 - 알림 생성은 Redis와 무관하게 DB 트랜잭션으로 끝난다. 알림은 만들어지고 저장되며, 목록과 안 읽은 수 API도 그대로 동작한다.
 - 실시간 전달만 느려진다. 구독이 끊긴 것을 알아채면(컨테이너 오류 콜백이나 5초 PING 실패 2회) 안전망 주기를 60초에서 5초로 줄이고, 구독이 돌아오면 60초로 되돌린다. 그동안 SC-001(3초 안 95%)은 지키지 못할 수 있지만 빠지는 알림은 없다.
 - 다시 연결한 화면은 언제나 DB에서 `lastEventId` 이후를 받으므로 Redis 장애가 알림 손실로 이어지지 않는다.
-- Actuator의 Redis 헬스 지표는 `/actuator/health` 판단에서 뺀다. 배포 스크립트가 헬스 체크 실패로 API를 롤백하지 않게 하기 위해서다. Redis 상태는 별도 그룹(`/actuator/health/redis`)과 로그로 본다.
+- Actuator의 Redis 헬스 지표는 `/actuator/health` 판단에서 뺀다. 배포 스크립트가 헬스 체크 실패로 API를 롤백하지 않게 하기 위해서다. Redis 상태는 별도 그룹(`/actuator/health/realtime`)과 로그로 본다.
 - API는 Redis 없이도 기동한다(compose는 `service_started`로만 기다린다).
 
 **근거**:

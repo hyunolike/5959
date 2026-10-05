@@ -127,6 +127,6 @@ Redis 장애는 `./gradlew test --tests "*RedisOutageStreamTest*"`로 본다. �
    }
    ```
 
-5. 헬스 체크: Redis가 내려가도 알림은 저장되므로 `/actuator/health`(배포 스크립트의 롤백 기준)에는 Redis를 넣지 않는다(기본 그룹이 Redis 지표를 빼도록 설정하고, Redis 지표는 따로 조회한다). Redis 상태는 compose 헬스 체크와 `/actuator/health/redis`, `docker compose ps`로 본다.
+5. 헬스 체크: Redis가 내려가도 알림은 저장되므로 `/actuator/health`(배포 스크립트의 롤백 기준)에는 Redis를 넣지 않는다(기본 그룹이 Redis 지표를 빼도록 설정하고, Redis 지표는 따로 조회한다). Redis 상태는 compose 헬스 체크와 `/actuator/health/realtime`(그룹 이름은 지표 이름 `redis`와 겹칠 수 없다), `docker compose ps`로 본다.
 6. 배포 뒤 확인: 브라우저에서 로그인하고 개발자 도구의 네트워크 탭에서 `stream` 요청이 `200 text/event-stream`으로 열려 있고, 25초마다 데이터가 조금씩 오는지 본다. 다른 계정으로 공감해 3초 안에 토스트가 뜨는지 본다.
 7. 기존 데이터에는 이관이 없다. `V4__notification_mypage.sql`은 테이블과 인덱스만 만든다. 큰 테이블에 인덱스를 만들지만 지금 데이터 규모(글 수천 개)에서는 잠금 시간이 짧다.
