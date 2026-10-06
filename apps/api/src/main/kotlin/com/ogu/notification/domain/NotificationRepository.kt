@@ -10,6 +10,7 @@ import java.time.Instant
 
 /**
  * 알림 `notification` 저장소. 읽는 쿼리와 읽음 처리는 모두 [NotificationRetention.condition]으로 보관 기간 안의 알림만 본다.
+ * 정리([deleteExpired])는 같은 조건의 부정으로 보관 기간이 지난 것만 지운다.
  * 번호(`seq`)는 쓰기 전에 [NotificationSequenceRepository.next]로 받는다.
  */
 @Repository
@@ -226,6 +227,31 @@ class NotificationRepository(
             .param("receiverId", receiverId)
             .param("upToSeq", upToSeq)
             .params(retention.params())
+            .update()
+
+    /**
+     * 보관 기간이 지난 알림을 오래된 것부터 [limit]행까지 지우고 지운 수를 돌려준다(research R10). 기준은 만든 시각이라
+     * 최근에 갱신된 묶음도 지운다. 참여자 행은 FK `ON DELETE CASCADE`로 함께 지워진다. 인덱스
+     * `notification_created_at_idx`를 쓴다.
+     *
+     * 다른 트랜잭션이 잡고 있는 행은 건너뛴다(`SKIP LOCKED`). 두 인스턴스가 같이 돌아도 서로 기다리지 않고 다른 행을 지운다.
+     * 트랜잭션 밖에서 부르면 한 번이 한 트랜잭션이라 잠금이 문장 끝에 풀린다.
+     */
+    fun deleteExpired(limit: Int): Int =
+        jdbcClient
+            .sql(
+                """
+                delete from notification
+                where id in (
+                    select n.id from notification n
+                    where not (${NotificationRetention.condition("n")})
+                    order by n.created_at
+                    limit :limit
+                    for update skip locked
+                )
+                """.trimIndent(),
+            ).params(retention.params())
+            .param("limit", limit)
             .update()
 
     private companion object {
