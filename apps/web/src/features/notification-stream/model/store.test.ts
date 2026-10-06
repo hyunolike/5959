@@ -139,7 +139,7 @@ describe("알림 스트림 연결 상태", () => {
     store.getState().stop();
   });
 
-  it("연달아 실패하면 1초, 2초, 4초로 늘려 기다리고 열리면 시도 횟수를 0으로 되돌린다", async () => {
+  it("연달아 실패하면 1초, 2초, 4초로 늘려 기다리고, 20초 동안 열려 있으면 시도 횟수를 0으로 되돌린다", async () => {
     const { store, deps, attempts } = setup();
     store.getState().start(deps);
     await flush();
@@ -157,11 +157,35 @@ describe("알림 스트림 연결 상태", () => {
     expect(attempts).toHaveLength(3);
 
     attempts[2].handlers.onOpen();
+    await vi.advanceTimersByTimeAsync(19_999);
+    expect(store.getState().attempt).toBe(2);
+    await vi.advanceTimersByTimeAsync(1);
     expect(store.getState().attempt).toBe(0);
 
     attempts[2].handlers.onError();
     await vi.advanceTimersByTimeAsync(1000);
     expect(attempts).toHaveLength(4);
+    store.getState().stop();
+  });
+
+  it("열리자마자 끊기기를 되풀이하면(탭이 6개 이상) 대기 시간이 계속 늘어난다", async () => {
+    const { store, deps, attempts } = setup();
+    store.getState().start(deps);
+    await flush();
+
+    // 서버가 여섯 번째 연결을 받으면 가장 오래된 연결을 닫는다. 열렸다가 5초 만에 닫히기를 되풀이한다.
+    const waits = [1000, 2000, 4000, 8000];
+    for (const [index, wait] of waits.entries()) {
+      attempts[index].handlers.onOpen();
+      await vi.advanceTimersByTimeAsync(5000);
+      attempts[index].handlers.onError();
+      expect(store.getState().attempt).toBe(index + 1);
+
+      await vi.advanceTimersByTimeAsync(wait - 1);
+      expect(attempts).toHaveLength(index + 1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(attempts).toHaveLength(index + 2);
+    }
     store.getState().stop();
   });
 
@@ -190,11 +214,196 @@ describe("알림 스트림 연결 상태", () => {
 
     await vi.advanceTimersByTimeAsync(120_000);
     window.dispatchEvent(new Event("online"));
-    document.dispatchEvent(new Event("visibilitychange"));
     await flush();
 
     expect(deps.openStream).toHaveBeenCalledTimes(1);
     expect(store.getState().status).toBe("stopped");
+    store.getState().stop();
+  });
+
+  it("stopped에서 탭에 초점이 오면 한 번만 다시 붙어 보고, 실패하면 되풀이하지 않는다", async () => {
+    const { store, deps } = setup();
+    const sessionEnded = new ApiError(401, {
+      code: "SESSION_EXPIRED",
+      message: "세션 만료",
+    });
+    deps.openStream.mockRejectedValue(sessionEnded);
+    store.getState().start(deps);
+    await flush();
+    expect(store.getState().status).toBe("stopped");
+
+    // 초점과 보임이 함께 와도 시도는 한 번이다.
+    window.dispatchEvent(new Event("focus"));
+    document.dispatchEvent(new Event("visibilitychange"));
+    await flush();
+
+    expect(deps.openStream).toHaveBeenCalledTimes(2);
+    // 살펴보는 동안에도 화면에는 stopped로 남는다(끝난 세션으로 안 읽은 수를 묻지 않는다).
+    expect(store.getState().status).toBe("stopped");
+    await vi.advanceTimersByTimeAsync(120_000);
+    expect(deps.openStream).toHaveBeenCalledTimes(2);
+
+    // 네트워크 오류로 실패해도 기다렸다 다시 하지 않는다. 다음 초점에서 한 번 더 본다.
+    deps.openStream.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    window.dispatchEvent(new Event("focus"));
+    await flush();
+    await vi.advanceTimersByTimeAsync(120_000);
+
+    expect(deps.openStream).toHaveBeenCalledTimes(3);
+    expect(store.getState().status).toBe("stopped");
+    store.getState().stop();
+  });
+
+  it("stopped에서 다른 탭으로 로그인한 뒤 초점이 오면 새 번호부터 다시 붙는다", async () => {
+    const { store, deps, attempts } = setup();
+    deps.openStream.mockRejectedValueOnce(
+      new ApiError(401, { code: "SESSION_EXPIRED", message: "세션 만료" }),
+    );
+    store.getState().start(deps);
+    await flush();
+    expect(store.getState().status).toBe("stopped");
+
+    // 다시 로그인한 회원은 다를 수 있다. 옛 번호를 쓰지 않고 안 읽은 수를 새로 받는다.
+    deps.loadLatestSeq.mockResolvedValue(3);
+    window.dispatchEvent(new Event("focus"));
+    await flush();
+
+    expect(attempts).toHaveLength(1);
+    expect(attempts[0].lastEventId).toBe(3);
+    expect(store.getState().status).toBe("connecting");
+    attempts[0].handlers.onOpen();
+    expect(store.getState().status).toBe("open");
+
+    // 다시 붙은 뒤에는 평소처럼 끊기면 기다렸다 다시 연다.
+    attempts[0].handlers.onError();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(attempts).toHaveLength(2);
+    store.getState().stop();
+  });
+
+  it("stop한 뒤에는 초점이 와도 다시 붙어 보지 않는다", async () => {
+    const { store, deps } = setup();
+    deps.openStream.mockRejectedValue(
+      new ApiError(401, { code: "SESSION_EXPIRED", message: "세션 만료" }),
+    );
+    store.getState().start(deps);
+    await flush();
+    store.getState().stop();
+
+    window.dispatchEvent(new Event("focus"));
+    await flush();
+
+    expect(deps.openStream).toHaveBeenCalledTimes(1);
+    expect(store.getState().status).toBe("idle");
+  });
+
+  it("US1-AC6 열려 있어도 60초 동안 아무 이벤트가 없으면 닫고 다시 붙는다", async () => {
+    const { store, deps, attempts } = setup();
+    store.getState().start(deps);
+    await flush();
+    attempts[0].handlers.onOpen();
+    attempts[0].handlers.onNotification(notificationEvent(1, 18), 18);
+
+    await vi.advanceTimersByTimeAsync(59_999);
+    expect(attempts[0].close).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(attempts[0].close).toHaveBeenCalledTimes(1);
+    expect(store.getState().status).toBe("retrying");
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(attempts).toHaveLength(2);
+    expect(attempts[1].lastEventId).toBe(18);
+    store.getState().stop();
+  });
+
+  it("ping을 비롯한 이벤트가 올 때마다 조용한 시간을 다시 센다", async () => {
+    const { store, deps, attempts } = setup();
+    store.getState().start(deps);
+    await flush();
+    attempts[0].handlers.onOpen();
+
+    for (let i = 0; i < 6; i += 1) {
+      await vi.advanceTimersByTimeAsync(25_000);
+      attempts[0].handlers.onPing();
+    }
+    await vi.advanceTimersByTimeAsync(50_000);
+    attempts[0].handlers.onUnreadCount({ unreadCount: 0 });
+    await vi.advanceTimersByTimeAsync(50_000);
+
+    expect(attempts).toHaveLength(1);
+    expect(attempts[0].close).not.toHaveBeenCalled();
+    expect(store.getState().status).toBe("open");
+    // ping에는 id가 없다. 마지막 이벤트 id는 그대로다.
+    expect(store.getState().lastEventId).toBe(17);
+    store.getState().stop();
+  });
+
+  it("연결이 열리지도 끊기지도 않은 채 60초가 지나면 닫고 다시 시도한다", async () => {
+    const { store, deps, attempts } = setup();
+    store.getState().start(deps);
+    await flush();
+
+    await vi.advanceTimersByTimeAsync(60_000);
+
+    expect(attempts[0].close).toHaveBeenCalledTimes(1);
+    expect(store.getState().status).toBe("retrying");
+    store.getState().stop();
+  });
+
+  it("US1-AC6 탭이 30초 넘게 가려졌다 돌아오면 열려 있어도 닫고 바로 다시 붙는다", async () => {
+    const { store, deps, attempts } = setup();
+    store.getState().start(deps);
+    await flush();
+    attempts[0].handlers.onOpen();
+    attempts[0].handlers.onNotification(notificationEvent(1, 18), 18);
+
+    setVisibility("hidden");
+    document.dispatchEvent(new Event("visibilitychange"));
+    // 잠든 동안에는 타이머도 돌지 않는다. 시계만 앞으로 간다.
+    vi.setSystemTime(Date.now() + 31_000);
+    setVisibility("visible");
+    document.dispatchEvent(new Event("visibilitychange"));
+    await flush();
+
+    expect(attempts[0].close).toHaveBeenCalledTimes(1);
+    expect(attempts).toHaveLength(2);
+    expect(attempts[1].lastEventId).toBe(18);
+    expect(store.getState().status).toBe("connecting");
+    store.getState().stop();
+  });
+
+  it("US1-AC6 30초 넘게 오프라인이었다 돌아와도 열린 연결을 닫고 다시 붙는다", async () => {
+    const { store, deps, attempts } = setup();
+    store.getState().start(deps);
+    await flush();
+    attempts[0].handlers.onOpen();
+
+    window.dispatchEvent(new Event("offline"));
+    vi.setSystemTime(Date.now() + 31_000);
+    window.dispatchEvent(new Event("online"));
+    await flush();
+
+    expect(attempts[0].close).toHaveBeenCalledTimes(1);
+    expect(attempts).toHaveLength(2);
+    store.getState().stop();
+  });
+
+  it("잠깐(30초 이하) 가려졌다 돌아오면 열린 연결을 그대로 둔다", async () => {
+    const { store, deps, attempts } = setup();
+    store.getState().start(deps);
+    await flush();
+    attempts[0].handlers.onOpen();
+
+    setVisibility("hidden");
+    document.dispatchEvent(new Event("visibilitychange"));
+    vi.setSystemTime(Date.now() + 30_000);
+    setVisibility("visible");
+    document.dispatchEvent(new Event("visibilitychange"));
+    await flush();
+
+    expect(attempts).toHaveLength(1);
+    expect(attempts[0].close).not.toHaveBeenCalled();
+    store.getState().stop();
   });
 
   it("US1-AC8 안 읽은 수 조회가 401이어도 stopped이고 티켓을 요청하지 않는다", async () => {
