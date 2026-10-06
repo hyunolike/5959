@@ -99,6 +99,50 @@ async function dropStreams(page: Page) {
   });
 }
 
+interface ToastLogWindow {
+  toastLog: string[];
+}
+
+/**
+ * 지금부터 뜨는 토스트의 문구를 모두 적어 둔다. 토스트는 4초 뒤 사라지므로, 몇 번 떴는지는 화면에
+ * 남아 있는 것을 세지 않고 이 기록으로 센다.
+ */
+async function recordToasts(page: Page) {
+  await page.evaluate(() => {
+    const log: string[] = [];
+    (window as unknown as ToastLogWindow).toastLog = log;
+    const region = document.querySelector('section[aria-label="새 알림"]');
+    if (region === null) {
+      throw new Error("토스트 영역이 없다");
+    }
+    new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
+          const message = (node as Element).querySelector?.("button");
+          if (message?.textContent) {
+            log.push(message.textContent);
+          }
+        }
+      }
+    }).observe(region, { childList: true });
+  });
+}
+
+function recordedToasts(page: Page): Promise<string[]> {
+  return page.evaluate(() =>
+    [...(window as unknown as ToastLogWindow).toastLog].sort(),
+  );
+}
+
+/** 서버가 아는 안 읽은 수. 브라우저 밖(테스트 프로세스)에서 불러서 오프라인 흉내에 막히지 않는다. */
+async function serverUnreadCount(member: Member): Promise<number> {
+  const response = await member.page.request.get(
+    "/api/notifications/unread-count",
+  );
+  expect(response.status()).toBe(200);
+  return ((await response.json()) as { data: { count: number } }).data.count;
+}
+
 /** 새 컨텍스트에서 가입과 온보딩을 마치고, 홈에서 실시간 연결까지 열린 회원. */
 async function newMember(
   browser: Browser,
@@ -217,24 +261,21 @@ test("US1-AC1 다른 회원이 내 글에 댓글과 답글을 달면 새로고�
     author.page.getByRole("region", { name: "새 알림" }),
   ).not.toContainText("본문은 토스트에");
 
-  await comment(visitor, postId, "답글", commentId);
-
-  await expect(
-    toast(author.page, `${visitor.nickname} 님이 내 글에 답글을 남겼어요`),
-  ).toBeVisible();
-  await expectUnread(author.page, 3);
   expect(
     await author.page.evaluate(
       () => (window as unknown as { stayedOnPage?: boolean }).stayedOnPage,
     ),
   ).toBe(true);
 
-  // 토스트를 누르면 관련 글로 간다.
+  await comment(visitor, postId, "답글", commentId);
+
+  // 토스트는 4초 뒤 사라진다. 뜨면 바로 누르고, 숫자는 남아 있는 배지로 확인한다.
   await toast(
     author.page,
     `${visitor.nickname} 님이 내 글에 답글을 남겼어요`,
   ).click();
   await author.page.waitForURL(`**/post/${postId}`);
+  await expectUnread(author.page, 3);
 
   await closeAll(author, visitor);
 });
@@ -285,42 +326,73 @@ test("US1-AC6 연결이 끊긴 동안 생긴 댓글 2개와 공감이 다시 붙
   const author = await newMember(browser, "a", trackEventSources);
   const visitor = await newMember(browser, "b");
   const postId = await writePostAndWaitForMonster(author, "끊긴 동안 받을 글");
-  // 앞의 토스트(몬스터)가 사라진 뒤에 세어야 끊긴 동안의 알림만 센다.
-  await expect(toast(author.page, "몬스터가 나타났어요")).toBeHidden({
-    timeout: 10_000,
-  });
 
   // 네트워크를 끊고 열린 스트림도 끊는다. 새 티켓을 받지 못하므로 다시 붙지 못하고 기다린다.
   await author.context.setOffline(true);
   await dropStreams(author.page);
-  await expect(bell(author.page)).toHaveAttribute(
+  await expect(bell(author.page)).not.toHaveAttribute(
     "data-stream-status",
-    "retrying",
+    "open",
   );
+  await recordToasts(author.page);
 
   await comment(visitor, postId, "끊긴 동안 첫 댓글");
   await comment(visitor, postId, "끊긴 동안 둘째 댓글");
   await like(visitor, postId);
-  // 끊겨 있는 동안에는 아무것도 오지 않는다.
+
+  // 서버에는 알림 세 개가 더 생겼지만(몬스터 1 + 3), 끊긴 화면에는 아무것도 오지 않았다.
+  await expect.poll(() => serverUnreadCount(author)).toBe(4);
   await expectUnread(author.page, 1);
+  await expect(bell(author.page)).not.toHaveAttribute(
+    "data-stream-status",
+    "open",
+  );
+  expect(await recordedToasts(author.page)).toEqual([]);
 
   await author.context.setOffline(false);
 
   await waitForStreamOpen(author.page);
-  await expect(
-    toast(author.page, `${visitor.nickname} 님이 내 글에 댓글을 남겼어요`),
-  ).toHaveCount(2);
-  await expect(
-    toast(author.page, `${visitor.nickname} 님이 공감했어요`),
-  ).toHaveCount(1);
-  await expect(
-    author.page.getByRole("region", { name: "새 알림" }).getByRole("button", {
-      name: /남겼어요|공감했어요|몬스터/,
-    }),
-  ).toHaveCount(3);
   await expectUnread(author.page, 4);
+  // 끊긴 동안의 알림이 빠짐없이, 한 번씩만 왔다.
+  const commentMessage = `${visitor.nickname} 님이 내 글에 댓글을 남겼어요`;
+  await expect
+    .poll(() => recordedToasts(author.page))
+    .toEqual(
+      [
+        commentMessage,
+        commentMessage,
+        `${visitor.nickname} 님이 공감했어요`,
+      ].sort(),
+    );
 
   await closeAll(author, visitor);
+});
+
+test("열린 스트림에 서버의 ping 이벤트가 오고, 그동안 연결은 열린 채로 있다", async ({
+  browser,
+}) => {
+  // 서버 하트비트는 25초마다 온다.
+  test.setTimeout(60_000);
+  const member = await newMember(browser, "a", trackEventSources);
+
+  // 웹은 이 이벤트로 조용히 죽은 연결을 가려낸다. 브라우저가 실제로 받는지 본다.
+  const ping = await member.page.evaluate(
+    () =>
+      new Promise<{ data: string; lastEventId: string }>((resolve) => {
+        const [source] = (window as unknown as TrackedWindow)
+          .openedEventSources;
+        source.addEventListener("ping", (event) => {
+          const { data, lastEventId } = event as MessageEvent<string>;
+          resolve({ data, lastEventId });
+        });
+      }),
+  );
+
+  // id가 없어 마지막 이벤트 id를 바꾸지 않는다.
+  expect(ping).toEqual({ data: "{}", lastEventId: "" });
+  await expect(bell(member.page)).toHaveAttribute("data-stream-status", "open");
+
+  await closeAll(member);
 });
 
 test("US1-AC7 같은 회원의 탭 두 개 모두에 알림이 온다", async ({ browser }) => {
@@ -379,12 +451,12 @@ test("US1-AC8 로그아웃하면 알림 종이 사라지고 연결을 닫으며,
   const member = await newMember(browser, "a");
   const { page } = member;
 
-  // 로그아웃 뒤에 나가는 요청만 모은다.
+  // 스트림은 이미 열려 있다. 로그아웃을 누른 순간부터 나가는 요청을 모은다.
+  const afterLogout = recordStreamRequests(page);
   await page.getByRole("button", { name: "로그아웃" }).click();
   await page.waitForURL("**/login");
   await expect(page.getByRole("button", { name: "로그인" })).toBeVisible();
   await expect(bell(page)).toHaveCount(0);
-  const afterLogout = recordStreamRequests(page);
 
   // 범용 프록시로는 티켓을 받을 수 없다(전용 라우트만 발급한다).
   const viaProxy = await call(page, "/api/notifications/stream-tickets");
@@ -392,7 +464,7 @@ test("US1-AC8 로그아웃하면 알림 종이 사라지고 연결을 닫으며,
 
   await page.getByLabel("이메일").fill(member.email);
   await page.getByLabel("비밀번호").fill(PASSWORD);
-  // 로그인 전까지는 스트림 요청이 없었다.
+  // 로그아웃한 뒤 로그인하기 전까지는 티켓 요청도 스트림 요청도 없었다.
   expect(afterLogout).toEqual([]);
   await page.getByRole("button", { name: "로그인" }).click();
   await page.waitForURL("**/home");
