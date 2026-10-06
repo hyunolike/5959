@@ -7,7 +7,9 @@ import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.data.redis.listener.ChannelTopic
 import org.springframework.data.redis.listener.RedisMessageListenerContainer
 import org.springframework.jdbc.core.JdbcTemplate
+import java.sql.Timestamp
 import java.time.Duration
+import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -77,6 +79,63 @@ class NotificationTestSupport(
             { rs, _ -> rs.getLong("liker_id") to rs.getLong("notification_id") },
             postId,
         )
+
+    /**
+     * 안 읽은 알림 한 행을 SQL로 바로 넣는다(알림이 많이 필요할 때). 번호 카운터도 [seq] 이상으로 올려 그 뒤의 실제 알림이
+     * 다음 번호를 받게 한다. 공감 묶음(`POST_LIKE`)은 멱등 키가 없다. 만든 시각은 [backdate]로, 읽음은 [markRead]로 바꾼다.
+     */
+    fun seed(
+        receiverId: Long,
+        postId: Long,
+        seq: Long,
+        type: String = "POST_COMMENT",
+        actorId: Long? = null,
+    ): Long {
+        val created = Timestamp.from(Instant.now())
+        val id =
+            jdbcTemplate.queryForObject(
+                """
+                insert into notification (receiver_id, type, post_id, latest_actor_id, dedup_key, seq,
+                                          created_at, updated_at)
+                values (?, ?, ?, ?, ?, ?, ?, ?)
+                returning id
+                """.trimIndent(),
+                Long::class.java,
+                receiverId,
+                type,
+                postId,
+                actorId,
+                if (type == "POST_LIKE") null else "SEED:$seq",
+                seq,
+                created,
+                created,
+            )!!
+        jdbcTemplate.update(
+            """
+            insert into notification_sequence (member_id, last_seq) values (?, ?)
+            on conflict (member_id) do update
+              set last_seq = greatest(notification_sequence.last_seq, excluded.last_seq)
+            """.trimIndent(),
+            receiverId,
+            seq,
+        )
+        return id
+    }
+
+    /** 알림을 [createdAt]에 만든 것으로 바꾼다(보관 기간 확인용). */
+    fun backdate(
+        notificationId: Long,
+        createdAt: Instant,
+    ): Long {
+        val created = Timestamp.from(createdAt)
+        jdbcTemplate.update(
+            "update notification set created_at = ?, updated_at = ? where id = ?",
+            created,
+            created,
+            notificationId,
+        )
+        return notificationId
+    }
 
     fun markRead(notificationId: Long) {
         jdbcTemplate.update("update notification set read_at = now() where id = ?", notificationId)
