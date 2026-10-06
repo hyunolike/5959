@@ -147,11 +147,15 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   `NotificationViewAssembler`와 `NotificationResponse`가 만들어 목록과 실시간 이벤트의 모양이 갈라지지 않는다. 지운 글은
   `post`가 null이다. 읽음은 `NotificationReadService`가 한다: 하나 읽음(`PUT .../{id}/read`)은 남의 알림, 없는 알림,
   보관 기간이 지난 알림을 구분하지 않고 `404 NOTIFICATION_NOT_FOUND`로 답하고, 모두 읽음(`POST .../read-all`)은
-  `seq <= upToSeq`만 바꾼다. 읽음이 실제로 바뀌었을 때만 커밋 뒤 `{memberId}:r` 신호를 보내고, `SseHub`가 그 회원의 모든
+  `seq <= upToSeq`만 바꾼다(`upToSeq`는 그 회원의 지금 `last_seq`를 넘지 않게 낮춘다). 하나 읽음은 알림 ID로 읽으므로
+  기다리는 사이에 공감이 더해진 묶음은 그 공감까지 읽음이 된다(의도한 동작). 읽음이 실제로 바뀌었을 때만 커밋 뒤 `{memberId}:r` 신호를 보내고, `SseHub`가 그 회원의 모든
   연결에 `unread-count` 이벤트(ID 없음, 재전송 안 함)를 보낸다. 읽은 공감 묶음은 부분 유일 인덱스에서 빠지므로 다음
-  공감은 새 묶음을 만든다. `NotificationPurgeJob`이 매일 04:00(한국 시간)에 만든 지 90일이 지난 알림을 1,000행씩
-  (`FOR UPDATE SKIP LOCKED`, 한 문장이 한 트랜잭션) 지우고, 끝난 지 7일이 지난 이벤트 발행도 지운다
+  공감은 새 묶음을 만든다. Redis가 내려가 있으면 읽음 신호가 닿지 않으므로, 줄어든 안전망 주기(5초)에만
+  `SseHub.drainLagging(withUnreadCounts = true)`가 회원별 안 읽은 수를 쿼리 하나로 읽어 마지막으로 보낸 수와 다른 연결에 `unread-count`를
+  보낸다. `NotificationPurgeJob`이 매일 04:00(한국 시간)에 만든 지 90일이 지난 알림을 1,000행씩
+  (`MATERIALIZED` CTE와 `FOR UPDATE SKIP LOCKED`, 한 문장이 한 트랜잭션) 지우고, 끝난 지 7일이 지난 이벤트 발행도 지운다
   (`CompletedEventPublications.deletePublicationsOlderThan`). ShedLock 없이 두 인스턴스가 같이 돌아도 된다.
+  두 단계는 따로 실패한다: 한쪽이 실패해도 다른 쪽은 돌고, 단계마다 ERROR를 남긴 뒤 처음 실패를 다시 던진다.
 
 ## Core loop (`post`, `ai`, `emotion`, `monster`, `feed`)
 
