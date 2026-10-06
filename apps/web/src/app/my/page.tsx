@@ -6,6 +6,7 @@ import {
   useMeQuery,
 } from "@/entities/member";
 import { LogoutButton } from "@/features/auth/logout";
+import { stopNotificationStream } from "@/features/notification-stream";
 import { Card, Spinner } from "@/shared/ui";
 
 /** FR-015: 로그인한 사용자는 자신의 닉네임, 직군, 경력을 볼 수 있다. */
@@ -42,7 +43,7 @@ export default function MyPage() {
         </div>
       </dl>
       <div className="mt-6">
-        <LogoutButton />
+        <LogoutButton onLoggedOut={stopNotificationStream} />
       </div>
     </Card>
   );

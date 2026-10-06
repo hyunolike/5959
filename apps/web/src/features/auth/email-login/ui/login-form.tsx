@@ -42,6 +42,9 @@ export function LoginForm({ next }: LoginFormProps) {
     try {
       const member = await loginMutation.mutateAsync(values);
       router.push(loginDestination(member.onboarded, next));
+      // 루트 레이아웃은 쿠키를 보고 알림 종을 그린다. 클라이언트 이동만으로는 레이아웃이 다시
+      // 그려지지 않으므로 새로 받는다(로그인하면 실시간 알림 연결이 다시 시작된다).
+      router.refresh();
     } catch (error) {
       if (error instanceof ApiError) {
         if (error.code === "INVALID_CREDENTIALS") {

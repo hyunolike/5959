@@ -5,6 +5,7 @@ import { Suspense } from "react";
 
 import { useMeQuery } from "@/entities/member";
 import { LogoutButton } from "@/features/auth/logout";
+import { stopNotificationStream } from "@/features/notification-stream";
 import { Button, Spinner } from "@/shared/ui";
 import { FeedList } from "@/widgets/feed-list";
 
@@ -32,7 +33,7 @@ export default function HomePage() {
           <Button asChild>
             <Link href="/write">고민 쓰기</Link>
           </Button>
-          <LogoutButton />
+          <LogoutButton onLoggedOut={stopNotificationStream} />
         </div>
       </header>
       {/* 정렬과 필터를 주소 검색어에서 읽는다(useSearchParams). */}

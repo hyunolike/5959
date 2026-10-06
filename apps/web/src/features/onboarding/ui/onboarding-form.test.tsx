@@ -3,9 +3,12 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const pushMock = vi.fn();
+const { pushMock, refreshMock } = vi.hoisted(() => ({
+  pushMock: vi.fn(),
+  refreshMock: vi.fn(),
+}));
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: pushMock }),
+  useRouter: () => ({ push: pushMock, refresh: refreshMock }),
 }));
 
 import { OnboardingForm } from "./onboarding-form";
@@ -44,6 +47,7 @@ async function fillJobAndCareer(user: ReturnType<typeof userEvent.setup>) {
 afterEach(() => {
   vi.unstubAllGlobals();
   pushMock.mockReset();
+  refreshMock.mockReset();
 });
 
 describe("OnboardingForm 닉네임 중복 확인의 오래된 결과 처리", () => {
@@ -98,6 +102,8 @@ describe("OnboardingForm 닉네임 중복 확인의 오래된 결과 처리", ()
 
     await waitFor(() => expect(putMock).toHaveBeenCalled());
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/home"));
+    // 온보딩 쿠키가 생긴 뒤 루트 레이아웃을 새로 받아 알림 종을 그린다.
+    expect(refreshMock).toHaveBeenCalledTimes(1);
     expect(
       screen.queryByText("이미 사용 중인 닉네임입니다."),
     ).not.toBeInTheDocument();
