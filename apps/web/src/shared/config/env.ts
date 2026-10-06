@@ -16,6 +16,9 @@ export const env = createEnv({
       .default("development"),
     // BFF 라우트만 읽는다. 브라우저는 API 도메인을 직접 호출하지 않는다.
     API_ORIGIN: z.string().url().default("http://localhost:8080"),
+    // 브라우저가 실시간 알림 스트림에 바로 붙을 API 출처(004 research R3). 없으면 API_ORIGIN을 쓴다.
+    // BFF 티켓 라우트만 읽어 응답의 streamUrl로 내보낸다.
+    SSE_PUBLIC_ORIGIN: z.string().url().optional(),
     // API 호출 시 보내는 비밀 키. API 쪽 OGU_BFF_KEY와 값이 같아야 한다.
     BFF_API_KEY: z.string().min(1).default("local-bff-key"),
     // 이 웹 서비스의 출처(Origin 검사, OAuth redirect_uri 구성에 쓴다).

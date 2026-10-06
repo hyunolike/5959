@@ -30,7 +30,14 @@ const UNSAFE_SEGMENT_PATTERN = /[/\\?#]/;
  * 스크립트에 노출된다(FR-012, bff-routes.md).
  */
 const DENIED_TOP_LEVEL_SEGMENTS = new Set(["auth"]);
-const DENIED_EXACT_PATHS = new Set(["members/me/onboarding"]);
+/**
+ * `notifications/stream-tickets`도 전용 라우트(`/api/notifications/stream-ticket`)에서만
+ * 다룬다. 티켓은 그 라우트가 `streamUrl`과 함께 내보낸다(004 research R3).
+ */
+const DENIED_EXACT_PATHS = new Set([
+  "members/me/onboarding",
+  "notifications/stream-tickets",
+]);
 
 function isSafeSegmentValue(segment: string): boolean {
   return (
@@ -86,8 +93,8 @@ function notFoundResponse(): NextResponse {
  * 전달한다. `__Host-ogu_at`을 `Authorization: Bearer`로 바꾸고, 상태를
  * 바꾸는 요청에는 origin-guard를 적용한다. 세그먼트를 검증하고
  * `encodeURIComponent`로 다시 인코딩한 뒤 경로 접두사를 한 번 더 확인해
- * 경로 조작(`..`, 인코딩된 `/`)을 막고, `auth/**`와 `members/me/onboarding`은
- * 전용 라우트만 다루므로 404로 막는다.
+ * 경로 조작(`..`, 인코딩된 `/`)을 막고, `auth/**`, `members/me/onboarding`,
+ * `notifications/stream-tickets`는 전용 라우트만 다루므로 404로 막는다.
  *
  * 세션 갱신(US4-AC1)은 `callWithSessionRefresh`(shared/server/session-refresh.ts)
  * 규칙을 따른다: `ogu_at`이 없고 `ogu_rt`만 있으면 먼저 refresh하고, API가
