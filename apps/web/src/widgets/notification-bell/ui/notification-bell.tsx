@@ -39,7 +39,11 @@ export function NotificationBell() {
     }
     show({
       message: notificationMessage(notification),
-      onClick: () => router.push(`/post/${notification.postId}`),
+      // 그 사이 글이 지워졌으면 갈 곳이 없다. 누르면 닫히기만 한다(US2-AC5의 "삭제된 글" 안내는 목록이 맡는다).
+      onClick:
+        notification.post === null
+          ? undefined
+          : () => router.push(`/post/${notification.postId}`),
     });
   });
 

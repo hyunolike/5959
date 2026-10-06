@@ -99,13 +99,18 @@ function ticketResponse(
   if (!apiBody.success) {
     return NextResponse.json(apiBody, { status });
   }
+  // 성공 봉투인데 티켓이 없으면 계약 위반이다. 그대로 읽으면 처리되지 않은 500이 난다.
+  const data: Partial<StreamTicket> | null = apiBody.data;
+  if (typeof data?.ticket !== "string" || typeof data.expiresAt !== "string") {
+    return NextResponse.json(FALLBACK_ERROR, { status: 502 });
+  }
   return NextResponse.json(
     {
       success: true,
       data: {
-        ticket: apiBody.data.ticket,
+        ticket: data.ticket,
         streamUrl: streamUrl(),
-        expiresAt: apiBody.data.expiresAt,
+        expiresAt: data.expiresAt,
       },
       error: null,
     } satisfies ApiResponse<StreamTicketResponse>,

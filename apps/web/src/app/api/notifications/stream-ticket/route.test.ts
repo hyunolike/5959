@@ -309,6 +309,28 @@ describe("POST /api/notifications/stream-ticket", () => {
     expect(response.status).toBe(502);
   });
 
+  it.each([
+    ["data가 null", { success: true, data: null, error: null }],
+    ["ticket이 없음", { success: true, data: {}, error: null }],
+    [
+      "ticket이 문자열이 아님",
+      { success: true, data: { ticket: 1, expiresAt: 2 }, error: null },
+    ],
+  ])("API가 성공 봉투인데 %s이면 502로 바꾼다", async (_label, body) => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(body, 201)));
+
+    const response = await POST(
+      ticketRequest({ [ACCESS_TOKEN_COOKIE]: "jwt-token" }),
+    );
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toMatchObject({
+      success: false,
+      data: null,
+      error: { code: "INTERNAL_ERROR" },
+    });
+  });
+
   it("Origin이 서비스 출처와 다르면 403이고 API를 부르지 않는다", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);

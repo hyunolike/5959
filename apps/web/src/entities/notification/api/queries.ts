@@ -1,9 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import { requestApi } from "@/shared/api";
 import { QUERY_KEYS } from "@/shared/config";
 
 import type { UnreadCount } from "../model/types";
+import { newestUnreadCount } from "../model/unread";
 
 /**
  * 같은 출처 BFF 프록시를 거쳐 안 읽은 알림 수와 마지막 전달 번호를 받는다. `latestSeq`는
@@ -20,13 +21,25 @@ export function fetchUnreadCount(
 }
 
 /**
+ * 안 읽은 수 조회 옵션. 조회 결과가 캐시보다 옛것이면 버린다([newestUnreadCount]). 이 키로 조회하는
+ * 곳은 모두 이 옵션을 써야 같은 규칙이 적용된다.
+ */
+export function unreadCountQueryOptions() {
+  return queryOptions({
+    queryKey: QUERY_KEYS.unreadCount,
+    queryFn: () => fetchUnreadCount(),
+    structuralSharing: (cached, incoming) =>
+      newestUnreadCount(
+        cached as UnreadCount | undefined,
+        incoming as UnreadCount,
+      ),
+  });
+}
+
+/**
  * 안 읽은 알림 수(배지). 실시간 이벤트가 이 캐시를 고치고, 다시 연결하면 새로 받는다.
  * `enabled`가 false면 부르지 않는다. 로그아웃해 연결을 닫은 뒤에는 끝난 세션으로 조회하지 않는다.
  */
 export function useUnreadCountQuery({ enabled = true } = {}) {
-  return useQuery({
-    queryKey: QUERY_KEYS.unreadCount,
-    queryFn: () => fetchUnreadCount(),
-    enabled,
-  });
+  return useQuery({ ...unreadCountQueryOptions(), enabled });
 }

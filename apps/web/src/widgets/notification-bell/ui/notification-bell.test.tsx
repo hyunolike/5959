@@ -1,4 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  QueryCache,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -91,10 +95,11 @@ function notificationEvent(
   };
 }
 
-function renderBell() {
-  const queryClient = new QueryClient({
+function renderBell(
+  queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
-  });
+  }),
+) {
   const view = render(
     <QueryClientProvider client={queryClient}>
       <NotificationBell />
@@ -243,6 +248,21 @@ describe("NotificationBell", () => {
     expect(pushMock).toHaveBeenCalledWith("/post/10");
   });
 
+  it("지워진 글의 알림 토스트는 눌러도 이동하지 않고 닫히기만 한다", async () => {
+    stubApi({ count: 0, latestSeq: 17 });
+    renderBell();
+    const source = await openedStream();
+    emitNotification(source, notificationEvent({ post: null }));
+
+    const toast = screen.getByRole("button", {
+      name: "오구 님이 내 글에 댓글을 남겼어요",
+    });
+    await userEvent.click(toast);
+
+    expect(pushMock).not.toHaveBeenCalled();
+    expect(toast).not.toBeInTheDocument();
+  });
+
   it("알림 페이지를 보고 있으면 토스트를 띄우지 않고 배지만 바꾼다", async () => {
     navigation.pathname = "/notifications";
     stubApi({ count: 0, latestSeq: 17 });
@@ -292,6 +312,68 @@ describe("NotificationBell", () => {
     expect(
       screen.getByRole("region", { name: "새 알림" }),
     ).toBeEmptyDOMElement();
+  });
+
+  it("세션이 끝나 멈춘 뒤 다른 탭에서 로그인하고 돌아오면 다시 붙고 배지도 돌아온다", async () => {
+    let loggedIn = false;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const path = String(input);
+      if (!loggedIn) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            data: null,
+            error: { code: "SESSION_EXPIRED", message: "세션 만료" },
+          }),
+          { status: 401, headers: { "content-type": "application/json" } },
+        );
+      }
+      return path === "/api/notifications/unread-count"
+        ? json({ count: 4, latestSeq: 30 })
+        : json({
+            ticket: "ticket-2",
+            streamUrl: STREAM_URL,
+            expiresAt: "2026-10-06T00:00:30Z",
+          });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    // 앱의 쿼리 캐시는 401이면 로그인 화면으로 보낸다. 살펴보는 시도가 이 처리를 부르면 안 된다.
+    const onQueryError = vi.fn();
+    renderBell(
+      new QueryClient({
+        queryCache: new QueryCache({ onError: onQueryError }),
+        defaultOptions: { queries: { retry: false } },
+      }),
+    );
+    const bell = screen.getByRole("link", { name: /알림/ });
+    await waitFor(() =>
+      expect(bell).toHaveAttribute("data-stream-status", "stopped"),
+    );
+    const callsWhileStopped = fetchMock.mock.calls.length;
+    const queryErrorsBefore = onQueryError.mock.calls.length;
+
+    // 초점이 와도 아직 로그아웃 상태면 한 번 살펴보고 그대로 멈춰 있다.
+    act(() => {
+      window.dispatchEvent(new Event("focus"));
+    });
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.length).toBeGreaterThan(callsWhileStopped),
+    );
+    expect(bell).toHaveAttribute("data-stream-status", "stopped");
+    expect(FakeEventSource.instances).toHaveLength(0);
+    expect(onQueryError).toHaveBeenCalledTimes(queryErrorsBefore);
+
+    loggedIn = true;
+    act(() => {
+      window.dispatchEvent(new Event("focus"));
+    });
+    const source = await openedStream();
+
+    expect(new URL(source.url).searchParams.get("lastEventId")).toBe("30");
+    expect(bell).toHaveAttribute("data-stream-status", "open");
+    expect(await screen.findByTestId("notification-badge")).toHaveTextContent(
+      "4",
+    );
   });
 
   it("위젯이 사라지면 연결을 닫는다", async () => {

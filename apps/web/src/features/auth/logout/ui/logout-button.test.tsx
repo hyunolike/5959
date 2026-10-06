@@ -31,7 +31,7 @@ afterEach(() => {
 });
 
 describe("LogoutButton", () => {
-  it("US2-AC5 로그아웃에 성공하면 onLoggedOut을 부르고 캐시를 비운 뒤 로그인 화면으로 간다", async () => {
+  it("로그아웃에 성공하면 onLoggedOut을 부르고 캐시를 비운 뒤 로그인 화면으로 간다", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(new Response(null, { status: 204 })),
@@ -46,7 +46,7 @@ describe("LogoutButton", () => {
     expect(queryClient.getQueryData(["me"])).toBeUndefined();
   });
 
-  it("US1-AC8 로그아웃 뒤 레이아웃을 새로 그려 알림 종이 사라지게 한다", async () => {
+  it("로그아웃 뒤 레이아웃을 새로 그려 알림 종이 사라지게 한다", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(new Response(null, { status: 204 })),
