@@ -38,12 +38,7 @@ class SseHub(
     // 쓰기 실패. 끊긴 연결이면 컨테이너가 응답을 끝내므로 지우기만 하고, 그 밖에는 닫는다
     private val writer =
         StreamWriter(notifications, views, executor) { connection, complete ->
-            if (complete) {
-                close(connection)
-            } else {
-                connection.markClosed()
-                connections.remove(connection)
-            }
+            if (complete) close(connection) else connections.discard(connection)
         }
     private val ids = AtomicLong()
 
@@ -58,13 +53,18 @@ class SseHub(
         memberId: Long,
         lastEventId: Long?,
     ): SseEmitter {
-        val startSeq = lastEventId ?: sequences.current(memberId)
+        // 멈추는 중이면 받지 않고 바로 끝낸다. 웹은 끊김으로 보고 다른 인스턴스에 다시 붙는다
+        if (!running) return SseEmitter().apply { complete() }
+        // 지금 번호보다 큰 값으로 붙으면 그 번호에 이를 때까지 아무것도 받지 못하므로 지금 번호로 낮춘다
+        val current = sequences.current(memberId)
+        val startSeq = minOf(lastEventId ?: current, current)
         val emitter = SseEmitter(properties.connectionLifetime.toMillis())
         val connection = StreamConnection(ids.incrementAndGet(), memberId, emitter, startSeq)
-        emitter.onCompletion { connections.remove(connection) }
+        // 끝난 연결은 닫힌 것으로 표시해, 이미 올라가 있던 하트비트나 따라잡기가 조용히 건너뛰게 한다
+        emitter.onCompletion { connections.discard(connection) }
         // 연결 수명(15분)이 지나면 서버가 닫는다. 웹은 새 표와 마지막 번호로 다시 붙는다
         emitter.onTimeout { close(connection) }
-        emitter.onError { connections.remove(connection) }
+        emitter.onError { connections.discard(connection) }
         connections.register(connection).forEach(::close)
         // 등록한 뒤에 재전송한다. 이어서 하트비트를 한 번 보내 응답 헤더를 바로 내보낸다(보낼 알림이 없어도 연결이 열린다)
         writer.request(connection, StreamTask.DRAIN, StreamTask.HEARTBEAT)
@@ -86,11 +86,11 @@ class SseHub(
         connections.all().forEach { writer.request(it, StreamTask.DRAIN) }
     }
 
-    /** 안전망(research R5): 회원마다 가장 큰 번호를 한 번에 읽어 뒤처진 연결만 따라잡는다. */
+    /** 안전망(research R5): 회원마다 마지막으로 준 번호를 한 번에 읽어 뒤처진 연결만 따라잡는다. */
     fun drainLagging() {
         val memberIds = connections.memberIds()
         if (memberIds.isEmpty()) return
-        val latest = notifications.maxSeqByReceivers(memberIds)
+        val latest = sequences.currentOf(memberIds)
         connections
             .all()
             .filter { (latest[it.memberId] ?: 0L) > it.lastSentSeq }

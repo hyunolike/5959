@@ -44,8 +44,13 @@ class StreamWriter(
     /** 쓰기 권한을 쥔 채 표시가 없어질 때까지 처리한다. 놓은 뒤 들어온 표시는 다시 권한을 잡아 처리한다. */
     private fun work(connection: StreamConnection) {
         do {
-            val failure = processPending(connection)
-            connection.release()
+            // 무슨 일이 있어도(Error 포함) 권한은 놓는다. 쥔 채로 끝나면 그 연결은 다시는 쓰이지 않는다
+            val failure =
+                try {
+                    processPending(connection)
+                } finally {
+                    connection.release()
+                }
             if (failure != null) {
                 onBroken(connection, failure)
                 return
@@ -63,9 +68,15 @@ class StreamWriter(
             log.debug("SSE 연결 {}에 쓰지 못해 지웁니다: {}", connection.id, e.message)
             false
         } catch (e: RuntimeException) {
-            // DB 오류 등으로 따라잡지 못했다. 닫아서 웹이 마지막으로 받은 번호로 다시 붙게 한다
-            log.warn("SSE 연결 {}을 따라잡지 못해 닫습니다: {}", connection.id, e.message)
-            true
+            if (connection.closed) {
+                // 쓰는 사이에 연결이 끝났다(브라우저가 닫음, 수명). 이미 정리됐으니 조용히 넘어간다
+                log.debug("끝난 SSE 연결 {}에 쓰지 않습니다: {}", connection.id, e.message)
+                false
+            } else {
+                // DB 오류 등으로 따라잡지 못했다. 닫아서 웹이 마지막으로 받은 번호로 다시 붙게 한다
+                log.warn("SSE 연결 {}을 따라잡지 못해 닫습니다: {}", connection.id, e.message)
+                true
+            }
         }
 
     private fun perform(

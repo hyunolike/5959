@@ -104,6 +104,7 @@ class RedisOutageStreamTest {
         startRedis()
 
         await().atMost(RECOVER).until { drain().currentInterval() == NORMAL_INTERVAL }
+        awaitResubscribed()
         // 구독 컨테이너가 다시 붙었다: 안전망(60초)을 기다리지 않고 신호로 온다
         val stream = open(author)
         val commentId = loop.comment(fan, postId, "Redis가 뜬 뒤")
@@ -177,6 +178,7 @@ class RedisOutageStreamTest {
 
         await().atMost(RECOVER).until { drain().currentInterval() == NORMAL_INTERVAL }
         assertThat(state().current).isEqualTo(RealtimeConnection.UP)
+        awaitResubscribed()
         val commentId = loop.comment(fan, postId, "다시 뜬 뒤")
         await().atMost(RECOVER).until {
             stream.notifications().any {
@@ -205,6 +207,18 @@ class RedisOutageStreamTest {
             .perform(get("/actuator/health"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.status").value("UP"))
+    }
+
+    /**
+     * 복구는 PING으로 판정하므로 구독이 다시 붙는 것보다 먼저 UP이 될 수 있다. 그 사이에 나간 신호는 다음 안전망까지
+     * 기다리므로, 신호로 오는지 보려면 구독이 실제로 돌아온 뒤에 알림을 만든다(표지를 보내 받는지 본다).
+     */
+    private fun awaitResubscribed() {
+        await().atMost(RECOVER).ignoreExceptions().until {
+            support.subscribeSignals()
+            true
+        }
+        support.unsubscribeSignals()
     }
 
     private fun state(): RealtimeConnectionState = app.bean()

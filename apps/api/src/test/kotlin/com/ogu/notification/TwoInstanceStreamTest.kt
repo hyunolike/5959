@@ -166,6 +166,8 @@ class TwoInstanceStreamTest {
             "spring.datasource.username" to postgres.username,
             "spring.datasource.password" to postgres.password,
             "spring.data.redis.url" to redis.redisURI,
+            // 안전망이 대신 전달해 주지 못하게 길게 둔다. 기다리는 시간 안에는 Redis 신호만 알림을 보낼 수 있다
+            "ogu.notification.safety-drain-interval" to "10m",
         )
 
     private companion object {

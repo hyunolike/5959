@@ -159,25 +159,6 @@ class NotificationRepository(
             .query(ROW_MAPPER)
             .list()
 
-    /**
-     * 회원마다 가장 큰 알림 번호(research R5 안전망). 알림이 없는 회원은 결과에서 빠진다. 유일 키 `(receiver_id, seq)`의
-     * 인덱스 끝만 읽는다.
-     */
-    fun maxSeqByReceivers(receiverIds: Collection<Long>): Map<Long, Long> {
-        if (receiverIds.isEmpty()) return emptyMap()
-        return jdbcClient
-            .sql(
-                """
-                select receiver_id, max(seq) as max_seq from notification
-                where receiver_id in (:ids)
-                group by receiver_id
-                """.trimIndent(),
-            ).param("ids", receiverIds.toSet())
-            .query { rs, _ -> rs.getLong("receiver_id") to rs.getLong("max_seq") }
-            .list()
-            .toMap()
-    }
-
     /** 안 읽은 수(research R11). 부분 인덱스 `notification_unread_idx`를 쓴다. */
     fun countUnread(receiverId: Long): Long =
         jdbcClient

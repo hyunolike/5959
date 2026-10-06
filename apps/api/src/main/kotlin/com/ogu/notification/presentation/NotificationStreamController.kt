@@ -17,6 +17,7 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
+import org.springframework.web.ErrorResponse
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
@@ -107,6 +108,18 @@ class NotificationStreamController(
     @ExceptionHandler(AsyncRequestNotUsableException::class)
     fun handleDisconnected(e: AsyncRequestNotUsableException) {
         log.debug("실시간 알림 스트림의 클라이언트가 끊겼습니다: {}", e.message)
+    }
+
+    /**
+     * 그 밖의 오류(예: 표를 소비하다 난 DB 오류)도 JSON으로 쓴다. 전역 처리기에 맡기면 `Accept: text/event-stream` 때문에
+     * 오류 봉투를 쓰지 못한다. Spring MVC가 상태를 정해 둔 예외는 그 상태를 쓴다.
+     */
+    @ExceptionHandler(Exception::class)
+    fun handleUnexpected(e: Exception): ResponseEntity<ApiResponse<Unit>> {
+        val status = (e as? ErrorResponse)?.statusCode ?: HttpStatus.INTERNAL_SERVER_ERROR
+        val code = if (status.is4xxClientError) ErrorCode.INVALID_REQUEST else ErrorCode.INTERNAL_ERROR
+        if (status.is5xxServerError) log.error("실시간 알림 스트림 요청을 처리하지 못했습니다", e)
+        return ResponseEntity.status(status).contentType(MediaType.APPLICATION_JSON).body(ApiResponse.error(code))
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException::class)
