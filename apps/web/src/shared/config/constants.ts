@@ -18,6 +18,12 @@ export const QUERY_KEYS = {
   feed: (filter: object) => ["feed", filter] as const,
   /** 모든 피드. 공감과 댓글로 공감 수, 댓글 수, HP가 바뀌면 이 키로 피드를 낡은 것으로 표시한다. */
   allFeeds: ["feed"] as const,
+  /**
+   * 알림 목록(무한 스크롤)과 안 읽은 수. 실시간 이벤트가 두 캐시를 직접 고치므로 서로 무효화에
+   * 끌려가지 않게 키를 나란히 둔다.
+   */
+  notifications: ["notifications", "list"] as const,
+  unreadCount: ["notifications", "unread-count"] as const,
 };
 
 /**
