@@ -39,6 +39,11 @@ export default defineConfig({
       BFF_API_KEY: process.env.BFF_API_KEY ?? "e2e-bff-key",
       APP_ORIGIN: process.env.APP_ORIGIN ?? "http://localhost:3000",
       APP_ENV: "e2e",
+      // 브라우저가 실시간 알림 스트림에 바로 붙을 API 주소(004 research R3). 호스트에서 보이는 주소여야 한다.
+      SSE_PUBLIC_ORIGIN:
+        process.env.SSE_PUBLIC_ORIGIN ??
+        process.env.API_ORIGIN ??
+        "http://localhost:18080",
     },
   },
 });
