@@ -43,7 +43,10 @@ export function NotificationBell() {
     });
   });
 
-  const { data: unread } = useUnreadCountQuery();
+  // 연결을 닫았거나(로그아웃) 세션이 끝났으면(401) 안 읽은 수도 다시 묻지 않는다. 로그아웃이 쿼리
+  // 캐시를 비운 뒤 이 조회가 다시 나가면 401을 받아 화면이 `/login?next=`로 한 번 더 튄다.
+  const live = status !== "idle" && status !== "stopped";
+  const { data: unread } = useUnreadCountQuery({ enabled: live });
   const badge = badgeLabel(unread?.count ?? 0);
 
   return (
