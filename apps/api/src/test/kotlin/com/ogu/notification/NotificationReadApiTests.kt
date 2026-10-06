@@ -247,7 +247,7 @@ class NotificationReadApiTests {
                 transactionTemplate.execute { writer.addLike(author.id, postId, unusedId()) }
             }
         // 공감은 읽음이 잡은 묶음 행 잠금을 기다린다
-        awaitBlockedOnNotification()
+        awaitBlocked(LIKE_UPSERT)
         release.countDown()
 
         assertThat(reader.get(HOLD_SECONDS, TimeUnit.SECONDS)).isEqualTo(1)
@@ -284,7 +284,7 @@ class NotificationReadApiTests {
         assertThat(liked.await(HOLD_SECONDS, TimeUnit.SECONDS)).isTrue()
         // 화면이 본 번호(갱신 전)로 모두 읽음을 누른다. 공감이 잡은 묶음 행 잠금을 기다린다
         val reader = executor.submit<Int> { readService.markAll(author.id, group.seq).updated }
-        awaitBlockedOnNotification()
+        awaitBlocked(READ_UPDATE)
         release.countDown()
 
         assertThat(liker.get(HOLD_SECONDS, TimeUnit.SECONDS)).isTrue()
@@ -295,6 +295,76 @@ class NotificationReadApiTests {
         assertThat(bumped.actorCount).isEqualTo(2)
         assertThat(bumped.seq).isGreaterThan(group.seq)
         assertThat(unreadCount(author)).isEqualTo(1)
+    }
+
+    @Test
+    fun `upToSeq가 지금 번호보다 커도 지금 번호까지만 읽어, 누르는 사이에 더해진 공감은 안 읽음으로 남는다`() {
+        val author = members.onboarded()
+        val postId = unusedId()
+        transactionTemplate.executeWithoutResult { writer.addLike(author.id, postId, unusedId()) }
+        val group = support.notificationsOf(author.id).single()
+        val liked = CountDownLatch(1)
+        val release = CountDownLatch(1)
+
+        val liker =
+            executor.submit<Boolean> {
+                transactionTemplate.execute {
+                    val added = writer.addLike(author.id, postId, unusedId())
+                    liked.countDown()
+                    release.await(HOLD_SECONDS, TimeUnit.SECONDS)
+                    added
+                }
+            }
+        assertThat(liked.await(HOLD_SECONDS, TimeUnit.SECONDS)).isTrue()
+        // 번호를 한참 크게 보내도 이 요청이 시작할 때 커밋돼 있던 마지막 번호로 낮춘다
+        val reader = executor.submit<Int> { readService.markAll(author.id, Long.MAX_VALUE).updated }
+        awaitBlocked(READ_UPDATE)
+        release.countDown()
+
+        assertThat(liker.get(HOLD_SECONDS, TimeUnit.SECONDS)).isTrue()
+        assertThat(reader.get(HOLD_SECONDS, TimeUnit.SECONDS)).isZero()
+        val bumped = support.notificationsOf(author.id).single()
+        assertThat(bumped.read).isFalse()
+        assertThat(bumped.actorCount).isEqualTo(2)
+        assertThat(bumped.seq).isGreaterThan(group.seq)
+        // 겹치는 것이 없으면 큰 번호는 지금 있는 것을 모두 읽는다
+        markAll(author, upToSeq = Long.MAX_VALUE)
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.updated").value(1))
+            .andExpect(jsonPath("$.data.unreadCount").value(0))
+    }
+
+    @Test
+    fun `하나 읽음이 기다리는 사이에 공감이 더해진 묶음은 더해진 공감까지 읽음이 된다`() {
+        val author = members.onboarded()
+        val postId = unusedId()
+        transactionTemplate.executeWithoutResult { writer.addLike(author.id, postId, unusedId()) }
+        val group = support.notificationsOf(author.id).single()
+        val liked = CountDownLatch(1)
+        val release = CountDownLatch(1)
+
+        val liker =
+            executor.submit<Boolean> {
+                transactionTemplate.execute {
+                    val added = writer.addLike(author.id, postId, unusedId())
+                    liked.countDown()
+                    release.await(HOLD_SECONDS, TimeUnit.SECONDS)
+                    added
+                }
+            }
+        assertThat(liked.await(HOLD_SECONDS, TimeUnit.SECONDS)).isTrue()
+        // 회원이 그 묶음을 눌렀다. 번호가 아니라 알림 ID로 읽으므로 방금 더해진 공감도 함께 읽음이 된다
+        val reader = executor.submit { readService.markOne(author.id, group.id) }
+        awaitBlocked(READ_UPDATE)
+        release.countDown()
+
+        assertThat(liker.get(HOLD_SECONDS, TimeUnit.SECONDS)).isTrue()
+        reader.get(HOLD_SECONDS, TimeUnit.SECONDS)
+        val read = support.notificationsOf(author.id).single()
+        assertThat(read.id).isEqualTo(group.id)
+        assertThat(read.read).isTrue()
+        assertThat(read.actorCount).isEqualTo(2)
+        assertThat(unreadCount(author)).isZero()
     }
 
     @Test
@@ -366,27 +436,28 @@ class NotificationReadApiTests {
         stream.events.filter { it.event == UNREAD_COUNT }.map { it.json().get("unreadCount").asLong() }
 
     /**
-     * 다른 세션이 `notification` 행 잠금을 기다릴 때까지 기다린다. 통계 스냅숏은 트랜잭션 동안 굳으므로 볼 때마다 같은
-     * 연결에서 `pg_stat_clear_snapshot()`을 먼저 부른다.
+     * [statementPrefix]로 시작하는 문장([LIKE_UPSERT], [READ_UPDATE])이 행 잠금을 기다릴 때까지 기다린다. 통계 스냅숏은
+     * 트랜잭션 동안 굳으므로 볼 때마다 같은 연결에서 `pg_stat_clear_snapshot()`을 먼저 부른다.
      */
-    private fun awaitBlockedOnNotification() {
+    private fun awaitBlocked(statementPrefix: String) {
         await().atMost(AWAIT).pollInterval(POLL).until {
             jdbcTemplate.execute(
                 ConnectionCallback { connection ->
-                    connection.createStatement().use { statement ->
-                        statement.execute("select pg_stat_clear_snapshot()")
-                        statement
-                            .executeQuery(
-                                """
-                                select count(*) from pg_stat_activity
-                                where wait_event_type = 'Lock' and state = 'active' and pid <> pg_backend_pid()
-                                  and query ilike '%notification%'
-                                """.trimIndent(),
-                            ).use { rows ->
+                    connection.createStatement().use { it.execute("select pg_stat_clear_snapshot()") }
+                    connection
+                        .prepareStatement(
+                            """
+                            select count(*) from pg_stat_activity
+                            where wait_event_type = 'Lock' and state = 'active' and pid <> pg_backend_pid()
+                              and ltrim(query) like ? || '%'
+                            """.trimIndent(),
+                        ).use { statement ->
+                            statement.setString(1, statementPrefix)
+                            statement.executeQuery().use { rows ->
                                 rows.next()
                                 rows.getInt(1) > 0
                             }
-                    }
+                        }
                 },
             ) == true
         }
@@ -404,6 +475,12 @@ class NotificationReadApiTests {
         const val UNUSED_ID_BASE = 9_000_000_000L
         const val UNUSED_ID_RANGE = 1_000_000_000L
         const val HOLD_SECONDS = 20L
+
+        /** 공감 묶음을 만들거나 고치는 문장(`NotificationRepository.upsertLikeGroup`)의 머리. */
+        const val LIKE_UPSERT = "insert into notification (receiver_id, type, post_id, latest_actor_id, seq,"
+
+        /** 읽음 처리 문장(`markRead`, `markAllRead`)의 머리. */
+        const val READ_UPDATE = "update notification n set read_at ="
         val AWAIT: Duration = Duration.ofSeconds(15)
         val POLL: Duration = Duration.ofMillis(20)
         val RETENTION: Duration = Duration.ofDays(90)
