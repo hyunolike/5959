@@ -17,6 +17,8 @@ export interface StreamHandlers {
   /** `seq`는 SSE 이벤트 id다. 다시 연결할 때 `lastEventId`로 넘긴다. */
   onNotification: (event: StreamNotificationEvent, seq: number) => void;
   onUnreadCount: (event: StreamUnreadCountEvent) => void;
+  /** 서버가 25초마다 보내는 `ping`. 내용은 없고 연결이 살아 있다는 뜻이다. */
+  onPing: () => void;
   /** 연결이 끊겼다. 이 연결은 이미 닫혔으므로 새 티켓으로 다시 열어야 한다. */
   onError: () => void;
 }
@@ -119,6 +121,11 @@ export async function openStream(
     const body = parseJson<StreamUnreadCountEvent>(event);
     if (!closed && body !== null) {
       handlers.onUnreadCount(body);
+    }
+  });
+  source.addEventListener("ping", () => {
+    if (!closed) {
+      handlers.onPing();
     }
   });
 

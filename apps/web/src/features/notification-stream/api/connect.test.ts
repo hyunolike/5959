@@ -59,6 +59,7 @@ function setup(fetchImpl: typeof fetch) {
     onOpen: vi.fn(),
     onNotification: vi.fn(),
     onUnreadCount: vi.fn(),
+    onPing: vi.fn(),
     onError: vi.fn(),
   } satisfies StreamHandlers;
   const options = {
@@ -183,6 +184,17 @@ describe("openStream", () => {
     sources[0].emit("unread-count", { data: '{"unreadCount":2}' });
 
     expect(handlers.onUnreadCount).toHaveBeenCalledWith({ unreadCount: 2 });
+  });
+
+  it("ping 이벤트는 연결이 살아 있다는 것만 알린다", async () => {
+    const { sources, handlers, options } = setup(ticketFetch("ticket-1"));
+
+    await openStream(17, handlers, options);
+    sources[0].emit("ping", { data: "{}" });
+
+    expect(handlers.onPing).toHaveBeenCalledTimes(1);
+    expect(handlers.onNotification).not.toHaveBeenCalled();
+    expect(handlers.onUnreadCount).not.toHaveBeenCalled();
   });
 
   it("해석할 수 없는 본문은 버리고 연결은 그대로 둔다", async () => {
