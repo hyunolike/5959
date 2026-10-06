@@ -19,10 +19,14 @@ export function fetchUnreadCount(
   );
 }
 
-/** 안 읽은 알림 수(배지). 실시간 이벤트가 이 캐시를 고치고, 다시 연결하면 새로 받는다. */
-export function useUnreadCountQuery() {
+/**
+ * 안 읽은 알림 수(배지). 실시간 이벤트가 이 캐시를 고치고, 다시 연결하면 새로 받는다.
+ * `enabled`가 false면 부르지 않는다. 로그아웃해 연결을 닫은 뒤에는 끝난 세션으로 조회하지 않는다.
+ */
+export function useUnreadCountQuery({ enabled = true } = {}) {
   return useQuery({
     queryKey: QUERY_KEYS.unreadCount,
     queryFn: () => fetchUnreadCount(),
+    enabled,
   });
 }

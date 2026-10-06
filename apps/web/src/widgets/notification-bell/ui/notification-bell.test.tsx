@@ -306,10 +306,19 @@ describe("NotificationBell", () => {
 
   it("로그아웃에 성공하면 연결을 닫고 다시 붙지 않는다", async () => {
     const fetchMock = stubApi({ count: 0, latestSeq: 17 });
-    renderBell();
+    const { queryClient } = renderBell();
     const source = await openedStream();
+    const unreadCalls = () =>
+      fetchMock.mock.calls.filter(
+        ([input]) => String(input) === "/api/notifications/unread-count",
+      ).length;
+    const before = unreadCalls();
 
-    act(() => stopNotificationStream());
+    // 로그아웃 버튼과 같은 순서: 연결을 닫고 쿼리 캐시를 비운다.
+    act(() => {
+      stopNotificationStream();
+      queryClient.clear();
+    });
 
     expect(source.closed).toBe(true);
     expect(screen.getByRole("link", { name: /알림/ })).toHaveAttribute(
@@ -321,5 +330,10 @@ describe("NotificationBell", () => {
     );
     expect(ticketCalls).toHaveLength(1);
     expect(FakeEventSource.instances).toHaveLength(1);
+    // 끝난 세션으로 안 읽은 수를 다시 묻지 않는다(401을 받으면 화면이 로그인으로 한 번 더 튄다).
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(unreadCalls()).toBe(before);
   });
 });
