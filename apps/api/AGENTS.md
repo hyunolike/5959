@@ -128,7 +128,7 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   `SseTicketCleanupJob`이 만료된 지 하루 지난 표를 지운다. `SseHub`는 회원별 연결(5개 상한, 넘으면 가장 오래된 것을 닫음)과
   연결별 마지막 전송 번호를 들고, 보낼 것은 언제나 DB에서 `seq > 마지막 번호`로 읽는다(Redis 신호는 힌트). 새 연결은
   허브에 먼저 등록한 뒤 재전송한다. 이 순서를 바꾸면 재전송 쿼리와 구독 사이에 커밋된 알림이 안전망 주기까지 빠진다.
-  쓰기는 전용 실행기(`notificationStreamExecutor`, 4스레드)가 하고, 연결마다 한 번에 하나만 돈다. 하트비트(`: hb`, 25초)와
+  쓰기는 전용 실행기(`notificationStreamExecutor`, 4스레드)가 하고, 연결마다 한 번에 하나만 돈다. 하트비트(`: hb` 주석과 `ping` 이벤트, 25초)와
   안전망(`SafetyDrain`, 60초, Redis DOWN이면 5초, UP으로 돌아오면 모든 연결을 한 번 따라잡음)은 `StreamTimer` 스레드 하나가
   시각만 맞춘다. 이 타이머는 `TaskScheduler` 빈이 아니다(빈이면 Boot가 `@Scheduled`용 기본 스케줄러를 만들지 않는다).
   같은 이유로 `spring.task.execution.mode: force`를 두어 모듈의 실행기 빈이 있어도 `@Async`와 `@ApplicationModuleListener`가

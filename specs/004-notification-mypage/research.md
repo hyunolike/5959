@@ -25,7 +25,7 @@
 **결정**: Spring MVC의 `SseEmitter`를 쓴다. WebFlux는 들이지 않는다.
 - 연결 하나는 서블릿 비동기 요청 하나다. 기다리는 동안 Tomcat 요청 스레드를 쥐지 않는다. 쓰기는 `notification` 모듈의 전용 실행기(스레드 4개)가 한다.
 - Tomcat NIO의 기본 연결 상한(`server.tomcat.max-connections` 8192)을 그대로 쓴다. 회원 한 명의 동시 연결은 5개까지 받고, 6번째가 오면 가장 오래된 연결을 닫는다(US1-AC7은 탭 여러 개를 요구하지만 무한히 열 이유는 없다).
-- 하트비트는 25초마다 주석 줄(`: hb`)을 보낸다. 쓰기에 실패하면(`IOException`) 그 연결을 허브에서 지운다. 끊긴 연결을 늦어도 25초 안에 알아챈다.
+- 하트비트는 25초마다 주석 줄(`: hb`)과 id 없는 `ping` 이벤트를 보낸다(브라우저 EventSource는 주석을 스크립트에 알리지 않아, 웹이 조용한 연결을 알아채려면 이벤트가 필요하다). 쓰기에 실패하면(`IOException`) 그 연결을 허브에서 지운다. 끊긴 연결을 늦어도 25초 안에 알아챈다.
 - 연결 하나의 수명은 15분이다. 서버가 `complete()`로 닫으면 웹이 새 티켓으로 다시 붙는다. access 토큰 수명(15분)과 같게 두어, 로그아웃이나 세션 무효화 뒤에도 스트림이 그보다 오래 남지 않는다.
 - 응답 헤더: `Content-Type: text/event-stream`, `Cache-Control: no-store`, `X-Accel-Buffering: no`.
 - Caddy는 `reverse_proxy`가 `text/event-stream` 응답을 받으면 즉시 흘려보낸다. 다만 지금 Caddyfile의 `encode zstd gzip`이 SSE 응답을 압축 버퍼에 담지 않도록 스트림 경로를 `encode`에서 뺀다. 읽기와 쓰기 타임아웃은 Caddy 기본값(없음)이라 따로 늘리지 않는다(quickstart 운영 준비).
@@ -230,7 +230,7 @@
 
 **결정**:
 - **연결 상태**: `features/notification-stream`에 Zustand 스토어(`status: idle | connecting | open | retrying | stopped`, `lastEventId`, `attempt`)를 둔다(overview 6.4).
-- **연결 절차**: BFF에서 티켓을 받고 `EventSource`를 연다. `error`가 오면 바로 닫고, 1초, 2초, 4초... 최대 30초에 ±20% 흔들기를 더해 기다린 뒤 새 티켓으로 다시 연다. 열리면 시도 횟수를 0으로 되돌린다. 티켓 발급이 401(세션 끝)이면 `stopped`로 두고 다시 시도하지 않는다. 탭이 다시 보이거나(`visibilitychange`) 네트워크가 돌아오면(`online`) 기다리지 않고 바로 붙는다. 서버가 15분마다 닫는 것도 같은 경로로 다시 붙는다.
+- **연결 절차**: BFF에서 티켓을 받고 `EventSource`를 연다. `error`가 오면 바로 닫고, 1초, 2초, 4초... 최대 30초에 ±20% 흔들기를 더해 기다린 뒤 새 티켓으로 다시 연다. 열리면 시도 횟수를 0으로 되돌린다. 티켓 발급이 401(세션 끝)이면 `stopped`로 두고 다시 시도하지 않는다. 탭이 다시 보이거나(`visibilitychange`) 네트워크가 돌아오면(`online`) 기다리지 않고 바로 붙는다. 서버가 15분마다 닫는 것도 같은 경로로 다시 붙는다. 구현하며 세 가지를 더했다(Batch 5 리뷰). 시도 횟수는 20초 동안 열려 있어야 0으로 되돌린다(탭이 6개 이상일 때 서로 밀어내는 것을 막는다). 서버가 25초마다 보내는 `ping` 이벤트를 비롯해 60초 동안 이벤트가 없거나, 탭이 30초 넘게 가려졌거나 오프라인이었다 돌아오면 열린 연결도 닫고 다시 붙는다. `stopped`에서는 탭이 보이거나 초점을 받을 때 한 번만 붙어 본다.
 - **어디서 여는가**: `app/layout.tsx`(서버 컴포넌트)가 `ogu_ob` 쿠키가 있을 때만 `widgets/notification-bell`을 렌더링하고, 이 위젯이 연결을 연다. 로그아웃 성공 때 스토어가 연결을 닫는다.
 - **캐시 반영**: `notification` 이벤트를 받으면 TanStack Query의 알림 목록 첫 쪽에서 같은 ID를 지우고 맨 앞에 넣고, 안 읽은 수 캐시를 `unreadCount`로 바꾼다. `unread-count` 이벤트는 배지만 바꾼다. 다시 연결하면 안 읽은 수를 새로 받는다.
 - **토스트**: 화면 오른쪽 아래에 4초 동안 보인다. 알림 페이지를 보고 있으면 띄우지 않는다. `shared/ui/toast`를 직접 만든다(의존성을 늘리지 않는다).
