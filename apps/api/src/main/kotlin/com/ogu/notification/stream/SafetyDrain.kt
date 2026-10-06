@@ -18,6 +18,9 @@ import java.util.concurrent.ScheduledFuture
  * 주기는 평소 [NotificationProperties.safetyDrainInterval](60초)이고, Redis가 내려가 있으면
  * ([RealtimeConnectionChanged] DOWN) [NotificationProperties.outageDrainInterval](5초)로 줄인다. 돌아오면(UP) 모든 연결을
  * 한 번 따라잡은 뒤 평소 주기로 되돌린다.
+ *
+ * Redis가 내려가 있는 동안에는 읽음 신호도 닿지 않는다. 그 주기(5초)에만 안 읽은 수가 바뀐 연결에 `unread-count`를 함께
+ * 보낸다([SseHub.drainLagging], 쿼리 하나). 평소 주기에는 하지 않는다.
  */
 @Component
 class SafetyDrain(
@@ -33,11 +36,14 @@ class SafetyDrain(
     private var interval: Duration = properties.safetyDrainInterval
 
     @Volatile
+    private var outage = false
+
+    @Volatile
     private var running = false
 
     override fun start() {
         running = true
-        reschedule(intervalFor(state.current))
+        reschedule(state.current)
     }
 
     override fun stop() {
@@ -56,7 +62,7 @@ class SafetyDrain(
     @EventListener
     fun on(event: RealtimeConnectionChanged) {
         if (event.state == RealtimeConnection.UP) hub.drainAll()
-        if (running) reschedule(intervalFor(event.state))
+        if (running) reschedule(event.state)
     }
 
     /** 타이머 스레드는 시각만 맞춘다. DB를 읽는 일은 쓰기 실행기에 넘겨, DB가 느려도 하트비트가 밀리지 않게 한다. */
@@ -71,18 +77,18 @@ class SafetyDrain(
     @Suppress("TooGenericExceptionCaught") // DB가 잠깐 안 되더라도 다음 주기에 다시 한다
     private fun drainLagging() {
         try {
-            hub.drainLagging()
+            hub.drainLagging(withUnreadCounts = outage)
         } catch (e: RuntimeException) {
             log.warn("안전망 따라잡기에 실패했습니다: {}", e.message)
         }
     }
 
-    private fun intervalFor(connection: RealtimeConnection): Duration =
-        if (connection == RealtimeConnection.DOWN) properties.outageDrainInterval else properties.safetyDrainInterval
-
-    private fun reschedule(interval: Duration) {
+    private fun reschedule(connection: RealtimeConnection) {
+        val down = connection == RealtimeConnection.DOWN
+        val interval = if (down) properties.outageDrainInterval else properties.safetyDrainInterval
         synchronized(this) {
             future?.cancel(false)
+            this.outage = down
             this.interval = interval
             future = timer.every(interval, ::tick)
         }

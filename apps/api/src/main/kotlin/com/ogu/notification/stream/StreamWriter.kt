@@ -90,6 +90,7 @@ class StreamWriter(
                 connection.emitter.send(
                     SseEmitter.event().name(UNREAD_COUNT_EVENT).data(event, MediaType.APPLICATION_JSON),
                 )
+                connection.sentUnreadCount(event.unreadCount)
             }
             // 주석 줄은 중간 장비용이고, 브라우저 EventSource는 주석을 스크립트에 알리지 않는다. 웹이 조용한(죽은) 연결을
             // 알아채도록 이름 있는 ping 이벤트를 같이 보낸다. id가 없어 웹의 마지막 이벤트 id를 바꾸지 않는다
@@ -120,6 +121,7 @@ class StreamWriter(
                         .data(event, MediaType.APPLICATION_JSON),
                 )
                 connection.sent(view.notification.seq)
+                connection.sentUnreadCount(unreadCount)
             }
             if (rows.size < DRAIN_BATCH) return
         }

@@ -22,9 +22,11 @@ import org.junit.jupiter.api.Order
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.TestMethodOrder
+import org.springframework.http.MediaType
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.web.servlet.ResultActions
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.testcontainers.containers.FixedHostPortGenericContainer
@@ -171,6 +173,32 @@ class RedisOutageStreamTest {
 
     @Test
     @Order(4)
+    fun `Redis가 멈춘 동안 읽음 처리하면 열린 연결이 줄어든 안전망 주기 안에 unread-count를 받는다`() {
+        assertThat(state().current).isEqualTo(RealtimeConnection.DOWN)
+        val lastSeq = support.lastSeq(author.id)
+        val stream = open(author, lastEventId = lastSeq)
+        assertThat(support.notificationsOf(author.id).count { !it.read }).isPositive()
+
+        // 다른 탭에서 모두 읽음. 신호는 Redis로 나가지 못한다
+        app.mockMvc
+            .perform(
+                post("/api/v1/notifications/read-all")
+                    .bearer(author.accessToken)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""{"upToSeq": $lastSeq}"""),
+            ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.unreadCount").value(0))
+
+        await().atMost(OUTAGE_DELIVERY).until { unreadCounts(stream).lastOrNull() == 0L }
+        // 수가 그대로면 주기마다 다시 보내지 않는다
+        val sent = unreadCounts(stream).size
+        Thread.sleep(OUTAGE_INTERVAL.toMillis() * QUIET_TICKS)
+        assertThat(unreadCounts(stream)).hasSize(sent)
+        assertThat(stream.notifications()).isEmpty()
+    }
+
+    @Test
+    @Order(5)
     fun `Redis를 다시 띄우면 구독이 돌아오고 안전망 주기가 원래대로 바뀐다`() {
         val stream = open(author, lastEventId = support.lastSeq(author.id))
 
@@ -196,6 +224,9 @@ class RedisOutageStreamTest {
         member: TestMember,
         lastEventId: Long? = null,
     ): SseStream = SseTestClient.connect(app.port, tickets.issue(member), lastEventId).also { streams += it }
+
+    private fun unreadCounts(stream: SseStream): List<Long> =
+        stream.events.filter { it.event == "unread-count" }.map { it.json().get("unreadCount").asLong() }
 
     private fun unreadCount(member: TestMember): ResultActions {
         val request = get("/api/v1/notifications/unread-count").bearer(member.accessToken)
@@ -236,6 +267,7 @@ class RedisOutageStreamTest {
 
     private companion object {
         const val MISSED = 3
+        const val QUIET_TICKS = 3
         val NORMAL_INTERVAL: Duration = Duration.ofSeconds(60)
         val OUTAGE_INTERVAL: Duration = Duration.ofSeconds(1)
         val DETECT: Duration = Duration.ofSeconds(15)
