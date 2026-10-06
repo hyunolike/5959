@@ -97,7 +97,7 @@ class SseHub(
             .forEach { writer.request(it, StreamTask.DRAIN) }
     }
 
-    /** 모든 연결에 하트비트 주석 줄을 보낸다. 쓰기에 실패한 연결은 지운다. */
+    /** 모든 연결에 하트비트(주석 줄과 ping 이벤트)를 보낸다. 쓰기에 실패한 연결은 지운다. */
     fun heartbeatAll() {
         connections.all().forEach { writer.request(it, StreamTask.HEARTBEAT) }
     }

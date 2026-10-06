@@ -6,8 +6,9 @@ import org.springframework.stereotype.Component
 import java.util.concurrent.ScheduledFuture
 
 /**
- * [NotificationProperties.heartbeat](25초)마다 모든 연결에 `: hb` 주석 줄을 보낸다(research R2). 중간 장비가 조용한 연결을
- * 끊지 않게 하고, 끊긴 연결은 쓰기 실패로 늦어도 한 주기 안에 허브에서 지운다.
+ * [NotificationProperties.heartbeat](25초)마다 모든 연결에 `: hb` 주석 줄과 `ping` 이벤트를 보낸다(research R2). 중간 장비가
+ * 조용한 연결을 끊지 않게 하고, 끊긴 연결은 쓰기 실패로 늦어도 한 주기 안에 허브에서 지운다. 웹은 `ping`이 60초 동안
+ * 오지 않으면 연결이 죽었다고 보고 다시 붙는다.
  */
 @Component
 class StreamHeartbeat(
