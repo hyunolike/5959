@@ -76,11 +76,14 @@ export function OnboardingForm({ next }: OnboardingFormProps) {
       const member = await onboardingMutation.mutateAsync(values);
       if (member) {
         router.push(destination);
+        // 온보딩 쿠키가 생겼다. 루트 레이아웃을 새로 받아 알림 종을 그린다.
+        router.refresh();
       }
     } catch (error) {
       if (error instanceof ApiError) {
         if (error.code === "ALREADY_ONBOARDED") {
           router.push(destination);
+          router.refresh();
           return;
         }
         if (error.code === "NICKNAME_TAKEN" || error.status === 400) {
