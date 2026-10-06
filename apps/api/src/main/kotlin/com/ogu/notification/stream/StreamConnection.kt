@@ -13,7 +13,7 @@ enum class StreamTask {
     /** 안 읽은 수(`unread-count` 이벤트)를 보낸다. */
     UNREAD_COUNT,
 
-    /** `: hb` 주석 줄을 보낸다. */
+    /** `: hb` 주석 줄과 `ping` 이벤트를 보낸다. */
     HEARTBEAT,
 }
 

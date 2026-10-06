@@ -415,7 +415,10 @@ export interface paths {
      *     - `event: notification`, `id: {seq}`, `data: StreamNotificationEvent(JSON)`.
      *       새 알림이나 묶음 갱신이다. lastEventId 이후 것은 연결 직후 seq 순서로 다시 보낸다.
      *     - `event: unread-count`, id 없음, `data: StreamUnreadCountEvent(JSON)`. 읽음 처리로 수가 바뀌었을 때.
-     *     - `: hb` 주석 줄. 25초마다 보내는 하트비트다.
+     *     - `: hb` 주석 줄. 25초마다 보내는 하트비트다. 중간 장비가 조용한 연결을 끊지 않게 한다.
+     *     - `event: ping`, id 없음, `data: StreamPingEvent(JSON, 빈 객체)`. 하트비트 주석과 같이 25초마다 보낸다.
+     *       브라우저 EventSource는 주석 줄을 스크립트에 알리지 않으므로, 웹은 이 이벤트로 연결이 살아 있는지 본다.
+     *       id가 없어 마지막 이벤트 id를 바꾸지 않는다. 웹은 60초 동안 아무 이벤트도 없으면 닫고 다시 붙는다.
      *
      *     서버는 15분 뒤 연결을 닫는다. 웹은 새 티켓과 마지막 id로 다시 붙는다(research R14).
      *     회원 한 명의 동시 연결은 5개까지이고, 넘으면 가장 오래된 연결을 닫는다.
@@ -803,6 +806,8 @@ export interface components {
     StreamUnreadCountEvent: {
       unreadCount: number;
     };
+    /** @description SSE `event: ping`의 data. 내용이 없는 빈 객체다. id가 없고 재전송하지 않는다 */
+    StreamPingEvent: Record<string, never>;
     MyComment: {
       /** Format: int64 */
       commentId: number;

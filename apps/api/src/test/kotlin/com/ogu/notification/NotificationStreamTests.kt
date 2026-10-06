@@ -177,6 +177,20 @@ class NotificationStreamTests {
     }
 
     @Test
+    fun `하트비트마다 id 없는 ping 이벤트도 온다`() {
+        val stream = open(members.onboarded())
+
+        // 주석 줄은 브라우저 EventSource가 스크립트에 알리지 않는다. 웹이 조용한 연결을 알아채도록 이름 있는 이벤트도 보낸다
+        await().atMost(AWAIT).until { stream.events.count { it.event == "ping" } >= 2 }
+        val pings = stream.events.filter { it.event == "ping" }
+        // id가 없어야 웹의 마지막 이벤트 id(lastEventId)를 건드리지 않는다
+        assertThat(pings).allMatch { it.id == null }
+        // data가 비면 EventSource가 이벤트를 버린다
+        assertThat(pings).allMatch { it.data == "{}" }
+        assertThat(stream.notifications()).isEmpty()
+    }
+
+    @Test
     fun `6번째 연결이 오면 가장 오래된 연결이 닫힌다`() {
         val member = members.onboarded()
         val opened = (1..MAX_CONNECTIONS).map { open(member) }
