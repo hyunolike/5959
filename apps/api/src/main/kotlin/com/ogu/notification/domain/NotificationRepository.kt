@@ -173,6 +173,25 @@ class NotificationRepository(
             .query(Long::class.java)
             .single()
 
+    /**
+     * 회원마다 안 읽은 수를 한 번에 읽는다(Redis 장애 동안의 안전망). 안 읽은 알림이 없는 회원은 결과에서 빠진다.
+     */
+    fun countUnreadOf(receiverIds: Collection<Long>): Map<Long, Long> {
+        if (receiverIds.isEmpty()) return emptyMap()
+        return jdbcClient
+            .sql(
+                """
+                select n.receiver_id, count(*) as unread from notification n
+                where n.receiver_id in (:receiverIds) and n.read_at is null and ${NotificationRetention.condition("n")}
+                group by n.receiver_id
+                """.trimIndent(),
+            ).param("receiverIds", receiverIds.toSet())
+            .params(retention.params())
+            .query { rs, _ -> rs.getLong("receiver_id") to rs.getLong("unread") }
+            .list()
+            .toMap()
+    }
+
     /** 하나 읽음(research R11). 남의 알림이나 보관 기간이 지난 알림은 존재 여부를 알리지 않고 [ReadOutcome.NOT_FOUND]다. */
     fun markRead(
         id: Long,
@@ -235,20 +254,21 @@ class NotificationRepository(
      * `notification_created_at_idx`를 쓴다.
      *
      * 다른 트랜잭션이 잡고 있는 행은 건너뛴다(`SKIP LOCKED`). 두 인스턴스가 같이 돌아도 서로 기다리지 않고 다른 행을 지운다.
-     * 트랜잭션 밖에서 부르면 한 번이 한 트랜잭션이라 잠금이 문장 끝에 풀린다.
+     * 트랜잭션 밖에서 부르면 한 번이 한 트랜잭션이라 잠금이 문장 끝에 풀린다. 고를 행은 `MATERIALIZED` CTE로 한 번만
+     * 정한다. `IN (서브쿼리)`로 두면 실행 계획에 따라 서브쿼리가 다시 돌아 [limit]보다 많이 지울 수 있다.
      */
     fun deleteExpired(limit: Int): Int =
         jdbcClient
             .sql(
                 """
-                delete from notification
-                where id in (
+                with expired as materialized (
                     select n.id from notification n
                     where not (${NotificationRetention.condition("n")})
                     order by n.created_at
                     limit :limit
                     for update skip locked
                 )
+                delete from notification where id in (select id from expired)
                 """.trimIndent(),
             ).params(retention.params())
             .param("limit", limit)

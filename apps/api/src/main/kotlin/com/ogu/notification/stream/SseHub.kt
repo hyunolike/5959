@@ -86,8 +86,14 @@ class SseHub(
         connections.all().forEach { writer.request(it, StreamTask.DRAIN) }
     }
 
-    /** 안전망(research R5): 회원마다 마지막으로 준 번호를 한 번에 읽어 뒤처진 연결만 따라잡는다. */
-    fun drainLagging() {
+    /**
+     * 안전망(research R5): 회원마다 마지막으로 준 번호를 한 번에 읽어 뒤처진 연결만 따라잡는다.
+     *
+     * [withUnreadCounts]는 Redis 장애 동안에만 켠다. 읽음 신호(`{memberId}:r`)가 닿지 않으므로, 회원마다 안 읽은 수를 한 번에
+     * 읽어 마지막으로 보낸 수와 다른 연결에만 `unread-count`를 보낸다. 수가 그대로면 아무것도 보내지 않는다. 아직 수를 보낸
+     * 적 없는 연결은 한 번 받는다.
+     */
+    fun drainLagging(withUnreadCounts: Boolean = false) {
         val memberIds = connections.memberIds()
         if (memberIds.isEmpty()) return
         val latest = sequences.currentOf(memberIds)
@@ -95,6 +101,12 @@ class SseHub(
             .all()
             .filter { (latest[it.memberId] ?: 0L) > it.lastSentSeq }
             .forEach { writer.request(it, StreamTask.DRAIN) }
+        if (!withUnreadCounts) return
+        val unread = notifications.countUnreadOf(memberIds)
+        connections
+            .all()
+            .filter { it.lastUnreadCount != (unread[it.memberId] ?: 0L) }
+            .forEach { writer.request(it, StreamTask.UNREAD_COUNT) }
     }
 
     /** 모든 연결에 하트비트(주석 줄과 ping 이벤트)를 보낸다. 쓰기에 실패한 연결은 지운다. */

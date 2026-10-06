@@ -34,6 +34,11 @@ class StreamConnection(
     var lastSentSeq: Long = startSeq
         private set
 
+    /** 이 연결에 마지막으로 보낸 안 읽은 수. 아직 보낸 적이 없으면 null이다. */
+    @Volatile
+    var lastUnreadCount: Long? = null
+        private set
+
     private val closedFlag = AtomicBoolean()
     private val running = AtomicBoolean()
     private val pending: MutableSet<StreamTask> = ConcurrentHashMap.newKeySet()
@@ -60,6 +65,11 @@ class StreamConnection(
     /** 쓰기 권한을 쥔 스레드만 부른다. 번호는 줄지 않는다. */
     fun sent(seq: Long) {
         if (seq > lastSentSeq) lastSentSeq = seq
+    }
+
+    /** 쓰기 권한을 쥔 스레드만 부른다. `notification`이나 `unread-count` 이벤트로 안 읽은 수를 보냈다. */
+    fun sentUnreadCount(count: Long) {
+        lastUnreadCount = count
     }
 
     /** 처음 한 번만 true. */
