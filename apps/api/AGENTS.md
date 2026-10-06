@@ -141,6 +141,17 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   붙을 때 `lastEventId`는 지금 번호(`notification_sequence.last_seq`)를 넘지 않게 낮추고, 허브가 멈추는 중에 온 연결은
   바로 끝낸다. 스트림 컨트롤러의 오류는 모두 JSON 봉투로 쓴다(`Accept: text/event-stream`이어도). 테스트는 `support/SseTestClient`(JDK `HttpClient`, `ofLines()`)로 실제 스트림을 읽고,
   서버 두 대와 Redis 장애는 `support/AppInstance`로 직접 띄운다.
+  알림 목록과 읽음(004 US2, research R10~R12)은 `NotificationController`에 있다. 목록(`GET /api/v1/notifications`)은
+  `NotificationQueryService.page`가 `seq DESC` 키셋으로 읽고(커서는 `base64url("{seq}")`, size 1~50), 쿼리는 쪽 크기와
+  상관없이 알림, `PostApi.previews`, `MemberApi.getMembers` 세 개다. 글 미리보기와 행동한 회원은 스트림과 같은
+  `NotificationViewAssembler`와 `NotificationResponse`가 만들어 목록과 실시간 이벤트의 모양이 갈라지지 않는다. 지운 글은
+  `post`가 null이다. 읽음은 `NotificationReadService`가 한다: 하나 읽음(`PUT .../{id}/read`)은 남의 알림, 없는 알림,
+  보관 기간이 지난 알림을 구분하지 않고 `404 NOTIFICATION_NOT_FOUND`로 답하고, 모두 읽음(`POST .../read-all`)은
+  `seq <= upToSeq`만 바꾼다. 읽음이 실제로 바뀌었을 때만 커밋 뒤 `{memberId}:r` 신호를 보내고, `SseHub`가 그 회원의 모든
+  연결에 `unread-count` 이벤트(ID 없음, 재전송 안 함)를 보낸다. 읽은 공감 묶음은 부분 유일 인덱스에서 빠지므로 다음
+  공감은 새 묶음을 만든다. `NotificationPurgeJob`이 매일 04:00(한국 시간)에 만든 지 90일이 지난 알림을 1,000행씩
+  (`FOR UPDATE SKIP LOCKED`, 한 문장이 한 트랜잭션) 지우고, 끝난 지 7일이 지난 이벤트 발행도 지운다
+  (`CompletedEventPublications.deletePublicationsOlderThan`). ShedLock 없이 두 인스턴스가 같이 돌아도 된다.
 
 ## Core loop (`post`, `ai`, `emotion`, `monster`, `feed`)
 
@@ -199,7 +210,8 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   뒤에는 앱을 재시작하거나, 그 행의 `event_publication.completion_attempts`를 상한보다
   작게(예: 0) 되돌려 1분 주기 재전송이 다시 맡게 한다.
   끝난 발행도 `event_publication`에 계속 쌓이므로, 이벤트에는 글 본문 같은 내용을 싣지 않고
-  ID만 담는다. 끝난 행을 지우거나 완료 모드를 바꾸는 보존 정책은 아직 없고 다음 작업으로 남겨 두었다.
+  ID만 담는다. 끝난 지 7일이 지난 행은 `notification`의 `NotificationPurgeJob`이 매일 지운다(004 research R10).
+  끝나지 않은 행은 지우지 않는다.
 - **운영 기동 조건.** AI 키 검사는 `shared/config/ProdAiSettingsCheck`에 있다.
   인증 쪽 검사(`ProdAuthSettingsCheck`)는 `member`에 있으니 둘을 함께 본다.
   `prod`에서 `AI_API_KEY`나 `AI_MODEL`이 비어 있으면 앱이 뜨지 않는다. `AI_BASE_URL`은
