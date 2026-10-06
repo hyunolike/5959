@@ -1,6 +1,7 @@
 package com.ogu.notification.application
 
 import com.ogu.notification.domain.NotificationRepository
+import com.ogu.notification.domain.NotificationSequenceRepository
 import com.ogu.notification.domain.ReadOutcome
 import com.ogu.notification.stream.NotificationSignal
 import com.ogu.notification.stream.RedisSignalPublisher
@@ -20,10 +21,15 @@ import java.time.temporal.ChronoUnit
  * 공감 묶음과 겹칠 때(research R7): 읽음의 `UPDATE`와 묶음 갱신은 같은 행 잠금을 두고 줄을 선다. 읽음이 먼저 커밋되면
  * 안 읽은 묶음 자리(부분 유일 인덱스)가 비어 다음 공감이 새 묶음을 만든다. 공감이 먼저면 번호가 올라가, 기다리던 모두
  * 읽음이 `seq <= upToSeq`를 다시 확인하고 그 묶음을 건너뛴다.
+ *
+ * 하나 읽음은 다르다. 번호가 아니라 알림 ID로 읽으므로, 기다리는 사이에 공감이 더해진 묶음은 더해진 공감까지 함께 읽음이
+ * 된다. 의도한 동작이다. 회원이 바로 그 묶음을 눌렀고, 눌러서 가는 글 상세에서 새 공감도 보게 된다. 새 공감은 묶음의
+ * 인원 수에는 들어가지만 따로 안 읽음으로 남지 않고, 그다음 공감부터 새 묶음이 된다.
  */
 @Service
 class NotificationReadService(
     private val notifications: NotificationRepository,
+    private val sequences: NotificationSequenceRepository,
     private val signals: RedisSignalPublisher,
     private val clock: Clock,
 ) {
@@ -46,6 +52,9 @@ class NotificationReadService(
     /**
      * 모두 읽음. [upToSeq](웹이 지금까지 받은 가장 큰 번호) 이하만 바꾼다. 누르는 사이에 온 알림은 번호가 더 커서 안 읽은
      * 채로 남는다(US2-AC4). [upToSeq]가 없거나 음수면 400 INVALID_REQUEST.
+     *
+     * [upToSeq]는 이 회원의 지금 마지막 번호를 넘지 않게 낮춘다(스트림이 `lastEventId`를 낮추는 것과 같다). 한참 큰 값을
+     * 보내도 이 요청이 번호를 읽은 뒤에 커밋되는 알림과 묶음 갱신은 읽음이 되지 않는다.
      */
     @Transactional
     fun markAll(
@@ -55,7 +64,8 @@ class NotificationReadService(
         if (upToSeq == null || upToSeq < 0) {
             throw BusinessException(ErrorCode.INVALID_REQUEST, "upToSeq는 0 이상이어야 합니다.")
         }
-        val updated = notifications.markAllRead(memberId, upToSeq, now())
+        val boundedSeq = minOf(upToSeq, sequences.current(memberId))
+        val updated = notifications.markAllRead(memberId, boundedSeq, now())
         if (updated > 0) signals.publish(NotificationSignal.Read(memberId))
         return ReadAllResult(updated = updated, unreadCount = notifications.countUnread(memberId))
     }
