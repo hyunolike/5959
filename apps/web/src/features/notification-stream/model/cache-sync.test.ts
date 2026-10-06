@@ -1,10 +1,11 @@
 import { QueryClient, type InfiniteData } from "@tanstack/react-query";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import type {
-  Notification,
-  NotificationPage,
-  UnreadCount,
+import {
+  unreadCountQueryOptions,
+  type Notification,
+  type NotificationPage,
+  type UnreadCount,
 } from "@/entities/notification";
 import { QUERY_KEYS } from "@/shared/config";
 
@@ -144,6 +145,54 @@ describe("applyNotificationEvent", () => {
       count: 3,
       latestSeq: 9,
     });
+  });
+});
+
+describe("안 읽은 수 조회와 이벤트의 경합", () => {
+  it("조회가 진행 중일 때 온 이벤트를 늦게 도착한 옛 응답이 덮지 않는다", async () => {
+    const client = new QueryClient();
+    client.setQueryData<UnreadCount>(QUERY_KEYS.unreadCount, {
+      count: 2,
+      latestSeq: 5,
+    });
+    let respond: (response: Response) => void = () => {};
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        () =>
+          new Promise<Response>((resolve) => {
+            respond = resolve;
+          }),
+      ),
+    );
+
+    // 서버가 번호 5까지 본 응답을 만드는 사이에 번호 6 알림이 이벤트로 먼저 온다.
+    const fetching = client.fetchQuery({
+      ...unreadCountQueryOptions(),
+      staleTime: 0,
+    });
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalled());
+    applyNotificationEvent(client, {
+      notification: notification(3, 6),
+      unreadCount: 3,
+    });
+    respond(
+      new Response(
+        JSON.stringify({
+          success: true,
+          data: { count: 2, latestSeq: 5 },
+          error: null,
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+    await fetching;
+
+    expect(client.getQueryData(QUERY_KEYS.unreadCount)).toEqual({
+      count: 3,
+      latestSeq: 6,
+    });
+    vi.unstubAllGlobals();
   });
 });
 

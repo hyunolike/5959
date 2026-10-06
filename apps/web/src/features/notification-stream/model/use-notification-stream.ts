@@ -3,7 +3,12 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 
-import { fetchUnreadCount, type Notification } from "@/entities/notification";
+import {
+  fetchUnreadCount,
+  newestUnreadCount,
+  type Notification,
+  type UnreadCount,
+} from "@/entities/notification";
 import { QUERY_KEYS } from "@/shared/config";
 
 import { applyNotificationEvent, applyUnreadCountEvent } from "./cache-sync";
@@ -35,11 +40,13 @@ export function useNotificationStream(
     const { start, stop } = notificationStreamStore.getState();
     start({
       loadLatestSeq: async () => {
-        const unread = await queryClient.fetchQuery({
-          queryKey: QUERY_KEYS.unreadCount,
-          queryFn: () => fetchUnreadCount(),
-          staleTime: 0,
-        });
+        // 쿼리를 거치지 않고 직접 받는다. 세션이 끝난 탭이 초점을 받을 때마다 한 번 살펴보는데,
+        // 쿼리의 401은 전역 처리(로그인 화면으로 이동)를 부르기 때문이다. 받은 값은 캐시에 넣어 배지가 쓴다.
+        const unread = await fetchUnreadCount();
+        queryClient.setQueryData<UnreadCount>(
+          QUERY_KEYS.unreadCount,
+          (cached) => newestUnreadCount(cached, unread),
+        );
         return unread.latestSeq;
       },
       onNotification: (event) => {

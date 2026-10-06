@@ -332,6 +332,30 @@ describe("scrubEvent", () => {
     expect(scrubbed.request?.query_string).toEqual([["foo", "bar"]]);
   });
 
+  it("알림 스트림 주소의 일회용 ticket 쿼리 파라미터를 지운다", () => {
+    const event: ScrubbableEvent = {
+      request: {
+        url: "https://api.ogu.example/api/v1/notifications/stream?ticket=secret-ticket&lastEventId=17",
+        query_string: { ticket: "secret-ticket", lastEventId: "17" },
+      },
+      breadcrumbs: [
+        {
+          category: "fetch",
+          data: {
+            method: "GET",
+            url: "https://api.ogu.example/api/v1/notifications/stream?ticket=secret-ticket&lastEventId=17",
+          },
+        },
+      ],
+    };
+
+    const scrubbed = scrubEvent(event);
+
+    expect(JSON.stringify(scrubbed)).not.toContain("secret-ticket");
+    expect(scrubbed.request?.query_string).toEqual({ lastEventId: "17" });
+    expect(scrubbed.request?.url).toContain("lastEventId=17");
+  });
+
   it("breadcrumbs의 fetch url에서도 code, state 쿼리 파라미터를 지운다", () => {
     const event: ScrubbableEvent = {
       breadcrumbs: [
