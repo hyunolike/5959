@@ -31,6 +31,20 @@ class NotificationSequenceRepository(
             .single()
     }
 
+    /**
+     * 회원마다 마지막으로 준 번호(research R5 안전망). 기본 키로만 읽는다. 번호를 받은 적 없는 회원은 결과에서 빠진다.
+     * 뒤처진 연결을 찾는 신호로만 쓴다. 번호에 빈칸이 있으면 실제 알림보다 클 수 있고, 그때는 따라잡기가 빈손으로 돌아올 뿐이다.
+     */
+    fun currentOf(memberIds: Collection<Long>): Map<Long, Long> {
+        if (memberIds.isEmpty()) return emptyMap()
+        return jdbcClient
+            .sql("select member_id, last_seq from notification_sequence where member_id in (:ids)")
+            .param("ids", memberIds.toSet())
+            .query { rs, _ -> rs.getLong("member_id") to rs.getLong("last_seq") }
+            .list()
+            .toMap()
+    }
+
     /** 이 회원에게 마지막으로 준 번호. 아직 없으면 0이다. */
     fun current(memberId: Long): Long =
         jdbcClient

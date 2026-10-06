@@ -1,6 +1,7 @@
 package com.ogu.notification
 
 import com.ogu.TestcontainersConfiguration
+import com.ogu.member.MemberApi
 import com.ogu.monster.MonsterApi
 import com.ogu.notification.stream.SseHub
 import com.ogu.support.CoreLoopFixture
@@ -15,14 +16,20 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.ArgumentMatchers.anyString
+import org.mockito.Mockito.doThrow
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.test.system.CapturedOutput
+import org.springframework.boot.test.system.OutputCaptureExtension
 import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.context.annotation.Import
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.TestPropertySource
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.setup.DefaultMockMvcBuilder
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
@@ -40,9 +47,12 @@ import java.time.Duration
 @TestPropertySource(
     properties = [
         "ogu.notification.heartbeat=200ms",
+        // 안전망이 대신 전달해 주지 못하게 길게 둔다. 기다리는 시간 안에는 Redis 신호만 알림을 보낼 수 있다
+        "ogu.notification.safety-drain-interval=10m",
         "ogu.sse.allowed-origins=${NotificationStreamTests.WEB_ORIGIN}",
     ],
 )
+@ExtendWith(OutputCaptureExtension::class)
 class NotificationStreamTests {
     @Autowired
     lateinit var context: WebApplicationContext
@@ -55,6 +65,9 @@ class NotificationStreamTests {
 
     @Autowired
     lateinit var hub: SseHub
+
+    @MockitoSpyBean
+    lateinit var memberApi: MemberApi
 
     @LocalServerPort
     var port: Int = 0
@@ -203,6 +216,68 @@ class NotificationStreamTests {
         assertThat(denied.header("Access-Control-Allow-Origin")).isNull()
     }
 
+    @Test
+    fun `지금 번호보다 큰 lastEventId로 붙어도 새 알림을 받는다`() {
+        val author = members.onboarded()
+        val fan = members.onboarded()
+        val postId = loop.postWithoutMonster(author)
+        val stream = open(author, lastEventId = Long.MAX_VALUE)
+
+        val commentId = loop.comment(fan, postId)
+
+        val event = stream.awaitNotifications(1).single()
+        assertThat(
+            event
+                .json()
+                .get("notification")
+                .get("commentId")
+                .asLong(),
+        ).isEqualTo(commentId)
+    }
+
+    @Test
+    fun `평범한 끊김은 경고 없이 정리된다`(output: CapturedOutput) {
+        val member = members.onboarded()
+        val opened = (1..MAX_CONNECTIONS).map { open(member) }
+        await().atMost(AWAIT).until { hub.connectionCount(member.id) == MAX_CONNECTIONS }
+
+        opened.forEach(SseStream::close)
+
+        await().atMost(AWAIT).until { hub.connectionCount(member.id) == 0 }
+        // 정리된 뒤 하트비트가 몇 번 더 돌 동안에도 조용해야 한다
+        val other = open(members.onboarded())
+        await().atMost(AWAIT).until { other.comments.size >= 3 }
+        assertThat(output.out).doesNotContain("따라잡지 못해 닫습니다").doesNotContain("Unhandled exception")
+    }
+
+    @Test
+    fun `허브가 멈추는 중에 온 연결은 바로 닫는다`() {
+        val member = members.onboarded()
+        val ticket = tickets.issue(member)
+        hub.stop()
+        try {
+            val stream = SseTestClient.connect(port, ticket).also { streams += it }
+
+            stream.awaitEnded()
+            assertThat(hub.connectionCount(member.id)).isZero()
+        } finally {
+            hub.start()
+        }
+    }
+
+    @Test
+    fun `스트림에서 난 서버 오류도 JSON 오류 봉투로 온다`() {
+        doThrow(IllegalStateException("DB에 붙을 수 없다")).`when`(memberApi).consumeStreamTicket(anyString())
+
+        val stream = SseTestClient.connect(port, "any-ticket").also { streams += it }
+
+        assertThat(stream.status).isEqualTo(INTERNAL_SERVER_ERROR)
+        assertThat(stream.header("Content-Type")).startsWith("application/json")
+        val body = stream.errorBody()
+        assertThat(body.get("success").asBoolean()).isFalse()
+        assertThat(body.get("error").get("code").asString()).isEqualTo("INTERNAL_ERROR")
+    }
+
     private fun open(
         member: TestMember,
         lastEventId: Long? = null,
@@ -228,6 +303,7 @@ class NotificationStreamTests {
         const val WEB_ORIGIN = "http://web.ogu.test"
         private const val OK = 200
         private const val FORBIDDEN = 403
+        private const val INTERNAL_SERVER_ERROR = 500
         private const val MAX_CONNECTIONS = 5
         private const val LIFETIME_LIMIT_SECONDS = 10L
         private val AWAIT: Duration = Duration.ofSeconds(10)

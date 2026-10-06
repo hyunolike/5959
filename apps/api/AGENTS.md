@@ -134,7 +134,12 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   같은 이유로 `spring.task.execution.mode: force`를 두어 모듈의 실행기 빈이 있어도 `@Async`와 `@ApplicationModuleListener`가
   Boot의 `applicationTaskExecutor`를 쓰게 한다. 연결은 수명(15분)이 지나면 서버가 닫고, 종료 때 허브가 먼저 닫아 우아한
   종료가 열린 스트림을 기다리지 않는다. CORS는 스트림 경로에만 `ogu.sse.allowed-origins`를 허용하고 자격 증명은 쓰지 않는다
-  (`StreamCorsConfig`). 테스트는 `support/SseTestClient`(JDK `HttpClient`, `ofLines()`)로 실제 스트림을 읽고,
+  (`StreamCorsConfig`). 쓰기 스레드 4개는 소켓에 블로킹으로 쓴다. 받는 쪽이 느리면 그 쓰기는 Tomcat 쓰기 타임아웃까지
+  스레드 하나를 잡고 있을 수 있으므로, 느린 연결이 4개를 넘으면 그동안 다른 연결의 전달이 밀린다. 안전망의 DB 조회도
+  타이머가 아니라 이 실행기에서 돈다(DB가 느려도 하트비트 시각은 밀리지 않는다). 복구는 PING으로 판정하므로, PING이
+  성공한 뒤 구독이 다시 붙기 전에 나간 신호는 받지 못한다. 그 알림은 다음 안전망 주기(60초)나 재연결 때 온다.
+  붙을 때 `lastEventId`는 지금 번호(`notification_sequence.last_seq`)를 넘지 않게 낮추고, 허브가 멈추는 중에 온 연결은
+  바로 끝낸다. 스트림 컨트롤러의 오류는 모두 JSON 봉투로 쓴다(`Accept: text/event-stream`이어도). 테스트는 `support/SseTestClient`(JDK `HttpClient`, `ofLines()`)로 실제 스트림을 읽고,
   서버 두 대와 Redis 장애는 `support/AppInstance`로 직접 띄운다.
 
 ## Core loop (`post`, `ai`, `emotion`, `monster`, `feed`)

@@ -27,6 +27,12 @@ class StreamConnections(
         byMember.computeIfPresent(connection.memberId) { _, list -> (list - connection).ifEmpty { null } }
     }
 
+    /** 응답은 건드리지 않고(이미 끝났거나 컨테이너가 끝낸다) 닫힌 것으로 표시하고 목록에서 지운다. */
+    fun discard(connection: StreamConnection) {
+        connection.markClosed()
+        remove(connection)
+    }
+
     fun of(memberId: Long): List<StreamConnection> = byMember[memberId].orEmpty()
 
     fun all(): List<StreamConnection> = byMember.values.flatten()
