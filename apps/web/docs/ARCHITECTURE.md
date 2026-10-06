@@ -98,7 +98,8 @@ everything else to `API_ORIGIN` as `Authorization: Bearer <ogu_at>` plus
 shapes so token-bearing responses never leak to the browser: any path whose
 first segment is `auth` (`/api/auth/**`) and `/api/members/me/onboarding`
 — both are served only by the dedicated routes above, which already scrub
-tokens from the body. It also validates every path segment (rejects empty,
+tokens from the body. It also refuses `/api/notifications/stream-tickets`:
+stream tickets come only from `POST /api/notifications/stream-ticket`. It also validates every path segment (rejects empty,
 `.`, `..`, or segments containing `/`, `\`, `?`, `#`, including after a
 second percent-decode) before re-encoding and calling `API_ORIGIN`, to stop
 path-traversal or double-encoded-slash tricks from reaching an unintended
@@ -202,6 +203,51 @@ to where they started after login (US4-AC5).
 `scripts/monster-capture` 하네스를 띄우고 Playwright Chromium이 3D 장면을 투명 배경
 512×512로 찍는다. 이 스크립트는 Node의 타입 지우기에 기대므로 Node 22.18 이상이
 필요하다. 외형이나 장면을 바꾸면 다시 돌려서 이미지를 커밋한다.
+
+## 실시간 알림 (004-notification-mypage)
+
+내 글에 댓글이나 공감이 달리거나 몬스터가 생기고 처치되면, 새로고침 없이 알림 종의 배지와
+토스트로 알린다. 알림 목록 화면(`/notifications`)은 US2에서 들어온다.
+
+### 슬라이스
+
+- `entities/notification`: 타입, 알림 문구(`notificationMessage`), 배지 글자(`badgeLabel`), 안 읽은 수 조회(`useUnreadCountQuery`).
+- `features/notification-stream`: 티켓 발급과 `EventSource`(`api/connect.ts`), 연결 상태 스토어(`model/store.ts`), 대기 시간(`model/backoff.ts`), 캐시 반영(`model/cache-sync.ts`).
+- `widgets/notification-bell`: 종과 배지, 토스트. 마운트된 동안 연결을 열어 둔다.
+
+### 연결
+
+브라우저는 같은 출처 `POST /api/notifications/stream-ticket`에서 일회용 티켓과 `streamUrl`을
+받고, `EventSource`로 API 도메인의 스트림에 바로 붙는다. 브라우저가 같은 출처 밖을 부르는
+곳은 이 주소 하나뿐이다(research R3). 주소에는 `ticket`과 `lastEventId`만 싣고 access 토큰은
+싣지 않는다. 범용 프록시는 `notifications/stream-tickets`를 404로 막는다.
+
+- 처음에는 안 읽은 수 응답의 `latestSeq`를 `lastEventId`로 넘긴다. 다시 붙을 때는 마지막으로 받은 이벤트 id를 넘기고, 서버가 그 뒤의 알림을 다시 보낸다.
+- 티켓은 한 번만 쓸 수 있어서 `EventSource`의 자동 재연결을 쓰지 않는다. `error`가 오면 바로 닫고 새 티켓으로 다시 연다. 서버가 15분 뒤 닫는 것도 같은 경로다.
+- 다시 열기 전에 1초, 2초, 4초로 늘려 최대 30초까지 기다리고 ±20% 흔든다. 열리면 처음부터 다시 센다. 기다리는 중에 탭이 다시 보이거나 네트워크가 돌아오면 바로 붙는다.
+- 티켓 발급이 401이면(세션 끝) `stopped`로 두고 다시 시도하지 않는다.
+- 탭 하나에 연결은 하나다. 알림 종이 사라지거나 로그아웃에 성공하면 닫는다.
+
+### 상태
+
+Zustand 스토어에는 연결 상태(`idle`, `connecting`, `open`, `retrying`, `stopped`)와 마지막 이벤트
+id, 연달아 실패한 횟수만 둔다. 알림과 안 읽은 수는 TanStack Query 캐시에 있다
+(`["notifications", "list"]`, `["notifications", "unread-count"]`). `notification` 이벤트는 목록에서
+같은 알림 ID를 지우고 첫 쪽 맨 앞에 넣는다. 공감 묶음은 같은 ID가 새 번호로 다시 오기
+때문이다. 안 읽은 수는 이벤트에 실린 값으로 바꾼다. `unread-count` 이벤트는 배지만 바꾼다.
+
+### 종이 보이는 조건
+
+루트 레이아웃(`app/layout.tsx`)이 `ogu_ob` 쿠키가 있을 때만 알림 종을 그린다. 클라이언트
+이동만으로는 루트 레이아웃이 다시 그려지지 않으므로, 로그인과 온보딩, 로그아웃은 이동한 뒤
+`router.refresh()`로 레이아웃을 새로 받는다. 로그아웃 버튼을 두는 화면은
+`onLoggedOut={stopNotificationStream}`으로 연결을 바로 닫는다(features끼리는 서로 가져다 쓰지
+않으므로 화면이 이어 준다).
+
+### 토스트
+
+문구는 알림 종류, 행동한 회원의 닉네임, 묶인 인원 수로만 만든다. 글이나 댓글 본문은 넣지
+않는다(ADR-0005). 누르면 관련 글로 간다. 알림 페이지를 보고 있으면 띄우지 않는다.
 
 ## Recent-practice choices worth calling out
 
