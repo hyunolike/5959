@@ -1,0 +1,410 @@
+import {
+  expect,
+  test,
+  type Browser,
+  type BrowserContext,
+  type Locator,
+  type Page,
+} from "@playwright/test";
+
+import { waitForHomeLoaded } from "./support/home";
+
+// infra/compose.e2e.yaml로 띄운 실제 API, DB, Redis를 상대로 확인한다. 브라우저는 티켓을 같은 출처
+// BFF에서 받고, 스트림은 API 도메인(SSE_PUBLIC_ORIGIN)에 바로 붙는다(004 research R3).
+// 글쓴이 A와 행동하는 B, C는 서로 다른 브라우저 컨텍스트(쿠키)를 쓰는 다른 회원이다.
+
+const APP_ORIGIN = "http://localhost:3000";
+/** 브라우저가 스트림에 바로 붙는 API 주소. playwright.full.config.ts의 웹 서버 설정과 같다. */
+const SSE_ORIGIN =
+  process.env.SSE_PUBLIC_ORIGIN ??
+  process.env.API_ORIGIN ??
+  "http://localhost:18080";
+const STREAM_URL = `${SSE_ORIGIN}/api/v1/notifications/stream`;
+const TICKET_PATH = "/api/notifications/stream-ticket";
+const PASSWORD = "abcd1234";
+
+interface Member {
+  context: BrowserContext;
+  page: Page;
+  nickname: string;
+  email: string;
+}
+
+function uniqueEmail(prefix: string): string {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
+}
+
+/** 닉네임 규칙(한글/영문/숫자, 1~10자)에 맞는 값만 만든다. */
+function uniqueNickname(prefix: string): string {
+  return `${prefix}${Math.random().toString(36).slice(2, 6)}`.slice(0, 10);
+}
+
+function bell(page: Page): Locator {
+  return page.getByRole("link", { name: /^알림/ });
+}
+
+/** 배지 숫자까지 포함한 종의 이름. 0이면 배지가 없다. */
+function bellName(unread: number): string {
+  return unread === 0 ? "알림" : `알림, 안 읽은 알림 ${unread}개`;
+}
+
+async function expectUnread(page: Page, unread: number) {
+  await expect(bell(page)).toHaveAccessibleName(bellName(unread));
+}
+
+/** 실시간 연결이 열릴 때까지 기다린다. 열리기 전에 생긴 알림은 토스트로 오지 않는다. */
+async function waitForStreamOpen(page: Page) {
+  await expect(bell(page)).toHaveAttribute("data-stream-status", "open");
+}
+
+function toast(page: Page, message: string | RegExp): Locator {
+  return page
+    .getByRole("region", { name: "새 알림" })
+    .getByRole("button", { name: message });
+}
+
+interface TrackedWindow {
+  openedEventSources: EventSource[];
+}
+
+/**
+ * 페이지가 여는 EventSource를 모아 둔다. Chromium의 오프라인 흉내(`setOffline`)는 새 요청만 막고
+ * 이미 열린 스트림은 끊지 않아서, 테스트가 열린 스트림을 직접 끊을 수 있어야 한다.
+ */
+async function trackEventSources(context: BrowserContext) {
+  await context.addInitScript(() => {
+    const opened: EventSource[] = [];
+    (window as unknown as TrackedWindow).openedEventSources = opened;
+    const Native = window.EventSource;
+    window.EventSource = class extends Native {
+      constructor(url: string | URL, init?: EventSourceInit) {
+        super(url, init);
+        opened.push(this);
+      }
+    };
+  });
+}
+
+/**
+ * 열린 스트림의 연결을 끊고 브라우저가 끊김을 알릴 때와 같은 `error`를 낸다. 서버는 연결이 닫힌 것을
+ * 보고, 웹은 새 티켓으로 다시 붙으려 한다.
+ */
+async function dropStreams(page: Page) {
+  await page.evaluate(() => {
+    for (const source of (window as unknown as TrackedWindow)
+      .openedEventSources) {
+      source.close();
+      source.dispatchEvent(new Event("error"));
+    }
+  });
+}
+
+/** 새 컨텍스트에서 가입과 온보딩을 마치고, 홈에서 실시간 연결까지 열린 회원. */
+async function newMember(
+  browser: Browser,
+  prefix: string,
+  prepare?: (context: BrowserContext) => Promise<void>,
+): Promise<Member> {
+  const context = await browser.newContext();
+  await prepare?.(context);
+  const page = await context.newPage();
+  const nickname = uniqueNickname(prefix);
+  const email = uniqueEmail(`noti-${prefix}`);
+  await page.goto("/signup");
+  await page.getByLabel("이메일").fill(email);
+  await page.getByLabel("비밀번호").fill(PASSWORD);
+  await page.getByRole("button", { name: "가입하기" }).click();
+  await page.waitForURL("**/onboarding");
+  await page.getByLabel("닉네임").fill(nickname);
+  await page.getByLabel("직군").selectOption("DESIGN");
+  await page.getByLabel("경력").selectOption("YEAR_3");
+  await page.getByRole("button", { name: "완료" }).click();
+  await page.waitForURL("**/home");
+  await waitForHomeLoaded(page);
+  await waitForStreamOpen(page);
+  return { context, page, nickname, email };
+}
+
+/** 지금 로그인한 회원으로 같은 출처 BFF를 부른다. 화면은 건드리지 않는다. */
+async function call(page: Page, path: string, data?: unknown) {
+  return page.request.fetch(path, {
+    method: "POST",
+    headers: { Origin: APP_ORIGIN },
+    data,
+  });
+}
+
+/**
+ * 바로 분석되는 글(불안, 최대 HP 10)을 쓰고, 글쓴이 화면에 "몬스터가 나타났어요"가 올 때까지
+ * 기다린다. 그 뒤의 배지 숫자가 몬스터 알림과 섞이지 않게 여기서 한 번에 맞춘다(안 읽은 수 1).
+ */
+async function writePostAndWaitForMonster(
+  author: Member,
+  label: string,
+): Promise<number> {
+  const response = await call(author.page, "/api/posts", {
+    content: `[불안:낮음] ${label} ${Date.now()}`,
+    commentTone: "COMFORT_ME",
+  });
+  expect(response.status()).toBe(201);
+  const postId = ((await response.json()) as { data: { postId: number } }).data
+    .postId;
+  await expect(toast(author.page, "몬스터가 나타났어요")).toBeVisible({
+    timeout: 30_000,
+  });
+  await expectUnread(author.page, 1);
+  return postId;
+}
+
+async function comment(
+  member: Member,
+  postId: number,
+  content: string,
+  parentId?: number,
+): Promise<number> {
+  const response = await call(member.page, `/api/posts/${postId}/comments`, {
+    content,
+    ...(parentId === undefined ? {} : { parentId }),
+  });
+  expect(response.status()).toBe(201);
+  return ((await response.json()) as { data: { commentId: number } }).data
+    .commentId;
+}
+
+async function like(member: Member, postId: number) {
+  const response = await call(member.page, `/api/posts/${postId}/likes`);
+  expect(response.ok()).toBe(true);
+}
+
+/** 이 페이지가 스트림과 티켓 라우트로 보낸 요청을 모은다. */
+function recordStreamRequests(page: Page): string[] {
+  const requests: string[] = [];
+  page.on("request", (request) => {
+    const url = request.url();
+    if (url.includes("/notifications/stream")) {
+      requests.push(url);
+    }
+  });
+  return requests;
+}
+
+async function closeAll(...members: Member[]) {
+  await Promise.all(members.map((member) => member.context.close()));
+}
+
+test("US1-AC1 다른 회원이 내 글에 댓글과 답글을 달면 새로고침 없이 토스트가 뜨고 배지가 늘어난다", async ({
+  browser,
+}) => {
+  const author = await newMember(browser, "a");
+  const visitor = await newMember(browser, "b");
+  const postId = await writePostAndWaitForMonster(author, "댓글 받을 글");
+  // 페이지를 새로 불러오면 사라지는 표시. 끝까지 남아 있으면 새로고침이 없었다는 뜻이다.
+  await author.page.evaluate(() => {
+    (window as unknown as { stayedOnPage: boolean }).stayedOnPage = true;
+  });
+
+  const commentBody = `본문은 토스트에 나오면 안 된다 ${Date.now()}`;
+  const commentId = await comment(visitor, postId, commentBody);
+
+  const commentToast = toast(
+    author.page,
+    `${visitor.nickname} 님이 내 글에 댓글을 남겼어요`,
+  );
+  await expect(commentToast).toBeVisible();
+  await expectUnread(author.page, 2);
+  // 토스트에는 종류 문구만 있고 댓글 본문은 없다(ADR-0005).
+  await expect(
+    author.page.getByRole("region", { name: "새 알림" }),
+  ).not.toContainText("본문은 토스트에");
+
+  await comment(visitor, postId, "답글", commentId);
+
+  await expect(
+    toast(author.page, `${visitor.nickname} 님이 내 글에 답글을 남겼어요`),
+  ).toBeVisible();
+  await expectUnread(author.page, 3);
+  expect(
+    await author.page.evaluate(
+      () => (window as unknown as { stayedOnPage?: boolean }).stayedOnPage,
+    ),
+  ).toBe(true);
+
+  // 토스트를 누르면 관련 글로 간다.
+  await toast(
+    author.page,
+    `${visitor.nickname} 님이 내 글에 답글을 남겼어요`,
+  ).click();
+  await author.page.waitForURL(`**/post/${postId}`);
+
+  await closeAll(author, visitor);
+});
+
+test("US1-AC2 같은 글의 공감은 하나로 묶여 '닉네임 님 외 N명이 공감했어요'로 온다", async ({
+  browser,
+}) => {
+  const author = await newMember(browser, "a");
+  const first = await newMember(browser, "b");
+  const second = await newMember(browser, "c");
+  const postId = await writePostAndWaitForMonster(author, "공감 받을 글");
+
+  await like(first, postId);
+
+  await expect(
+    toast(author.page, `${first.nickname} 님이 공감했어요`),
+  ).toBeVisible();
+  await expectUnread(author.page, 2);
+
+  await like(second, postId);
+
+  await expect(
+    toast(author.page, `${second.nickname} 님 외 1명이 공감했어요`),
+  ).toBeVisible();
+  // 새 알림이 아니라 같은 묶음이 갱신된 것이라 안 읽은 수는 그대로다.
+  await expectUnread(author.page, 2);
+
+  await closeAll(author, first, second);
+});
+
+test("US1-AC3 내 글의 감정 분석이 끝나면 '몬스터가 나타났어요' 알림이 온다", async ({
+  browser,
+}) => {
+  const author = await newMember(browser, "a");
+  await expectUnread(author.page, 0);
+
+  // 글을 쓰고 홈에 그대로 있는다. 알림은 새로고침 없이 온다.
+  await writePostAndWaitForMonster(author, "몬스터가 생길 글");
+
+  await expect(author.page).toHaveURL(/\/home$/);
+
+  await closeAll(author);
+});
+
+test("US1-AC6 연결이 끊긴 동안 생긴 댓글 2개와 공감이 다시 붙은 뒤 한 번씩 온다", async ({
+  browser,
+}) => {
+  const author = await newMember(browser, "a", trackEventSources);
+  const visitor = await newMember(browser, "b");
+  const postId = await writePostAndWaitForMonster(author, "끊긴 동안 받을 글");
+  // 앞의 토스트(몬스터)가 사라진 뒤에 세어야 끊긴 동안의 알림만 센다.
+  await expect(toast(author.page, "몬스터가 나타났어요")).toBeHidden({
+    timeout: 10_000,
+  });
+
+  // 네트워크를 끊고 열린 스트림도 끊는다. 새 티켓을 받지 못하므로 다시 붙지 못하고 기다린다.
+  await author.context.setOffline(true);
+  await dropStreams(author.page);
+  await expect(bell(author.page)).toHaveAttribute(
+    "data-stream-status",
+    "retrying",
+  );
+
+  await comment(visitor, postId, "끊긴 동안 첫 댓글");
+  await comment(visitor, postId, "끊긴 동안 둘째 댓글");
+  await like(visitor, postId);
+  // 끊겨 있는 동안에는 아무것도 오지 않는다.
+  await expectUnread(author.page, 1);
+
+  await author.context.setOffline(false);
+
+  await waitForStreamOpen(author.page);
+  await expect(
+    toast(author.page, `${visitor.nickname} 님이 내 글에 댓글을 남겼어요`),
+  ).toHaveCount(2);
+  await expect(
+    toast(author.page, `${visitor.nickname} 님이 공감했어요`),
+  ).toHaveCount(1);
+  await expect(
+    author.page.getByRole("region", { name: "새 알림" }).getByRole("button", {
+      name: /남겼어요|공감했어요|몬스터/,
+    }),
+  ).toHaveCount(3);
+  await expectUnread(author.page, 4);
+
+  await closeAll(author, visitor);
+});
+
+test("US1-AC7 같은 회원의 탭 두 개 모두에 알림이 온다", async ({ browser }) => {
+  const author = await newMember(browser, "a");
+  const visitor = await newMember(browser, "b");
+  const secondTab = await author.context.newPage();
+  await secondTab.goto("/home");
+  await waitForHomeLoaded(secondTab);
+  await waitForStreamOpen(secondTab);
+  const postId = await writePostAndWaitForMonster(author, "두 탭이 받을 글");
+  await expectUnread(secondTab, 1);
+
+  await comment(visitor, postId, "두 탭에 가는 댓글");
+
+  const message = `${visitor.nickname} 님이 내 글에 댓글을 남겼어요`;
+  await expect(toast(author.page, message)).toBeVisible();
+  await expect(toast(secondTab, message)).toBeVisible();
+  await expectUnread(author.page, 2);
+  await expectUnread(secondTab, 2);
+
+  await closeAll(author, visitor);
+});
+
+test("US1-AC8 로그인하지 않으면 알림 종이 없고 스트림 요청이 나가지 않는다", async ({
+  browser,
+}) => {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  const requests = recordStreamRequests(page);
+
+  await page.goto("/login");
+  await expect(page.getByRole("button", { name: "로그인" })).toBeVisible();
+  await expect(bell(page)).toHaveCount(0);
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "오구오구" })).toBeVisible();
+  await expect(bell(page)).toHaveCount(0);
+  expect(requests).toEqual([]);
+
+  // 직접 불러도 티켓을 받지 못하고, 티켓 없이는 스트림에 붙지 못한다.
+  const ticket = await page.request.fetch(TICKET_PATH, {
+    method: "POST",
+    headers: { Origin: APP_ORIGIN },
+  });
+  expect(ticket.status()).toBe(401);
+  const stream = await page.request.get(
+    `${STREAM_URL}?ticket=not-a-real-ticket&lastEventId=0`,
+  );
+  expect(stream.status()).toBe(401);
+
+  await context.close();
+});
+
+test("US1-AC8 로그아웃하면 알림 종이 사라지고 연결을 닫으며, 다시 로그인하면 다시 붙는다", async ({
+  browser,
+}) => {
+  const member = await newMember(browser, "a");
+  const { page } = member;
+
+  // 로그아웃 뒤에 나가는 요청만 모은다.
+  await page.getByRole("button", { name: "로그아웃" }).click();
+  await page.waitForURL("**/login");
+  await expect(page.getByRole("button", { name: "로그인" })).toBeVisible();
+  await expect(bell(page)).toHaveCount(0);
+  const afterLogout = recordStreamRequests(page);
+
+  // 범용 프록시로는 티켓을 받을 수 없다(전용 라우트만 발급한다).
+  const viaProxy = await call(page, "/api/notifications/stream-tickets");
+  expect(viaProxy.status()).toBe(404);
+
+  await page.getByLabel("이메일").fill(member.email);
+  await page.getByLabel("비밀번호").fill(PASSWORD);
+  // 로그인 전까지는 스트림 요청이 없었다.
+  expect(afterLogout).toEqual([]);
+  await page.getByRole("button", { name: "로그인" }).click();
+  await page.waitForURL("**/home");
+
+  await waitForHomeLoaded(page);
+  await waitForStreamOpen(page);
+  // 주소에는 티켓과 마지막 번호만 실린다. access 토큰은 없다(FR-006).
+  const streamRequest = afterLogout.find((url) => url.startsWith(STREAM_URL));
+  expect(streamRequest).toBeDefined();
+  expect(
+    [...new URL(streamRequest ?? STREAM_URL).searchParams.keys()].sort(),
+  ).toEqual(["lastEventId", "ticket"]);
+
+  await closeAll(member);
+});
