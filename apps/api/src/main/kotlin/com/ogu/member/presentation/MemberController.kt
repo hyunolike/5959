@@ -3,15 +3,18 @@ package com.ogu.member.presentation
 import com.ogu.member.AuthenticatedMember
 import com.ogu.member.application.MemberQueryService
 import com.ogu.member.application.OnboardingService
+import com.ogu.member.application.ProfileService
 import com.ogu.member.presentation.dto.MemberProfileResponse
 import com.ogu.member.presentation.dto.NicknameAvailabilityResponse
 import com.ogu.member.presentation.dto.OnboardingRequest
 import com.ogu.member.presentation.dto.OnboardingResultResponse
+import com.ogu.member.presentation.dto.ProfileUpdateRequest
 import com.ogu.shared.response.ApiResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -20,7 +23,8 @@ import org.springframework.web.bind.annotation.RestController
 import io.swagger.v3.oas.annotations.responses.ApiResponse as DocResponse
 
 /**
- * 내 프로필, 닉네임 확인, 온보딩. 세 경로 모두 온보딩 전에도 부를 수 있다(research R9, OnboardingGuard 허용 목록).
+ * 내 프로필, 닉네임 확인, 온보딩, 프로필 수정. 앞의 세 가지는 온보딩 전에도 부를 수 있고(research R9, OnboardingGuard
+ * 허용 목록), 프로필 수정은 온보딩을 마친 회원만 한다(004 research R13).
  */
 @Tag(name = "member")
 @RestController
@@ -29,6 +33,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse as DocResponse
 class MemberController(
     private val memberQueryService: MemberQueryService,
     private val onboardingService: OnboardingService,
+    private val profileService: ProfileService,
 ) {
     @Operation(
         operationId = "getMe",
@@ -41,6 +46,32 @@ class MemberController(
     @GetMapping("/me")
     fun getMe(member: AuthenticatedMember): ApiResponse<MemberProfileResponse> =
         ApiResponse.success(MemberProfileResponse.from(memberQueryService.getProfile(member.memberId)))
+
+    @Operation(
+        operationId = "updateMyProfile",
+        summary = "프로필 수정 (US5-AC1~AC4). 온보딩을 마친 회원만",
+        responses = [
+            DocResponse(responseCode = "200", description = "저장됨"),
+            DocResponse(responseCode = "400", description = "입력 검증 실패 또는 바꿀 항목 없음 (INVALID_REQUEST)"),
+            DocResponse(responseCode = "401", description = UNAUTHORIZED_DESCRIPTION),
+            DocResponse(responseCode = "403", description = "온보딩 전 (ONBOARDING_REQUIRED)"),
+            DocResponse(responseCode = "409", description = "닉네임 중복, 대소문자만 다른 경우 포함 (NICKNAME_TAKEN)"),
+        ],
+    )
+    @PatchMapping("/me")
+    fun updateMyProfile(
+        member: AuthenticatedMember,
+        @RequestBody request: ProfileUpdateRequest,
+    ): ApiResponse<MemberProfileResponse> {
+        val updated =
+            profileService.update(
+                memberId = member.memberId,
+                nickname = request.nickname,
+                jobRole = request.jobRole,
+                careerYear = request.careerYear,
+            )
+        return ApiResponse.success(MemberProfileResponse.from(updated))
+    }
 
     @Operation(
         operationId = "checkNickname",

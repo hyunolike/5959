@@ -7,7 +7,7 @@ Guidance for AI coding agents working in this repository.
 오구오구 백엔드: Kotlin + Spring Boot + Spring Modulith 모듈러 모놀리스.
 kotlin-spring-modulith-template에서 이식했다. 단일 Gradle 모듈이며 루트 패키지는
 `com.ogu`. 지금 모듈은 `shared`(OPEN), `member`, `post`, `ai`, `emotion`,
-`monster`, `feed` 일곱 개다. 모듈 목록과 의존 방향은
+`monster`, `feed`, `notification`(004) 여덟 개다. 모듈 목록과 의존 방향은
 `docs/architecture/overview.md` 5.1절을 따른다.
 
 ## Commands
@@ -85,15 +85,84 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   안에 다시 오면 access 토큰만 새로 준다(refresh는 그대로, 여러 탭 대응). 유예를 지나
   직전 토큰이 다시 오면 탈취로 보고 세션을 `REUSE_DETECTED`로 무효화한다.
 - 온보딩 전(`onboarded=false`) 토큰으로도 부를 수 있는 허용 목록은
-  `SecurityPaths.ONBOARDING_ALLOWED`에 있다: `/api/v1/members/me`,
+  `SecurityPaths.ONBOARDING_ALLOWED`에 있다: `GET /api/v1/members/me`(메서드까지 본다.
+  같은 경로의 `PATCH` 프로필 수정은 온보딩 뒤에만 된다, 004 research R13),
   `/api/v1/members/nickname-availability`, `/api/v1/members/me/onboarding`,
   `/api/v1/auth/logout`. 그 밖의 인증 필요 경로는 `OnboardingGuard`가
   `403 ONBOARDING_REQUIRED`로 막는다.
+- 프로필 수정(004 US5, research R13)은 `PATCH /api/v1/members/me`이고 `ProfileService`가 한다. 보낸 항목만 바꾸고,
+  하나도 없으면 `400 INVALID_REQUEST`다. 회원 행을 `FOR UPDATE`로 잠그고, 닉네임은 온보딩과 같은 `Nickname.of`로
+  검증한다. 소문자 키가 내 지금 키와 같으면(대소문자만 바꿈) 중복 확인을 건너뛰고, 다르면 `existsByNicknameKey`로
+  본 뒤 저장 때 `member_nickname_key_key` 위반을 `409 NICKNAME_TAKEN`으로 바꾼다. 온보딩 전 회원은 필터
+  (`OnboardingGuard`)와 서비스가 모두 `403 ONBOARDING_REQUIRED`로 막는다. 글의 직군과 경력은 작성 시점 스냅숏이라
+  건드리지 않고, 닉네임은 어디서나 `MemberApi.getMembers`로 지금 값을 읽으므로 이벤트를 내지 않는다. access 토큰에
+  닉네임이 없어 토큰도 새로 주지 않는다.
 - 운영(`prod` 프로필) 기동 조건은 `ProdAuthSettingsCheck`가 강제한다: JWT
   비밀키가 로컬 개발용 고정 값이면 안 되고, `OGU_BFF_KEY`가 비어 있으면 안 되고,
   카카오·구글 client id/secret이 모두 있어야 하고, 허용 redirect URI는 전부
   `https`여야 하고, `prod`와 `e2e` 프로필을 동시에 켤 수 없다(e2e의 비밀 값은
   `infra/compose.e2e.yaml`에 커밋된 고정 값이라 prod에 같이 켜면 토큰을 위조할 수 있다).
+  004부터는 `spring.data.redis.url`(`REDIS_URL`)이 없거나 localhost이면, `ogu.sse.allowed-origins`
+  (`OGU_SSE_ALLOWED_ORIGINS`)가 비면 뜨지 않는다.
+- Redis(004, research R5)는 실시간 알림의 인스턴스 간 신호만 나른다. API는 Redis 없이도 뜨고,
+  `/actuator/health`(배포 롤백 기준)에는 Redis 지표가 없다(`shared/config/RedisHealthGroupConfig`).
+  Redis 상태는 `/actuator/health/realtime`으로 따로 본다. 테스트는 `TestcontainersConfiguration`의
+  `redis:7.4-alpine`에 붙는다.
+  Lettuce는 연결이 끊긴 동안 명령을 바로 거절한다(`shared/config/RedisClientConfig`, `REJECT_COMMANDS`).
+  알림 신호(`notification/stream`)는 커밋 뒤에만 `ogu:notification` 채널로 나가고(`RedisSignalPublisher`, 전용
+  스레드 하나에서 보내 요청 스레드가 기다리지 않는다), 구독 컨테이너는 `NotificationSubscriptionStarter`가 시작한다.
+  첫 구독이 실패해도 기동을 막지 않고 5초마다 다시 시도한다(경고는 1분에 한 번).
+  Redis 장애 판정은 `RealtimeConnectionState`가 한다. `RealtimeConnectionProbe`가 5초마다 PING을 보내 연속 2번
+  실패하면 DOWN, 한 번 성공하면 UP으로 바꾸고, 바뀔 때만 애플리케이션 이벤트 `RealtimeConnectionChanged(state)`를
+  낸다. 구독 컨테이너의 오류 처리기는 리스너 예외만 받고 Lettuce는 끊긴 구독을 조용히 다시 붙이므로, 안전망 주기
+  전환(60초와 5초)과 복구 뒤 따라잡기는 이 이벤트를 듣고 한다.
+  알림 생성(004 US1)은 `notification/application/NotificationEventListener`가 `PostLiked`, `CommentCreated`,
+  `MonsterSpawned`, `MonsterDefeated`를 `@ApplicationModuleListener`(커밋 뒤 비동기, 새 트랜잭션)로 받아 한다. 그래서
+  알림 실패가 댓글, 공감, HP 반영을 되돌리지 않고(FR-003), 끝나지 않은 발행은 재전송된다. 글 노출은 `PostApi.find`
+  하나로만 보고, 댓글 받는 사람은 `PostApi.findComment`로 정한다. 쓰기는 `NotificationWriter`가 리스너 트랜잭션 안에서
+  한다: 멱등 키(`COMMENT:{id}`, `SPAWNED:{id}`, `DEFEATED:{id}`)가 이미 있으면 번호도 받지 않고 건너뛰고, 여러 회원이면
+  회원 ID 오름차순으로 번호를 받는다. 공감 묶음은 참여자 키에 걸리면 리스너 트랜잭션 전체를 rollback-only로 돌린다
+  (예외가 아니라서 발행은 완료로 남는다). 소급 처치(`MonsterDefeated.retroactive`)일 때만 처치 알림이 글쓴이의 `SPAWNED`를 먼저 만들어 번호 순서를 고정한다.
+  따로 처치되면 다시 만들지 않는다(90일 정리로 지워진 생성 알림이 되살아나지 않게).
+  `MonsterFactory`는 몬스터 저장 직후 `MonsterSpawned`를 내고, 소급 반영으로 처치되면 그 뒤에 `MonsterDefeated`가 나간다.
+  알림 번호(`NotificationSequenceRepository.next`)와 공감 묶음 갱신(`NotificationRepository.upsertLikeGroup`)은 트랜잭션
+  안에서만 부를 수 있다. 읽는 쿼리는 보관 기간 조건을
+  `NotificationRetention.condition("n")`처럼 별칭을 붙여 쓴다.
+  실시간 전달(004 US1, research R2~R5)은 `notification/stream`에 있다. 브라우저는 BFF가 받아 준 일회용 연결 표로
+  `GET /api/v1/notifications/stream?ticket=...&lastEventId=...`에 바로 붙는다(공개 경로라 Bearer를 받지 않는다). 표는
+  `member`가 발급하고 소비한다(`MemberApi.issueStreamTicket`, `consumeStreamTicket`, 원문 32바이트 base64url,
+  `sse_ticket`에는 SHA-256만, 30초, 조건부 `UPDATE ... RETURNING` 한 문장으로 한 번만, 소비 뒤 세션 유효 확인).
+  `SseTicketCleanupJob`이 만료된 지 하루 지난 표를 지운다. `SseHub`는 회원별 연결(5개 상한, 넘으면 가장 오래된 것을 닫음)과
+  연결별 마지막 전송 번호를 들고, 보낼 것은 언제나 DB에서 `seq > 마지막 번호`로 읽는다(Redis 신호는 힌트). 새 연결은
+  허브에 먼저 등록한 뒤 재전송한다. 이 순서를 바꾸면 재전송 쿼리와 구독 사이에 커밋된 알림이 안전망 주기까지 빠진다.
+  쓰기는 전용 실행기(`notificationStreamExecutor`, 4스레드)가 하고, 연결마다 한 번에 하나만 돈다. 하트비트(`: hb` 주석과 `ping` 이벤트, 25초)와
+  안전망(`SafetyDrain`, 60초, Redis DOWN이면 5초, UP으로 돌아오면 모든 연결을 한 번 따라잡음)은 `StreamTimer` 스레드 하나가
+  시각만 맞춘다. 이 타이머는 `TaskScheduler` 빈이 아니다(빈이면 Boot가 `@Scheduled`용 기본 스케줄러를 만들지 않는다).
+  같은 이유로 `spring.task.execution.mode: force`를 두어 모듈의 실행기 빈이 있어도 `@Async`와 `@ApplicationModuleListener`가
+  Boot의 `applicationTaskExecutor`를 쓰게 한다. 연결은 수명(15분)이 지나면 서버가 닫고, 종료 때 허브가 먼저 닫아 우아한
+  종료가 열린 스트림을 기다리지 않는다. CORS는 스트림 경로에만 `ogu.sse.allowed-origins`를 허용하고 자격 증명은 쓰지 않는다
+  (`StreamCorsConfig`). 쓰기 스레드 4개는 소켓에 블로킹으로 쓴다. 받는 쪽이 느리면 그 쓰기는 Tomcat 쓰기 타임아웃까지
+  스레드 하나를 잡고 있을 수 있으므로, 느린 연결이 4개를 넘으면 그동안 다른 연결의 전달이 밀린다. 안전망의 DB 조회도
+  타이머가 아니라 이 실행기에서 돈다(DB가 느려도 하트비트 시각은 밀리지 않는다). 복구는 PING으로 판정하므로, PING이
+  성공한 뒤 구독이 다시 붙기 전에 나간 신호는 받지 못한다. 그 알림은 다음 안전망 주기(60초)나 재연결 때 온다.
+  붙을 때 `lastEventId`는 지금 번호(`notification_sequence.last_seq`)를 넘지 않게 낮추고, 허브가 멈추는 중에 온 연결은
+  바로 끝낸다. 스트림 컨트롤러의 오류는 모두 JSON 봉투로 쓴다(`Accept: text/event-stream`이어도). 테스트는 `support/SseTestClient`(JDK `HttpClient`, `ofLines()`)로 실제 스트림을 읽고,
+  서버 두 대와 Redis 장애는 `support/AppInstance`로 직접 띄운다.
+  알림 목록과 읽음(004 US2, research R10~R12)은 `NotificationController`에 있다. 목록(`GET /api/v1/notifications`)은
+  `NotificationQueryService.page`가 `seq DESC` 키셋으로 읽고(커서는 `base64url("{seq}")`, size 1~50), 쿼리는 쪽 크기와
+  상관없이 알림, `PostApi.previews`, `MemberApi.getMembers` 세 개다. 글 미리보기와 행동한 회원은 스트림과 같은
+  `NotificationViewAssembler`와 `NotificationResponse`가 만들어 목록과 실시간 이벤트의 모양이 갈라지지 않는다. 지운 글은
+  `post`가 null이다. 읽음은 `NotificationReadService`가 한다: 하나 읽음(`PUT .../{id}/read`)은 남의 알림, 없는 알림,
+  보관 기간이 지난 알림을 구분하지 않고 `404 NOTIFICATION_NOT_FOUND`로 답하고, 모두 읽음(`POST .../read-all`)은
+  `seq <= upToSeq`만 바꾼다(`upToSeq`는 그 회원의 지금 `last_seq`를 넘지 않게 낮춘다). 하나 읽음은 알림 ID로 읽으므로
+  기다리는 사이에 공감이 더해진 묶음은 그 공감까지 읽음이 된다(의도한 동작). 읽음이 실제로 바뀌었을 때만 커밋 뒤 `{memberId}:r` 신호를 보내고, `SseHub`가 그 회원의 모든
+  연결에 `unread-count` 이벤트(ID 없음, 재전송 안 함)를 보낸다. 읽은 공감 묶음은 부분 유일 인덱스에서 빠지므로 다음
+  공감은 새 묶음을 만든다. Redis가 내려가 있으면 읽음 신호가 닿지 않으므로, 줄어든 안전망 주기(5초)에만
+  `SseHub.drainLagging(withUnreadCounts = true)`가 회원별 안 읽은 수를 쿼리 하나로 읽어 마지막으로 보낸 수와 다른 연결에 `unread-count`를
+  보낸다. `NotificationPurgeJob`이 매일 04:00(한국 시간)에 만든 지 90일이 지난 알림을 1,000행씩
+  (`MATERIALIZED` CTE와 `FOR UPDATE SKIP LOCKED`, 한 문장이 한 트랜잭션) 지우고, 끝난 지 7일이 지난 이벤트 발행도 지운다
+  (`CompletedEventPublications.deletePublicationsOlderThan`). ShedLock 없이 두 인스턴스가 같이 돌아도 된다.
+  두 단계는 따로 실패한다: 한쪽이 실패해도 다른 쪽은 돌고, 단계마다 ERROR를 남긴 뒤 처음 실패를 다시 던진다.
 
 ## Core loop (`post`, `ai`, `emotion`, `monster`, `feed`)
 
@@ -102,15 +171,30 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
 
 | 모듈 | 공개 파사드와 타입 | 발행 이벤트 | 받는 이벤트 |
 |---|---|---|---|
-| `post` | `PostApi`(`find`, `page`, `likedPostIds`, `attacksSoFar`), `PostSummary`, `PostPage`, `Attack`, `AttackAction` | `PostCreated`(커밋 후), `PostLiked`, `CommentCreated`, `CommentLiked`(같은 트랜잭션) | - |
+| `post` | `PostApi`(`find`, `page`, `likedPostIds`, `attacksSoFar`, `findComment`, `previews`), `PostActivityApi`(`pageByAuthor`, `pageCommentsByAuthor`, `pageLikedBy`, `liveRefsByAuthor`, `liveIds`), `PostSummary`, `PostPage`, `MyCommentPage`, `Attack`, `AttackAction`, `CommentSummary` | `PostCreated`(커밋 후), `PostLiked`, `CommentCreated`, `CommentLiked`(같은 트랜잭션) | - |
 | `ai` | `EmotionAnalyzer`, `EmotionClassification`, `EmotionAnalysisFailed` | - | - |
 | `emotion` | `EmotionApi`(`findByPostIds`), `EmotionView`, `AnalysisStatus` | `EmotionAnalyzed` | `PostCreated` |
-| `monster` | `MonsterApi`(`findByPostIds`, `hasCountedComment`), `MonsterView` | `MonsterDefeated` | `EmotionAnalyzed`, `PostLiked`, `CommentCreated`, `CommentLiked` |
+| `monster` | `MonsterApi`(`findByPostIds`, `hasCountedComment`, `damagerIds`, `statRows`, `defeatedPostIdsDamagedBy`), `MonsterView`, `MonsterStatRow` | `MonsterSpawned`, `MonsterDefeated` | `EmotionAnalyzed`, `PostLiked`, `CommentCreated`, `CommentLiked` |
 | `feed` | 없음(HTTP API만) | - | - |
 
 `post`는 몬스터를 모른다. 글에 감정과 몬스터를 붙여 보여 주는 일은 `feed`가
 파사드를 한 번씩 불러 조합한다. 피드 한 쪽은 쿼리 네 개로 끝난다.
 
+- **마이페이지 목록(004 US3, research R12).** `feed/presentation/MyPageController`가
+  `GET /api/v1/members/me/posts`, `/comments`, `/liked-posts`를 받는다. 경로는 회원 아래지만 글, 몬스터,
+  감정을 모아야 해서 `feed`에 있다. 내가 쓴 글과 공감한 글은 `PostActivityApi.pageByAuthor`, `pageLikedBy`가 준
+  쪽을 피드와 같은 `FeedAssembler`로 조합해 응답이 `FeedPage` 그대로이고 쿼리는 4개다. 내 댓글은
+  `PostActivityApi.pageCommentsByAuthor`의 쿼리 하나다. 읽는 쪽은 `post/application`의 `MyPostsReader`(`id DESC`,
+  커서는 피드와 같은 `PostCursor`), `MyCommentsReader`(`id DESC`, 살아 있는 글의 살아 있는 댓글, 글 앞 50글자),
+  `LikedPostsReader`(`(created_at DESC, post_id DESC)`, 커서는 공감 시각의 마이크로초와 글 ID)다. size는 1~50이고
+  벗어나거나 커서가 틀리면 `400 INVALID_REQUEST`다.
+- **감정 통계(004 US4, research R12).** `GET /api/v1/members/me/emotion-stats`는 `feed/application/EmotionStatsQuery`가
+  파사드 네 번(`PostActivityApi.liveRefsByAuthor`, `MonsterApi.statRows`, `MonsterApi.defeatedPostIdsDamagedBy`,
+  `PostActivityApi.liveIds`)으로 읽어 메모리에서 센다. `posts`와 `monsters`는 소유 모듈이 달라 SQL로 조인하지 않는다.
+  비율은 정수로 반올림하고 합이 100이 아니면 가장 많은 감정에서 맞춘다. 가장 많은 감정은 수가 같으면 가장 최근에
+  생긴 몬스터의 감정이다. 주별 추이는 주입한 `Clock`으로 한국 시간 월요일 0시 기준 8주를 만들고, 몬스터가 생긴
+  시각이 아니라 글을 쓴 시각으로 묶는다. 함께 물리친 몬스터는 내가 HP를 실제로 줄인 처치된 몬스터 가운데 글이
+  살아 있는 것의 수다. `PostApi`가 detekt의 함수 수 한도에 닿아, 회원 한 명의 활동을 읽는 조회는 `PostActivityApi`로 나눴다.
 - **공격 반영은 동기다.** `PostLiked`, `CommentCreated`, `CommentLiked`는
   `@EventListener`(`monster/application/AttackListener`)가 post 트랜잭션 안에서
   받는다. 공감 저장과 HP 감소가 함께 성공하거나 함께 실패한다. 규칙은 이 순서로
@@ -152,7 +236,8 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   뒤에는 앱을 재시작하거나, 그 행의 `event_publication.completion_attempts`를 상한보다
   작게(예: 0) 되돌려 1분 주기 재전송이 다시 맡게 한다.
   끝난 발행도 `event_publication`에 계속 쌓이므로, 이벤트에는 글 본문 같은 내용을 싣지 않고
-  ID만 담는다. 끝난 행을 지우거나 완료 모드를 바꾸는 보존 정책은 아직 없고 다음 작업으로 남겨 두었다.
+  ID만 담는다. 끝난 지 7일이 지난 행은 `notification`의 `NotificationPurgeJob`이 매일 지운다(004 research R10).
+  끝나지 않은 행은 지우지 않는다.
 - **운영 기동 조건.** AI 키 검사는 `shared/config/ProdAiSettingsCheck`에 있다.
   인증 쪽 검사(`ProdAuthSettingsCheck`)는 `member`에 있으니 둘을 함께 본다.
   `prod`에서 `AI_API_KEY`나 `AI_MODEL`이 비어 있으면 앱이 뜨지 않는다. `AI_BASE_URL`은

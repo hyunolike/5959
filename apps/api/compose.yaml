@@ -11,3 +11,18 @@ services:
       POSTGRES_PASSWORD: ogu
     ports:
       - "5433:5432" # 호스트 5432 충돌 방지. spring-boot-docker-compose가 매핑 포트를 자동 감지한다
+  # 004 실시간 알림의 인스턴스 간 신호(research R5). 운영과 같은 설정을 비밀번호 없이 쓴다.
+  # spring-boot-docker-compose가 이미지 이름(redis)으로 연결을 잡는다
+  redis:
+    image: redis:7.4-alpine
+    command: >
+      redis-server
+      --maxmemory 64mb --maxmemory-policy noeviction
+      --save "" --appendonly no
+    mem_limit: 128m
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 5s
+      retries: 10
+    ports:
+      - "6379"

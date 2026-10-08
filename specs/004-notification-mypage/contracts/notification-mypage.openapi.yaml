@@ -1,0 +1,655 @@
+openapi: 3.1.0
+info:
+  title: 오구오구 API - 알림과 마이페이지 (004 추가분)
+  version: 0.4.0
+  description: |
+    004-notification-mypage에서 추가하는 경로와 스키마다. 구현 첫 작업에서 저장소 루트의
+    contracts/openapi.yaml(누적 계약)에 합친다(003 research R13). 이 파일은 리뷰와 검증용으로
+    단독으로도 유효하게 두며, ErrorEnvelope, JobRole, CareerYear, AuthMethod, MemberProfile,
+    EmotionType, AnalysisStatus, MonsterView, Author, FeedItem, FeedPage는 루트 계약의 정의와 같다.
+
+    스트림(GET /api/v1/notifications/stream)을 뺀 모든 경로는 인증이 필요하고, 온보딩 전 회원에게는
+    403 ONBOARDING_REQUIRED를 돌려준다. 스트림은 Bearer 대신 일회용 티켓으로 인증하며, 브라우저가
+    BFF를 거치지 않고 API 도메인에 바로 붙는 유일한 경로다(ADR-0002, research R3).
+
+    티켓은 웹의 전용 BFF 라우트 POST /api/notifications/stream-ticket가 이 계약의 issueStreamTicket을
+    불러 받고, 브라우저에 { ticket, streamUrl, expiresAt }으로 넘긴다. 일반 프록시는 이 경로를 넘기지 않는다.
+servers:
+  - url: http://localhost:8080
+tags:
+  - name: notification
+    description: 알림 목록, 읽음, 안 읽은 수, 실시간 스트림
+  - name: mypage
+    description: 내가 쓴 글, 내 댓글, 공감한 글, 감정 통계
+  - name: member
+    description: 프로필 수정
+security:
+  - bearer: []
+
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    NotificationId:
+      name: notificationId
+      in: path
+      required: true
+      schema: { type: integer, format: int64 }
+    Cursor:
+      name: cursor
+      in: query
+      description: 앞 쪽 응답의 nextCursor. 불투명 문자열이다
+      schema: { type: string }
+    Size:
+      name: size
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string }
+        message: { type: string }
+        retryAfterSeconds: { type: integer }
+    ErrorEnvelope:
+      type: object
+      required: [success, data, error]
+      properties:
+        success: { type: boolean, const: false }
+        data: { type: 'null' }
+        error: { $ref: '#/components/schemas/ErrorResponse' }
+    JobRole:
+      type: string
+      enum: [PLANNING, DESIGN, DEVELOPMENT, MARKETING, SALES, HR, GENERAL_AFFAIRS, PRODUCTION, ACCOUNTING, OTHER]
+    CareerYear:
+      type: string
+      enum: [NEWCOMER, YEAR_1, YEAR_2, YEAR_3, YEAR_4, YEAR_5, YEAR_6, YEAR_7_PLUS]
+    AuthMethod:
+      type: string
+      enum: [EMAIL, KAKAO, GOOGLE]
+    MemberProfile:
+      type: object
+      required: [id, authMethod, onboarded]
+      properties:
+        id: { type: integer, format: int64 }
+        authMethod: { $ref: '#/components/schemas/AuthMethod' }
+        email: { type: [string, 'null'] }
+        nickname: { type: [string, 'null'] }
+        jobRole:
+          oneOf: [{ $ref: '#/components/schemas/JobRole' }, { type: 'null' }]
+        careerYear:
+          oneOf: [{ $ref: '#/components/schemas/CareerYear' }, { type: 'null' }]
+        onboarded: { type: boolean }
+    EmotionType:
+      type: string
+      enum: [ANXIETY, LETHARGY, LONELINESS, SELF_DEPRECATION, IRRITATION]
+    AnalysisStatus:
+      type: string
+      enum: [PENDING, ANALYZED, DEFAULTED]
+    MonsterView:
+      type: object
+      required: [emotion, hp, maxHp, status]
+      properties:
+        emotion: { $ref: '#/components/schemas/EmotionType' }
+        hp: { type: integer, minimum: 0 }
+        maxHp: { type: integer, enum: [10, 20, 30] }
+        status: { type: string, enum: [ALIVE, DEFEATED] }
+    Author:
+      type: object
+      required: [id, nickname, jobRole, careerYear]
+      properties:
+        id: { type: integer, format: int64 }
+        nickname: { type: string, description: 지금 닉네임(US5-AC4) }
+        jobRole:
+          allOf: [{ $ref: '#/components/schemas/JobRole' }]
+          description: 글을 쓸 때의 직군 스냅숏(US5-AC3)
+        careerYear:
+          allOf: [{ $ref: '#/components/schemas/CareerYear' }]
+          description: 글을 쓸 때의 경력 스냅숏(US5-AC3)
+    FeedItem:
+      type: object
+      required: [postId, author, contentPreview, analysisStatus, likeCount, likedByMe, commentCount, createdAt]
+      properties:
+        postId: { type: integer, format: int64 }
+        author: { $ref: '#/components/schemas/Author' }
+        contentPreview:
+          type: string
+          description: 앞 50글자. 더 길면 끝에 "..."
+        analysisStatus: { $ref: '#/components/schemas/AnalysisStatus' }
+        monster:
+          oneOf: [{ $ref: '#/components/schemas/MonsterView' }, { type: 'null' }]
+          description: 분석 중이면 null
+        likeCount: { type: integer }
+        likedByMe: { type: boolean }
+        commentCount: { type: integer }
+        createdAt: { type: string, format: date-time }
+    FeedPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/FeedItem' }
+        nextCursor:
+          type: [string, 'null']
+          description: 다음 페이지가 없으면 null. 불투명 문자열
+
+    NotificationType:
+      type: string
+      description: |
+        POST_COMMENT 내 글의 댓글, POST_REPLY 내 글의 답글, COMMENT_REPLY 내 댓글의 답글,
+        POST_LIKE 내 글 공감(묶음), MONSTER_SPAWNED 몬스터 생성, MONSTER_DEFEATED 내 몬스터 처치,
+        MONSTER_DEFEATED_TOGETHER 함께 공격한 몬스터 처치
+      enum:
+        - POST_COMMENT
+        - POST_REPLY
+        - COMMENT_REPLY
+        - POST_LIKE
+        - MONSTER_SPAWNED
+        - MONSTER_DEFEATED
+        - MONSTER_DEFEATED_TOGETHER
+    NotificationActor:
+      type: object
+      required: [id, nickname]
+      properties:
+        id: { type: integer, format: int64 }
+        nickname: { type: string, description: 지금 닉네임 }
+    NotificationPost:
+      type: object
+      required: [postId, contentPreview]
+      properties:
+        postId: { type: integer, format: int64 }
+        contentPreview: { type: string, description: 앞 50글자 }
+    Notification:
+      type: object
+      required: [notificationId, seq, type, postId, post, actor, actorCount, read, createdAt, updatedAt]
+      properties:
+        notificationId: { type: integer, format: int64 }
+        seq:
+          type: integer
+          format: int64
+          description: 회원별 전달 순서 번호. SSE 이벤트 id와 같고, 모두 읽음의 upToSeq로 쓴다
+        type: { $ref: '#/components/schemas/NotificationType' }
+        postId: { type: integer, format: int64 }
+        post:
+          oneOf: [{ $ref: '#/components/schemas/NotificationPost' }, { type: 'null' }]
+          description: 글이 지워졌으면 null. 화면은 "삭제된 글"로 보인다(US2-AC5)
+        commentId:
+          type: [integer, 'null']
+          format: int64
+          description: 댓글과 답글 알림일 때만 있다
+        actor:
+          oneOf: [{ $ref: '#/components/schemas/NotificationActor' }, { type: 'null' }]
+          description: 가장 최근 행동한 회원. 몬스터 알림은 null
+        actorCount:
+          type: integer
+          minimum: 1
+          description: 공감 묶음의 인원 수. 다른 종류는 1
+        read: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt:
+          type: string
+          format: date-time
+          description: 마지막 갱신 시각. 공감 묶음은 마지막 공감 시각이다
+    NotificationPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          description: seq 내림차순(최신순). 묶인 공감은 마지막 공감 기준으로 위에 온다
+          items: { $ref: '#/components/schemas/Notification' }
+        nextCursor: { type: [string, 'null'] }
+    UnreadCount:
+      type: object
+      required: [count, latestSeq]
+      properties:
+        count:
+          type: integer
+          minimum: 0
+          description: 안 읽은 알림 수. 99를 넘으면 화면이 "99+"로 보인다
+        latestSeq:
+          type: integer
+          format: int64
+          minimum: 0
+          description: 이 회원의 마지막 전달 번호. 알림이 없으면 0
+    ReadAllRequest:
+      type: object
+      required: [upToSeq]
+      properties:
+        upToSeq:
+          type: integer
+          format: int64
+          minimum: 0
+          description: 이 번호 이하의 안 읽은 알림만 읽음으로 바꾼다(US2-AC4)
+    ReadAllResult:
+      type: object
+      required: [updated, unreadCount]
+      properties:
+        updated: { type: integer, description: 이번에 읽음이 된 알림 수 }
+        unreadCount: { type: integer, description: 처리 뒤 남은 안 읽은 수 }
+    StreamTicket:
+      type: object
+      required: [ticket, expiresAt]
+      properties:
+        ticket:
+          type: string
+          description: 32바이트 난수의 base64url. 30초 안에 한 번만 쓸 수 있다
+        expiresAt: { type: string, format: date-time }
+    StreamNotificationEvent:
+      type: object
+      description: |
+        SSE `event: notification`의 data. SSE `id`는 notification.seq다.
+        웹은 notificationId로 덮어쓰고 그 항목을 맨 위로 올린다(묶음 갱신 포함).
+      required: [notification, unreadCount]
+      properties:
+        notification: { $ref: '#/components/schemas/Notification' }
+        unreadCount: { type: integer, minimum: 0 }
+    StreamUnreadCountEvent:
+      type: object
+      description: "SSE `event: unread-count`의 data. id가 없고 재전송하지 않는다"
+      required: [unreadCount]
+      properties:
+        unreadCount: { type: integer, minimum: 0 }
+    StreamPingEvent:
+      type: object
+      description: "SSE `event: ping`의 data. 내용이 없는 빈 객체다. id가 없고 재전송하지 않는다"
+      additionalProperties: false
+    MyComment:
+      type: object
+      required: [commentId, postId, postContentPreview, content, reply, createdAt]
+      properties:
+        commentId: { type: integer, format: int64 }
+        postId: { type: integer, format: int64 }
+        postContentPreview: { type: string, description: 댓글이 달린 글의 앞 50글자 }
+        content: { type: string }
+        reply: { type: boolean, description: 답글이면 true }
+        createdAt: { type: string, format: date-time }
+    MyCommentPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/MyComment' }
+        nextCursor: { type: [string, 'null'] }
+    EmotionShare:
+      type: object
+      required: [emotion, count, percent]
+      properties:
+        emotion: { $ref: '#/components/schemas/EmotionType' }
+        count: { type: integer, minimum: 0 }
+        percent:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: 정수 퍼센트. 다섯 항목의 합은 100이고 몬스터가 없으면 모두 0이다(US4-AC1)
+    WeeklyEmotionCount:
+      type: object
+      required: [weekStart, counts]
+      properties:
+        weekStart:
+          type: string
+          format: date
+          description: 한국 시간 월요일 날짜
+        counts:
+          type: array
+          description: 감정 5종을 EmotionType 순서대로 모두 담는다. 글이 없던 주는 모두 0
+          minItems: 5
+          maxItems: 5
+          items:
+            type: object
+            required: [emotion, count]
+            properties:
+              emotion: { $ref: '#/components/schemas/EmotionType' }
+              count: { type: integer, minimum: 0 }
+    EmotionStats:
+      type: object
+      required: [totalMonsters, defeatedMonsters, defeatedTogether, distribution, topEmotion, weekly]
+      properties:
+        totalMonsters: { type: integer, minimum: 0, description: 지우지 않은 내 글의 몬스터 수 }
+        defeatedMonsters: { type: integer, minimum: 0 }
+        defeatedTogether:
+          type: integer
+          minimum: 0
+          description: 내가 HP를 줄인 다른 사람의 몬스터 가운데 처치된 수(US4-AC5)
+        distribution:
+          type: array
+          minItems: 5
+          maxItems: 5
+          items: { $ref: '#/components/schemas/EmotionShare' }
+        topEmotion:
+          oneOf: [{ $ref: '#/components/schemas/EmotionType' }, { type: 'null' }]
+          description: 가장 많이 나타난 감정. 같으면 가장 최근 몬스터의 감정. 몬스터가 없으면 null
+        weekly:
+          type: array
+          description: 최근 8주(이번 주 포함), 오래된 주부터
+          minItems: 8
+          maxItems: 8
+          items: { $ref: '#/components/schemas/WeeklyEmotionCount' }
+    ProfileUpdateRequest:
+      type: object
+      minProperties: 1
+      description: 보낸 항목만 바꾼다
+      properties:
+        nickname:
+          type: string
+          description: M1과 같은 규칙. 앞뒤 공백을 뺀 완성형 한글, 영문, 숫자 1~10자. 대소문자만 다른 닉네임도 중복이다
+        jobRole: { $ref: '#/components/schemas/JobRole' }
+        careerYear: { $ref: '#/components/schemas/CareerYear' }
+  responses:
+    BadRequest:
+      description: 입력 검증 실패 (INVALID_REQUEST)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Unauthorized:
+      description: 인증 없음 또는 세션 만료 (UNAUTHORIZED, SESSION_EXPIRED)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Forbidden:
+      description: 온보딩 전 (ONBOARDING_REQUIRED)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+paths:
+  /api/v1/notifications:
+    get:
+      tags: [notification]
+      operationId: getNotifications
+      summary: 알림 목록 (US2-AC1, AC2). 최신순 20개씩, 보관 기간(90일) 안의 것만
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: 알림 페이지
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, error]
+                properties:
+                  success: { type: boolean, const: true }
+                  data: { $ref: '#/components/schemas/NotificationPage' }
+                  error: { type: 'null' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/notifications/{notificationId}/read:
+    parameters:
+      - $ref: '#/components/parameters/NotificationId'
+    put:
+      tags: [notification]
+      operationId: markNotificationRead
+      summary: 알림 하나 읽음 (US2-AC3, AC6). 이미 읽었어도 204
+      responses:
+        '204': { description: 읽음으로 바뀜 }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: 없거나 다른 회원의 알림이거나 보관 기간이 지남 (NOTIFICATION_NOT_FOUND)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /api/v1/notifications/read-all:
+    post:
+      tags: [notification]
+      operationId: markAllNotificationsRead
+      summary: 모두 읽음 (US2-AC4). upToSeq 이하만 바꾼다
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReadAllRequest' }
+      responses:
+        '200':
+          description: 처리됨
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, error]
+                properties:
+                  success: { type: boolean, const: true }
+                  data: { $ref: '#/components/schemas/ReadAllResult' }
+                  error: { type: 'null' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/notifications/unread-count:
+    get:
+      tags: [notification]
+      operationId: getUnreadNotificationCount
+      summary: 안 읽은 알림 수 (FR-009)
+      responses:
+        '200':
+          description: 안 읽은 수와 마지막 번호
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, error]
+                properties:
+                  success: { type: boolean, const: true }
+                  data: { $ref: '#/components/schemas/UnreadCount' }
+                  error: { type: 'null' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/notifications/stream-tickets:
+    post:
+      tags: [notification]
+      operationId: issueStreamTicket
+      summary: 실시간 연결용 일회용 티켓 발급 (FR-006). BFF 전용 라우트만 부른다
+      responses:
+        '201':
+          description: 발급됨. 30초 안에 한 번만 쓸 수 있다
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, error]
+                properties:
+                  success: { type: boolean, const: true }
+                  data: { $ref: '#/components/schemas/StreamTicket' }
+                  error: { type: 'null' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/notifications/stream:
+    get:
+      tags: [notification]
+      operationId: streamNotifications
+      summary: 실시간 알림 스트림 (US1-AC1~AC8, FR-004~FR-006)
+      description: |
+        Server-Sent Events. 브라우저가 API 도메인에 바로 붙는다. Bearer는 받지 않고 ticket으로 인증한다.
+        CORS는 OGU_SSE_ALLOWED_ORIGINS의 출처만 허용하고 자격 증명은 쓰지 않는다.
+
+        이벤트 형식:
+        - `event: notification`, `id: {seq}`, `data: StreamNotificationEvent(JSON)`.
+          새 알림이나 묶음 갱신이다. lastEventId 이후 것은 연결 직후 seq 순서로 다시 보낸다.
+        - `event: unread-count`, id 없음, `data: StreamUnreadCountEvent(JSON)`. 읽음 처리로 수가 바뀌었을 때.
+        - `: hb` 주석 줄. 25초마다 보내는 하트비트다. 중간 장비가 조용한 연결을 끊지 않게 한다.
+        - `event: ping`, id 없음, `data: StreamPingEvent(JSON, 빈 객체)`. 하트비트 주석과 같이 25초마다 보낸다.
+          브라우저 EventSource는 주석 줄을 스크립트에 알리지 않으므로, 웹은 이 이벤트로 연결이 살아 있는지 본다.
+          id가 없어 마지막 이벤트 id를 바꾸지 않는다. 웹은 60초 동안 아무 이벤트도 없으면 닫고 다시 붙는다.
+
+        서버는 15분 뒤 연결을 닫는다. 웹은 새 티켓과 마지막 id로 다시 붙는다(research R14).
+        회원 한 명의 동시 연결은 5개까지이고, 넘으면 가장 오래된 연결을 닫는다.
+      security: []
+      parameters:
+        - name: ticket
+          in: query
+          required: true
+          description: issueStreamTicket이 준 일회용 티켓
+          schema: { type: string, maxLength: 64 }
+        - name: lastEventId
+          in: query
+          required: false
+          description: 마지막으로 받은 이벤트 id(seq). 새 EventSource는 헤더를 붙일 수 없어 쿼리로 넘긴다
+          schema: { type: integer, format: int64, minimum: 0 }
+        - name: Last-Event-ID
+          in: header
+          required: false
+          description: 표준 재연결 헤더. 쿼리와 함께 오면 헤더를 쓴다
+          schema: { type: string }
+      responses:
+        '200':
+          description: 스트림 시작
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
+            X-Accel-Buffering:
+              description: 중간 프록시가 스트림을 버퍼에 담지 않게 한다
+              schema: { type: string, const: 'no' }
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: SSE 텍스트. 각 이벤트의 data는 contentSchema 가운데 하나다
+                contentMediaType: application/json
+                contentSchema:
+                  oneOf:
+                    - $ref: '#/components/schemas/StreamNotificationEvent'
+                    - $ref: '#/components/schemas/StreamUnreadCountEvent'
+                    - $ref: '#/components/schemas/StreamPingEvent'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401':
+          description: 티켓이 없거나, 이미 쓰였거나, 만료됐거나, 발급한 세션이 끝남 (STREAM_TICKET_INVALID)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /api/v1/members/me:
+    patch:
+      tags: [member]
+      operationId: updateMyProfile
+      summary: 프로필 수정 (US5-AC1~AC4). 온보딩을 마친 회원만
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProfileUpdateRequest' }
+      responses:
+        '200':
+          description: 저장됨
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, error]
+                properties:
+                  success: { type: boolean, const: true }
+                  data: { $ref: '#/components/schemas/MemberProfile' }
+                  error: { type: 'null' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: 닉네임 중복, 대소문자만 다른 경우 포함 (NICKNAME_TAKEN)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /api/v1/members/me/posts:
+    get:
+      tags: [mypage]
+      operationId: getMyPosts
+      summary: 내가 쓴 글 (US3-AC1, AC4). 최신순, 지운 글 제외
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: 글 페이지. 항목은 피드와 같다
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, error]
+                properties:
+                  success: { type: boolean, const: true }
+                  data: { $ref: '#/components/schemas/FeedPage' }
+                  error: { type: 'null' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/members/me/comments:
+    get:
+      tags: [mypage]
+      operationId: getMyComments
+      summary: 내 댓글과 답글 (US3-AC2, AC4). 최신순, 지운 댓글과 지운 글의 댓글 제외
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: 댓글 페이지
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, error]
+                properties:
+                  success: { type: boolean, const: true }
+                  data: { $ref: '#/components/schemas/MyCommentPage' }
+                  error: { type: 'null' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/members/me/liked-posts:
+    get:
+      tags: [mypage]
+      operationId: getMyLikedPosts
+      summary: 공감한 글 (US3-AC3, AC4). 공감한 시각의 최신순, 취소한 공감과 지운 글 제외
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: 글 페이지. 항목은 피드와 같다
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, error]
+                properties:
+                  success: { type: boolean, const: true }
+                  data: { $ref: '#/components/schemas/FeedPage' }
+                  error: { type: 'null' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/members/me/emotion-stats:
+    get:
+      tags: [mypage]
+      operationId: getMyEmotionStats
+      summary: 감정 통계 (US4-AC1~AC5)
+      responses:
+        '200':
+          description: 감정 통계
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, error]
+                properties:
+                  success: { type: boolean, const: true }
+                  data: { $ref: '#/components/schemas/EmotionStats' }
+                  error: { type: 'null' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }

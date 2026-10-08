@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { formatDate } from "@/shared/lib";
 import { Card } from "@/shared/ui";
 
 import type { FeedItem } from "../model/types";
@@ -10,15 +11,18 @@ type MonsterView = NonNullable<FeedItem["monster"]>;
 /**
  * 피드의 글 하나(US2-AC1). 직군과 경력 라벨, 몬스터 그림은 다른 엔티티(member, monster)의
  * 것이라 위젯이 넘긴다. 몬스터가 아직 없으면(`monster == null`) 분석 중이다.
+ * 마이페이지는 작성 시각도 보인다(`showCreatedAt`, 004 US3-AC1).
  */
 export function PostCard({
   item,
   authorMeta,
   renderMonster,
+  showCreatedAt = false,
 }: {
   item: FeedItem;
   authorMeta: string;
   renderMonster: (monster: MonsterView) => ReactNode;
+  showCreatedAt?: boolean;
 }) {
   return (
     <Link
@@ -50,6 +54,14 @@ export function PostCard({
             </span>
           ) : null}
           <span>댓글 {item.commentCount}</span>
+          {showCreatedAt ? (
+            <time
+              dateTime={item.createdAt}
+              className="ml-auto text-neutral-500"
+            >
+              {formatDate(item.createdAt, "YYYY.MM.DD HH:mm")}
+            </time>
+          ) : null}
         </div>
       </Card>
     </Link>

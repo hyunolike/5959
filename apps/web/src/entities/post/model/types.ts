@@ -27,3 +27,9 @@ export const COMMENT_TONE_LABELS: Record<CommentTone, string> = {
   WARM_ADVICE: "따뜻한 조언해주기",
   MAKE_ME_LAUGH: "웃겨주기",
 };
+
+/**
+ * 없거나 지운 글을 열려 할 때의 안내. 글 상세(404 `POST_NOT_FOUND`)와 알림 목록(지운 글의 알림을
+ * 누름, 004 US2-AC5)이 같은 말을 쓴다.
+ */
+export const DELETED_POST_NOTICE = "삭제된 글이에요.";

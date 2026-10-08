@@ -37,6 +37,7 @@ API 응답 본문에는 `accessToken`, `refreshToken`이 그대로 들어 있을
 |---|---|
 | 첫 세그먼트가 `auth`인 모든 경로(`/api/auth/**`) | 로그인, 가입, refresh, OAuth 시작·콜백 |
 | `/api/members/me/onboarding` | 온보딩 완료(`PUT`). 온보딩 완료 응답(`OnboardingResult`)에 새 `accessToken`이 들어 있다 |
+| `/api/notifications/stream-tickets` | 004. 알림 스트림 티켓은 전용 라우트 `POST /api/notifications/stream-ticket`에서만 발급한다 |
 
 캐치올은 각 경로 세그먼트도 검증한다. 비어 있거나 `.`, `..`인 세그먼트,
 `/`, `\`, `?`, `#`을 포함한 세그먼트는 막는다(그 세그먼트를 한 번 더
@@ -46,6 +47,16 @@ API 응답 본문에는 `accessToken`, `refreshToken`이 그대로 들어 있을
 인코딩해 붙이고, 최종 경로가 `/api/v1/`로 시작하는지 한 번 더 확인한 뒤에만
 호출한다. `..`이나 인코딩된 슬래시로 `/actuator/health` 같은 다른 경로를
 부르는 시도를 막기 위해서다.
+
+## 알림 스트림 티켓 라우트 (004-notification-mypage)
+
+| 메서드, 경로 | 요청 | 성공 | 실패 | 쿠키 변화 |
+|---|---|---|---|---|
+| `POST /api/notifications/stream-ticket` | 없음 | `200 { ticket, streamUrl, expiresAt }` | `401`(로그인하지 않았거나 갱신도 실패), `403 ONBOARDING_REQUIRED` | 세션 오류 `401`이면 `callWithSessionRefresh`로 한 번 갱신한다(범용 프록시와 같은 쿠키 규칙) |
+
+- 쿠키의 `ogu_at`으로 API `POST /api/v1/notifications/stream-tickets`를 부른다.
+- `streamUrl`은 `(SSE_PUBLIC_ORIGIN ?? API_ORIGIN) + /api/v1/notifications/stream`이다. 브라우저는 이 주소에 `?ticket=…&lastEventId=…`를 붙여 API 도메인에 바로 붙는다(004 research R3).
+- 범용 프록시는 `notifications/stream-tickets`를 넘기지 않고 `404 NOT_FOUND`로 막는다. 티켓은 이 전용 라우트에서만 나간다.
 
 ## BFF 전용 오류 코드
 
@@ -69,13 +80,13 @@ apps/api가 JSON이 아닌 본문을 돌려주면(예상 밖의 5xx 오류 페�
 | 경로 | 조건 | 동작 |
 |---|---|---|
 | `/` | `ogu_rt` 있음 | `302 /home` |
-| 보호 경로(`/home`, `/write`, `/post`, `/my`, `/settings` 이하) | `ogu_rt` 없음 | `302 /login?next=<원래 경로>` |
+| 보호 경로(`/home`, `/write`, `/post`, `/my`, `/settings`, `/notifications` 이하) | `ogu_rt` 없음 | `302 /login?next=<원래 경로>` |
 | 같은 경로 | `ogu_rt` 있고 `ogu_ob` 없음 | `302 /onboarding` |
 | `/onboarding` | `ogu_rt` 없음 | `302 /login` |
 | `/onboarding` | `ogu_ob` 있음 | `302 /home`(검증한 `next`가 있으면 그곳) |
 | `/login`, `/signup` | `ogu_rt`, `ogu_ob` 모두 있음 | `302 /home`(검증한 `next`가 있으면 그곳) |
 
-보호 경로 목록은 `shared/server/route-guard.ts`의 `PROTECTED_PATH_PREFIXES`에 있다. 003-core-loop에서 `/write`(글쓰기)와 `/post`(글 상세 `/post/{id}`, 글 수정 `/post/{id}/edit`)가 들어왔다. 글 화면을 부르는 API는 온보딩을 마친 회원에게만 열려 있어서, 화면이 401이나 403을 받기 전에 가드가 로그인이나 온보딩으로 보낸다.
+보호 경로 목록은 `shared/server/route-guard.ts`의 `PROTECTED_PATH_PREFIXES`에 있다. 003-core-loop에서 `/write`(글쓰기)와 `/post`(글 상세 `/post/{id}`, 글 수정 `/post/{id}/edit`)가 들어왔다. 글 화면을 부르는 API는 온보딩을 마친 회원에게만 열려 있어서, 화면이 401이나 403을 받기 전에 가드가 로그인이나 온보딩으로 보낸다. 004-notification-mypage에서 `/notifications`(알림 목록)가 들어왔다(FR-014).
 
 `next`는 `/`로 시작하고 `//`나 `/\`로 시작하지 않을 때만 따른다. 한 번 퍼센트 디코딩한 값(`/%2F%2Fevil`, `/%5Cevil`)과 제어 문자도 같은 규칙으로 막는다. 아니면 `/home`으로 보낸다(스펙 경계 상황). 검증은 `shared/lib/next-path.ts` 한 곳에서 한다. 로그인, 가입, OAuth 성공 뒤에는 이 `next`로 가고, 온보딩이 남았으면 `/onboarding?next=`로 넘겨 온보딩 뒤 그곳으로 간다. `/login?error=` 리다이렉트에도 검증한 `next`를 남긴다.
 
@@ -90,3 +101,4 @@ apps/api가 JSON이 아닌 본문을 돌려주면(예상 밖의 5xx 오류 페�
 | `OAUTH_STATE_SECRET` | `__Host-ogu_oauth` 쿠키 HMAC 서명 키(32자 이상). Vercel 배포(`VERCEL_ENV`가 있으면 미리보기 포함)와 `APP_ENV=production`에서는 필수 |
 | `APP_ENV` | `development`, `e2e`, `production`. `e2e`면 OAuth 시작 라우트가 제공자 대신 자기 콜백으로 바로 보낸다. `VERCEL_ENV=production`과 함께 쓰면 env 검증이 빌드와 기동을 막는다 |
 | `NEXT_PUBLIC_SENTRY_DSN` | 설정했을 때만 오류 수집을 켠다 |
+| `SSE_PUBLIC_ORIGIN` | 004. 브라우저가 알림 스트림에 바로 붙을 API 주소. 비우면 `API_ORIGIN` |

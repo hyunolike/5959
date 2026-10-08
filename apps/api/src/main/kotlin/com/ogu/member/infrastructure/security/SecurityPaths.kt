@@ -1,5 +1,6 @@
 package com.ogu.member.infrastructure.security
 
+import org.springframework.http.HttpMethod
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher
 import org.springframework.security.web.util.matcher.OrRequestMatcher
 import org.springframework.security.web.util.matcher.RequestMatcher
@@ -18,18 +19,26 @@ object SecurityPaths {
             "/api/v1/auth/oauth/**",
             "/api/v1/auth/refresh",
             "/actuator/health",
+            // 004: Redis 상태만 따로 보는 헬스 그룹(research R5). 상세는 보이지 않고 상태만 준다
+            "/actuator/health/realtime",
+            // 004: 실시간 알림 스트림. 브라우저가 Bearer 없이 일회용 연결 표(ticket)로 바로 붙는다(research R3)
+            "/api/v1/notifications/stream",
         )
 
     /** springdoc이 켜져 있을 때(`springdoc.api-docs.enabled`, 기본 true)만 공개한다. 운영은 이 설정이 false다. */
     const val API_DOCS = "/v3/api-docs/**"
 
-    /** 온보딩 전(`onboarded=false`) 토큰으로도 부를 수 있는 인증 필요 경로(research R9). */
-    val ONBOARDING_ALLOWED =
+    /**
+     * 온보딩 전(`onboarded=false`) 토큰으로도 부를 수 있는 인증 필요 경로(002 research R9). 메서드가 null이면 모든 메서드다.
+     * 내 프로필(`/api/v1/members/me`)은 `GET`만 연다. 004에서 같은 경로에 `PATCH`(프로필 수정)가 생겨, 경로만 보면
+     * 온보딩을 건너뛰고 닉네임과 직군을 저장하는 길이 된다(004 research R13).
+     */
+    val ONBOARDING_ALLOWED: List<Pair<HttpMethod?, String>> =
         listOf(
-            "/api/v1/members/me",
-            "/api/v1/members/nickname-availability",
-            "/api/v1/members/me/onboarding",
-            "/api/v1/auth/logout",
+            HttpMethod.GET to "/api/v1/members/me",
+            null to "/api/v1/members/nickname-availability",
+            null to "/api/v1/members/me/onboarding",
+            null to "/api/v1/auth/logout",
         )
 
     fun publicMatcher(apiDocsEnabled: Boolean): RequestMatcher {
@@ -37,7 +46,10 @@ object SecurityPaths {
         return anyOf(patterns)
     }
 
-    val onboardingAllowedMatcher: RequestMatcher = anyOf(ONBOARDING_ALLOWED)
+    val onboardingAllowedMatcher: RequestMatcher =
+        PathPatternRequestMatcher.withDefaults().let { builder ->
+            OrRequestMatcher(ONBOARDING_ALLOWED.map { (method, path) -> builder.matcher(method, path) })
+        }
     val apiMatcher: RequestMatcher = PathPatternRequestMatcher.withDefaults().matcher(API)
 
     private fun anyOf(patterns: List<String>): RequestMatcher {

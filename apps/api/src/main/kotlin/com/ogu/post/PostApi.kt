@@ -24,4 +24,16 @@ interface PostApi {
      * 살아 있는 댓글 공감을 돌려준다.
      */
     fun attacksSoFar(postId: Long): List<Attack>
+
+    /**
+     * 살아 있는 글의 살아 있는 댓글(004 research R6). 알림의 받는 사람을 정할 때 쓴다. 답글이면 원 댓글과 그 주인도 준다.
+     * 댓글이나 글을 지웠거나 없으면 null이다.
+     */
+    fun findComment(commentId: Long): CommentSummary?
+
+    /**
+     * 알림에 붙이는 글 미리보기(004 data-model.md). 지운 글도 [PostPreview.deleted]로 함께 준다. 없는 ID는 결과에서 빠진다.
+     * 쿼리 한 번이다.
+     */
+    fun previews(postIds: Collection<Long>): Map<Long, PostPreview>
 }

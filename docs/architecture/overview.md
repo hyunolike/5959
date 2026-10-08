@@ -85,7 +85,7 @@ flowchart LR
     API -. OTLP .-> Grafana
 ```
 
-Redis는 처음 필요한 M3(SSE 팬아웃)에서 추가한다.
+Redis는 M3(004)에서 들어왔다. 실시간 알림의 인스턴스 간 pub/sub 신호만 나르고 아무것도 저장하지 않는다(메모리 상한 64MB, 영속화 없음). 알림 내용은 언제나 Postgres에서 읽으므로 Redis가 내려가도 알림은 저장되고, 안전망 주기와 재연결로 전달된다. API도 Redis 없이 뜬다.
 
 ### 저장소 구성
 
@@ -118,17 +118,17 @@ Redis는 처음 필요한 M3(SSE 팬아웃)에서 추가한다.
 | 모듈 | 책임 | 공개 파사드 | 발행 이벤트 | 구독 이벤트 |
 |---|---|---|---|---|
 | `shared` (OPEN) | 공통 응답, 예외, 설정 | - | - | - |
-| `member` | 회원, 인증(이메일/카카오/구글), 로그인 실패 제한, 세션(JWT access·refresh) | `MemberApi` | `MemberWithdrawn`(회원 탈퇴는 M1 범위 밖이라 아직 발행하지 않는다) | - |
-| `post` | 고민 글, 댓글, 공감, 숨김 처리 | `PostApi` | `PostCreated`, `CommentCreated`, `PostLiked`, `CommentLiked` | - |
+| `member` | 회원, 인증(이메일/카카오/구글), 로그인 실패 제한, 세션(JWT access·refresh), 프로필 수정, 실시간 알림 연결 표 | `MemberApi`(회원 조회, 연결 표 발급 `issueStreamTicket`과 소비 `consumeStreamTicket`) | `MemberWithdrawn`(회원 탈퇴는 M1 범위 밖이라 아직 발행하지 않는다) | - |
+| `post` | 고민 글, 댓글, 공감, 숨김 처리 | `PostApi`, `PostActivityApi`(회원 한 명의 글, 댓글, 공감 조회) | `PostCreated`, `CommentCreated`, `PostLiked`, `CommentLiked` | - |
 | `ai` | LLM 게이트웨이 (Spring AI, Resilience4j, 요청 제한) | `EmotionAnalyzer`(M2). `Embedder`, `RiskClassifier`, `LetterWriter`는 뒤 마일스톤 | - | - |
-| `emotion` | 감정 분석 결과, 감정 통계 | `EmotionApi` | `EmotionAnalyzed` | `PostCreated` |
-| `monster` | 몬스터 생성, HP, 처치 | `MonsterApi` | `MonsterDefeated` | `EmotionAnalyzed`(커밋 후 비동기), `PostLiked`, `CommentCreated`, `CommentLiked`(post 트랜잭션 안에서 동기) |
+| `emotion` | 감정 분석 결과 | `EmotionApi` | `EmotionAnalyzed` | `PostCreated` |
+| `monster` | 몬스터 생성, HP, 처치 | `MonsterApi` | `MonsterSpawned`, `MonsterDefeated` | `EmotionAnalyzed`(커밋 후 비동기), `PostLiked`, `CommentCreated`, `CommentLiked`(post 트랜잭션 안에서 동기) |
 | `safety` | 위험 감지, 신고, 욕설 마스킹. 위험 글은 `PostApi.hide()`로 숨긴다 | `SafetyApi` | `RiskDetected` | `PostCreated`, `CommentCreated` |
 | `raid` | 보스 몬스터, 동시 공격 | `RaidApi` | `RaidBossDefeated` | `CommentCreated` |
 | `recommend` | 임베딩 저장, 유사 글 검색 | `RecommendApi` | - | `PostCreated` |
 | `report` | 주간 리포트 배치 | `ReportApi` | `WeeklyReportPublished` | - |
-| `notification` | SSE 알림, 알림 이력 | - | - | `CommentCreated`, `MonsterDefeated`, `RiskDetected`, `WeeklyReportPublished` |
-| `feed` | 피드, 글 상세, 마이페이지 조회 조합 | - (HTTP API만) | - | - |
+| `notification` | SSE 알림, 알림 이력, 읽음 | - (HTTP API만) | - | `PostLiked`, `CommentCreated`, `MonsterSpawned`, `MonsterDefeated`(M3). `RiskDetected`, `WeeklyReportPublished`는 뒤 마일스톤 |
+| `feed` | 피드, 글 상세, 마이페이지 목록과 감정 통계 조합 | - (HTTP API만) | - | - |
 
 의존 방향은 한쪽으로만 흐른다. Spring Modulith는 다른 모듈의 이벤트 타입을 참조하는 것도 의존으로 보므로, 이벤트 구독도 아래 방향을 따라야 한다.
 
@@ -149,10 +149,12 @@ flowchart BT
     report --> monster
     report --> ai
     notification --> post
+    notification --> member
     notification --> monster
     notification --> safety
     notification --> report
     feed --> post
+    feed --> member
     feed --> monster
     feed --> emotion
     feed --> recommend
@@ -161,7 +163,8 @@ flowchart BT
 - `post`는 `member` 말고는 어떤 도메인 모듈도 모른다. 글에 몬스터 HP나 감정을 붙여 보여 주는 일은 `feed` 모듈이 각 파사드를 불러 조합한다.
 - `ai`는 도메인 모듈을 모른다.
 - 순환이 생기면 `ModularityTests`가 실패한다.
-- M2까지 만든 모듈은 `shared`, `member`, `post`, `ai`, `emotion`, `monster`, `feed`다. 나머지는 표에 적힌 마일스톤에서 들어온다.
+- M3까지 만든 모듈은 `shared`, `member`, `post`, `ai`, `emotion`, `monster`, `feed`, `notification`이다. 나머지는 표에 적힌 마일스톤에서 들어온다.
+- 감정 통계는 `emotion`이 아니라 `feed`가 계산한다. 숫자의 원천이 `monsters`와 `monster_hp_log`라서 `emotion`이 `monster`를 알면 `monster → emotion`과 순환이 생긴다(004 research R1, R12).
 - 공격 반영, 몬스터 생성, 글 삭제가 함께 쓰는 글 단위 잠금(`PostLock`)은 두 모듈이 같은 키를 써야 해서 `shared/lock`에 둔다.
 
 ### 5.2 핵심 흐름 (M2)
@@ -247,6 +250,38 @@ M2 스펙(specs/003-core-loop)에서 정한 값이다.
 - 요청 ID를 MDC와 트레이스 ID로 이어서 로그와 트레이스를 서로 찾을 수 있게 한다.
 - 사용자별 요청 제한은 Bucket4j와 Redis로 건다. AI를 호출하는 쓰기 API에 먼저 적용한다.
 
+### 5.9 알림과 SSE (M3)
+
+```mermaid
+sequenceDiagram
+    participant B as 브라우저
+    participant BFF as BFF (Vercel)
+    participant API as apps/api
+    participant PG as Postgres
+    participant R as Redis
+
+    Note over API,PG: 댓글, 공감, 몬스터 생성과 처치가 커밋된 뒤
+    API->>PG: 알림 저장 (회원별 번호 seq, 멱등 키)
+    API-)R: 신호 발행 (회원 ID만)
+    B->>BFF: 연결 표 요청 (쿠키)
+    BFF->>API: 표 발급 (Bearer)
+    API-->>B: 일회용 표 (30초)
+    B->>API: 스트림 연결 (ticket, lastEventId)
+    API->>PG: seq > lastEventId 읽기
+    API-->>B: 놓친 알림 재전송
+    R-)API: 신호 (모든 인스턴스)
+    API->>PG: seq > 마지막 전송 번호 읽기
+    API-->>B: notification 이벤트 (id = seq)
+```
+
+- **생성**: `notification`이 `PostLiked`, `CommentCreated`, `MonsterSpawned`, `MonsterDefeated`를 커밋 뒤 비동기 리스너로 받는다. 알림 실패가 댓글, 공감, HP 반영을 되돌리지 않고, 끝나지 않은 발행은 재전송된다. 멱등 키로 재발행에도 알림은 하나다. 공감은 글마다 안 읽은 묶음 하나로 모은다.
+- **연결 표(티켓)**: 브라우저는 긴 연결을 Vercel을 거치지 않고 API에 바로 붙인다. 쿠키를 API 도메인에 보낼 수 없으므로 BFF가 30초짜리 일회용 표를 받아 준다. 표는 `member`가 발급하고 소비하며 DB에는 SHA-256만 둔다.
+- **번호와 재전송**: 알림은 회원별로 1씩 오르는 번호(`seq`)를 받고 SSE 이벤트 ID가 된다. 서버는 연결별 마지막 전송 번호를 들고, 보낼 것은 언제나 DB에서 `seq > 마지막 번호`로 읽는다. 다시 붙을 때는 `lastEventId` 뒤부터 보내므로 끊긴 동안의 알림이 빠지거나 겹치지 않는다.
+- **팬아웃**: 알림을 저장한 인스턴스가 커밋 뒤 Redis 채널에 회원 ID만 발행하고, 모든 인스턴스가 받아 그 회원의 열린 연결에 DB에서 읽은 것을 보낸다. Redis는 힌트일 뿐이다. 신호를 놓쳐도 안전망 주기(60초, Redis가 내려가 있으면 5초)가 따라잡는다.
+- **읽음**: 하나 읽음과 모두 읽음(`upToSeq` 이하)이 바뀌면 그 회원의 모든 연결에 안 읽은 수를 보낸다. 알림은 90일 보관하고 매일 정리한다.
+
+자세한 규칙은 `specs/004-notification-mypage/research.md`(R2~R11)와 `apps/api/AGENTS.md`에 있다.
+
 ## 6. 프론트엔드 (apps/web)
 
 템플릿 구성을 그대로 따른다: Next.js 16, React 19, TypeScript strict, Tailwind CSS 4, TanStack Query 5, Zustand 5, React Hook Form과 Zod, steiger, Vitest, Playwright.
@@ -284,14 +319,14 @@ React Three Fiber로 몬스터를 코드로 만든다. 원본 그림은 쓰지 �
 - refresh는 매번 새 토큰으로 교체하고, 교체 후 30초 유예 동안 직전 토큰이 다시 오면(여러 탭이 동시에 갱신한 경우) access 토큰만 새로 주고 refresh는 그대로 둔다. 유예를 지나 직전 토큰이 다시 오면 탈취로 보고 세션을 무효화한다(`SessionService.refresh`, US4-AC1~AC3, research R2).
 - 보호 경로는 `route-guard.ts`의 판단 표를 `proxy.ts`가 렌더링 전에 적용해 쿠키를 확인한다(US4-AC4, US4-AC5).
 - 카카오·구글 로그인은 상태를 10분짜리 서명된 `ogu_oauth` 쿠키(`OAUTH_STATE_SECRET`)에 담아 CSRF와 재생을 막는다. 구글은 PKCE를 쓰고, 카카오는 쓰지 않는다.
-- **SSE는 예외다.** Vercel 함수는 실행 시간 제한이 있어 긴 연결을 중계하기 어렵다. BFF가 30초짜리 일회용 티켓을 발급하고, 브라우저가 티켓으로 API 도메인에 직접 연결한다. 끊기면 `Last-Event-ID`로 놓친 이벤트를 다시 받는다. (M3에서 추가)
+- **SSE는 예외다.** Vercel 함수는 실행 시간 제한이 있어 긴 연결을 중계하기 어렵다. BFF가 30초짜리 일회용 티켓을 발급하고, 브라우저가 티켓으로 API 도메인에 직접 연결한다. 끊기면 웹이 직접 닫고 새 티켓을 받아 마지막 이벤트 번호(`lastEventId` 쿼리)와 함께 다시 붙어 놓친 이벤트를 받는다. `EventSource`의 자동 재연결은 이미 쓴 티켓으로 다시 붙으므로 쓰지 않는다. 티켓은 전용 BFF 라우트(`/api/notifications/stream-ticket`)에서만 발급한다(M3).
 
 템플릿은 access 토큰을 localStorage에 두지만 여기서는 BFF를 택했다. 근거는 [ADR-0002](../adr/0002-bff-auth.md)에 있다. 세부 계약은 `specs/002-auth/contracts/bff-routes.md`에 있다.
 
 ### 6.4 상태 관리
 
 - 서버 데이터는 TanStack Query가 맡는다. 조회 쿼리는 entity에, 사용자 행동의 mutation은 feature에 둔다. 공감처럼 즉시 반응이 중요한 곳은 낙관적 업데이트를 쓴다.
-- Zustand는 서버 데이터가 아닌 전역 상태에만 쓴다. 세션 상태와 SSE 연결 상태가 여기에 해당한다.
+- Zustand는 서버 데이터가 아닌 전역 상태에만 쓴다. 세션 상태와 SSE 연결 상태가 여기에 해당한다. 알림 연결 스토어(`features/notification-stream`)는 연결 상태, 마지막 이벤트 번호, 재시도 횟수만 들고, 알림 목록과 안 읽은 수는 TanStack Query 캐시에 둔다. 실시간 이벤트가 그 캐시를 직접 고친다.
 
 ## 7. API 계약
 
@@ -306,7 +341,8 @@ React Three Fiber로 몬스터를 코드로 만든다. 원본 그림은 쓰지 �
 |---|---|---|
 | 프론트엔드 | Vercel Hobby | PR 프리뷰, 무료 |
 | 백엔드 서버 | Oracle Cloud 무료 ARM VM (4 OCPU, 24GB) | API, Postgres, Redis를 한 대에 올려도 여유가 있다 |
-| 리버스 프록시 | Caddy | HTTPS 인증서 자동 발급 |
+| 리버스 프록시 | Caddy | HTTPS 인증서 자동 발급. 실시간 알림 스트림 경로는 압축에서 뺀다(압축하면 버퍼에 쌓여 늦게 간다) |
+| 실시간 신호 | VM compose 안의 Redis 7.4 컨테이너(M3) | 포트를 열지 않고 `api`만 붙는다. 비밀번호를 걸고 메모리 64MB, 저장 없음. API의 `/actuator/health`에는 넣지 않고 `/actuator/health/realtime`으로 따로 본다 |
 | DB | VM 안의 PostgreSQL 17 + pgvector | [ADR-0004](../adr/0004-self-hosted-postgres.md) |
 | 백업 | 매일 `pg_dump` → Cloudflare R2, 14일 보관 | 복구 절차를 `infra/RESTORE.md`로 문서화하고 분기마다 복구 연습 |
 | 이미지 저장소 | GHCR | GitHub Actions와 연동 |

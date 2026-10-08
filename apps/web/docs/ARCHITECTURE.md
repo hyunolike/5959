@@ -98,7 +98,8 @@ everything else to `API_ORIGIN` as `Authorization: Bearer <ogu_at>` plus
 shapes so token-bearing responses never leak to the browser: any path whose
 first segment is `auth` (`/api/auth/**`) and `/api/members/me/onboarding`
 — both are served only by the dedicated routes above, which already scrub
-tokens from the body. It also validates every path segment (rejects empty,
+tokens from the body. It also refuses `/api/notifications/stream-tickets`:
+stream tickets come only from `POST /api/notifications/stream-ticket`. It also validates every path segment (rejects empty,
 `.`, `..`, or segments containing `/`, `\`, `?`, `#`, including after a
 second percent-decode) before re-encoding and calling `API_ORIGIN`, to stop
 path-traversal or double-encoded-slash tricks from reaching an unintended
@@ -202,6 +203,103 @@ to where they started after login (US4-AC5).
 `scripts/monster-capture` 하네스를 띄우고 Playwright Chromium이 3D 장면을 투명 배경
 512×512로 찍는다. 이 스크립트는 Node의 타입 지우기에 기대므로 Node 22.18 이상이
 필요하다. 외형이나 장면을 바꾸면 다시 돌려서 이미지를 커밋한다.
+
+## 알림 (004-notification-mypage)
+
+내 글에 댓글이나 공감이 달리거나 몬스터가 생기고 처치되면, 새로고침 없이 알림 종의 배지와
+토스트로 알린다. 지난 알림은 목록 화면(`/notifications`)에서 보고 읽음으로 바꾼다.
+
+### 슬라이스
+
+- `entities/notification`: 타입, 알림 문구(`notificationMessage`), 배지 글자(`badgeLabel`), 안 읽은 수 조회(`useUnreadCountQuery`), 목록 조회(`useNotificationsQuery`), 쪽 펼치기(`uniqueNotifications`), 목록 한 줄(`NotificationItem`).
+- `features/notification-stream`: 티켓 발급과 `EventSource`(`api/connect.ts`), 연결 상태 스토어(`model/store.ts`), 대기 시간(`model/backoff.ts`), 캐시 반영(`model/cache-sync.ts`).
+- `features/read-notification`: 하나 읽음과 모두 읽음(`api/`), 캐시 반영과 `upToSeq` 계산(`model/`).
+- `widgets/notification-bell`: 종과 배지, 토스트. 마운트된 동안 연결을 열어 둔다.
+- `widgets/notification-list`: 목록 화면의 본문. 무한 스크롤, 모두 읽음, 삭제된 글 안내.
+
+### 연결
+
+브라우저는 같은 출처 `POST /api/notifications/stream-ticket`에서 일회용 티켓과 `streamUrl`을
+받고, `EventSource`로 API 도메인의 스트림에 바로 붙는다. 브라우저가 같은 출처 밖을 부르는
+곳은 이 주소 하나뿐이다(research R3). 주소에는 `ticket`과 `lastEventId`만 싣고 access 토큰은
+싣지 않는다. 범용 프록시는 `notifications/stream-tickets`를 404로 막는다.
+
+- 처음에는 안 읽은 수 응답의 `latestSeq`를 `lastEventId`로 넘긴다. 다시 붙을 때는 마지막으로 받은 이벤트 id를 넘기고, 서버가 그 뒤의 알림을 다시 보낸다.
+- 티켓은 한 번만 쓸 수 있어서 `EventSource`의 자동 재연결을 쓰지 않는다. `error`가 오면 바로 닫고 새 티켓으로 다시 연다. 서버가 15분 뒤 닫는 것도 같은 경로다.
+- 다시 열기 전에 1초, 2초, 4초로 늘려 최대 30초까지 기다리고 ±20% 흔든다. 20초 동안 열려 있어야 처음부터 다시 센다. 탭이 6개 이상이면 서버가 가장 오래된 연결을 닫는데, 열리자마자 되돌리면 탭끼리 1초마다 서로 밀어낸다. 기다리는 중에 탭이 다시 보이거나 네트워크가 돌아오면 바로 붙는다.
+- 반쯤 죽은 연결은 `error`를 내지 않는다. 두 가지로 가려낸다. 서버가 25초마다 보내는 `ping` 이벤트를 비롯해 60초 동안 아무 이벤트도 없으면 닫고 다시 붙는다. 탭이 30초 넘게 가려졌거나 오프라인이었다 돌아오면 열린 연결도 닫고 바로 다시 붙는다.
+- 티켓 발급이 401이면(세션 끝) `stopped`로 두고 기다렸다 다시 시도하지 않는다. 다른 탭에서 다시 로그인했을 수 있으므로, 탭이 다시 보이거나 초점을 받을 때 한 번만 붙어 본다. 실패하면 그대로 멈춰 있는다.
+- 탭 하나에 연결은 하나다. 알림 종이 사라지거나 로그아웃에 성공하면 닫는다.
+
+### 상태
+
+Zustand 스토어에는 연결 상태(`idle`, `connecting`, `open`, `retrying`, `stopped`)와 마지막 이벤트
+id, 연달아 실패한 횟수만 둔다. 알림과 안 읽은 수는 TanStack Query 캐시에 있다
+(`["notifications", "list"]`, `["notifications", "unread-count"]`). `notification` 이벤트는 목록에서
+같은 알림 ID를 지우고 첫 쪽 맨 앞에 넣는다. 공감 묶음은 같은 ID가 새 번호로 다시 오기
+때문이다. 안 읽은 수는 이벤트에 실린 값으로 바꾼다. `unread-count` 이벤트는 배지만 바꾼다.
+안 읽은 수 조회 결과의 `latestSeq`가 캐시보다 작으면 늦게 도착한 옛 응답이라 버린다
+(`unreadCountQueryOptions`).
+
+### 종이 보이는 조건
+
+루트 레이아웃(`app/layout.tsx`)이 `ogu_ob` 쿠키가 있을 때만 알림 종을 그린다. 클라이언트
+이동만으로는 루트 레이아웃이 다시 그려지지 않으므로, 로그인과 온보딩, 로그아웃은 이동한 뒤
+`router.refresh()`로 레이아웃을 새로 받는다. 로그아웃 버튼을 두는 화면은
+`onLoggedOut={stopNotificationStream}`으로 연결을 바로 닫는다(features끼리는 서로 가져다 쓰지
+않으므로 화면이 이어 준다).
+
+### 토스트
+
+문구는 알림 종류, 행동한 회원의 닉네임, 묶인 인원 수로만 만든다. 글이나 댓글 본문은 넣지
+않는다(ADR-0005). 누르면 그 알림을 읽음으로 바꾸고 관련 글로 간다(목록에서 누른 것과 같다).
+글이 지워졌으면 이동하지 않고 닫히기만 한다. 알림 페이지를 보고 있으면 띄우지 않는다.
+
+### 목록과 읽음
+
+목록은 `useInfiniteQuery`로 20개씩 받고, 실시간 이벤트가 고치는 것과 같은 캐시
+(`["notifications", "list"]`)를 쓴다. 화면을 열 때마다 다시 받는다(`refetchOnMount: "always"`).
+
+- 쪽을 펼칠 때 같은 알림 ID는 한 번만 둔다(`uniqueNotifications`). 공감 묶음은 쪽 사이에 갱신되면 뒤쪽에서 빠지고, 실시간 이벤트가 맨 앞에 다시 넣는다.
+- 목록을 받는 동안 온 이벤트는 캐시에 들어가지 못하거나 늦게 온 응답에 덮인다. 받은 목록의 가장 큰 번호가 스트림의 마지막 이벤트 id보다 작으면 한 번 다시 받는다. 같은 id로는 되풀이하지 않는다.
+- 하나 읽음은 응답 전에 그 항목과 배지를 바꾸고, 실패하면 그 항목과 줄인 수만 되돌린다. 캐시를 통째로 덮지 않아서 그 사이 들어온 알림을 지우지 않는다. 끝나면 안 읽은 수를 다시 받는다(연결이 끊겨 `unread-count` 이벤트가 오지 않을 때를 위해서다).
+- 모두 읽음은 `upToSeq`로 목록 첫 항목의 번호, 스트림의 마지막 이벤트 id, 안 읽은 수 응답의 `latestSeq` 가운데 큰 값을 보낸다. 응답이 오면 그 번호 이하만 읽음으로 바꾸므로 누르는 사이에 온 알림은 안 읽은 채 남는다. 마지막 이벤트 id는 다른 feature의 스토어에 있어서 위젯이 넘긴다.
+- 글이 있는 항목은 `/post/{id}`로 가는 링크이고, 글이 지워진 항목(`post == null`)은 버튼이다. 버튼을 누르면 이동하지 않고 "삭제된 글이에요." 안내를 띄우고 읽음으로 바꾼다. 안내 문구는 글 상세의 404 안내와 같은 상수(`DELETED_POST_NOTICE`)다.
+- 안 읽음은 색과 함께 "안 읽음" 글자로 보인다. 읽은 항목은 화면 낭독기에만 "읽음"을 읽어 준다. 모두 읽음 버튼은 누른 뒤에도 초점이 남도록 `disabled` 대신 `aria-disabled`로 막는다.
+
+## 마이페이지 (004-notification-mypage)
+
+`/my`는 프로필, 감정 통계(US4), 내 활동 탭(US3)으로 이루어진다. 세 탭은 내가 쓴 글, 내 댓글, 공감한 글이다.
+
+### 슬라이스
+
+- `entities/post`: `useMyPostsQuery`, `useLikedPostsQuery`. 응답은 피드와 같은 `FeedPage`라 `PostCard`를 그대로 쓴다. 마이페이지에서는 `showCreatedAt`으로 작성 시각도 보인다.
+- `entities/comment`: `useMyCommentsQuery`, `MyCommentItem`(댓글 본문, 달린 글의 앞 50글자, 시각, 답글 표시).
+- `widgets/my-activity`: 탭과 목록. `model/tab.ts`가 주소의 `?tab=posts|comments|likes`를 읽고 쓴다. 없거나 모르는 값이면 `posts`이고, 기본 탭은 검색어를 남기지 않는다. `ui/activity-list.tsx`는 세 탭이 같이 쓰는 목록 틀이다(불러오는 중, 실패, 빈 상태, 무한 스크롤).
+
+- `widgets/emotion-stats-panel`: 감정 통계. 조회(`api/queries.ts`), 타입과 감정별 색(`model/types.ts`), 분포 막대와 8주 추이 차트(`ui/`)를 위젯 안에 둔다. 계획은 `entities/emotion-stats`였지만 쓰는 곳이 이 위젯 하나라 steiger의 `insignificant-slice`에 걸려 합쳤다. 감정 이름과 정지 이미지는 `entities/monster`의 `EMOTION_LABELS`, `MonsterSprite`를 쓴다.
+
+### 프로필 수정
+
+- `/my/edit`의 `features/edit-profile`이 닉네임, 직군, 경력을 고친다(US5). 폼은 지금 프로필로 채우고 바뀐 항목만 `PATCH /api/members/me`로 보낸다. 하나도 바꾸지 않았으면 저장 버튼을 막는다.
+- 닉네임 규칙(`memberProfileSchema`), 안내 문구(`NICKNAME_REASON_LABEL`), 중복 확인(`useNicknameCheck`)은 `entities/member`에 있고 온보딩과 프로필 수정이 함께 쓴다. feature끼리는 서로 가져올 수 없어서 온보딩에 있던 것을 엔티티로 내렸다.
+- 닉네임을 바꿨을 때만 중복 여부를 미리 확인한다. 내 닉네임의 대소문자만 바꾼 경우는 확인하지 않는다(확인 API는 내가 쓰는 닉네임도 사용 중이라고 답한다).
+- 저장되면 내 정보 캐시를 응답으로 바꾸고 `["feed"]`, `["posts"]`, `["notifications", "list"]`, `["my"]`를 무효화한 뒤 `/my`로 간다. 닉네임이 보이는 화면이 바뀐 값으로 다시 받는다(US5-AC4).
+
+### 감정 통계 차트
+
+- 분포는 비율만큼 나눈 막대 하나와 범례다. 범례는 감정 5종을 고정 순서로 모두 보이고 이름, 수, 비율을 글자로 적는다. 색은 감정마다 고정이고(`EMOTION_COLORS`) 수에 따라 바뀌지 않는다.
+- 8주 추이는 주마다 감정별로 쌓은 막대다. 높이는 가장 많은 주가 기준이고 빈 주는 0이다. 같은 값을 화면 낭독기용 표로도 둔다.
+- 색만으로 값을 전하지 않는다. 바탕과 대비가 낮은 색이 있어서 숫자와 이름을 언제나 함께 보인다.
+- 내 몬스터가 없으면 분포와 추이 대신 "아직 몬스터가 없어요"와 글쓰기를 보인다(US4-AC4). 함께 물리친 수는 남의 글에서 생기므로 그때도 보인다.
+
+### 쿼리 키
+
+`["my", "emotion-stats"]`, `["my", "posts"]`, `["my", "comments"]`, `["my", "liked-posts"]`. 공감, 댓글, 글 삭제는 다른 화면에서 일어나므로 그 뮤테이션들이 이 키를 무효화하지 않는다. 대신 네 쿼리 모두 `refetchOnMount: "always"`라 마이페이지나 탭을 열 때마다 서버 값으로 맞춘다. 고른 탭만 그리므로 목록도 그 탭을 열 때만 받는다.
+
+### 빈 상태
+
+탭에 항목이 없으면 안내와 "글쓰기"(`/write`), "피드 보기"(`/home`) 링크를 보인다(US3-AC4).
 
 ## Recent-practice choices worth calling out
 

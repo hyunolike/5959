@@ -6,3 +6,4 @@ export { appearance } from "./model/appearance";
 export type { MonsterAppearance } from "./model/appearance";
 export { monsterLabel, spritePath, STAGE_LABELS } from "./model/sprite";
 export { MonsterDisplay } from "./ui/monster-view";
+export { MonsterSprite } from "./ui/monster-sprite";

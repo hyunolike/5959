@@ -4,22 +4,21 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 
-import { CAREER_YEAR_LABELS, JOB_ROLE_LABELS } from "@/entities/member";
+import {
+  CAREER_YEAR_LABELS,
+  JOB_ROLE_LABELS,
+  NICKNAME_REASON_LABEL,
+  useNicknameCheck,
+} from "@/entities/member";
 import { ApiError } from "@/shared/api";
 import { cn, sanitizeNextPath } from "@/shared/lib";
 import { Button, Input, Label } from "@/shared/ui";
 
-import { useNicknameCheck } from "../api/use-nickname-check";
 import { useOnboardingMutation } from "../api/use-onboarding-mutation";
 import { onboardingSchema, type OnboardingFormValues } from "../model/schema";
 
 const GENERIC_ERROR_MESSAGE =
   "온보딩을 완료하지 못했습니다. 잠시 후 다시 시도해주세요.";
-
-const NICKNAME_REASON_LABEL: Record<"INVALID_FORMAT" | "TAKEN", string> = {
-  INVALID_FORMAT: "한글, 영문, 숫자로 1~10자를 입력하세요.",
-  TAKEN: "이미 사용 중인 닉네임입니다.",
-};
 
 const SELECT_CLASS_NAME =
   "h-10 w-full rounded-md border border-neutral-300 bg-white px-3 text-sm text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50";
@@ -76,11 +75,14 @@ export function OnboardingForm({ next }: OnboardingFormProps) {
       const member = await onboardingMutation.mutateAsync(values);
       if (member) {
         router.push(destination);
+        // 온보딩 쿠키가 생겼다. 루트 레이아웃을 새로 받아 알림 종을 그린다.
+        router.refresh();
       }
     } catch (error) {
       if (error instanceof ApiError) {
         if (error.code === "ALREADY_ONBOARDED") {
           router.push(destination);
+          router.refresh();
           return;
         }
         if (error.code === "NICKNAME_TAKEN" || error.status === 400) {

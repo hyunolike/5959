@@ -32,6 +32,6 @@ class MonsterAttacks(
         val logId = hpLogRepository.insertIfAbsent(log) ?: return
         val change = monsterRepository.decrementHp(monsterId, log.hpDelta, now)
         hpLogRepository.recordHp(logId, change)
-        if (change.defeatedNow) events.publishEvent(MonsterDefeated(postId, monsterId))
+        if (change.defeatedNow) events.publishEvent(MonsterDefeated(postId, monsterId, retroactive))
     }
 }

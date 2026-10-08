@@ -242,6 +242,57 @@ describe("전용 라우트만 다뤄야 하는 경로는 404로 막는다(FR-012
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["POST", ["notifications", "stream-tickets"]],
+    ["GET", ["notifications", "stream-tickets"]],
+    ["POST", ["Notifications", "Stream-Tickets"]],
+  ] as const)(
+    "US1-AC8 %s /api/%j는 404로 막는다(티켓은 전용 라우트에서만 나간다)",
+    async (method, segments) => {
+      const fetchMock = vi.fn();
+      vi.stubGlobal("fetch", fetchMock);
+
+      const request = new NextRequest(
+        `http://localhost:3000/api/${segments.join("/")}`,
+        { method, headers: { origin: "http://localhost:3000" } },
+      );
+      const handler = method === "POST" ? POST : GET;
+      const response = await handler(request, params([...segments]));
+
+      expect(response.status).toBe(404);
+      await expect(response.json()).resolves.toMatchObject({
+        success: false,
+        error: { code: "NOT_FOUND" },
+      });
+      expect(fetchMock).not.toHaveBeenCalled();
+    },
+  );
+
+  it("알림의 다른 경로(unread-count)는 막지 않고 전달한다", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({
+        success: true,
+        data: { count: 0, latestSeq: 0 },
+        error: null,
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const request = new NextRequest(
+      "http://localhost:3000/api/notifications/unread-count",
+    );
+    const response = await GET(
+      request,
+      params(["notifications", "unread-count"]),
+    );
+
+    expect(response.status).toBe(200);
+    const [url] = fetchMock.mock.calls[0] as [string];
+    expect(url).toBe(
+      "http://api.internal:8080/api/v1/notifications/unread-count",
+    );
+  });
+
   it("대소문자를 바꿔도(GET /api/Auth/login) 404로 막는다", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);

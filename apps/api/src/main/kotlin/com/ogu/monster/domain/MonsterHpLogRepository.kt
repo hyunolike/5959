@@ -63,4 +63,35 @@ class MonsterHpLogRepository(
             .param("memberId", memberId)
             .query(Boolean::class.java)
             .single()
+
+    /**
+     * HP를 실제로 줄인 회원(004 research R9). 한 회원의 기록이 여럿이어도 한 번이고, 처치 뒤 응원
+     * (`hp_before = hp_after = 0`)은 빠진다. 유일 키 `(monster_id, member_id, action, target_id)`의 앞부분으로 찾는다.
+     */
+    fun damagerIds(monsterId: Long): Set<Long> =
+        jdbcClient
+            .sql("select distinct member_id from monster_hp_log where monster_id = :monsterId and hp_after < hp_before")
+            .param("monsterId", monsterId)
+            .query(Long::class.java)
+            .list()
+            .filterNotNull()
+            .toSet()
+
+    /**
+     * [memberId]가 HP를 실제로 줄인 처치된 몬스터의 글 ID(004 research R12). 조건은 [damagerIds]와 같고, 인덱스
+     * monster_hp_log_member_monster_idx로 찾는다.
+     */
+    fun defeatedPostIds(memberId: Long): Set<Long> =
+        jdbcClient
+            .sql(
+                """
+                select distinct m.post_id
+                from monster_hp_log l join monsters m on m.id = l.monster_id
+                where l.member_id = :memberId and l.hp_after < l.hp_before and m.status = 'DEFEATED'
+                """.trimIndent(),
+            ).param("memberId", memberId)
+            .query(Long::class.java)
+            .list()
+            .filterNotNull()
+            .toSet()
 }

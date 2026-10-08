@@ -11,6 +11,7 @@
  * - `Authorization`, `X-Ogu-Bff-Key` 헤더
  * - `password` 필드(객체든, JSON 문자열이든, 몇 겹 중첩되어 있든)
  * - OAuth 콜백 URL의 `code`, `state` 쿼리 파라미터
+ * - 실시간 알림 스트림 주소의 일회용 `ticket` 쿼리 파라미터
  * - `event.user` 전체(SDK의 `dataCollection.userInfo` 기본값이 `true`라
  *   `event.user.ip_address` 등이 자동으로 채워질 수 있다 — Sentry.init
  *   쪽에서 `userInfo: false`로 막아도, 이중 방어로 여기서도 지운다)
@@ -40,7 +41,7 @@ const SENSITIVE_KEYS = new Set([
 ]);
 
 /** URL에서 지우는 쿼리 파라미터. OAuth 콜백의 인가 코드/상태값. */
-const STRIPPED_QUERY_PARAMS = ["code", "state"];
+const STRIPPED_QUERY_PARAMS = ["code", "state", "ticket"];
 
 export type ScrubbableQueryString =
   string | Record<string, string> | Array<[string, string]>;

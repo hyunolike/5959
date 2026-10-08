@@ -1,4 +1,6 @@
 {$API_DOMAIN} {
-	encode zstd gzip
+	# 실시간 알림 스트림(SSE)은 압축하면 버퍼에 쌓여 늦게 가므로 압축에서 뺀다(004 quickstart 운영 준비 4)
+	@compressible not path /api/v1/notifications/stream
+	encode @compressible zstd gzip
 	reverse_proxy api:8080
 }

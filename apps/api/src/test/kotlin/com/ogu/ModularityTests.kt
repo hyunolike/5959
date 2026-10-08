@@ -40,6 +40,20 @@ class ModularityTests {
     }
 
     @Test
+    fun `notification 모듈은 emotion 모듈을 모른다`() {
+        val notification = modules.getModuleByName("notification").getOrNull()
+        assertThat(notification).isNotNull()
+
+        val dependencies =
+            notification!!
+                .getDirectDependencies(modules)
+                .uniqueModules()
+                .map { it.identifier.toString() }
+                .toList()
+        assertThat(dependencies).doesNotContain("emotion")
+    }
+
+    @Test
     fun `모듈 구조 문서를 생성한다`() {
         // build/spring-modulith-docs 아래에 C4/PlantUML 다이어그램과 모듈 캔버스 생성
         Documenter(modules).writeDocumentation()
@@ -49,7 +63,8 @@ class ModularityTests {
         private const val SHARED = "shared"
 
         /**
-         * 모듈별로 의존해도 되는 다른 모듈(plan.md Constitution Check, overview 5.1). `shared`는 모두가 쓸 수 있다.
+         * 모듈별로 의존해도 되는 다른 모듈(plan.md Constitution Check, overview 5.1, 004 data-model.md "모듈 의존 그래프").
+         * `shared`는 모두가 쓸 수 있다.
          * 이벤트 구독도 발행 모듈의 이벤트 타입에 의존하므로 같은 방향이어야 한다.
          */
         private val ALLOWED_DEPENDENCIES =
@@ -61,6 +76,8 @@ class ModularityTests {
                 "emotion" to setOf("post", "ai"),
                 "monster" to setOf("post", "emotion"),
                 "feed" to setOf("post", "monster", "emotion", "member"),
+                // 004: 행동한 회원 닉네임과 연결 표 때문에 member를 더한다. 몬스터 생성은 MonsterSpawned로 받아 emotion을 모른다
+                "notification" to setOf("post", "monster", "member"),
             )
     }
 }
