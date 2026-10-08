@@ -233,7 +233,7 @@
 - **연결 절차**: BFF에서 티켓을 받고 `EventSource`를 연다. `error`가 오면 바로 닫고, 1초, 2초, 4초... 최대 30초에 ±20% 흔들기를 더해 기다린 뒤 새 티켓으로 다시 연다. 열리면 시도 횟수를 0으로 되돌린다. 티켓 발급이 401(세션 끝)이면 `stopped`로 두고 다시 시도하지 않는다. 탭이 다시 보이거나(`visibilitychange`) 네트워크가 돌아오면(`online`) 기다리지 않고 바로 붙는다. 서버가 15분마다 닫는 것도 같은 경로로 다시 붙는다. 구현하며 세 가지를 더했다(Batch 5 리뷰). 시도 횟수는 20초 동안 열려 있어야 0으로 되돌린다(탭이 6개 이상일 때 서로 밀어내는 것을 막는다). 서버가 25초마다 보내는 `ping` 이벤트를 비롯해 60초 동안 이벤트가 없거나, 탭이 30초 넘게 가려졌거나 오프라인이었다 돌아오면 열린 연결도 닫고 다시 붙는다. `stopped`에서는 탭이 보이거나 초점을 받을 때 한 번만 붙어 본다.
 - **어디서 여는가**: `app/layout.tsx`(서버 컴포넌트)가 `ogu_ob` 쿠키가 있을 때만 `widgets/notification-bell`을 렌더링하고, 이 위젯이 연결을 연다. 로그아웃 성공 때 스토어가 연결을 닫는다.
 - **캐시 반영**: `notification` 이벤트를 받으면 TanStack Query의 알림 목록 첫 쪽에서 같은 ID를 지우고 맨 앞에 넣고, 안 읽은 수 캐시를 `unreadCount`로 바꾼다. `unread-count` 이벤트는 배지만 바꾼다. 다시 연결하면 안 읽은 수를 새로 받는다.
-- **토스트**: 화면 오른쪽 아래에 4초 동안 보인다. 알림 페이지를 보고 있으면 띄우지 않는다. `shared/ui/toast`를 직접 만든다(의존성을 늘리지 않는다).
+- **토스트**: 화면 오른쪽 아래에 4초 동안 보인다. 알림 페이지를 보고 있으면 띄우지 않는다. 토스트를 누르면 목록에서 누른 것과 같이 그 알림을 읽음으로 바꾸고 글 상세로 간다(Batch 7). `shared/ui/toast`를 직접 만든다(의존성을 늘리지 않는다).
 - **화면**: `/notifications`(목록, 모두 읽음, 무한 스크롤), `/my`(프로필과 감정 통계, 탭 `?tab=posts|comments|likes`), `/my/edit`(프로필 수정). `route-guard.ts`의 보호 경로에 `/notifications`를 더한다(FR-014).
 - **슬라이스**: `entities/notification`(타입, 목록과 안 읽은 수 쿼리, 알림 문구 함수, 항목 UI), `entities/emotion-stats`(쿼리, 통계 UI), `features/notification-stream`, `features/read-notification`, `features/edit-profile`, `widgets/notification-bell`, `widgets/notification-list`, `widgets/my-activity`(세 탭), `widgets/emotion-stats-panel`.
 - **삭제된 글**: 목록 항목의 `post`가 `null`이면 "삭제된 글"로 보이고, 누르면 이동하지 않고 안내를 띄운다. 이미 연 상세가 `404 POST_NOT_FOUND`를 받아도 같은 안내를 쓴다(US2-AC5).
