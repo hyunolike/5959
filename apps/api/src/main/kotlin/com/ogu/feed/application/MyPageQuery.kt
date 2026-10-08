@@ -2,7 +2,7 @@ package com.ogu.feed.application
 
 import com.ogu.feed.presentation.dto.FeedPageResponse
 import com.ogu.post.MyCommentPage
-import com.ogu.post.PostApi
+import com.ogu.post.PostActivityApi
 import org.springframework.stereotype.Service
 
 /**
@@ -11,24 +11,24 @@ import org.springframework.stereotype.Service
  */
 @Service
 class MyPageQuery(
-    private val postApi: PostApi,
+    private val postActivityApi: PostActivityApi,
     private val feedAssembler: FeedAssembler,
 ) {
     fun posts(
         memberId: Long,
         cursor: String?,
         size: Int,
-    ): FeedPageResponse = feedAssembler.assemble(postApi.pageByAuthor(memberId, cursor, size))
+    ): FeedPageResponse = feedAssembler.assemble(postActivityApi.pageByAuthor(memberId, cursor, size))
 
     fun comments(
         memberId: Long,
         cursor: String?,
         size: Int,
-    ): MyCommentPage = postApi.pageCommentsByAuthor(memberId, cursor, size)
+    ): MyCommentPage = postActivityApi.pageCommentsByAuthor(memberId, cursor, size)
 
     fun likedPosts(
         memberId: Long,
         cursor: String?,
         size: Int,
-    ): FeedPageResponse = feedAssembler.assemble(postApi.pageLikedBy(memberId, cursor, size))
+    ): FeedPageResponse = feedAssembler.assemble(postActivityApi.pageLikedBy(memberId, cursor, size))
 }

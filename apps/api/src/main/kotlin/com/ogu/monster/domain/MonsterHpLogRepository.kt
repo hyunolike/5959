@@ -76,4 +76,22 @@ class MonsterHpLogRepository(
             .list()
             .filterNotNull()
             .toSet()
+
+    /**
+     * [memberId]가 HP를 실제로 줄인 처치된 몬스터의 글 ID(004 research R12). 조건은 [damagerIds]와 같고, 인덱스
+     * monster_hp_log_member_monster_idx로 찾는다.
+     */
+    fun defeatedPostIds(memberId: Long): Set<Long> =
+        jdbcClient
+            .sql(
+                """
+                select distinct m.post_id
+                from monster_hp_log l join monsters m on m.id = l.monster_id
+                where l.member_id = :memberId and l.hp_after < l.hp_before and m.status = 'DEFEATED'
+                """.trimIndent(),
+            ).param("memberId", memberId)
+            .query(Long::class.java)
+            .list()
+            .filterNotNull()
+            .toSet()
 }

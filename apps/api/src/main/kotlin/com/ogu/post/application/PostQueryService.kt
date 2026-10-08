@@ -3,7 +3,6 @@ package com.ogu.post.application
 import com.ogu.post.Attack
 import com.ogu.post.AttackAction
 import com.ogu.post.CommentSummary
-import com.ogu.post.MyCommentPage
 import com.ogu.post.PostApi
 import com.ogu.post.PostPage
 import com.ogu.post.PostPageQuery
@@ -22,9 +21,6 @@ class PostQueryService(
     private val postRepository: PostRepository,
     private val jdbcClient: JdbcClient,
     private val postPageReader: PostPageReader,
-    private val myPostsReader: MyPostsReader,
-    private val myCommentsReader: MyCommentsReader,
-    private val likedPostsReader: LikedPostsReader,
 ) : PostApi {
     override fun find(postId: Long): PostSummary? = postRepository.findByIdAndDeletedAtIsNull(postId)?.toSummary()
 
@@ -85,24 +81,6 @@ class PostQueryService(
             }.list()
             .associateBy { it.postId }
     }
-
-    override fun pageByAuthor(
-        authorId: Long,
-        cursor: String?,
-        size: Int,
-    ): PostPage = myPostsReader.read(authorId, cursor, size)
-
-    override fun pageCommentsByAuthor(
-        authorId: Long,
-        cursor: String?,
-        size: Int,
-    ): MyCommentPage = myCommentsReader.read(authorId, cursor, size)
-
-    override fun pageLikedBy(
-        memberId: Long,
-        cursor: String?,
-        size: Int,
-    ): PostPage = likedPostsReader.read(memberId, cursor, size)
 
     private fun Post.toSummary(): PostSummary =
         PostSummary(
