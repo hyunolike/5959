@@ -3,6 +3,7 @@ package com.ogu.post.application
 import com.ogu.post.Attack
 import com.ogu.post.AttackAction
 import com.ogu.post.CommentSummary
+import com.ogu.post.MyCommentPage
 import com.ogu.post.PostApi
 import com.ogu.post.PostPage
 import com.ogu.post.PostPageQuery
@@ -21,6 +22,9 @@ class PostQueryService(
     private val postRepository: PostRepository,
     private val jdbcClient: JdbcClient,
     private val postPageReader: PostPageReader,
+    private val myPostsReader: MyPostsReader,
+    private val myCommentsReader: MyCommentsReader,
+    private val likedPostsReader: LikedPostsReader,
 ) : PostApi {
     override fun find(postId: Long): PostSummary? = postRepository.findByIdAndDeletedAtIsNull(postId)?.toSummary()
 
@@ -75,12 +79,30 @@ class PostQueryService(
             .query { rs, _ ->
                 PostPreview(
                     postId = rs.getLong("id"),
-                    contentPreview = Grapheme.take(rs.getString("content"), PREVIEW_LENGTH),
+                    contentPreview = Grapheme.take(rs.getString("content"), POST_PREVIEW_LENGTH),
                     deleted = rs.getBoolean("deleted"),
                 )
             }.list()
             .associateBy { it.postId }
     }
+
+    override fun pageByAuthor(
+        authorId: Long,
+        cursor: String?,
+        size: Int,
+    ): PostPage = myPostsReader.read(authorId, cursor, size)
+
+    override fun pageCommentsByAuthor(
+        authorId: Long,
+        cursor: String?,
+        size: Int,
+    ): MyCommentPage = myCommentsReader.read(authorId, cursor, size)
+
+    override fun pageLikedBy(
+        memberId: Long,
+        cursor: String?,
+        size: Int,
+    ): PostPage = likedPostsReader.read(memberId, cursor, size)
 
     private fun Post.toSummary(): PostSummary =
         PostSummary(
@@ -96,9 +118,6 @@ class PostQueryService(
         )
 
     private companion object {
-        /** 알림 미리보기 글자 수(사람이 보는 글자 단위). */
-        const val PREVIEW_LENGTH = 50
-
         /** 살아 있는 글의 살아 있는 댓글. 답글이면 원 댓글 주인도 함께 읽는다(원 댓글을 지우면 답글도 함께 지워진다). */
         val FIND_COMMENT =
             """
