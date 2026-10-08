@@ -45,7 +45,7 @@ description: "Task list for 005-safety (위험 감지와 안전장치)"
 - [x] T008 [P] apps/api/src/main/kotlin/com/ogu/shared/text/ContentMask.kt: 인터페이스 `mask(text: String): String`와 아무것도 가리지 않는 기본 구현(`@ConditionalOnMissingBean`). 단위 테스트
 - [x] T009 [P] `safety` 모듈 뼈대: apps/api/src/main/java/com/ogu/safety/package-info.java(`allowedDependencies = {"shared", "post", "ai", "member"}`), `notification`의 `allowedDependencies`에 `safety`를 더한다. 루트 타입 `RiskLevel`(NONE < CONCERN < CRISIS, `max`), `TargetType`, 이벤트 `RiskDetected`, `ContentRestored`, `ReviewResolved`. `ErrorCode`에 `ALREADY_REPORTED`(409), `CANNOT_REPORT_OWN_CONTENT`(403), `REPORT_RATE_LIMITED`(429), `REVIEW_ALREADY_REQUESTED`(409). `ModularityTests` 통과 **구현 메모**: `TargetType`은 만들지 않았다(T007).
 - [x] T010 [P] `member`: `Member.role`(`MemberRole` MEMBER, OPERATOR)과 `MemberApi.isOperator(memberId)`. 테스트: 기본은 false, DB에서 OPERATOR로 바꾸면 true
-- [ ] T011 [P] `safety` 도메인: apps/api/src/main/kotlin/com/ogu/safety/domain/(RiskAssessment, Report, ReviewRequest, ModerationAction, SafetyTerm, SupportResource와 리포지토리) **구현 메모**: 테이블마다 그 테이블을 쓰는 스토리에서 JdbcClient 저장소로 만든다(JPA 엔티티를 두지 않는다).
+- [x] T011 [P] `safety` 도메인: apps/api/src/main/kotlin/com/ogu/safety/domain/(RiskAssessment, Report, ReviewRequest, ModerationAction, SafetyTerm, SupportResource와 리포지토리) **구현 메모**: 테이블마다 그 테이블을 쓰는 스토리에서 JdbcClient 저장소로 만든다(JPA 엔티티를 두지 않는다).
 
 **Checkpoint**: 스키마, 조회 조건, 파사드, 이벤트, 모듈 경계 준비 완료. 기존 테스트 통과
 
@@ -156,14 +156,14 @@ description: "Task list for 005-safety (위험 감지와 안전장치)"
 
 ### Tests for User Story 5 ⚠️
 
-- [ ] T045 [P] [US5] apps/api/src/test/kotlin/com/ogu/safety/application/ProfanityMaskTest.kt(표 형식): `US5-AC1 욕설을 글자 수만큼 *로`, `US5-AC2 사이에 낀 공백과 기호까지 가린다`, `US5-AC3 허용 목록의 낱말 안에 든 욕설은 가리지 않는다`, 여러 번 나오면 모두, 겹치는 낱말은 긴 것 먼저, 결합 이모지 옆에서도 위치가 어긋나지 않는다, 욕설이 없으면 같은 문자열 객체를 돌려준다
-- [ ] T046 [P] [US5] apps/api/src/test/kotlin/com/ogu/safety/MaskingApiTests.kt: `US5-AC1 피드 미리보기, 글 상세, 댓글, 내 댓글의 글 앞부분, 알림의 글 앞부분에서 가려진다`, 미리보기는 가린 뒤에 자른다(경계에 걸친 욕설), `US5-AC4 감정 분석과 위험 감지는 원문으로 한다`(욕설과 위기 표현이 함께 든 글), `US5-AC5 작성자에게는 원문`, `US5-AC6 낱말을 더하면 예전 글도 가려지고 빼면 다시 보인다`(캐시 갱신을 테스트에서 직접 부른다), DB의 본문은 바뀌지 않는다
-- [ ] T047 [US5] apps/web/e2e-full/safety.spec.ts에 더한다: `US5-AC1`, `US5-AC5`
+- [x] T045 [P] [US5] apps/api/src/test/kotlin/com/ogu/safety/application/ProfanityMaskTest.kt(표 형식): `US5-AC1 욕설을 글자 수만큼 *로`, `US5-AC2 사이에 낀 공백과 기호까지 가린다`, `US5-AC3 허용 목록의 낱말 안에 든 욕설은 가리지 않는다`, 여러 번 나오면 모두, 겹치는 낱말은 긴 것 먼저, 결합 이모지 옆에서도 위치가 어긋나지 않는다, 욕설이 없으면 같은 문자열 객체를 돌려준다 **구현 메모**: 겹치는 낱말은 긴 것을 먼저 고르지 않고 걸린 구간을 모두 합쳐 가린다. 결과가 같고 더 단순하다. 같은 글자를 늘여 쓴 꼬리("시발발발")는 가리지 않는다. 꼬리까지 가리면 뒤따르는 보통 낱말을 먹는다("병신 신나요").
+- [x] T046 [P] [US5] apps/api/src/test/kotlin/com/ogu/safety/MaskingApiTests.kt: `US5-AC1 피드 미리보기, 글 상세, 댓글, 내 댓글의 글 앞부분, 알림의 글 앞부분에서 가려진다`, 미리보기는 가린 뒤에 자른다(경계에 걸친 욕설), `US5-AC4 감정 분석과 위험 감지는 원문으로 한다`(욕설과 위기 표현이 함께 든 글), `US5-AC5 작성자에게는 원문`, `US5-AC6 낱말을 더하면 예전 글도 가려지고 빼면 다시 보인다`(캐시 갱신을 테스트에서 직접 부른다), DB의 본문은 바뀌지 않는다
+- [x] T047 [US5] apps/web/e2e-full/safety.spec.ts에 더한다: `US5-AC1`, `US5-AC5`
 
 ### Implementation for User Story 5
 
-- [ ] T048 [US5] `safety` application/ProfanityMask(`ContentMask` 구현, TermCache의 욕설과 허용 목록, TextNormalizer의 위치 대응표)
-- [ ] T049 [US5] 응답에 적용: `feed`(피드와 내 활동의 미리보기, 글 상세 본문), `post`(댓글 목록과 내 댓글의 본문, 글 앞부분), `notification`(미리보기). 보는 사람이 작성자면 건너뛴다. 미리보기는 가린 뒤 자른다
+- [x] T048 [US5] `safety` application/ProfanityMask(`ContentMask` 구현, TermCache의 욕설과 허용 목록, TextNormalizer의 위치 대응표) **구현 메모**: 허용 낱말은 원문에서 끊기지 않고 이어져 있을 때만 욕설을 지켜 준다. "시발 점심"은 다듬으면 "시발점"이 들어 있지만 띄어 쓴 두 말이라 가린다.
+- [x] T049 [US5] 응답에 적용: `feed`(피드와 내 활동의 미리보기, 글 상세 본문), `post`(댓글 목록과 내 댓글의 본문, 글 앞부분), `notification`(미리보기). 보는 사람이 작성자면 건너뛴다. 미리보기는 가린 뒤 자른다 **구현 메모**: 댓글 목록은 `CommentService`가 아니라 `CommentController`가 응답을 내보내기 직전에 가린다(`CommentResponse.masked`). 알림의 글 앞부분은 `PostApi.previews`가 받는 사람을 알고 있어 `post`에서 가린다. `notification`은 고치지 않았다.
 
 **Checkpoint**: 다섯 스토리가 모두 동작한다
 
