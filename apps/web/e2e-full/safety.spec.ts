@@ -264,3 +264,72 @@ test("US1-AC6 홈을 열어 둔 채 내 글이 위기로 판정되면 새로고�
 
   await closeAll(author);
 });
+
+test("US2-AC1 AI 분류가 실패해도 위기 표현이 든 글은 숨겨지고 작성자는 도움 안내를 본다", async ({
+  browser,
+}) => {
+  const author = await newMember(browser, "a");
+  const other = await newMember(browser, "b");
+  const marker = `분류 실패 글 ${Date.now()}`;
+  // 가짜 분류기가 이 글에는 계속 실패한다. 키워드 규칙만으로 판정된다.
+  const postId = await writePost(
+    author,
+    `[실패] [위험분류실패] ${CRISIS_TEXT} ${marker}`,
+  );
+
+  await author.page.goto(`/post/${postId}`);
+
+  await expect(notice(author.page)).toContainText(
+    "이 글은 다른 회원에게 보이지 않아요.",
+  );
+  await expect(
+    notice(author.page).getByRole("link", { name: "109" }),
+  ).toBeVisible();
+
+  await other.page.goto("/home");
+  await waitForHomeLoaded(other.page);
+
+  await expect(feed(other.page)).not.toContainText(marker);
+
+  await closeAll(author, other);
+});
+
+test("US2-AC3 AI 분류가 실패해도 글은 오류 없이 올라가고 그대로 보인다", async ({
+  browser,
+}) => {
+  const author = await newMember(browser, "a");
+  const marker = `분류가 늦는 글 ${Date.now()}`;
+
+  await writePostOnScreen(author, `[위험분류실패:2] ${marker}`);
+
+  await expect(author.page.getByText(marker)).toBeVisible();
+  await expect(author.page.getByRole("main").getByRole("alert")).toHaveCount(0);
+  await expect(notice(author.page)).toHaveCount(0);
+
+  await closeAll(author);
+});
+
+test("AI만 위기로 알아본 글은 분류가 끝나면 숨겨지고 작성자에게 도움 안내 토스트가 온다", async ({
+  browser,
+}) => {
+  const author = await newMember(browser, "a");
+  const other = await newMember(browser, "b");
+  const bell = author.page.getByRole("link", { name: /^알림/ });
+  await expect(bell).toHaveAttribute("data-stream-status", "open");
+  const marker = `목록에 없는 표현 ${Date.now()}`;
+
+  // 키워드 목록에는 없지만 가짜 분류기가 위기로 답한다
+  const postId = await writePost(author, `[실패] [위기] ${marker}`);
+
+  await expect(
+    author.page
+      .getByRole("region", { name: "새 알림" })
+      .getByRole("button", { name: /마음이 많이 힘드신가요/ }),
+  ).toBeVisible({ timeout: 15_000 });
+
+  await other.page.goto(`/post/${postId}`);
+
+  await expect(other.page.getByText("삭제된 글이에요.")).toBeVisible();
+
+  await closeAll(author, other);
+});
