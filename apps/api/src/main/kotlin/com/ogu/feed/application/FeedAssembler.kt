@@ -6,6 +6,8 @@ import com.ogu.feed.presentation.dto.FeedPageResponse
 import com.ogu.member.MemberApi
 import com.ogu.monster.MonsterApi
 import com.ogu.post.PostPage
+import com.ogu.shared.text.ContentMask
+import com.ogu.shared.text.maskFor
 import org.springframework.stereotype.Component
 
 /**
@@ -17,8 +19,13 @@ class FeedAssembler(
     private val emotionApi: EmotionApi,
     private val monsterApi: MonsterApi,
     private val memberApi: MemberApi,
+    private val contentMask: ContentMask,
 ) {
-    fun assemble(page: PostPage): FeedPageResponse {
+    /** 다른 회원의 글은 욕설을 가린 뒤 미리보기로 자른다. 잘린 욕설이 남지 않는다(005 US5-AC1, AC5). */
+    fun assemble(
+        page: PostPage,
+        viewerId: Long,
+    ): FeedPageResponse {
         val postIds = page.items.map { it.post.postId }
         val monsters = monsterApi.findByPostIds(postIds)
         val emotions = emotionApi.findByPostIds(postIds)
@@ -28,7 +35,7 @@ class FeedAssembler(
                 FeedItemResponse(
                     postId = post.postId,
                     author = post.author(members),
-                    contentPreview = previewOf(post.content),
+                    contentPreview = previewOf(contentMask.maskFor(viewerId, post.authorId, post.content)),
                     analysisStatus = emotions[post.postId].analysisStatus(),
                     monster = monsters[post.postId],
                     likeCount = post.likeCount,

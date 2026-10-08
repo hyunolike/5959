@@ -6,9 +6,11 @@ import com.ogu.post.presentation.dto.CommentPageResponse
 import com.ogu.post.presentation.dto.CommentResponse
 import com.ogu.post.presentation.dto.CommentUpdateRequest
 import com.ogu.post.presentation.dto.CommentWriteRequest
+import com.ogu.post.presentation.dto.masked
 import com.ogu.shared.error.BusinessException
 import com.ogu.shared.error.ErrorCode
 import com.ogu.shared.response.ApiResponse
+import com.ogu.shared.text.ContentMask
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -30,6 +32,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse as DocResponse
 @SecurityRequirement(name = "bearer")
 class CommentController(
     private val commentService: CommentService,
+    private val contentMask: ContentMask,
 ) {
     @Operation(
         operationId = "getComments",
@@ -47,7 +50,10 @@ class CommentController(
         member: AuthenticatedMember,
         @PathVariable postId: Long,
         @RequestParam(required = false) cursor: String?,
-    ): ApiResponse<CommentPageResponse> = ApiResponse.success(commentService.list(postId, member.memberId, cursor))
+    ): ApiResponse<CommentPageResponse> {
+        val page = commentService.list(postId, member.memberId, cursor)
+        return ApiResponse.success(page.copy(items = page.items.map { it.masked(contentMask) }))
+    }
 
     @Operation(
         operationId = "createComment",

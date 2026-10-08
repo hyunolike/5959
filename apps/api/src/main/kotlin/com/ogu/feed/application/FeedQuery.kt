@@ -14,5 +14,5 @@ class FeedQuery(
     private val postApi: PostApi,
     private val feedAssembler: FeedAssembler,
 ) {
-    fun get(query: PostPageQuery): FeedPageResponse = feedAssembler.assemble(postApi.page(query))
+    fun get(query: PostPageQuery): FeedPageResponse = feedAssembler.assemble(postApi.page(query), query.viewerId)
 }

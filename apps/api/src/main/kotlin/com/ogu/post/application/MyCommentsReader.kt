@@ -3,7 +3,9 @@ package com.ogu.post.application
 import com.ogu.post.MyComment
 import com.ogu.post.MyCommentPage
 import com.ogu.post.domain.Visibility
+import com.ogu.shared.text.ContentMask
 import com.ogu.shared.text.Grapheme
+import com.ogu.shared.text.maskFor
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Component
 
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Component
 @Component
 class MyCommentsReader(
     private val jdbcClient: JdbcClient,
+    private val contentMask: ContentMask,
 ) {
     fun read(
         authorId: Long,
@@ -28,7 +31,7 @@ class MyCommentsReader(
                 .sql(
                     """
                     select c.id, c.post_id, c.content, c.parent_id is not null as is_reply, c.created_at,
-                           p.content as post_content
+                           p.content as post_content, p.author_id as post_author_id
                     from comments c
                         join posts p on p.id = c.post_id and ${Visibility.ownedOrVisible("p", "authorId")}
                     where c.author_id = :authorId and ${Visibility.notDeleted("c")}
@@ -43,7 +46,8 @@ class MyCommentsReader(
                     MyComment(
                         commentId = rs.getLong("id"),
                         postId = rs.getLong("post_id"),
-                        postContentPreview = Grapheme.take(rs.getString("post_content"), POST_PREVIEW_LENGTH),
+                        postContentPreview =
+                            postPreview(authorId, rs.getLong("post_author_id"), rs.getString("post_content")),
                         content = rs.getString("content"),
                         isReply = rs.getBoolean("is_reply"),
                         createdAt = rs.getTimestamp("created_at").toInstant(),
@@ -54,4 +58,11 @@ class MyCommentsReader(
         val nextCursor = if (rows.size > size) CommentCursor.encode(items.last().commentId) else null
         return MyCommentPage(items, nextCursor)
     }
+
+    /** 내 댓글은 원문 그대로이고, 다른 회원의 글 앞부분은 욕설을 가린 뒤 자른다(005 US5-AC1, AC5). */
+    private fun postPreview(
+        viewerId: Long,
+        postAuthorId: Long,
+        content: String,
+    ): String = Grapheme.take(contentMask.maskFor(viewerId, postAuthorId, content), POST_PREVIEW_LENGTH)
 }

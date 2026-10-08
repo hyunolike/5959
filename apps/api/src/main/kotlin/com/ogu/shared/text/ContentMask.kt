@@ -13,6 +13,13 @@ fun interface ContentMask {
     fun mask(text: String): String
 }
 
+/** 보는 사람이 작성자면 원문을, 아니면 가린 글을 준다(005 US5-AC5). */
+fun ContentMask.maskFor(
+    viewerId: Long,
+    authorId: Long,
+    text: String,
+): String = if (viewerId == authorId) text else mask(text)
+
 /** safety 모듈 없이 띄운 컨텍스트(모듈 테스트)에서는 아무것도 가리지 않는다. */
 @Configuration(proxyBeanMethods = false)
 class ContentMaskConfig {

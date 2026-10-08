@@ -11,7 +11,9 @@ import com.ogu.post.PostSummary
 import com.ogu.post.domain.Post
 import com.ogu.post.domain.PostRepository
 import com.ogu.post.domain.Visibility
+import com.ogu.shared.text.ContentMask
 import com.ogu.shared.text.Grapheme
+import com.ogu.shared.text.maskFor
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -22,6 +24,7 @@ class PostQueryService(
     private val postRepository: PostRepository,
     private val jdbcClient: JdbcClient,
     private val postPageReader: PostPageReader,
+    private val contentMask: ContentMask,
 ) : PostApi {
     override fun find(postId: Long): PostSummary? = postRepository.findByIdAndDeletedAtIsNull(postId)?.toSummary()
 
@@ -87,12 +90,19 @@ class PostQueryService(
             .query { rs, _ ->
                 PostPreview(
                     postId = rs.getLong("id"),
-                    contentPreview = Grapheme.take(rs.getString("content"), POST_PREVIEW_LENGTH),
+                    contentPreview = previewFor(viewerId, rs.getLong("author_id"), rs.getString("content")),
                     deleted = rs.getBoolean("deleted"),
                 )
             }.list()
             .associateBy { it.postId }
     }
+
+    /** 다른 회원의 글은 욕설을 가린 뒤 자른다(005 US5-AC1). */
+    private fun previewFor(
+        viewerId: Long,
+        authorId: Long,
+        content: String,
+    ): String = Grapheme.take(contentMask.maskFor(viewerId, authorId, content), POST_PREVIEW_LENGTH)
 
     private fun Post.toSummary(): PostSummary =
         PostSummary(
@@ -114,7 +124,7 @@ class PostQueryService(
         /** 숨긴 글은 그 글의 작성자가 보는 것이 아니면 지운 글과 같이 준다(005 research R8). */
         val PREVIEWS =
             """
-            select id, content,
+            select id, author_id, content,
                    (deleted_at is not null or (hidden_at is not null and author_id <> :viewerId)) as deleted
             from posts
             where id in (:postIds)

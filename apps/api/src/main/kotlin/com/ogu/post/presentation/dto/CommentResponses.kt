@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude
 import com.ogu.member.CareerYear
 import com.ogu.member.JobRole
 import com.ogu.post.ContentSafety
+import com.ogu.shared.text.ContentMask
 import java.time.Instant
 
 /** 댓글 작성 요청. 필드가 빠지면 null로 받아 서비스 앞에서 400으로 거절한다. [parentId]가 있으면 답글이다. */
@@ -42,6 +43,16 @@ data class CommentAuthorResponse(
     val jobRole: JobRole?,
     val careerYear: CareerYear?,
 )
+
+/**
+ * 다른 회원의 댓글과 답글에서 욕설을 가린다(005 US5-AC1). 내 댓글은 원문 그대로다(US5-AC5). 숨겨서 내용이 없는 댓글은
+ * 그대로 둔다.
+ */
+fun CommentResponse.masked(mask: ContentMask): CommentResponse =
+    copy(
+        content = if (mine) content else content?.let(mask::mask),
+        replies = replies.map { it.masked(mask) },
+    )
 
 /** 계약의 `CommentPage`. 원 댓글(오래된 순)과 각 답글. 다음 쪽이 없으면 [nextCursor]는 null이다. */
 data class CommentPageResponse(
