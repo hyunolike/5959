@@ -58,7 +58,7 @@ function Profile() {
   }
 
   return (
-    <Card className="w-full">
+    <Card className="flex w-full flex-col gap-4">
       <dl className="flex flex-col gap-4 text-sm">
         <div className="flex items-center justify-between">
           <dt className="text-neutral-500">닉네임</dt>
@@ -77,6 +77,9 @@ function Profile() {
           </dd>
         </div>
       </dl>
+      <Button asChild variant="outline" size="sm" className="self-end">
+        <Link href="/my/edit">프로필 수정</Link>
+      </Button>
     </Card>
   );
 }
