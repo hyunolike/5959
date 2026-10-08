@@ -59,6 +59,24 @@ data class NotificationDraft(
             return NotificationDraft(receiverId, type, postId, monsterId = monsterId, dedupKey = "DEFEATED:$monsterId")
         }
 
+        /**
+         * 도움 안내(005 research R7, R8). 받는 사람은 그 글이나 댓글의 작성자다. 같은 대상에 같은 단계로는 한 번만 만든다.
+         * [commentId]는 대상이 댓글일 때만 있다.
+         */
+        fun support(
+            receiverId: Long,
+            postId: Long,
+            commentId: Long?,
+            dedupKey: String,
+        ): NotificationDraft =
+            NotificationDraft(
+                receiverId,
+                NotificationType.SUPPORT_NOTICE,
+                postId,
+                commentId = commentId,
+                dedupKey = dedupKey,
+            )
+
         private val COMMENT_TYPES =
             setOf(NotificationType.POST_COMMENT, NotificationType.POST_REPLY, NotificationType.COMMENT_REPLY)
         private val DEFEATED_TYPES =

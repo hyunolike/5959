@@ -6,8 +6,10 @@ import com.ogu.monster.MonsterSpawned
 import com.ogu.notification.domain.NotificationType
 import com.ogu.post.CommentCreated
 import com.ogu.post.CommentSummary
+import com.ogu.post.ContentType
 import com.ogu.post.PostApi
 import com.ogu.post.PostLiked
+import com.ogu.safety.RiskDetected
 import org.springframework.modulith.events.ApplicationModuleListener
 import org.springframework.stereotype.Component
 
@@ -73,6 +75,17 @@ class NotificationEventListener(
                 NotificationDraft.defeated(NotificationType.MONSTER_DEFEATED, authorId, event.postId, event.monsterId),
             )
         writer.writeAll(toAuthor + together)
+    }
+
+    /**
+     * 위험 단계가 올라간 글이나 댓글의 작성자에게 도움 안내를 보낸다(005 US1-AC6). 대상이 숨겨져 있어도 작성자 자신의
+     * 것이므로 [PostApi.findVisible]로 거르지 않는다. 문구에는 단계와 글 내용을 싣지 않는다.
+     */
+    @ApplicationModuleListener
+    fun on(event: RiskDetected) {
+        val commentId = event.targetId.takeIf { event.targetType == ContentType.COMMENT }
+        val dedupKey = "RISK:${event.targetType}:${event.targetId}:${event.level}"
+        writer.writeAll(listOf(NotificationDraft.support(event.authorId, event.postId, commentId, dedupKey)))
     }
 
     private fun commentDrafts(
