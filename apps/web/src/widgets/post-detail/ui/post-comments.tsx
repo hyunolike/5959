@@ -15,6 +15,8 @@ import {
   settleAttack,
 } from "@/features/like";
 import { ReportButton } from "@/features/report-content";
+import { RequestReviewButton } from "@/features/request-review";
+import { QUERY_KEYS } from "@/shared/config";
 import { Button, Spinner } from "@/shared/ui";
 
 import { SafetyNotice, type ContentSafety } from "./safety-notice";
@@ -104,11 +106,26 @@ export function PostComments({ postId }: { postId: number }) {
                       </button>
                     )}
                     {target.mine ? (
-                      <CommentManageMenu
-                        postId={postId}
-                        comment={target}
-                        focusAfterDelete={() => sectionRef.current}
-                      />
+                      <>
+                        <CommentManageMenu
+                          postId={postId}
+                          comment={target}
+                          focusAfterDelete={() => sectionRef.current}
+                        />
+                        {/* 숨겨진 내 댓글은 다시 살펴봐 달라고 한 번 요청할 수 있다(005 US4-AC8). */}
+                        {target.hidden ? (
+                          <RequestReviewButton
+                            targetType="COMMENT"
+                            targetId={target.commentId}
+                            requested={target.safety?.reviewRequested ?? false}
+                            onRequested={() => {
+                              void queryClient.invalidateQueries({
+                                queryKey: QUERY_KEYS.comments(postId),
+                              });
+                            }}
+                          />
+                        ) : null}
+                      </>
                     ) : (
                       // 다른 회원의 댓글에만 신고를 둔다(005 US3-AC3).
                       <ReportButton

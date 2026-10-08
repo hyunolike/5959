@@ -225,6 +225,36 @@ describe("전용 라우트만 다뤄야 하는 경로는 404로 막는다(FR-012
     },
   );
 
+  it.each([
+    ["GET", ["operator", "assessments"]],
+    ["GET", ["operator", "reports"]],
+    ["GET", ["Operator", "review-requests"]],
+    ["PUT", ["operator", "contents", "POST", "7", "hidden"]],
+    ["DELETE", ["operator", "contents", "POST", "7", "hidden"]],
+    ["POST", ["operator", "terms"]],
+  ] as const)(
+    "US4-AC6 %s /api/%j는 API로 넘기지 않고 404로 막는다",
+    async (method, segments) => {
+      const fetchMock = vi.fn();
+      vi.stubGlobal("fetch", fetchMock);
+      const handlers = { GET, PUT, DELETE, POST };
+
+      const request = new NextRequest(
+        `http://localhost:3000/api/${segments.join("/")}`,
+        { method, headers: { origin: "http://localhost:3000" } },
+      );
+      const response = await handlers[method](request, params([...segments]));
+
+      expect(response.status).toBe(404);
+      await expect(response.json()).resolves.toEqual({
+        success: false,
+        data: null,
+        error: { code: "NOT_FOUND", message: expect.any(String) },
+      });
+      expect(fetchMock).not.toHaveBeenCalled();
+    },
+  );
+
   it("PUT /api/members/me/onboarding은 404로 막는다(accessToken 노출 방지)", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);

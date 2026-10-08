@@ -1149,8 +1149,11 @@ export interface components {
       targetId: number;
       /** Format: int64 */
       postId: number;
-      /** Format: int64 */
-      authorId: number;
+      /**
+       * Format: int64
+       * @description 지워진 대상의 신고에서는 null
+       */
+      authorId: number | null;
       /** @description 지워졌으면 null */
       content: string | null;
       hidden: boolean;

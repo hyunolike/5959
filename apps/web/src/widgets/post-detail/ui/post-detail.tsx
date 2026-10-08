@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 
 import { CAREER_YEAR_LABELS, JOB_ROLE_LABELS } from "@/entities/member";
@@ -13,7 +14,9 @@ import {
 import { PostLikeButton } from "@/features/like";
 import { DeletePostButton } from "@/features/manage-post";
 import { ReportButton } from "@/features/report-content";
+import { RequestReviewButton } from "@/features/request-review";
 import { ApiError } from "@/shared/api";
+import { QUERY_KEYS } from "@/shared/config";
 import { Button, Card, Spinner } from "@/shared/ui";
 
 import { PostComments } from "./post-comments";
@@ -73,11 +76,29 @@ export function PostDetail({ postId }: { postId: number }) {
 
 function PostDetailContent({ detail }: { detail: PostDetailData }) {
   const { author, monster } = detail;
+  const queryClient = useQueryClient();
 
   return (
     <article className="flex w-full max-w-xl flex-col gap-4">
       {/* 내 글이 우려나 위기로 판정됐거나 숨겨졌을 때만 보인다(005 US1). 화면 맨 위에 둔다. */}
-      <SafetyNotice safety={detail.safety} target="post" />
+      <SafetyNotice
+        safety={detail.safety}
+        target="post"
+        action={
+          // 숨겨진 내 글은 다시 살펴봐 달라고 한 번 요청할 수 있다(005 US4-AC8).
+          <RequestReviewButton
+            targetType="POST"
+            targetId={detail.postId}
+            requested={detail.safety?.reviewRequested ?? false}
+            onRequested={() => {
+              void queryClient.invalidateQueries({
+                queryKey: QUERY_KEYS.postDetail(detail.postId),
+                exact: true,
+              });
+            }}
+          />
+        }
+      />
       <Card aria-label="몬스터" className="flex flex-col gap-2">
         {monster ? (
           <MonsterDisplay
