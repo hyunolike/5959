@@ -333,3 +333,80 @@ test("AI만 위기로 알아본 글은 분류가 끝나면 숨겨지고 작성�
 
   await closeAll(author, other);
 });
+
+test("US3-AC1, US3-AC2 다른 회원의 글과 댓글을 사유와 함께 신고하고, 다시 신고하면 이미 신고했다고 안내받는다", async ({
+  browser,
+}) => {
+  const author = await newMember(browser, "a");
+  const reporter = await newMember(browser, "b");
+  const postId = await writePost(author, `[실패] 평범한 글 ${Date.now()}`);
+  const commentResponse = await call(
+    author.page,
+    `/api/posts/${postId}/comments`,
+    { content: "글쓴이가 단 댓글" },
+  );
+  expect(commentResponse.status()).toBe(201);
+  await reporter.page.goto(`/post/${postId}`);
+
+  // 글 신고: 기타를 골라 설명을 적는다
+  const article = reporter.page.getByRole("article").first();
+  await article.getByRole("button", { name: "신고" }).first().click();
+  const dialog = reporter.page.getByRole("alertdialog");
+  await expect(dialog).toContainText("이 글을 신고할까요?");
+  await dialog.getByRole("radio", { name: "기타" }).check();
+  await dialog.getByRole("textbox").fill("확인용 설명이에요");
+  await dialog.getByRole("button", { name: "신고하기" }).click();
+
+  await expect(reporter.page.getByRole("status").first()).toHaveText(
+    "신고가 접수됐어요",
+  );
+  await expect(dialog).toHaveCount(0);
+
+  // 댓글 신고
+  const comment = reporter.page.getByRole("article", {
+    name: `${author.nickname}의 댓글`,
+  });
+  await comment.getByRole("button", { name: "신고" }).click();
+  await dialog.getByRole("radio", { name: "욕설이나 비방이에요" }).check();
+  await dialog.getByRole("button", { name: "신고하기" }).click();
+  await expect(comment.getByRole("status")).toHaveText("신고가 접수됐어요");
+
+  // 새로고침하면 신고 버튼이 다시 보인다(신고했다는 것을 서버가 알려 주지 않는다). 다시 신고하면 안내를 받는다
+  await reporter.page.reload();
+  await article.getByRole("button", { name: "신고" }).first().click();
+  await dialog.getByRole("radio", { name: "광고나 도배예요" }).check();
+  await dialog.getByRole("button", { name: "신고하기" }).click();
+
+  await expect(reporter.page.getByRole("status").first()).toHaveText(
+    "이미 신고한 글이에요",
+  );
+  // 신고해도 글은 그대로 보인다
+  await expect(reporter.page.getByText("글쓴이가 단 댓글")).toBeVisible();
+
+  await closeAll(author, reporter);
+});
+
+test("US3-AC3 내 글과 내 댓글에는 신고가 없다", async ({ browser }) => {
+  const author = await newMember(browser, "a");
+  const postId = await writePost(author, `[실패] 내 글 ${Date.now()}`);
+  const response = await call(author.page, `/api/posts/${postId}/comments`, {
+    content: "내 댓글",
+  });
+  expect(response.status()).toBe(201);
+
+  await author.page.goto(`/post/${postId}`);
+
+  await expect(author.page.getByText("내 댓글")).toBeVisible();
+  await expect(author.page.getByRole("button", { name: "신고" })).toHaveCount(
+    0,
+  );
+  // API로 시도해도 거절된다
+  const direct = await call(author.page, "/api/reports", {
+    targetType: "POST",
+    targetId: postId,
+    reason: "SPAM",
+  });
+  expect(direct.status()).toBe(403);
+
+  await closeAll(author);
+});
