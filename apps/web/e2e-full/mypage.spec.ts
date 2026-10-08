@@ -9,7 +9,7 @@ import {
 
 import { waitForHomeLoaded } from "./support/home";
 
-// infra/compose.e2e.yaml로 띄운 실제 API와 DB를 상대로 마이페이지(004 US3)를 확인한다.
+// infra/compose.e2e.yaml로 띄운 실제 API와 DB를 상대로 마이페이지(004 US3, US4)를 확인한다.
 // 나와 다른 회원은 서로 다른 브라우저 컨텍스트(쿠키)를 쓴다.
 
 const APP_ORIGIN = "http://localhost:3000";
@@ -320,4 +320,132 @@ test("US3-AC4 활동이 없는 회원은 세 탭 모두 비어 있다는 안내�
   await me.page.waitForURL("**/write");
 
   await closeAll(me);
+});
+
+function statsPanel(page: Page): Locator {
+  return page.getByRole("region", { name: "감정 통계" });
+}
+
+/** 통계 숫자 하나. 이름표(dt) 바로 옆의 값(dd)이다. */
+function figure(page: Page, label: string): Locator {
+  return statsPanel(page)
+    .getByText(label, { exact: true })
+    .locator("xpath=following-sibling::dd");
+}
+
+/** 감정 머리말을 정해 글을 쓰고 몬스터가 생길 때까지 기다린다(최대 HP 10). */
+async function writeEmotionPost(author: Member, emotion: string) {
+  const response = await call(author.page, "/api/posts", {
+    content: `[${emotion}:낮음] 감정 통계에 들어갈 글 ${Date.now()}`,
+    commentTone: "COMFORT_ME",
+  });
+  expect(response.status()).toBe(201);
+  const postId = ((await response.json()) as { data: { postId: number } }).data
+    .postId;
+  await waitForMonster(author, postId);
+  return postId;
+}
+
+/** 공감 1과 첫 댓글 3으로 HP를 4 줄인다. */
+async function attack(member: Member, postId: number) {
+  await like(member, postId);
+  await comment(member, postId, "힘내요");
+}
+
+test("US4-AC1 감정 통계는 내 몬스터 수, 물리친 수, 감정 5종의 수와 비율, 가장 많이 나타난 몬스터를 보인다", async ({
+  browser,
+}) => {
+  const me = await newMember(browser, "a");
+  const helpers = await Promise.all([
+    newMember(browser, "b"),
+    newMember(browser, "c"),
+    newMember(browser, "d"),
+  ]);
+  const defeated = await writeEmotionPost(me, "불안");
+  await writeEmotionPost(me, "불안");
+  await writeEmotionPost(me, "짜증");
+  // 세 명이 4씩 줄여 HP 10인 몬스터를 물리친다.
+  for (const helper of helpers) {
+    await attack(helper, defeated);
+  }
+
+  await me.page.goto("/my");
+
+  const panel = statsPanel(me.page);
+  await expect(figure(me.page, "내 몬스터")).toHaveText("3");
+  await expect(figure(me.page, "물리친 몬스터")).toHaveText("1");
+  await expect(figure(me.page, "함께 물리친 몬스터")).toHaveText("0");
+  const shares = panel
+    .getByRole("list", { name: "감정 분포" })
+    .getByRole("listitem");
+  await expect(shares).toHaveText([
+    "불안2마리67%",
+    "무기력0마리0%",
+    "외로움0마리0%",
+    "자기비하0마리0%",
+    "짜증1마리33%",
+  ]);
+  await expect(panel).toContainText("가장 많이 나타난 몬스터");
+  await expect(
+    panel.getByRole("img", { name: "불안 몬스터, 멀쩡함" }),
+  ).toBeVisible();
+  // 이번 주에 쓴 글 셋이 8주 추이의 마지막 주에 든다.
+  const rows = panel.getByRole("table").getByRole("row");
+  await expect(rows).toHaveCount(9);
+  await expect(rows.last().getByRole("cell")).toHaveText([
+    "2",
+    "0",
+    "0",
+    "0",
+    "1",
+  ]);
+
+  await closeAll(me, ...helpers);
+});
+
+test("US4-AC4 몬스터가 없으면 숫자는 0이고 아직 몬스터가 없다는 안내와 글쓰기가 보인다", async ({
+  browser,
+}) => {
+  const me = await newMember(browser, "a");
+
+  await me.page.goto("/my");
+
+  const panel = statsPanel(me.page);
+  await expect(panel).toContainText("아직 몬스터가 없어요");
+  await expect(figure(me.page, "내 몬스터")).toHaveText("0");
+  await expect(figure(me.page, "물리친 몬스터")).toHaveText("0");
+  await expect(figure(me.page, "함께 물리친 몬스터")).toHaveText("0");
+  await expect(panel.getByRole("list", { name: "감정 분포" })).toHaveCount(0);
+
+  await panel.getByRole("link", { name: "고민 쓰기" }).click();
+  await me.page.waitForURL("**/write");
+
+  await closeAll(me);
+});
+
+test("US4-AC5 다른 회원의 몬스터를 공격해 물리치면 함께 물리친 몬스터로 센다", async ({
+  browser,
+}) => {
+  const me = await newMember(browser, "a");
+  const author = await newMember(browser, "b");
+  const helpers = await Promise.all([
+    newMember(browser, "c"),
+    newMember(browser, "d"),
+  ]);
+  const defeated = await writeEmotionPost(author, "외로움");
+  const alive = await writeEmotionPost(author, "외로움");
+  await attack(me, defeated);
+  await attack(me, alive);
+  for (const helper of helpers) {
+    await attack(helper, defeated);
+  }
+
+  await me.page.goto("/my");
+
+  // 물리친 몬스터만 세고, 아직 살아 있는 몬스터는 세지 않는다. 내 몬스터는 없다.
+  await expect(figure(me.page, "함께 물리친 몬스터")).toHaveText("1");
+  await expect(figure(me.page, "내 몬스터")).toHaveText("0");
+  await expect(statsPanel(me.page)).toContainText("아직 몬스터가 없어요");
+
+  await closeAll(me, author, ...helpers);
 });
