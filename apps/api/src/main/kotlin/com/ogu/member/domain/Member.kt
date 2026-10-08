@@ -86,6 +86,24 @@ class Member private constructor(
         this.onboardedAt = now
     }
 
+    /**
+     * 온보딩을 마친 회원의 프로필을 고친다(004 US5). null인 항목은 그대로 둔다. 온보딩 전이면 `ONBOARDING_REQUIRED`다
+     * (프로필 수정이 온보딩을 건너뛰는 길이 되지 않게 한다, 004 research R13).
+     */
+    fun updateProfile(
+        nickname: Nickname?,
+        jobRole: JobRole?,
+        careerYear: CareerYear?,
+    ) {
+        if (!isOnboarded) throw BusinessException(ErrorCode.ONBOARDING_REQUIRED)
+        if (nickname != null) {
+            this.nickname = nickname.value
+            this.nicknameKey = nickname.key
+        }
+        if (jobRole != null) this.jobRole = jobRole
+        if (careerYear != null) this.careerYear = careerYear
+    }
+
     companion object {
         /** 이메일 정규화(research R8): 앞뒤 공백을 빼고 소문자로 바꾼다. 저장과 비교에 모두 쓴다. */
         fun normalizeEmail(raw: String): String = raw.trim().lowercase(Locale.ROOT)
