@@ -171,15 +171,15 @@ description: "Task list for 005-safety (위험 감지와 안전장치)"
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T050 [P] `safety` application/SafetyBackfill(research R14): `ApplicationRunner`가 advisory lock을 잡고 `safety_backfill`의 `last_id`부터 `batch-size`씩 `PostModerationApi.scan`으로 훑는다. 위기면 숨기고 `RiskDetected`, AI 분류는 예약하지 않는다. 끝나면 `finished_at`. 테스트: 다시 떠도 한 번만, 중간에 멈췄다 이어서
-- [ ] T051 [P] application/SafetyPurgeJob: 1년 지난 `risk_assessment`, `report`, `review_request`, `moderation_action`을 1,000행씩 지운다. 숨김 상태는 그대로다. 테스트(시계 주입)
-- [ ] T052 [P] 평가(research R15): apps/api/src/test/resources/safety/eval-set.tsv(위기 50, 우려 50, 위험 없음 100, 직접 쓴 문장), KeywordRuleEvalTest가 재현율과 오탐률을 `EVAL`로 출력하고 "목록에 있는 표현은 모두 잡는다", "위험 없음을 위기로 보는 비율 10% 이하"를 단언한다. 놓친 위기 문장을 보고 시드의 위기, 우려 낱말을 보탠다
-- [ ] T053 ContractTests `pendingPaths`가 비어 있고 루트 계약의 모든 연산이 구현과 일치하는지 확인한다. `pnpm --filter web gen:api` 뒤 차이가 없어야 한다
-- [ ] T054 [P] `grep -rn "US[1-5]-AC[0-9]*" apps/`로 인수 조건 34개가 모두 테스트 이름에 있는지 확인하고 빠진 것을 더한다
-- [ ] T055 [P] 민감 정보 확인(SC-008): 위기 표현이 든 글을 쓰고 판정, 신고, 운영자 조회를 거친 뒤 API 로그에 본문과 걸린 표현이 없는지 테스트로 확인한다(`OutputCaptureExtension`). `event_publication`의 직렬화된 이벤트에도 본문이 없다
-- [ ] T056 [P] 문서: apps/api/AGENTS.md에 `safety` 절(모듈 경계, 같은 트랜잭션의 키워드 판정, 조회 조건 둘, `ContentMask`의 배선, 운영자, 재시도), apps/web/docs/ARCHITECTURE.md에 안전 절, docs/architecture/overview.md 5.1 표와 그래프, 5.6을 구현과 맞춘다. README에 한 단락. docs/adr/0005의 "결과"와 004 plan의 Complexity Tracking에 예외가 끝난 날짜를 적는다
-- [ ] T057 성능 측정: 글 쓰기와 댓글 쓰기 각 100번의 p95(SC-004, M2 수치와 비교), 욕설이 든 글이 섞인 피드 한 쪽 100번(가리기 비용), 위기 글의 응답에서 상세의 안내까지 20번(SC-003), 숨김 해제에서 다른 회원의 피드까지(SC-006), 신고에서 운영자 조회까지(SC-007). `ScreeningVisibilityTests`를 20번 `--rerun-tasks`(SC-001). 결과를 quickstart.md에 표로 남긴다
-- [ ] T058 quickstart.md의 수동 시나리오 35개를 로컬에서 끝까지 실행하고 다르면 문서나 코드를 고친다. AI 포함 평가(SC-005)는 키가 있으면 재고, 없으면 재지 못했다고 적는다
+- [x] T050 [P] `safety` application/SafetyBackfill(research R14): `ApplicationRunner`가 advisory lock을 잡고 `safety_backfill`의 `last_id`부터 `batch-size`씩 `PostModerationApi.scan`으로 훑는다. 위기면 숨기고 `RiskDetected`, AI 분류는 예약하지 않는다. 끝나면 `finished_at`. 테스트: 다시 떠도 한 번만, 중간에 멈췄다 이어서 **구현 메모**: 기동을 늦추지 않으려고 `ApplicationRunner`가 아니라 `ApplicationReadyEvent` 뒤 따로 도는 스레드에서 시작한다. 묶음마다 트랜잭션 하나이고 그 안에서 advisory lock을 잡는다. 이미 판정 기록이 있는 대상은 건너뛴다. 우려는 기록과 단계만 남기고 알리지 않는다.
+- [x] T051 [P] application/SafetyPurgeJob: 1년 지난 `risk_assessment`, `report`, `review_request`, `moderation_action`을 1,000행씩 지운다. 숨김 상태는 그대로다. 테스트(시계 주입) **구현 메모**: 아직 열려 있는 신고와 재검토 요청은 1년이 지나도 지우지 않는다. 처리되지 않은 일이 조용히 사라지면 안 된다.
+- [x] T052 [P] 평가(research R15): apps/api/src/test/resources/safety/eval-set.tsv(위기 50, 우려 50, 위험 없음 100, 직접 쓴 문장), KeywordRuleEvalTest가 재현율과 오탐률을 `EVAL`로 출력하고 "목록에 있는 표현은 모두 잡는다", "위험 없음을 위기로 보는 비율 10% 이하"를 단언한다. 놓친 위기 문장을 보고 시드의 위기, 우려 낱말을 보탠다 **구현 메모**: 문장마다 잡는 쪽(K 키워드, A AI)을 적어 "목록에 있는 표현은 모두 잡는다"를 K 문장으로 단언한다. 평가에서 놓친 표현 가운데 여섯 개(극단적인선택, 생을마감, 죽는게낫, 아무의미가없, 왜사는지모르, 내일이안왔으면)를 V5 시드에 보탰다.
+- [x] T053 ContractTests `pendingPaths`가 비어 있고 루트 계약의 모든 연산이 구현과 일치하는지 확인한다. `pnpm --filter web gen:api` 뒤 차이가 없어야 한다
+- [x] T054 [P] `grep -rn "US[1-5]-AC[0-9]*" apps/`로 인수 조건 34개가 모두 테스트 이름에 있는지 확인하고 빠진 것을 더한다
+- [x] T055 [P] 민감 정보 확인(SC-008): 위기 표현이 든 글을 쓰고 판정, 신고, 운영자 조회를 거친 뒤 API 로그에 본문과 걸린 표현이 없는지 테스트로 확인한다(`OutputCaptureExtension`). `event_publication`의 직렬화된 이벤트에도 본문이 없다
+- [x] T056 [P] 문서: apps/api/AGENTS.md에 `safety` 절(모듈 경계, 같은 트랜잭션의 키워드 판정, 조회 조건 둘, `ContentMask`의 배선, 운영자, 재시도), apps/web/docs/ARCHITECTURE.md에 안전 절, docs/architecture/overview.md 5.1 표와 그래프, 5.6을 구현과 맞춘다. README에 한 단락. docs/adr/0005의 "결과"와 004 plan의 Complexity Tracking에 예외가 끝난 날짜를 적는다
+- [x] T057 성능 측정: 글 쓰기와 댓글 쓰기 각 100번의 p95(SC-004, M2 수치와 비교), 욕설이 든 글이 섞인 피드 한 쪽 100번(가리기 비용), 위기 글의 응답에서 상세의 안내까지 20번(SC-003), 숨김 해제에서 다른 회원의 피드까지(SC-006), 신고에서 운영자 조회까지(SC-007). `ScreeningVisibilityTests`를 20번 `--rerun-tasks`(SC-001). 결과를 quickstart.md에 표로 남긴다
+- [x] T058 quickstart.md의 수동 시나리오 35개를 로컬에서 끝까지 실행하고 다르면 문서나 코드를 고친다. AI 포함 평가(SC-005)는 키가 있으면 재고, 없으면 재지 못했다고 적는다 **구현 메모**: 35개를 API로 차례로 실행했고 화면 문구는 e2e가 본다. AI 포함 평가는 키가 없어 재지 못했다(quickstart "실행 결과").
 - [ ] T059 일관성을 확인하고 PR을 연다(스펙 링크, 인수 조건 34개 체크리스트, 운영 준비 항목: 도움 리소스 번호 확인, 운영자 지정, 낱말 목록, 이미 있는 글 훑기, AI 사용량)
 
 ---
