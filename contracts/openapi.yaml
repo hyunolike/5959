@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: 오구오구 API
-  version: 0.4.0
+  version: 0.5.0
   description: |
     apps/api가 이 계약을 구현하고, apps/web은 이 계약에서 타입을 생성한다.
     이 API는 BFF(apps/web의 라우트 핸들러)만 호출한다. 브라우저는 직접 호출하지 않는다.
@@ -13,6 +13,10 @@ info:
     온보딩 전 회원에게는 403 ONBOARDING_REQUIRED를 돌려준다. 실시간 알림 스트림
     (GET /api/v1/notifications/stream)만은 예외로, 브라우저가 BFF를 거치지 않고 API 도메인에 바로 붙으며
     Bearer 대신 일회용 티켓으로 인증한다(ADR-0002, 004 research R3).
+    005-safety에서 추가한 도움 리소스, 신고, 재검토 요청 API도 인증과 온보딩이 필요하다.
+    운영자 경로(/api/v1/operator/**)는 member.role이 OPERATOR인 회원만 쓰고, 아니면 경로가 있다는 것도
+    드러나지 않도록 404 NOT_FOUND를 돌려준다(005 research R10). 글과 댓글의 본문과 미리보기는
+    보는 사람이 작성자가 아니면 욕설이 가려진 채로 나간다(005 research R6).
 servers:
   - url: http://localhost:8080
 security:
@@ -32,6 +36,10 @@ tags:
     description: 알림 목록, 읽음, 안 읽은 수, 실시간 스트림
   - name: mypage
     description: 내가 쓴 글, 내 댓글, 공감한 글, 감정 통계
+  - name: safety
+    description: 도움 리소스, 신고, 재검토 요청
+  - name: operator
+    description: 운영자 조회와 처리
 
 components:
   securitySchemes:
@@ -83,6 +91,16 @@ components:
       name: size
       in: query
       schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+    TargetType:
+      name: targetType
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/TargetType' }
+    TargetId:
+      name: targetId
+      in: path
+      required: true
+      schema: { type: integer, format: int64 }
   schemas:
     ErrorResponse:
       type: object
@@ -229,7 +247,7 @@ components:
         analysisStatus: { $ref: '#/components/schemas/AnalysisStatus' }
     FeedItem:
       type: object
-      required: [postId, author, contentPreview, analysisStatus, likeCount, likedByMe, commentCount, createdAt]
+      required: [postId, author, contentPreview, analysisStatus, likeCount, likedByMe, commentCount, hidden, createdAt]
       properties:
         postId: { type: integer, format: int64 }
         author: { $ref: '#/components/schemas/Author' }
@@ -243,6 +261,9 @@ components:
         likeCount: { type: integer }
         likedByMe: { type: boolean }
         commentCount: { type: integer }
+        hidden:
+          type: boolean
+          description: 다른 회원에게 보이지 않는 내 글이면 true. 내가 쓴 글 목록에서만 true일 수 있다(005)
         createdAt: { type: string, format: date-time }
     FeedPage:
       type: object
@@ -272,14 +293,25 @@ components:
         myCommentCounted:
           type: boolean
           description: 내 댓글이 이미 HP에 반영됐으면 true. 웹의 낙관적 HP 계산(research R6)에 쓴다
+        safety:
+          description: 내가 쓴 글일 때만 실린다. 다른 회원의 응답에는 없다(005 research R7)
+          $ref: '#/components/schemas/ContentSafety'
         createdAt: { type: string, format: date-time }
     Comment:
       type: object
-      required: [commentId, author, content, likeCount, likedByMe, mine, createdAt, replies]
+      required: [commentId, author, content, hidden, likeCount, likedByMe, mine, createdAt, replies]
       properties:
         commentId: { type: integer, format: int64 }
-        author: { $ref: '#/components/schemas/Author' }
-        content: { type: string }
+        author:
+          oneOf: [{ $ref: '#/components/schemas/Author' }, { type: 'null' }]
+          description: 숨긴 댓글을 다른 회원이 보면 null
+        content:
+          type: [string, 'null']
+          description: 숨긴 댓글을 다른 회원이 보면 null. 웹은 "가려진 댓글이에요"를 보인다
+        hidden: { type: boolean, description: 다른 회원에게 보이지 않는 댓글이면 true }
+        safety:
+          description: 내가 쓴 댓글일 때만 실린다
+          $ref: '#/components/schemas/ContentSafety'
         likeCount: { type: integer }
         likedByMe: { type: boolean }
         mine: { type: boolean }
@@ -319,7 +351,8 @@ components:
       description: |
         POST_COMMENT 내 글의 댓글, POST_REPLY 내 글의 답글, COMMENT_REPLY 내 댓글의 답글,
         POST_LIKE 내 글 공감(묶음), MONSTER_SPAWNED 몬스터 생성, MONSTER_DEFEATED 내 몬스터 처치,
-        MONSTER_DEFEATED_TOGETHER 함께 공격한 몬스터 처치
+        MONSTER_DEFEATED_TOGETHER 함께 공격한 몬스터 처치,
+        SUPPORT_NOTICE 도움 안내(005), CONTENT_RESTORED 가려졌던 글이 다시 보임(005), REVIEW_KEPT 재검토 결과 숨김 유지(005)
       enum:
         - POST_COMMENT
         - POST_REPLY
@@ -328,6 +361,9 @@ components:
         - MONSTER_SPAWNED
         - MONSTER_DEFEATED
         - MONSTER_DEFEATED_TOGETHER
+        - SUPPORT_NOTICE
+        - CONTENT_RESTORED
+        - REVIEW_KEPT
     NotificationActor:
       type: object
       required: [id, nickname]
@@ -517,6 +553,172 @@ components:
           description: M1과 같은 규칙. 앞뒤 공백을 뺀 완성형 한글, 영문, 숫자 1~10자. 대소문자만 다른 닉네임도 중복이다
         jobRole: { $ref: '#/components/schemas/JobRole' }
         careerYear: { $ref: '#/components/schemas/CareerYear' }
+    TargetType:
+      type: string
+      enum: [POST, COMMENT]
+    RiskLevel:
+      type: string
+      description: NONE 위험 없음, CONCERN 우려(숨기지 않고 안내만), CRISIS 위기(숨기고 안내)
+      enum: [NONE, CONCERN, CRISIS]
+    ContentSafety:
+      type: object
+      description: 작성자에게만 실린다. 다른 회원의 응답에는 없다
+      required: [level, hidden, reviewRequested]
+      properties:
+        level: { $ref: '#/components/schemas/RiskLevel' }
+        hidden: { type: boolean, description: 다른 회원에게 보이지 않으면 true }
+        reviewRequested: { type: boolean, description: 재검토를 이미 요청했으면 true }
+    SupportResource:
+      type: object
+      required: [name, phone, hours, description]
+      properties:
+        name: { type: string, examples: [자살예방상담전화] }
+        phone: { type: string, examples: ['109'] }
+        hours: { type: string, examples: [24시간] }
+        description: { type: string }
+    ReportReason:
+      type: string
+      description: DANGEROUS 위험해 보여요, ABUSIVE 욕설이나 비방, SPAM 광고나 도배, OTHER 기타
+      enum: [DANGEROUS, ABUSIVE, SPAM, OTHER]
+    ReportRequest:
+      type: object
+      required: [targetType, targetId, reason]
+      properties:
+        targetType: { $ref: '#/components/schemas/TargetType' }
+        targetId: { type: integer, format: int64 }
+        reason: { $ref: '#/components/schemas/ReportReason' }
+        detail:
+          type: [string, 'null']
+          description: reason이 OTHER일 때만 받는다. 200글자(사람이 보는 글자 단위)까지
+    ReviewRequestBody:
+      type: object
+      required: [targetType, targetId]
+      properties:
+        targetType: { $ref: '#/components/schemas/TargetType' }
+        targetId: { type: integer, format: int64 }
+    AssessmentStatus:
+      type: string
+      description: PENDING AI 대기, DONE AI 반영, FALLBACK AI 포기(키워드만), SUPERSEDED 고쳐져 새 판정이 생김
+      enum: [PENDING, DONE, FALLBACK, SUPERSEDED]
+    DetectionMethod:
+      type: string
+      enum: [KEYWORD, AI, BOTH, NONE]
+    OperatorTarget:
+      type: object
+      description: 운영자가 판단하려고 보는 대상. 본문은 가리지 않은 원문이다
+      required: [targetType, targetId, postId, authorId, content, hidden, deleted]
+      properties:
+        targetType: { $ref: '#/components/schemas/TargetType' }
+        targetId: { type: integer, format: int64 }
+        postId: { type: integer, format: int64 }
+        authorId: { type: integer, format: int64 }
+        content: { type: [string, 'null'], description: 지워졌으면 null }
+        hidden: { type: boolean }
+        deleted: { type: boolean }
+    OperatorAssessment:
+      type: object
+      required: [assessmentId, target, level, method, status, reviewed, createdAt]
+      properties:
+        assessmentId: { type: integer, format: int64 }
+        target: { $ref: '#/components/schemas/OperatorTarget' }
+        level: { $ref: '#/components/schemas/RiskLevel' }
+        method: { $ref: '#/components/schemas/DetectionMethod' }
+        status: { $ref: '#/components/schemas/AssessmentStatus' }
+        reviewed: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    OperatorAssessmentPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/OperatorAssessment' }
+        nextCursor: { type: [string, 'null'] }
+    ReportStatus:
+      type: string
+      description: PENDING 대기, RESOLVED 처리됨, REJECTED 기각, CLOSED 대상이 지워짐
+      enum: [PENDING, RESOLVED, REJECTED, CLOSED]
+    OperatorReport:
+      type: object
+      required: [reportId, target, reporterId, reason, detail, openReportCount, status, createdAt]
+      properties:
+        reportId: { type: integer, format: int64 }
+        target: { $ref: '#/components/schemas/OperatorTarget' }
+        reporterId: { type: integer, format: int64 }
+        reason: { $ref: '#/components/schemas/ReportReason' }
+        detail: { type: [string, 'null'] }
+        openReportCount: { type: integer, description: 같은 대상의 열린 신고 수 }
+        status: { $ref: '#/components/schemas/ReportStatus' }
+        createdAt: { type: string, format: date-time }
+    OperatorReportPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/OperatorReport' }
+        nextCursor: { type: [string, 'null'] }
+    ReviewStatus:
+      type: string
+      description: PENDING 대기, KEPT 숨김 유지, RESTORED 숨김 해제
+      enum: [PENDING, KEPT, RESTORED]
+    OperatorReview:
+      type: object
+      required: [reviewId, target, status, createdAt]
+      properties:
+        reviewId: { type: integer, format: int64 }
+        target: { $ref: '#/components/schemas/OperatorTarget' }
+        status: { $ref: '#/components/schemas/ReviewStatus' }
+        createdAt: { type: string, format: date-time }
+    OperatorReviewPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/OperatorReview' }
+        nextCursor: { type: [string, 'null'] }
+    OperatorNote:
+      type: object
+      properties:
+        note:
+          type: [string, 'null']
+          description: 처리 기록에 남길 메모. 200자까지. 본문을 옮겨 적지 않는다
+    ReportDecision:
+      type: object
+      required: [decision]
+      properties:
+        decision:
+          type: string
+          description: RESOLVE는 처리됨으로, REJECT는 기각으로 닫는다. 대상을 숨기려면 hideContent를 따로 부른다
+          enum: [RESOLVE, REJECT]
+        note: { type: [string, 'null'] }
+    ReviewDecision:
+      type: object
+      required: [decision]
+      properties:
+        decision:
+          type: string
+          description: KEEP은 숨김 유지, RESTORE는 숨김 해제
+          enum: [KEEP, RESTORE]
+        note: { type: [string, 'null'] }
+    TermKind:
+      type: string
+      description: CRISIS 위기 표현, CONCERN 우려 표현, PROFANITY 욕설, ALLOW 욕설이 들어 있어도 가리지 않을 낱말
+      enum: [CRISIS, CONCERN, PROFANITY, ALLOW]
+    Term:
+      type: object
+      required: [termId, kind, term]
+      properties:
+        termId: { type: integer, format: int64 }
+        kind: { $ref: '#/components/schemas/TermKind' }
+        term: { type: string, description: 정규화한 형태 }
+    TermRequest:
+      type: object
+      required: [kind, term]
+      properties:
+        kind: { $ref: '#/components/schemas/TermKind' }
+        term: { type: string, description: 2~20글자. 저장할 때 정규화한다 }
   responses:
     BadRequest:
       description: 입력 검증 실패 (INVALID_REQUEST). 댓글 작성에서는 INVALID_PARENT_COMMENT도 쓴다
@@ -534,11 +736,16 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorEnvelope' }
     NotFound:
-      description: 없거나 삭제된 글 또는 댓글 (POST_NOT_FOUND, COMMENT_NOT_FOUND)
+      description: 없거나, 삭제됐거나, 숨겨진 글 또는 댓글 (POST_NOT_FOUND, COMMENT_NOT_FOUND)
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorEnvelope' }
 
+    OperatorOnly:
+      description: 운영자가 아니거나 대상이 없음 (NOT_FOUND). 운영자가 아닌 회원에게 경로의 존재를 드러내지 않는다
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
 paths:
   /api/v1/auth/signup:
     post:
@@ -1373,3 +1580,343 @@ paths:
                   error: { type: 'null' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/safety/support-resources:
+    get:
+      tags: [safety]
+      operationId: getSupportResources
+      summary: 도움 리소스 목록 (US1-AC1, AC3, AC4). 보이는 순서대로
+      responses:
+        '200':
+          description: 도움 리소스
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, error]
+                properties:
+                  success: { type: boolean, const: true }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/SupportResource' }
+                  error: { type: 'null' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/reports:
+    post:
+      tags: [safety]
+      operationId: reportContent
+      summary: 글이나 댓글 신고 (US3-AC1~AC5)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReportRequest' }
+      responses:
+        '204':
+          description: 접수됨. 신고 수나 처리 상태는 돌려주지 않는다
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: 온보딩 전(ONBOARDING_REQUIRED) 또는 자기 글이나 댓글(CANNOT_REPORT_OWN_CONTENT)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: 이미 신고한 대상 (ALREADY_REPORTED)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '429':
+          description: 한 시간 20건 초과 (REPORT_RATE_LIMITED). Retry-After 헤더에 남은 초
+          headers:
+            Retry-After:
+              schema: { type: integer }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /api/v1/review-requests:
+    post:
+      tags: [safety]
+      operationId: requestReview
+      summary: 숨겨진 내 글이나 댓글의 재검토 요청 (US4-AC8). 대상마다 한 번
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReviewRequestBody' }
+      responses:
+        '204':
+          description: 접수됨
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: 내 것이 아니거나, 숨겨지지 않았거나, 없는 대상 (POST_NOT_FOUND, COMMENT_NOT_FOUND)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '409':
+          description: 이미 요청함 (REVIEW_ALREADY_REQUESTED)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /api/v1/operator/assessments:
+    get:
+      tags: [operator]
+      operationId: listAssessments
+      summary: 위험 판정 조회 (US4-AC1). 최신순. 기본은 단계가 NONE이 아닌 것
+      parameters:
+        - name: level
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/RiskLevel' }
+        - name: reviewed
+          in: query
+          required: false
+          schema: { type: boolean }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: 판정 페이지
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, error]
+                properties:
+                  success: { type: boolean, const: true }
+                  data: { $ref: '#/components/schemas/OperatorAssessmentPage' }
+                  error: { type: 'null' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/OperatorOnly' }
+
+  /api/v1/operator/assessments/{assessmentId}/reviewed:
+    parameters:
+      - name: assessmentId
+        in: path
+        required: true
+        schema: { type: integer, format: int64 }
+    put:
+      tags: [operator]
+      operationId: markAssessmentReviewed
+      summary: 판정을 확인함으로 표시 (US4-AC1). 이미 확인했어도 204
+      responses:
+        '204':
+          description: 표시됨
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/OperatorOnly' }
+
+  /api/v1/operator/reports:
+    get:
+      tags: [operator]
+      operationId: listReports
+      summary: 신고 조회 (US4-AC2). 최신순. 기본은 PENDING
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/ReportStatus' }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: 신고 페이지
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, error]
+                properties:
+                  success: { type: boolean, const: true }
+                  data: { $ref: '#/components/schemas/OperatorReportPage' }
+                  error: { type: 'null' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/OperatorOnly' }
+
+  /api/v1/operator/reports/{reportId}/decision:
+    parameters:
+      - name: reportId
+        in: path
+        required: true
+        schema: { type: integer, format: int64 }
+    put:
+      tags: [operator]
+      operationId: decideReport
+      summary: 신고 닫기 (US4-AC5). 이미 닫힌 신고면 그대로 204
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReportDecision' }
+      responses:
+        '204':
+          description: 닫힘
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/OperatorOnly' }
+
+  /api/v1/operator/review-requests:
+    get:
+      tags: [operator]
+      operationId: listReviewRequests
+      summary: 재검토 요청 조회 (US4-AC8). 최신순. 기본은 PENDING
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/ReviewStatus' }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: 재검토 요청 페이지
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, error]
+                properties:
+                  success: { type: boolean, const: true }
+                  data: { $ref: '#/components/schemas/OperatorReviewPage' }
+                  error: { type: 'null' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/OperatorOnly' }
+
+  /api/v1/operator/review-requests/{reviewId}/decision:
+    parameters:
+      - name: reviewId
+        in: path
+        required: true
+        schema: { type: integer, format: int64 }
+    put:
+      tags: [operator]
+      operationId: decideReview
+      summary: 재검토 닫기 (US4-AC3, AC9). RESTORE면 숨김을 풀고, KEEP이면 유지한다. 작성자에게 알림이 간다
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReviewDecision' }
+      responses:
+        '204':
+          description: 닫힘
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/OperatorOnly' }
+
+  /api/v1/operator/contents/{targetType}/{targetId}/hidden:
+    parameters:
+      - $ref: '#/components/parameters/TargetType'
+      - $ref: '#/components/parameters/TargetId'
+    put:
+      tags: [operator]
+      operationId: hideContent
+      summary: 대상 숨기기 (US4-AC4). 그 대상의 열린 신고를 모두 처리됨으로 닫는다. 이미 숨겨져 있어도 204
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OperatorNote' }
+      responses:
+        '204':
+          description: 숨김
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/OperatorOnly' }
+    delete:
+      tags: [operator]
+      operationId: unhideContent
+      summary: 숨김 풀기 (US4-AC3). 작성자에게 알림이 간다. 열린 재검토 요청은 RESTORED로 닫는다. 숨겨져 있지 않아도 204
+      responses:
+        '204':
+          description: 다시 보임
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/OperatorOnly' }
+
+  /api/v1/operator/terms:
+    get:
+      tags: [operator]
+      operationId: listTerms
+      summary: 낱말 목록 (FR-002, FR-014)
+      parameters:
+        - name: kind
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/TermKind' }
+      responses:
+        '200':
+          description: 낱말 목록
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, error]
+                properties:
+                  success: { type: boolean, const: true }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Term' }
+                  error: { type: 'null' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/OperatorOnly' }
+    post:
+      tags: [operator]
+      operationId: addTerm
+      summary: 낱말 더하기. 모든 인스턴스에 퍼지기까지 최대 30초. 이미 있으면 그대로 200
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TermRequest' }
+      responses:
+        '200':
+          description: 더해진 낱말
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, error]
+                properties:
+                  success: { type: boolean, const: true }
+                  data: { $ref: '#/components/schemas/Term' }
+                  error: { type: 'null' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/OperatorOnly' }
+
+  /api/v1/operator/terms/{termId}:
+    parameters:
+      - name: termId
+        in: path
+        required: true
+        schema: { type: integer, format: int64 }
+    delete:
+      tags: [operator]
+      operationId: removeTerm
+      summary: 낱말 빼기. 없어도 204
+      responses:
+        '204':
+          description: 빠짐
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/OperatorOnly' }

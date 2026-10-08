@@ -46,6 +46,9 @@ export function CommentItem({
   );
 }
 
+/** 숨긴 댓글의 자리에 보이는 말. */
+export const HIDDEN_COMMENT_LABEL = "가려진 댓글이에요";
+
 function CommentBody({
   comment,
   isReply,
@@ -58,6 +61,23 @@ function CommentBody({
     context: CommentActionContext,
   ) => ReactNode;
 }) {
+  // 숨긴 댓글을 다른 회원이 보면 내용과 작성자가 없다. 자리만 남기고 답글은 그대로 보인다(005 US1-AC5).
+  if (comment.author === null || comment.content === null) {
+    return (
+      <article
+        aria-label={isReply ? "가려진 답글" : "가려진 댓글"}
+        className={
+          isReply
+            ? "flex flex-col gap-1 border-l-2 border-neutral-200 pl-3"
+            : "flex flex-col gap-1"
+        }
+      >
+        <p className="text-sm text-neutral-500 italic">
+          {HIDDEN_COMMENT_LABEL}
+        </p>
+      </article>
+    );
+  }
   const nickname = comment.author.nickname;
 
   return (

@@ -130,7 +130,9 @@ export function WriteCommentForm({
     <form onSubmit={onSubmit} noValidate className="flex flex-col gap-2">
       {replyTo ? (
         <div className="flex items-center justify-between gap-2 text-xs text-neutral-600">
-          <span>{replyTo.author.nickname}님에게 답글</span>
+          <span>
+            {replyTo.author ? `${replyTo.author.nickname}님에게 답글` : "답글"}
+          </span>
           <button
             type="button"
             onClick={cancelReply}

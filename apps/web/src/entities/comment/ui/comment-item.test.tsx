@@ -9,6 +9,7 @@ function comment(overrides: Partial<Comment> = {}): Comment {
     commentId: 1,
     author: { id: 2, nickname: "공감러", jobRole: "HR", careerYear: "YEAR_2" },
     content: "힘내요",
+    hidden: false,
     likeCount: 3,
     likedByMe: false,
     mine: false,

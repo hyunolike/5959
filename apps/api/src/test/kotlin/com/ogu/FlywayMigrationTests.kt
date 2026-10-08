@@ -377,7 +377,7 @@ class FlywayMigrationTests {
     }
 
     @Test
-    fun `알림 종류 7종 밖의 type은 체크 제약으로 거부된다`() {
+    fun `알림 종류 목록 밖의 type은 체크 제약으로 거부된다`() {
         assertThatThrownBy {
             insertNotification(nextPostId(), type = "COMMENT_LIKE", postId = nextPostId(), dedupKey = "X:1")
         }.hasMessageContaining("notification_type_check")

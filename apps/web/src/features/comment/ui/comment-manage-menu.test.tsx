@@ -13,6 +13,7 @@ const COMMENT = {
   commentId: 11,
   author: { id: 2, nickname: "나", jobRole: "HR", careerYear: "YEAR_2" },
   content: "원래 댓글",
+  hidden: false,
   likeCount: 0,
   likedByMe: false,
   mine: true,

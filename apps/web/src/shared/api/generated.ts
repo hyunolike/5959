@@ -500,6 +500,223 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/safety/support-resources": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 도움 리소스 목록 (US1-AC1, AC3, AC4). 보이는 순서대로 */
+    get: operations["getSupportResources"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/reports": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 글이나 댓글 신고 (US3-AC1~AC5) */
+    post: operations["reportContent"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/review-requests": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 숨겨진 내 글이나 댓글의 재검토 요청 (US4-AC8). 대상마다 한 번 */
+    post: operations["requestReview"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/operator/assessments": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 위험 판정 조회 (US4-AC1). 최신순. 기본은 단계가 NONE이 아닌 것 */
+    get: operations["listAssessments"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/operator/assessments/{assessmentId}/reviewed": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        assessmentId: number;
+      };
+      cookie?: never;
+    };
+    get?: never;
+    /** 판정을 확인함으로 표시 (US4-AC1). 이미 확인했어도 204 */
+    put: operations["markAssessmentReviewed"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/operator/reports": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 신고 조회 (US4-AC2). 최신순. 기본은 PENDING */
+    get: operations["listReports"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/operator/reports/{reportId}/decision": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        reportId: number;
+      };
+      cookie?: never;
+    };
+    get?: never;
+    /** 신고 닫기 (US4-AC5). 이미 닫힌 신고면 그대로 204 */
+    put: operations["decideReport"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/operator/review-requests": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 재검토 요청 조회 (US4-AC8). 최신순. 기본은 PENDING */
+    get: operations["listReviewRequests"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/operator/review-requests/{reviewId}/decision": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        reviewId: number;
+      };
+      cookie?: never;
+    };
+    get?: never;
+    /** 재검토 닫기 (US4-AC3, AC9). RESTORE면 숨김을 풀고, KEEP이면 유지한다. 작성자에게 알림이 간다 */
+    put: operations["decideReview"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/operator/contents/{targetType}/{targetId}/hidden": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        targetType: components["parameters"]["TargetType"];
+        targetId: components["parameters"]["TargetId"];
+      };
+      cookie?: never;
+    };
+    get?: never;
+    /** 대상 숨기기 (US4-AC4). 그 대상의 열린 신고를 모두 처리됨으로 닫는다. 이미 숨겨져 있어도 204 */
+    put: operations["hideContent"];
+    post?: never;
+    /** 숨김 풀기 (US4-AC3). 작성자에게 알림이 간다. 열린 재검토 요청은 RESTORED로 닫는다. 숨겨져 있지 않아도 204 */
+    delete: operations["unhideContent"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/operator/terms": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 낱말 목록 (FR-002, FR-014) */
+    get: operations["listTerms"];
+    put?: never;
+    /** 낱말 더하기. 모든 인스턴스에 퍼지기까지 최대 30초. 이미 있으면 그대로 200 */
+    post: operations["addTerm"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/operator/terms/{termId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        termId: number;
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** 낱말 빼기. 없어도 204 */
+    delete: operations["removeTerm"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -647,6 +864,8 @@ export interface components {
       likeCount: number;
       likedByMe: boolean;
       commentCount: number;
+      /** @description 다른 회원에게 보이지 않는 내 글이면 true. 내가 쓴 글 목록에서만 true일 수 있다(005) */
+      hidden: boolean;
       /** Format: date-time */
       createdAt: string;
     };
@@ -670,14 +889,22 @@ export interface components {
       mine: boolean;
       /** @description 내 댓글이 이미 HP에 반영됐으면 true. 웹의 낙관적 HP 계산(research R6)에 쓴다 */
       myCommentCounted?: boolean;
+      /** @description 내가 쓴 글일 때만 실린다. 다른 회원의 응답에는 없다(005 research R7) */
+      safety?: components["schemas"]["ContentSafety"];
       /** Format: date-time */
       createdAt: string;
     };
     Comment: {
       /** Format: int64 */
       commentId: number;
-      author: components["schemas"]["Author"];
-      content: string;
+      /** @description 숨긴 댓글을 다른 회원이 보면 null */
+      author: components["schemas"]["Author"] | null;
+      /** @description 숨긴 댓글을 다른 회원이 보면 null. 웹은 "가려진 댓글이에요"를 보인다 */
+      content: string | null;
+      /** @description 다른 회원에게 보이지 않는 댓글이면 true */
+      hidden: boolean;
+      /** @description 내가 쓴 댓글일 때만 실린다 */
+      safety?: components["schemas"]["ContentSafety"];
       likeCount: number;
       likedByMe: boolean;
       mine: boolean;
@@ -707,7 +934,8 @@ export interface components {
     /**
      * @description POST_COMMENT 내 글의 댓글, POST_REPLY 내 글의 답글, COMMENT_REPLY 내 댓글의 답글,
      *     POST_LIKE 내 글 공감(묶음), MONSTER_SPAWNED 몬스터 생성, MONSTER_DEFEATED 내 몬스터 처치,
-     *     MONSTER_DEFEATED_TOGETHER 함께 공격한 몬스터 처치
+     *     MONSTER_DEFEATED_TOGETHER 함께 공격한 몬스터 처치,
+     *     SUPPORT_NOTICE 도움 안내(005), CONTENT_RESTORED 가려졌던 글이 다시 보임(005), REVIEW_KEPT 재검토 결과 숨김 유지(005)
      * @enum {string}
      */
     NotificationType:
@@ -717,7 +945,10 @@ export interface components {
       | "POST_LIKE"
       | "MONSTER_SPAWNED"
       | "MONSTER_DEFEATED"
-      | "MONSTER_DEFEATED_TOGETHER";
+      | "MONSTER_DEFEATED_TOGETHER"
+      | "SUPPORT_NOTICE"
+      | "CONTENT_RESTORED"
+      | "REVIEW_KEPT";
     NotificationActor: {
       /** Format: int64 */
       id: number;
@@ -862,6 +1093,161 @@ export interface components {
       jobRole?: components["schemas"]["JobRole"];
       careerYear?: components["schemas"]["CareerYear"];
     };
+    /** @enum {string} */
+    TargetType: "POST" | "COMMENT";
+    /**
+     * @description NONE 위험 없음, CONCERN 우려(숨기지 않고 안내만), CRISIS 위기(숨기고 안내)
+     * @enum {string}
+     */
+    RiskLevel: "NONE" | "CONCERN" | "CRISIS";
+    /** @description 작성자에게만 실린다. 다른 회원의 응답에는 없다 */
+    ContentSafety: {
+      level: components["schemas"]["RiskLevel"];
+      /** @description 다른 회원에게 보이지 않으면 true */
+      hidden: boolean;
+      /** @description 재검토를 이미 요청했으면 true */
+      reviewRequested: boolean;
+    };
+    SupportResource: {
+      /** @example 자살예방상담전화 */
+      name: string;
+      /** @example 109 */
+      phone: string;
+      /** @example 24시간 */
+      hours: string;
+      description: string;
+    };
+    /**
+     * @description DANGEROUS 위험해 보여요, ABUSIVE 욕설이나 비방, SPAM 광고나 도배, OTHER 기타
+     * @enum {string}
+     */
+    ReportReason: "DANGEROUS" | "ABUSIVE" | "SPAM" | "OTHER";
+    ReportRequest: {
+      targetType: components["schemas"]["TargetType"];
+      /** Format: int64 */
+      targetId: number;
+      reason: components["schemas"]["ReportReason"];
+      /** @description reason이 OTHER일 때만 받는다. 200글자(사람이 보는 글자 단위)까지 */
+      detail?: string | null;
+    };
+    ReviewRequestBody: {
+      targetType: components["schemas"]["TargetType"];
+      /** Format: int64 */
+      targetId: number;
+    };
+    /**
+     * @description PENDING AI 대기, DONE AI 반영, FALLBACK AI 포기(키워드만), SUPERSEDED 고쳐져 새 판정이 생김
+     * @enum {string}
+     */
+    AssessmentStatus: "PENDING" | "DONE" | "FALLBACK" | "SUPERSEDED";
+    /** @enum {string} */
+    DetectionMethod: "KEYWORD" | "AI" | "BOTH" | "NONE";
+    /** @description 운영자가 판단하려고 보는 대상. 본문은 가리지 않은 원문이다 */
+    OperatorTarget: {
+      targetType: components["schemas"]["TargetType"];
+      /** Format: int64 */
+      targetId: number;
+      /** Format: int64 */
+      postId: number;
+      /** Format: int64 */
+      authorId: number;
+      /** @description 지워졌으면 null */
+      content: string | null;
+      hidden: boolean;
+      deleted: boolean;
+    };
+    OperatorAssessment: {
+      /** Format: int64 */
+      assessmentId: number;
+      target: components["schemas"]["OperatorTarget"];
+      level: components["schemas"]["RiskLevel"];
+      method: components["schemas"]["DetectionMethod"];
+      status: components["schemas"]["AssessmentStatus"];
+      reviewed: boolean;
+      /** Format: date-time */
+      createdAt: string;
+    };
+    OperatorAssessmentPage: {
+      items: components["schemas"]["OperatorAssessment"][];
+      nextCursor: string | null;
+    };
+    /**
+     * @description PENDING 대기, RESOLVED 처리됨, REJECTED 기각, CLOSED 대상이 지워짐
+     * @enum {string}
+     */
+    ReportStatus: "PENDING" | "RESOLVED" | "REJECTED" | "CLOSED";
+    OperatorReport: {
+      /** Format: int64 */
+      reportId: number;
+      target: components["schemas"]["OperatorTarget"];
+      /** Format: int64 */
+      reporterId: number;
+      reason: components["schemas"]["ReportReason"];
+      detail: string | null;
+      /** @description 같은 대상의 열린 신고 수 */
+      openReportCount: number;
+      status: components["schemas"]["ReportStatus"];
+      /** Format: date-time */
+      createdAt: string;
+    };
+    OperatorReportPage: {
+      items: components["schemas"]["OperatorReport"][];
+      nextCursor: string | null;
+    };
+    /**
+     * @description PENDING 대기, KEPT 숨김 유지, RESTORED 숨김 해제
+     * @enum {string}
+     */
+    ReviewStatus: "PENDING" | "KEPT" | "RESTORED";
+    OperatorReview: {
+      /** Format: int64 */
+      reviewId: number;
+      target: components["schemas"]["OperatorTarget"];
+      status: components["schemas"]["ReviewStatus"];
+      /** Format: date-time */
+      createdAt: string;
+    };
+    OperatorReviewPage: {
+      items: components["schemas"]["OperatorReview"][];
+      nextCursor: string | null;
+    };
+    OperatorNote: {
+      /** @description 처리 기록에 남길 메모. 200자까지. 본문을 옮겨 적지 않는다 */
+      note?: string | null;
+    };
+    ReportDecision: {
+      /**
+       * @description RESOLVE는 처리됨으로, REJECT는 기각으로 닫는다. 대상을 숨기려면 hideContent를 따로 부른다
+       * @enum {string}
+       */
+      decision: "RESOLVE" | "REJECT";
+      note?: string | null;
+    };
+    ReviewDecision: {
+      /**
+       * @description KEEP은 숨김 유지, RESTORE는 숨김 해제
+       * @enum {string}
+       */
+      decision: "KEEP" | "RESTORE";
+      note?: string | null;
+    };
+    /**
+     * @description CRISIS 위기 표현, CONCERN 우려 표현, PROFANITY 욕설, ALLOW 욕설이 들어 있어도 가리지 않을 낱말
+     * @enum {string}
+     */
+    TermKind: "CRISIS" | "CONCERN" | "PROFANITY" | "ALLOW";
+    Term: {
+      /** Format: int64 */
+      termId: number;
+      kind: components["schemas"]["TermKind"];
+      /** @description 정규화한 형태 */
+      term: string;
+    };
+    TermRequest: {
+      kind: components["schemas"]["TermKind"];
+      /** @description 2~20글자. 저장할 때 정규화한다 */
+      term: string;
+    };
   };
   responses: {
     /** @description 입력 검증 실패 (INVALID_REQUEST). 댓글 작성에서는 INVALID_PARENT_COMMENT도 쓴다 */
@@ -891,8 +1277,17 @@ export interface components {
         "application/json": components["schemas"]["ErrorEnvelope"];
       };
     };
-    /** @description 없거나 삭제된 글 또는 댓글 (POST_NOT_FOUND, COMMENT_NOT_FOUND) */
+    /** @description 없거나, 삭제됐거나, 숨겨진 글 또는 댓글 (POST_NOT_FOUND, COMMENT_NOT_FOUND) */
     NotFound: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        "application/json": components["schemas"]["ErrorEnvelope"];
+      };
+    };
+    /** @description 운영자가 아니거나 대상이 없음 (NOT_FOUND). 운영자가 아닌 회원에게 경로의 존재를 드러내지 않는다 */
+    OperatorOnly: {
       headers: {
         [name: string]: unknown;
       };
@@ -913,6 +1308,8 @@ export interface components {
     /** @description 앞 쪽 응답의 nextCursor. 불투명 문자열이다 */
     Cursor: string;
     Size: number;
+    TargetType: components["schemas"]["TargetType"];
+    TargetId: number;
   };
   requestBodies: never;
   headers: never;
@@ -1994,6 +2391,451 @@ export interface operations {
       };
       401: components["responses"]["Unauthorized"];
       403: components["responses"]["Forbidden"];
+    };
+  };
+  getSupportResources: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 도움 리소스 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["SupportResource"][];
+            error: null;
+          };
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+    };
+  };
+  reportContent: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ReportRequest"];
+      };
+    };
+    responses: {
+      /** @description 접수됨. 신고 수나 처리 상태는 돌려주지 않는다 */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      /** @description 온보딩 전(ONBOARDING_REQUIRED) 또는 자기 글이나 댓글(CANNOT_REPORT_OWN_CONTENT) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      404: components["responses"]["NotFound"];
+      /** @description 이미 신고한 대상 (ALREADY_REPORTED) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description 한 시간 20건 초과 (REPORT_RATE_LIMITED). Retry-After 헤더에 남은 초 */
+      429: {
+        headers: {
+          "Retry-After"?: number;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  requestReview: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ReviewRequestBody"];
+      };
+    };
+    responses: {
+      /** @description 접수됨 */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      /** @description 내 것이 아니거나, 숨겨지지 않았거나, 없는 대상 (POST_NOT_FOUND, COMMENT_NOT_FOUND) */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description 이미 요청함 (REVIEW_ALREADY_REQUESTED) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  listAssessments: {
+    parameters: {
+      query?: {
+        level?: components["schemas"]["RiskLevel"];
+        reviewed?: boolean;
+        /** @description 앞 쪽 응답의 nextCursor. 불투명 문자열이다 */
+        cursor?: components["parameters"]["Cursor"];
+        size?: components["parameters"]["Size"];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 판정 페이지 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["OperatorAssessmentPage"];
+            error: null;
+          };
+        };
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      404: components["responses"]["OperatorOnly"];
+    };
+  };
+  markAssessmentReviewed: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        assessmentId: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 표시됨 */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      404: components["responses"]["OperatorOnly"];
+    };
+  };
+  listReports: {
+    parameters: {
+      query?: {
+        status?: components["schemas"]["ReportStatus"];
+        /** @description 앞 쪽 응답의 nextCursor. 불투명 문자열이다 */
+        cursor?: components["parameters"]["Cursor"];
+        size?: components["parameters"]["Size"];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 신고 페이지 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["OperatorReportPage"];
+            error: null;
+          };
+        };
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      404: components["responses"]["OperatorOnly"];
+    };
+  };
+  decideReport: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        reportId: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ReportDecision"];
+      };
+    };
+    responses: {
+      /** @description 닫힘 */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      404: components["responses"]["OperatorOnly"];
+    };
+  };
+  listReviewRequests: {
+    parameters: {
+      query?: {
+        status?: components["schemas"]["ReviewStatus"];
+        /** @description 앞 쪽 응답의 nextCursor. 불투명 문자열이다 */
+        cursor?: components["parameters"]["Cursor"];
+        size?: components["parameters"]["Size"];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 재검토 요청 페이지 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["OperatorReviewPage"];
+            error: null;
+          };
+        };
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      404: components["responses"]["OperatorOnly"];
+    };
+  };
+  decideReview: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        reviewId: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ReviewDecision"];
+      };
+    };
+    responses: {
+      /** @description 닫힘 */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      404: components["responses"]["OperatorOnly"];
+    };
+  };
+  hideContent: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        targetType: components["parameters"]["TargetType"];
+        targetId: components["parameters"]["TargetId"];
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["OperatorNote"];
+      };
+    };
+    responses: {
+      /** @description 숨김 */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      404: components["responses"]["OperatorOnly"];
+    };
+  };
+  unhideContent: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        targetType: components["parameters"]["TargetType"];
+        targetId: components["parameters"]["TargetId"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 다시 보임 */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      404: components["responses"]["OperatorOnly"];
+    };
+  };
+  listTerms: {
+    parameters: {
+      query?: {
+        kind?: components["schemas"]["TermKind"];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 낱말 목록 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["Term"][];
+            error: null;
+          };
+        };
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      404: components["responses"]["OperatorOnly"];
+    };
+  };
+  addTerm: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TermRequest"];
+      };
+    };
+    responses: {
+      /** @description 더해진 낱말 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["Term"];
+            error: null;
+          };
+        };
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      404: components["responses"]["OperatorOnly"];
+    };
+  };
+  removeTerm: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        termId: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 빠짐 */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      404: components["responses"]["OperatorOnly"];
     };
   };
 }

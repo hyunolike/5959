@@ -75,8 +75,25 @@ class ContractTests {
          * US2에서 getFeed를, US3에서 공감과 취소, 댓글 목록과 작성, 댓글 공감과 취소를,
          * US4에서 글과 댓글 수정, 삭제를 빼서 지금은 비어 있다).
          * 004-notification-mypage가 더한 11개도 알림(US1, US2), 마이페이지(US3, US4), 프로필 수정(US5)을
-         * 구현한 스토리가 각자 빼서 비어 있다.
+         * 구현한 스토리가 각자 뺐다. 005-safety가 더한 14개는 도움 리소스(US1), 신고(US3), 재검토 요청과
+         * 운영자(US4)를 구현하는 스토리가 각자 뺀다.
          */
-        val pendingPaths = emptySet<String>()
+        val pendingPaths =
+            setOf(
+                "GET /api/v1/safety/support-resources", // getSupportResources
+                "POST /api/v1/reports", // reportContent
+                "POST /api/v1/review-requests", // requestReview
+                "GET /api/v1/operator/assessments", // listAssessments
+                "PUT /api/v1/operator/assessments/{assessmentId}/reviewed", // markAssessmentReviewed
+                "GET /api/v1/operator/reports", // listReports
+                "PUT /api/v1/operator/reports/{reportId}/decision", // decideReport
+                "GET /api/v1/operator/review-requests", // listReviewRequests
+                "PUT /api/v1/operator/review-requests/{reviewId}/decision", // decideReview
+                "PUT /api/v1/operator/contents/{targetType}/{targetId}/hidden", // hideContent
+                "DELETE /api/v1/operator/contents/{targetType}/{targetId}/hidden", // unhideContent
+                "GET /api/v1/operator/terms", // listTerms
+                "POST /api/v1/operator/terms", // addTerm
+                "DELETE /api/v1/operator/terms/{termId}", // removeTerm
+            )
     }
 }
