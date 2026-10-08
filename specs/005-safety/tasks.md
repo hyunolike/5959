@@ -111,14 +111,14 @@ description: "Task list for 005-safety (위험 감지와 안전장치)"
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T032 [P] [US3] apps/api/src/test/kotlin/com/ogu/safety/ReportApiTests.kt: `US3-AC1 사유와 함께 신고하면 204이고 기록된다`(OTHER는 설명 200글자까지, 201글자는 400, 다른 사유에 설명을 보내면 무시), `US3-AC2 같은 대상을 다시 신고하면 409 ALREADY_REPORTED이고 수가 늘지 않는다`, `US3-AC3 자기 글과 댓글은 403 CANNOT_REPORT_OWN_CONTENT`, `US3-AC4 글 상세, 피드, 알림 어디에도 신고 수나 신고 여부가 없다`, `US3-AC5 한 시간에 21번째는 429 REPORT_RATE_LIMITED와 Retry-After`(시계 주입, 동시 요청 30개 중 20개만 통과), `US3-AC6 여러 회원이 신고해도 글은 그대로 보인다`, 숨겼거나 지운 대상은 404, 대상이 지워지면 열린 신고가 `CLOSED`
-- [ ] T033 [P] [US3] 웹 단위 테스트: apps/web/src/features/report-content/ui/*.test.tsx(사유 넷, 기타를 고르면 설명 입력과 200자 세기, `US3-AC2 409면 "이미 신고한 글이에요"`, 429 안내, 성공하면 닫히고 "신고가 접수됐어요"), 내 글과 댓글에는 신고 메뉴가 없다(`US3-AC3`)
-- [ ] T034 [US3] apps/web/e2e-full/safety.spec.ts에 더한다: `US3-AC1`, `US3-AC2`, `US3-AC3`
+- [x] T032 [P] [US3] apps/api/src/test/kotlin/com/ogu/safety/ReportApiTests.kt: `US3-AC1 사유와 함께 신고하면 204이고 기록된다`(OTHER는 설명 200글자까지, 201글자는 400, 다른 사유에 설명을 보내면 무시), `US3-AC2 같은 대상을 다시 신고하면 409 ALREADY_REPORTED이고 수가 늘지 않는다`, `US3-AC3 자기 글과 댓글은 403 CANNOT_REPORT_OWN_CONTENT`, `US3-AC4 글 상세, 피드, 알림 어디에도 신고 수나 신고 여부가 없다`, `US3-AC5 한 시간에 21번째는 429 REPORT_RATE_LIMITED와 Retry-After`(시계 주입, 동시 요청 30개 중 20개만 통과), `US3-AC6 여러 회원이 신고해도 글은 그대로 보인다`, 숨겼거나 지운 대상은 404, 대상이 지워지면 열린 신고가 `CLOSED`
+- [x] T033 [P] [US3] 웹 단위 테스트: apps/web/src/features/report-content/ui/*.test.tsx(사유 넷, 기타를 고르면 설명 입력과 200자 세기, `US3-AC2 409면 "이미 신고한 글이에요"`, 429 안내, 성공하면 닫히고 "신고가 접수됐어요"), 내 글과 댓글에는 신고 메뉴가 없다(`US3-AC3`)
+- [x] T034 [US3] apps/web/e2e-full/safety.spec.ts에 더한다: `US3-AC1`, `US3-AC2`, `US3-AC3`
 
 ### Implementation for User Story 3
 
-- [ ] T035 [US3] `safety` application/ReportService(대상 확인은 `PostApi.find`, `findComment`, 자기 것 거절, 유일 제약 위반을 409로)와 ReportRateLimit(회원 단위 advisory lock, 새 이름공간, 최근 한 시간 수), RemovalListener(`PostRemoved`, `CommentRemoved`를 같은 트랜잭션에서 받아 열린 신고와 재검토 요청을 닫는다). presentation `POST /api/v1/reports`. `pendingPaths`에서 `reportContent`를 뺀다
-- [ ] T036 [P] [US3] 웹: apps/web/src/features/report-content/(model/schema.ts, api/use-report-mutation.ts, ui/report-dialog.tsx), `widgets/post-detail`의 글과 댓글 메뉴에 "신고"(내 것에는 없음). `shared/lib/scrub-event.ts`에 신고와 글쓰기 경로를 더해 폼 값이 breadcrumb에 실리지 않게 한다
+- [x] T035 [US3] `safety` application/ReportService(대상 확인은 `PostApi.find`, `findComment`, 자기 것 거절, 유일 제약 위반을 409로)와 ReportRateLimit(회원 단위 advisory lock, 새 이름공간, 최근 한 시간 수), RemovalListener(`PostRemoved`, `CommentRemoved`를 같은 트랜잭션에서 받아 열린 신고와 재검토 요청을 닫는다). presentation `POST /api/v1/reports`. `pendingPaths`에서 `reportContent`를 뺀다
+- [x] T036 [P] [US3] 웹: apps/web/src/features/report-content/(model/schema.ts, api/use-report-mutation.ts, ui/report-dialog.tsx), `widgets/post-detail`의 글과 댓글 메뉴에 "신고"(내 것에는 없음). `shared/lib/scrub-event.ts`에 신고와 글쓰기 경로를 더해 폼 값이 breadcrumb에 실리지 않게 한다 **구현 메모**: 대화상자는 `shared/ui/ConfirmDialog`에 `children` 자리를 더해 그대로 쓴다. 쓰는 곳이 `widgets/post-detail` 하나라 steiger `insignificant-slice`에 걸려, `features/like`, `features/comment`와 같은 이유로 예외에 더했다(행동은 feature에 둔다). 오류 수집 도구에는 `content`, `detail` 키를 지워 보낸다.
 
 **Checkpoint**: 신고가 접수되고 운영자 조회를 기다린다
 
