@@ -2,15 +2,11 @@ package com.ogu.post.application
 
 import com.ogu.member.CareerYear
 import com.ogu.member.JobRole
-import com.ogu.post.CommentTone
 import com.ogu.post.PostOrder
 import com.ogu.post.PostPage
-import com.ogu.post.PostPageItem
 import com.ogu.post.PostPageQuery
-import com.ogu.post.PostSummary
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Component
-import java.sql.ResultSet
 
 /**
  * 피드 한 쪽을 키셋으로 읽는다(research R7). 최신순은 `id DESC`, 인기순은 `(like_count DESC, id DESC)`이고, 둘 다
@@ -58,7 +54,7 @@ class PostPageReader(
                     limit :limit
                     """.trimIndent(),
                 ).params(params)
-                .query { rs, _ -> rs.toItem() }
+                .query { rs, _ -> rs.toPostPageItem() }
                 .list()
 
         val items = rows.take(query.size)
@@ -71,28 +67,10 @@ class PostPageReader(
         return PostPage(items, nextCursor)
     }
 
-    private fun ResultSet.toItem(): PostPageItem =
-        PostPageItem(
-            post =
-                PostSummary(
-                    postId = getLong("id"),
-                    authorId = getLong("author_id"),
-                    authorJobRole = JobRole.valueOf(getString("author_job_role")),
-                    authorCareerYear = CareerYear.valueOf(getString("author_career_year")),
-                    content = getString("content"),
-                    commentTone = CommentTone.valueOf(getString("comment_tone")),
-                    likeCount = getInt("like_count"),
-                    commentCount = getInt("comment_count"),
-                    createdAt = getTimestamp("created_at").toInstant(),
-                ),
-            likedByMe = getBoolean("liked_by_me"),
-        )
-
     private companion object {
         val SELECT =
             """
-            select p.id, p.author_id, p.author_job_role, p.author_career_year, p.content, p.comment_tone,
-                   p.like_count, p.comment_count, p.created_at,
+            select $POST_COLUMNS,
                    exists (select 1 from post_likes l where l.post_id = p.id and l.member_id = :viewerId) as liked_by_me
             from posts p
             """.trimIndent()
