@@ -177,14 +177,14 @@ description: "Task list for 004-notification-mypage (알림과 마이페이지)"
 
 ### Tests for User Story 5 ⚠️
 
-- [ ] T060 [P] [US5] apps/api/src/test/kotlin/com/ogu/member/presentation/ProfileUpdateApiTests.kt: `US5-AC1 규칙에 맞는 닉네임, 직군, 경력으로 고치면 200 MemberProfile이고 GET /me에 바로 보인다`, `US5-AC2 다른 회원의 닉네임을 대소문자만 바꿔 넣으면 409 NICKNAME_TAKEN, 허용되지 않는 문자는 M1과 같은 메시지의 400 INVALID_REQUEST`, 내 닉네임의 대소문자만 바꾸는 것은 허용, 필드가 하나도 없으면 400, `US5-AC3 직군과 경력을 바꿔도 예전 글은 스냅숏 그대로이고 새 글부터 바뀐 값`, `US5-AC4 닉네임을 바꾸면 예전 글, 댓글, 알림 목록에 바뀐 닉네임이 보인다`, 두 회원이 같은 닉네임을 동시에 저장하면 한 명만 성공, 온보딩 전 회원의 수정은 서비스에서도 403 `ONBOARDING_REQUIRED`
-- [ ] T061 [P] [US5] apps/web/src/features/edit-profile/model/schema.test.ts(M1 온보딩 닉네임 스키마를 재사용해 같은 사례가 같은 결과, 바뀐 필드만 보냄, 하나도 안 바꾸면 저장 버튼 비활성)
-- [ ] T062 [US5] apps/web/e2e-full/mypage.spec.ts에 프로필 시나리오를 더한다(T049와 같은 파일): `US5-AC1`, `US5-AC2`(중복과 형식 안내), `US5-AC3`(피드에서 예전 글과 새 글 비교)
+- [x] T060 [P] [US5] apps/api/src/test/kotlin/com/ogu/member/presentation/ProfileUpdateApiTests.kt: `US5-AC1 규칙에 맞는 닉네임, 직군, 경력으로 고치면 200 MemberProfile이고 GET /me에 바로 보인다`, `US5-AC2 다른 회원의 닉네임을 대소문자만 바꿔 넣으면 409 NICKNAME_TAKEN, 허용되지 않는 문자는 M1과 같은 메시지의 400 INVALID_REQUEST`, 내 닉네임의 대소문자만 바꾸는 것은 허용, 필드가 하나도 없으면 400, `US5-AC3 직군과 경력을 바꿔도 예전 글은 스냅숏 그대로이고 새 글부터 바뀐 값`, `US5-AC4 닉네임을 바꾸면 예전 글, 댓글, 알림 목록에 바뀐 닉네임이 보인다`, 두 회원이 같은 닉네임을 동시에 저장하면 한 명만 성공, 온보딩 전 회원의 수정은 서비스에서도 403 `ONBOARDING_REQUIRED`
+- [x] T061 [P] [US5] apps/web/src/features/edit-profile/model/schema.test.ts(M1 온보딩 닉네임 스키마를 재사용해 같은 사례가 같은 결과, 바뀐 필드만 보냄, 하나도 안 바꾸면 저장 버튼 비활성)
+- [x] T062 [US5] apps/web/e2e-full/mypage.spec.ts에 프로필 시나리오를 더한다(T049와 같은 파일): `US5-AC1`, `US5-AC2`(중복과 형식 안내), `US5-AC3`(피드에서 예전 글과 새 글 비교)
 
 ### Implementation for User Story 5
 
-- [ ] T063 [US5] member 모듈 application/ProfileService(회원 행 `FOR UPDATE`, `Nickname.of` 검증, 소문자 키가 내 키와 같으면 중복 확인 생략, 다르면 `existsByNicknameKey`, 저장 때 `member.nickname_key` 유일 제약 위반은 `409 NICKNAME_TAKEN`, 온보딩 전이면 403), presentation/MemberController `PATCH /api/v1/members/me`와 dto/ProfileUpdateRequest. `MemberProfileChanged` 이벤트는 만들지 않는다(research R13). ContractTests `pendingPaths`에서 `updateMyProfile`을 뺀다
-- [ ] T064 [P] [US5] 웹: apps/web/src/features/edit-profile/(model/schema.ts, api/use-update-profile-mutation.ts, ui/profile-form.tsx: `nickname-availability` 확인 재사용), apps/web/src/app/my/edit/page.tsx, `/my`에 수정 버튼. 성공하면 내 정보, 피드, 상세, 알림 목록 쿼리를 무효화하고 `/my`로 이동한다
+- [x] T063 [US5] member 모듈 application/ProfileService(회원 행 `FOR UPDATE`, `Nickname.of` 검증, 소문자 키가 내 키와 같으면 중복 확인 생략, 다르면 `existsByNicknameKey`, 저장 때 `member.nickname_key` 유일 제약 위반은 `409 NICKNAME_TAKEN`, 온보딩 전이면 403), presentation/MemberController `PATCH /api/v1/members/me`와 dto/ProfileUpdateRequest. `MemberProfileChanged` 이벤트는 만들지 않는다(research R13). ContractTests `pendingPaths`에서 `updateMyProfile`을 뺀다
+- [x] T064 [P] [US5] 웹: apps/web/src/features/edit-profile/(model/schema.ts, api/use-update-profile-mutation.ts, ui/profile-form.tsx: `nickname-availability` 확인 재사용), apps/web/src/app/my/edit/page.tsx, `/my`에 수정 버튼. 성공하면 내 정보, 피드, 상세, 알림 목록 쿼리를 무효화하고 `/my`로 이동한다 **구현 메모**: 닉네임 스키마와 `useNicknameCheck`는 feature끼리 가져올 수 없어 `entities/member`로 옮겨 온보딩과 함께 쓴다.
 
 **Checkpoint**: 모든 스토리가 단독으로 동작한다
 
