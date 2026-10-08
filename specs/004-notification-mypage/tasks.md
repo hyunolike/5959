@@ -131,15 +131,15 @@ description: "Task list for 004-notification-mypage (알림과 마이페이지)"
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T047 [P] [US3] apps/api/src/test/kotlin/com/ogu/feed/presentation/MyPageApiTests.kt: `US3-AC1 내 글이 최신순 20개씩이고 피드 항목과 같은 필드이며 지운 글은 없다`, `US3-AC2 내 댓글과 답글이 최신순이고 글 앞부분이 붙으며 지운 댓글과 지운 글의 댓글은 없다`, `US3-AC3 공감한 글은 공감 시각 최신순이고 취소한 공감과 지운 글은 없다`(취소 후 다시 공감하면 다시 공감한 시각 자리), `US3-AC4 항목이 없으면 빈 목록과 다음 커서 null`, 세 목록 모두 커서로 다음 쪽에 중복과 누락 없음, 쿼리 수가 쪽 크기와 상관없이 4~5개, 다른 회원의 활동은 섞이지 않음, 온보딩 전 회원은 세 목록 모두 403 `ONBOARDING_REQUIRED`
-- [ ] T048 [P] [US3] apps/web/src/widgets/my-activity/ui/*.test.tsx: `US3-AC4 탭이 비면 안내와 "글쓰기", "피드 보기" 버튼`, `?tab=posts|comments|likes`와 탭 전환이 맞물림, 잘못된 값이면 posts
-- [ ] T049 [P] [US3] apps/web/e2e-full/mypage.spec.ts: `US3-AC1`, `US3-AC2`(누르면 그 글로 이동), `US3-AC3`, `US3-AC4`(새 회원)
+- [x] T047 [P] [US3] apps/api/src/test/kotlin/com/ogu/feed/presentation/MyPageApiTests.kt: `US3-AC1 내 글이 최신순 20개씩이고 피드 항목과 같은 필드이며 지운 글은 없다`, `US3-AC2 내 댓글과 답글이 최신순이고 글 앞부분이 붙으며 지운 댓글과 지운 글의 댓글은 없다`, `US3-AC3 공감한 글은 공감 시각 최신순이고 취소한 공감과 지운 글은 없다`(취소 후 다시 공감하면 다시 공감한 시각 자리), `US3-AC4 항목이 없으면 빈 목록과 다음 커서 null`, 세 목록 모두 커서로 다음 쪽에 중복과 누락 없음, 쿼리 수가 쪽 크기와 상관없이 4~5개, 다른 회원의 활동은 섞이지 않음, 온보딩 전 회원은 세 목록 모두 403 `ONBOARDING_REQUIRED`
+- [x] T048 [P] [US3] apps/web/src/widgets/my-activity/ui/*.test.tsx: `US3-AC4 탭이 비면 안내와 "글쓰기", "피드 보기" 버튼`, `?tab=posts|comments|likes`와 탭 전환이 맞물림, 잘못된 값이면 posts
+- [x] T049 [P] [US3] apps/web/e2e-full/mypage.spec.ts: `US3-AC1`, `US3-AC2`(누르면 그 글로 이동), `US3-AC3`, `US3-AC4`(새 회원)
 
 ### Implementation for User Story 3
 
-- [ ] T050 [US3] post 모듈 application/MyPostsReader, MyCommentsReader, LikedPostsReader(키셋)와 `PostApi.pageByAuthor(authorId, cursor, size)`(`id DESC`, 인덱스 `posts_author_live_idx`), `PostApi.pageCommentsByAuthor(authorId, cursor, size): MyCommentPage`(살아 있는 글의 살아 있는 댓글, `id DESC`, `isReply`, 글 본문 앞부분), `PostApi.pageLikedBy(memberId, cursor, size)`(`(created_at DESC, post_id DESC)`, 지운 글 제외)
-- [ ] T051 [US3] feed 모듈: 피드 조합을 application/FeedAssembler로 꺼내 피드와 마이페이지가 함께 쓴다(기존 FeedApiTests가 그대로 통과), application/MyPageQuery, presentation/MyPageController `GET /api/v1/members/me/posts`, `/comments`, `/liked-posts`. ContractTests `pendingPaths`에서 `getMyPosts`, `getMyComments`, `getMyLikedPosts`를 뺀다
-- [ ] T052 [P] [US3] 웹: apps/web/src/entities/post/api/(use-my-posts-query.ts, use-liked-posts-query.ts), apps/web/src/entities/comment/api/use-my-comments-query.ts와 ui/my-comment-item.tsx, apps/web/src/widgets/my-activity/(세 탭, 피드 카드 재사용, 무한 스크롤, 빈 상태), apps/web/src/app/my/page.tsx를 프로필, 감정 통계 자리, 탭 구성으로 바꾼다(로그아웃 버튼은 유지)
+- [x] T050 [US3] post 모듈 application/MyPostsReader, MyCommentsReader, LikedPostsReader(키셋)와 `PostApi.pageByAuthor(authorId, cursor, size)`(`id DESC`, 인덱스 `posts_author_live_idx`), `PostApi.pageCommentsByAuthor(authorId, cursor, size): MyCommentPage`(살아 있는 글의 살아 있는 댓글, `id DESC`, `isReply`, 글 본문 앞부분), `PostApi.pageLikedBy(memberId, cursor, size)`(`(created_at DESC, post_id DESC)`, 지운 글 제외)
+- [x] T051 [US3] feed 모듈: 피드 조합을 application/FeedAssembler로 꺼내 피드와 마이페이지가 함께 쓴다(기존 FeedApiTests가 그대로 통과), application/MyPageQuery, presentation/MyPageController `GET /api/v1/members/me/posts`, `/comments`, `/liked-posts`. ContractTests `pendingPaths`에서 `getMyPosts`, `getMyComments`, `getMyLikedPosts`를 뺀다
+- [x] T052 [P] [US3] 웹: apps/web/src/entities/post/api/(use-my-posts-query.ts, use-liked-posts-query.ts), apps/web/src/entities/comment/api/use-my-comments-query.ts와 ui/my-comment-item.tsx, apps/web/src/widgets/my-activity/(세 탭, 피드 카드 재사용, 무한 스크롤, 빈 상태), apps/web/src/app/my/page.tsx를 프로필, 감정 통계 자리, 탭 구성으로 바꾼다(로그아웃 버튼은 유지)
 
 **Checkpoint**: 마이페이지 세 목록이 단독으로 동작한다
 
