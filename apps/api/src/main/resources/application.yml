@@ -150,6 +150,7 @@ ogu:
       max-per-hour: 20
     retention: 365d
     purge-cron: "0 30 4 * * *" # 매일 04:30 한국 시간
+    purge-batch-size: 1000
     backfill:
       enabled: true
       batch-size: 1000

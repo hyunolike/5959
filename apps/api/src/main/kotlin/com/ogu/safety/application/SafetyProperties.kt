@@ -10,6 +10,7 @@ data class SafetyProperties(
     val retry: Retry = Retry(),
     val report: Report = Report(),
     val retention: Duration = Duration.ofDays(365),
+    val purgeBatchSize: Int = 1000,
     val backfill: Backfill = Backfill(),
 ) {
     data class Retry(
