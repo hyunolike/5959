@@ -11,6 +11,7 @@ import {
   type Notification,
 } from "@/entities/notification";
 import { useNotificationStream } from "@/features/notification-stream";
+import { useMarkReadMutation } from "@/features/read-notification";
 import { Toaster, useToasts } from "@/shared/ui";
 
 const NOTIFICATIONS_PATH = "/notifications";
@@ -20,12 +21,14 @@ const NOTIFICATIONS_PATH = "/notifications";
  * 레이아웃이 온보딩을 마친 회원에게만 그린다(US1-AC8).
  *
  * 토스트 문구는 종류, 닉네임, 인원 수로만 만든다. 글이나 댓글 본문은 넣지 않는다(ADR-0005).
- * 알림 페이지를 보고 있으면 목록에 바로 나타나므로 토스트를 띄우지 않는다.
+ * 알림 페이지를 보고 있으면 목록에 바로 나타나므로 토스트를 띄우지 않는다. 토스트를 누르면 목록에서
+ * 누른 것과 같이 읽음으로 바꾸고 글 상세로 간다(US2-AC3).
  */
 export function NotificationBell() {
   const router = useRouter();
   const pathname = usePathname();
   const { toasts, show, dismiss } = useToasts();
+  const { mutate: markRead } = useMarkReadMutation();
 
   // 연결은 한 번만 열고, 그때그때의 주소는 ref로 읽는다.
   const pathnameRef = useRef(pathname);
@@ -43,7 +46,11 @@ export function NotificationBell() {
       onClick:
         notification.post === null
           ? undefined
-          : () => router.push(`/post/${notification.postId}`),
+          : () => {
+              // 토스트를 누르는 것도 그 알림을 누르는 것이다. 읽음으로 바꾸고 글로 간다(US2-AC3).
+              markRead(notification.notificationId);
+              router.push(`/post/${notification.postId}`);
+            },
     });
   });
 

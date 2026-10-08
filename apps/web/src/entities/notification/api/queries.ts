@@ -1,9 +1,13 @@
-import { queryOptions, useQuery } from "@tanstack/react-query";
+import {
+  queryOptions,
+  useInfiniteQuery,
+  useQuery,
+} from "@tanstack/react-query";
 
 import { requestApi } from "@/shared/api";
 import { QUERY_KEYS } from "@/shared/config";
 
-import type { UnreadCount } from "../model/types";
+import type { NotificationPage, UnreadCount } from "../model/types";
 import { newestUnreadCount } from "../model/unread";
 
 /**
@@ -42,4 +46,35 @@ export function unreadCountQueryOptions() {
  */
 export function useUnreadCountQuery({ enabled = true } = {}) {
   return useQuery({ ...unreadCountQueryOptions(), enabled });
+}
+
+/**
+ * 알림 목록 한 쪽. 커서는 서버가 준 불투명한 값을 그대로 돌려준다. 쪽 크기는 서버 기본값(20)을 쓴다.
+ */
+export function fetchNotificationsPage(
+  cursor: string | null,
+  fetchImpl: typeof fetch = fetch,
+): Promise<NotificationPage> {
+  const query = cursor ? `?${new URLSearchParams({ cursor })}` : "";
+  return requestApi<NotificationPage>(
+    `/api/notifications${query}`,
+    { cache: "no-store" },
+    fetchImpl,
+  );
+}
+
+/**
+ * 알림 목록(US2-AC1, AC2). 번호(`seq`) 내림차순 키셋으로 20개씩 이어 붙인다.
+ *
+ * 실시간 이벤트가 같은 캐시(`QUERY_KEYS.notifications`)의 첫 쪽 앞에 새 알림을 넣는다. 그래서 목록을
+ * 열 때마다 다시 받는다. 화면을 떠나 있던 동안 캐시가 남아 있어도, 끊긴 사이에 빠진 것이 없게 서버 값으로 맞춘다.
+ */
+export function useNotificationsQuery() {
+  return useInfiniteQuery({
+    queryKey: QUERY_KEYS.notifications,
+    queryFn: ({ pageParam }) => fetchNotificationsPage(pageParam),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    refetchOnMount: "always",
+  });
 }
