@@ -84,6 +84,8 @@ class NotificationFailureIsolationTests {
         val author = members.onboarded()
         val fan = members.onboarded()
         val postId = loop.postWithMonster(author)
+        // 몬스터 생성 알림 리스너가 다른 스레드에서 writer를 부르는 동안 스터빙하면 Mockito가 스터빙을 끝내지 못한다
+        support.awaitListenersIdle(postId)
         doThrow(IllegalStateException("알림 장애")).`when`(writer).writeAll(anyList() ?: emptyList())
         doThrow(IllegalStateException("알림 장애")).`when`(writer).addLike(anyLong(), anyLong(), anyLong())
 
