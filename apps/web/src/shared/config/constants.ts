@@ -12,6 +12,8 @@
 export const QUERY_KEYS = {
   apiHealth: ["api-health"] as const,
   me: ["me"] as const,
+  /** 모든 글 상세와 그 댓글 목록. 닉네임을 바꾸면 이 키로 한꺼번에 낡은 것으로 표시한다(004 US5-AC4). */
+  allPosts: ["posts"] as const,
   postDetail: (postId: number) => ["posts", postId] as const,
   comments: (postId: number) => ["posts", postId, "comments"] as const,
   /** 정렬과 필터가 다르면 다른 목록이다. 무효화는 `["feed"]` 하나로 모든 피드를 지운다. */
@@ -28,6 +30,8 @@ export const QUERY_KEYS = {
    * 마이페이지의 세 목록(004 US3). 공감, 댓글, 글 삭제가 다른 화면에서 일어나므로 무효화로 따라가지
    * 않고, 탭을 열 때마다 다시 받는다(`refetchOnMount: "always"`).
    */
+  /** 마이페이지의 목록과 통계 전부. */
+  myActivity: ["my"] as const,
   myPosts: ["my", "posts"] as const,
   myComments: ["my", "comments"] as const,
   likedPosts: ["my", "liked-posts"] as const,

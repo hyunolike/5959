@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 
@@ -9,60 +10,80 @@ import {
   JOB_ROLE_LABELS,
   NICKNAME_REASON_LABEL,
   useNicknameCheck,
+  type MemberProfile,
 } from "@/entities/member";
 import { ApiError } from "@/shared/api";
-import { cn, sanitizeNextPath } from "@/shared/lib";
+import { cn } from "@/shared/lib";
 import { Button, Input, Label } from "@/shared/ui";
 
-import { useOnboardingMutation } from "../api/use-onboarding-mutation";
-import { onboardingSchema, type OnboardingFormValues } from "../model/schema";
+import { useUpdateProfileMutation } from "../api/use-update-profile-mutation";
+import {
+  changedFields,
+  editProfileSchema,
+  hasChanges,
+  isOwnNickname,
+  type EditProfileFormValues,
+} from "../model/schema";
 
 const GENERIC_ERROR_MESSAGE =
-  "온보딩을 완료하지 못했습니다. 잠시 후 다시 시도해주세요.";
+  "프로필을 저장하지 못했습니다. 잠시 후 다시 시도해주세요.";
 
 const SELECT_CLASS_NAME =
   "h-10 w-full rounded-md border border-neutral-300 bg-white px-3 text-sm text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50";
 
-/**
- * 온보딩 폼(닉네임, 직군, 경력). 완료하면 `/home`으로 이동한다(US1-AC4).
- * 닉네임은 입력 뒤 400ms 디바운스로 중복 여부를 미리 보여준다(US1-AC5).
- * 저장 시 API 오류(409 NICKNAME_TAKEN, 400 형식 위반)는 닉네임 필드에
- * 인라인으로 보여준다(US1-AC5, US1-AC6).
- */
-interface OnboardingFormProps {
-  /** 온보딩 뒤 갈 경로. 검증을 통과하지 못하면 `/home`이다. */
-  next?: string;
-}
+const MY_PAGE = "/my";
 
-export function OnboardingForm({ next }: OnboardingFormProps) {
+/**
+ * 프로필 수정 폼(004 US5): 닉네임, 직군, 경력. 지금 값으로 채워 두고 바뀐 항목만 보낸다.
+ *
+ * - 하나도 바꾸지 않았으면 저장 버튼을 막는다.
+ * - 닉네임 규칙과 안내는 온보딩과 같다(US5-AC2). 닉네임을 바꿨을 때만 400ms 뒤 중복 여부를 미리 보인다.
+ *   내 닉네임의 대소문자만 바꾼 경우는 확인하지 않는다(확인 API는 내가 쓰는 닉네임도 "사용 중"이라 답한다).
+ * - 저장되면 마이페이지로 돌아간다(US5-AC1). 409와 400은 닉네임 필드에 보인다.
+ */
+export function ProfileForm({ member }: { member: MemberProfile }) {
   const router = useRouter();
-  const destination = sanitizeNextPath(next);
-  const onboardingMutation = useOnboardingMutation();
+  const updateMutation = useUpdateProfileMutation();
   const {
     register,
     handleSubmit,
     setError,
     control,
     formState: { errors, isSubmitting },
-  } = useForm<OnboardingFormValues>({
-    resolver: zodResolver(onboardingSchema),
-    defaultValues: { nickname: "", jobRole: undefined, careerYear: undefined },
+  } = useForm<EditProfileFormValues>({
+    resolver: zodResolver(editProfileSchema),
+    defaultValues: {
+      nickname: member.nickname ?? "",
+      jobRole: member.jobRole ?? undefined,
+      careerYear: member.careerYear ?? undefined,
+    },
   });
 
-  const nickname = useWatch({ control, name: "nickname" }) ?? "";
-  const nicknameCheck = useNicknameCheck(nickname);
-  // isSettled가 false면 data는 지금 입력이 아니라 이전 값의 결과다(디바운스가
-  // 아직 끝나지 않았다). 그럴 때는 힌트도, 제출 차단도 하지 않고 서버의
-  // 409(NICKNAME_TAKEN) 응답에 맡긴다 — 오래된 "사용 중" 결과로 방금 고쳐
-  // 쓴 사용 가능한 닉네임을 막으면 안 된다.
-  const settledNicknameResult = nicknameCheck.isSettled
-    ? nicknameCheck.data
-    : undefined;
+  const values = useWatch({ control });
+  const nickname = values.nickname ?? "";
+  const ownNickname = isOwnNickname(member.nickname, nickname);
+  // 내 닉네임이면 묻지 않는다(빈 값을 넘기면 확인하지 않는다).
+  const nicknameCheck = useNicknameCheck(ownNickname ? "" : nickname);
+  // isSettled가 false면 data는 지금 입력이 아니라 이전 값의 결과다. 그때는 힌트도 차단도 하지 않는다.
+  const settledNicknameResult =
+    !ownNickname && nicknameCheck.isSettled ? nicknameCheck.data : undefined;
   const nicknameUnavailable =
     settledNicknameResult !== undefined && !settledNicknameResult.available;
 
-  const onSubmit = handleSubmit(async (values) => {
-    if (nicknameUnavailable) {
+  const changed = hasChanges(
+    changedFields(member, {
+      nickname,
+      jobRole: values.jobRole ?? member.jobRole!,
+      careerYear: values.careerYear ?? member.careerYear!,
+    }),
+  );
+
+  const onSubmit = handleSubmit(async (submitted) => {
+    const changes = changedFields(member, submitted);
+    if (!hasChanges(changes)) {
+      return;
+    }
+    if (changes.nickname !== undefined && nicknameUnavailable) {
       setError("nickname", {
         message: settledNicknameResult?.reason
           ? NICKNAME_REASON_LABEL[settledNicknameResult.reason]
@@ -72,23 +93,15 @@ export function OnboardingForm({ next }: OnboardingFormProps) {
     }
 
     try {
-      const member = await onboardingMutation.mutateAsync(values);
-      if (member) {
-        router.push(destination);
-        // 온보딩 쿠키가 생겼다. 루트 레이아웃을 새로 받아 알림 종을 그린다.
-        router.refresh();
-      }
+      await updateMutation.mutateAsync(changes);
+      router.push(MY_PAGE);
     } catch (error) {
-      if (error instanceof ApiError) {
-        if (error.code === "ALREADY_ONBOARDED") {
-          router.push(destination);
-          router.refresh();
-          return;
-        }
-        if (error.code === "NICKNAME_TAKEN" || error.status === 400) {
-          setError("nickname", { message: error.message });
-          return;
-        }
+      if (
+        error instanceof ApiError &&
+        (error.code === "NICKNAME_TAKEN" || error.status === 400)
+      ) {
+        setError("nickname", { message: error.message });
+        return;
       }
       setError("root", { message: GENERIC_ERROR_MESSAGE });
     }
@@ -103,11 +116,7 @@ export function OnboardingForm({ next }: OnboardingFormProps) {
         : null;
 
   return (
-    <form
-      onSubmit={onSubmit}
-      noValidate
-      className="flex w-full max-w-sm flex-col gap-4"
-    >
+    <form onSubmit={onSubmit} noValidate className="flex w-full flex-col gap-4">
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="nickname">닉네임</Label>
         <Input
@@ -140,48 +149,33 @@ export function OnboardingForm({ next }: OnboardingFormProps) {
         <Label htmlFor="jobRole">직군</Label>
         <select
           id="jobRole"
-          defaultValue=""
           className={SELECT_CLASS_NAME}
           {...register("jobRole")}
         >
-          <option value="" disabled>
-            직군을 선택하세요
-          </option>
           {Object.entries(JOB_ROLE_LABELS).map(([value, label]) => (
             <option key={value} value={value}>
               {label}
             </option>
           ))}
         </select>
-        {errors.jobRole && (
-          <p role="alert" className="text-sm text-red-600">
-            직군을 선택하세요.
-          </p>
-        )}
       </div>
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="careerYear">경력</Label>
         <select
           id="careerYear"
-          defaultValue=""
           className={SELECT_CLASS_NAME}
           {...register("careerYear")}
         >
-          <option value="" disabled>
-            경력을 선택하세요
-          </option>
           {Object.entries(CAREER_YEAR_LABELS).map(([value, label]) => (
             <option key={value} value={value}>
               {label}
             </option>
           ))}
         </select>
-        {errors.careerYear && (
-          <p role="alert" className="text-sm text-red-600">
-            경력을 선택하세요.
-          </p>
-        )}
+        <p className="text-xs text-neutral-500">
+          직군과 경력을 바꿔도 예전에 쓴 글은 쓸 때의 값으로 보여요.
+        </p>
       </div>
 
       {errors.root && (
@@ -190,9 +184,14 @@ export function OnboardingForm({ next }: OnboardingFormProps) {
         </p>
       )}
 
-      <Button type="submit" disabled={isSubmitting}>
-        완료
-      </Button>
+      <div className="flex justify-end gap-2">
+        <Button asChild variant="outline">
+          <Link href={MY_PAGE}>취소</Link>
+        </Button>
+        <Button type="submit" disabled={!changed || isSubmitting}>
+          저장
+        </Button>
+      </div>
     </form>
   );
 }
