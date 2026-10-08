@@ -11,6 +11,11 @@ export {
   fetchFeedPage,
   useFeedQuery,
 } from "./api/use-feed-query";
+export {
+  fetchLikedPostsPage,
+  useLikedPostsQuery,
+} from "./api/use-liked-posts-query";
+export { fetchMyPostsPage, useMyPostsQuery } from "./api/use-my-posts-query";
 export { PostCard } from "./ui/post-card";
 export { COMMENT_TONE_LABELS, DELETED_POST_NOTICE } from "./model/types";
 export type {
