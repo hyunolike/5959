@@ -89,15 +89,15 @@ description: "Task list for 005-safety (위험 감지와 안전장치)"
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T026 [P] [US2] apps/api/src/test/kotlin/com/ogu/ai/RiskClassifierTests.kt: 응답 `{"level":"CRISIS"}` 파싱, 목록 밖의 값과 깨진 JSON은 `RiskClassificationFailed`, 타임아웃 분류, 응답 원문이 로그에 남지 않는다. `FakeRiskClassifier`의 머리말(`[위기]`, `[우려]`, `[위험분류실패]`, `[위험분류실패:2]`)
-- [ ] T027 [P] [US2] apps/api/src/test/kotlin/com/ogu/safety/RiskAssessmentTests.kt(시계 주입): `US2-AC3 AI가 실패해도 글 저장은 201이고 일정이 30초, 60초 뒤로 밀리며 성공하면 DONE`, 24시간이 지나면 `FALLBACK`이고 단계는 키워드 그대로, AI만 위기로 본 글은 분류가 끝난 뒤 숨겨지고 `RiskDetected`가 한 번 나간다, AI가 낮게 봐도 단계가 내려가지 않는다, `US2-AC5 고치면 다시 판정하고 위기 표현을 지워도 숨김은 그대로`, 고친 뒤 늦게 온 이전 내용의 결과는 버린다(`content_version`), 두 스케줄러가 같은 행을 함께 맡지 않는다(`SKIP LOCKED`)
-- [ ] T028 [US2] apps/web/e2e-full/safety.spec.ts에 더한다: `US2-AC1`(`[위험분류실패]`와 위기 표현), `US2-AC3`(`[위험분류실패:2]` 글이 오류 없이 올라감)
+- [x] T026 [P] [US2] apps/api/src/test/kotlin/com/ogu/ai/RiskClassifierTests.kt: 응답 `{"level":"CRISIS"}` 파싱, 목록 밖의 값과 깨진 JSON은 `RiskClassificationFailed`, 타임아웃 분류, 응답 원문이 로그에 남지 않는다. `FakeRiskClassifier`의 머리말(`[위기]`, `[우려]`, `[위험분류실패]`, `[위험분류실패:2]`)
+- [x] T027 [P] [US2] apps/api/src/test/kotlin/com/ogu/safety/RiskAssessmentTests.kt(시계 주입): `US2-AC3 AI가 실패해도 글 저장은 201이고 일정이 30초, 60초 뒤로 밀리며 성공하면 DONE`, 24시간이 지나면 `FALLBACK`이고 단계는 키워드 그대로, AI만 위기로 본 글은 분류가 끝난 뒤 숨겨지고 `RiskDetected`가 한 번 나간다, AI가 낮게 봐도 단계가 내려가지 않는다, `US2-AC5 고치면 다시 판정하고 위기 표현을 지워도 숨김은 그대로`, 고친 뒤 늦게 온 이전 내용의 결과는 버린다(`content_version`), 두 스케줄러가 같은 행을 함께 맡지 않는다(`SKIP LOCKED`)
+- [x] T028 [US2] apps/web/e2e-full/safety.spec.ts에 더한다: `US2-AC1`(`[위험분류실패]`와 위기 표현), `US2-AC3`(`[위험분류실패:2]` 글이 오류 없이 올라감)
 
 ### Implementation for User Story 2
 
-- [ ] T029 [US2] `ai`: `RiskClassifier`, `RiskClassification(level)`, `RiskClassificationFailed(kind)`, infrastructure/SpringAiRiskClassifier(프롬프트 apps/api/src/main/resources/prompts/risk-classification.st, 타임아웃과 서킷 브레이커 `riskClassifier`, SDK 재시도 끔, 응답은 단계만), DisabledRiskClassifier(키가 없으면 바로 실패), FakeRiskClassifier(`e2e` 프로필). `ai`의 루트 타입은 `safety`의 `RiskLevel`을 모르므로 자기 열거형을 두고 `safety`가 옮긴다
-- [ ] T030 [US2] `safety` application/RiskAssessmentService: 커밋 뒤 `@ApplicationModuleListener`로 `PostWritten`, `CommentWritten`을 받아 바로 한 번 분류한다(LLM 호출은 트랜잭션 밖, 맡기와 기록은 각각 짧은 트랜잭션). 성공하면 `ai_level`, `level = max`, `DONE`. 최종 단계가 올라갔으면 `markRisk`, 위기면 `hide`, `RiskDetected`. `content_version`이 지금과 다르면 버린다
-- [ ] T031 [US2] application/RiskRetryScheduler: `poll-interval`마다 차례가 된 `PENDING`을 `FOR UPDATE SKIP LOCKED`로 맡아 다시 시도. 실패하면 `min(initial × 2^(n-1), max)` 뒤로. `give-up-after`가 지나면 `FALLBACK`
+- [x] T029 [US2] `ai`: `RiskClassifier`, `RiskClassification(level)`, `RiskClassificationFailed(kind)`, infrastructure/SpringAiRiskClassifier(프롬프트 apps/api/src/main/resources/prompts/risk-classification.st, 타임아웃과 서킷 브레이커 `riskClassifier`, SDK 재시도 끔, 응답은 단계만), DisabledRiskClassifier(키가 없으면 바로 실패), FakeRiskClassifier(`e2e` 프로필). `ai`의 루트 타입은 `safety`의 `RiskLevel`을 모르므로 자기 열거형을 두고 `safety`가 옮긴다 **구현 메모**: 키가 없을 때의 분류기는 `FakeRiskClassifier.Disabled`다. 가짜 분류기의 표지는 머리말이 아니라 본문 어디에 있어도 된다(감정 분석기의 머리말과 함께 쓰려고).
+- [x] T030 [US2] `safety` application/RiskAssessmentService: 커밋 뒤 `@ApplicationModuleListener`로 `PostWritten`, `CommentWritten`을 받아 바로 한 번 분류한다(LLM 호출은 트랜잭션 밖, 맡기와 기록은 각각 짧은 트랜잭션). 성공하면 `ai_level`, `level = max`, `DONE`. 최종 단계가 올라갔으면 `markRisk`, 위기면 `hide`, `RiskDetected`. `content_version`이 지금과 다르면 버린다 **구현 메모**: 감정 분석과 같이 `RiskAssessmentStore`(짧은 트랜잭션), `RiskClassificationRunner`(리스너와 실행), `RiskRetryScheduler`로 나눴다. 맡을 때 시도 횟수를 올리고 다음 시각을 미뤄 두므로 실패는 분류만 적는다.
+- [x] T031 [US2] application/RiskRetryScheduler: `poll-interval`마다 차례가 된 `PENDING`을 `FOR UPDATE SKIP LOCKED`로 맡아 다시 시도. 실패하면 `min(initial × 2^(n-1), max)` 뒤로. `give-up-after`가 지나면 `FALLBACK`
 
 **Checkpoint**: 키워드와 AI가 함께 판정하고, AI 장애에도 감지와 쓰기가 유지된다
 
