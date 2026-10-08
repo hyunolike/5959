@@ -90,6 +90,13 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   `/api/v1/members/nickname-availability`, `/api/v1/members/me/onboarding`,
   `/api/v1/auth/logout`. 그 밖의 인증 필요 경로는 `OnboardingGuard`가
   `403 ONBOARDING_REQUIRED`로 막는다.
+- 프로필 수정(004 US5, research R13)은 `PATCH /api/v1/members/me`이고 `ProfileService`가 한다. 보낸 항목만 바꾸고,
+  하나도 없으면 `400 INVALID_REQUEST`다. 회원 행을 `FOR UPDATE`로 잠그고, 닉네임은 온보딩과 같은 `Nickname.of`로
+  검증한다. 소문자 키가 내 지금 키와 같으면(대소문자만 바꿈) 중복 확인을 건너뛰고, 다르면 `existsByNicknameKey`로
+  본 뒤 저장 때 `member_nickname_key_key` 위반을 `409 NICKNAME_TAKEN`으로 바꾼다. 온보딩 전 회원은 필터
+  (`OnboardingGuard`)와 서비스가 모두 `403 ONBOARDING_REQUIRED`로 막는다. 글의 직군과 경력은 작성 시점 스냅숏이라
+  건드리지 않고, 닉네임은 어디서나 `MemberApi.getMembers`로 지금 값을 읽으므로 이벤트를 내지 않는다. access 토큰에
+  닉네임이 없어 토큰도 새로 주지 않는다.
 - 운영(`prod` 프로필) 기동 조건은 `ProdAuthSettingsCheck`가 강제한다: JWT
   비밀키가 로컬 개발용 고정 값이면 안 되고, `OGU_BFF_KEY`가 비어 있으면 안 되고,
   카카오·구글 client id/secret이 모두 있어야 하고, 허용 redirect URI는 전부

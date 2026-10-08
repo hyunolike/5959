@@ -279,6 +279,13 @@ id, 연달아 실패한 횟수만 둔다. 알림과 안 읽은 수는 TanStack Q
 
 - `widgets/emotion-stats-panel`: 감정 통계. 조회(`api/queries.ts`), 타입과 감정별 색(`model/types.ts`), 분포 막대와 8주 추이 차트(`ui/`)를 위젯 안에 둔다. 계획은 `entities/emotion-stats`였지만 쓰는 곳이 이 위젯 하나라 steiger의 `insignificant-slice`에 걸려 합쳤다. 감정 이름과 정지 이미지는 `entities/monster`의 `EMOTION_LABELS`, `MonsterSprite`를 쓴다.
 
+### 프로필 수정
+
+- `/my/edit`의 `features/edit-profile`이 닉네임, 직군, 경력을 고친다(US5). 폼은 지금 프로필로 채우고 바뀐 항목만 `PATCH /api/members/me`로 보낸다. 하나도 바꾸지 않았으면 저장 버튼을 막는다.
+- 닉네임 규칙(`memberProfileSchema`), 안내 문구(`NICKNAME_REASON_LABEL`), 중복 확인(`useNicknameCheck`)은 `entities/member`에 있고 온보딩과 프로필 수정이 함께 쓴다. feature끼리는 서로 가져올 수 없어서 온보딩에 있던 것을 엔티티로 내렸다.
+- 닉네임을 바꿨을 때만 중복 여부를 미리 확인한다. 내 닉네임의 대소문자만 바꾼 경우는 확인하지 않는다(확인 API는 내가 쓰는 닉네임도 사용 중이라고 답한다).
+- 저장되면 내 정보 캐시를 응답으로 바꾸고 `["feed"]`, `["posts"]`, `["notifications", "list"]`, `["my"]`를 무효화한 뒤 `/my`로 간다. 닉네임이 보이는 화면이 바뀐 값으로 다시 받는다(US5-AC4).
+
 ### 감정 통계 차트
 
 - 분포는 비율만큼 나눈 막대 하나와 범례다. 범례는 감정 5종을 고정 순서로 모두 보이고 이름, 수, 비율을 글자로 적는다. 색은 감정마다 고정이고(`EMOTION_COLORS`) 수에 따라 바뀌지 않는다.
