@@ -170,9 +170,14 @@ async function newMember(
 }
 
 /** 지금 로그인한 회원으로 같은 출처 BFF를 부른다. 화면은 건드리지 않는다. */
-async function call(page: Page, path: string, data?: unknown) {
+async function call(
+  page: Page,
+  path: string,
+  data?: unknown,
+  method: "POST" | "DELETE" = "POST",
+) {
   return page.request.fetch(path, {
-    method: "POST",
+    method,
     headers: { Origin: APP_ORIGIN },
     data,
   });
@@ -232,6 +237,30 @@ function recordStreamRequests(page: Page): string[] {
   return requests;
 }
 
+async function deletePost(member: Member, postId: number) {
+  const response = await call(
+    member.page,
+    `/api/posts/${postId}`,
+    undefined,
+    "DELETE",
+  );
+  expect(response.status()).toBe(204);
+}
+
+function notificationItems(page: Page): Locator {
+  return page.getByRole("list", { name: "알림" }).getByRole("listitem");
+}
+
+/**
+ * 종을 눌러 알림 목록으로 간다. 화면 안 이동이라 실시간 연결은 열린 채로 있다. 목록이 그려질 때까지 기다린다.
+ */
+async function openNotificationList(page: Page) {
+  await bell(page).click();
+  await page.waitForURL("**/notifications");
+  await expect(page.getByRole("heading", { name: "알림" })).toBeVisible();
+  await expect(notificationItems(page).first()).toBeVisible();
+}
+
 async function closeAll(...members: Member[]) {
   await Promise.all(members.map((member) => member.context.close()));
 }
@@ -275,7 +304,8 @@ test("US1-AC1 다른 회원이 내 글에 댓글과 답글을 달면 새로고�
     `${visitor.nickname} 님이 내 글에 답글을 남겼어요`,
   ).click();
   await author.page.waitForURL(`**/post/${postId}`);
-  await expectUnread(author.page, 3);
+  // 누른 답글 알림은 읽음이 된다(US2-AC3). 몬스터와 댓글 알림 둘이 안 읽은 채 남는다.
+  await expectUnread(author.page, 2);
 
   await closeAll(author, visitor);
 });
@@ -479,4 +509,203 @@ test("US1-AC8 로그아웃하면 알림 종이 사라지고 연결을 닫으며,
   ).toEqual(["lastEventId", "ticket"]);
 
   await closeAll(member);
+});
+
+test("US2-AC1 알림 목록은 최신 알림부터 보이고 항목마다 문구, 내 글 앞부분, 시각, 읽음 여부가 있다", async ({
+  browser,
+}) => {
+  const author = await newMember(browser, "a");
+  const commenter = await newMember(browser, "b");
+  const liker = await newMember(browser, "c");
+  const postId = await writePostAndWaitForMonster(author, "목록에 보일 글");
+  const commentBody = `목록에 나오면 안 되는 댓글 본문 ${Date.now()}`;
+  await comment(commenter, postId, commentBody);
+  await expectUnread(author.page, 2);
+  await like(liker, postId);
+  await expectUnread(author.page, 3);
+
+  await openNotificationList(author.page);
+
+  const items = notificationItems(author.page);
+  await expect(items).toHaveCount(3);
+  // 최신순: 공감, 댓글, 몬스터.
+  await expect(items.nth(0)).toContainText(`${liker.nickname} 님이 공감했어요`);
+  await expect(items.nth(1)).toContainText(
+    `${commenter.nickname} 님이 내 글에 댓글을 남겼어요`,
+  );
+  await expect(items.nth(2)).toContainText("몬스터가 나타났어요");
+  for (const item of await items.all()) {
+    await expect(item).toContainText("목록에 보일 글");
+    await expect(item).toContainText("안 읽음");
+    await expect(item.locator("time")).toHaveAttribute(
+      "datetime",
+      /^\d{4}-\d{2}-\d{2}T/,
+    );
+    await expect(item.getByRole("link")).toHaveAttribute(
+      "href",
+      `/post/${postId}`,
+    );
+  }
+  // 남의 댓글 본문은 목록에 싣지 않는다(ADR-0005).
+  await expect(author.page.getByRole("main")).not.toContainText(
+    "목록에 나오면 안 되는",
+  );
+  // 목록을 여는 것만으로는 읽음이 되지 않는다.
+  await expectUnread(author.page, 3);
+
+  await closeAll(author, commenter, liker);
+});
+
+test("US2-AC2 목록 끝까지 내리면 다음 20개가 이어 붙고 같은 알림이 두 번 나오지 않는다", async ({
+  browser,
+}) => {
+  test.setTimeout(90_000);
+  const author = await newMember(browser, "a");
+  const commenter = await newMember(browser, "b");
+  const postId = await writePostAndWaitForMonster(author, "알림이 많은 글");
+  for (let index = 0; index < 24; index += 1) {
+    await comment(commenter, postId, `댓글 ${index}`);
+  }
+  // 댓글로 몬스터가 처치되면 처치 알림도 온다. 모두 안 읽음이므로 서버의 안 읽은 수가 알림 전체 수다.
+  await expect.poll(() => serverUnreadCount(author)).toBeGreaterThanOrEqual(25);
+  const total = await serverUnreadCount(author);
+  await expectUnread(author.page, total);
+
+  await openNotificationList(author.page);
+
+  const items = notificationItems(author.page);
+  await expect(items).toHaveCount(20);
+
+  await items.last().scrollIntoViewIfNeeded();
+
+  // 다 불러오면 서버가 아는 수와 같다. 중복이 있으면 더 많고, 빠진 것이 있으면 더 적다.
+  await expect(items).toHaveCount(total);
+  await expect(
+    author.page.getByRole("button", { name: "더 보기" }),
+  ).toHaveCount(0);
+  await expect(items.last()).toContainText("몬스터가 나타났어요");
+
+  await closeAll(author, commenter);
+});
+
+test("US2-AC3 안 읽은 알림을 누르면 글 상세로 이동하고 읽음이 되며 배지가 하나 준다", async ({
+  browser,
+}) => {
+  const author = await newMember(browser, "a");
+  const commenter = await newMember(browser, "b");
+  const postId = await writePostAndWaitForMonster(author, "눌러서 갈 글");
+  await comment(commenter, postId, "읽을 댓글");
+  await expectUnread(author.page, 2);
+  await openNotificationList(author.page);
+  const commentItem = notificationItems(author.page).filter({
+    hasText: "댓글을 남겼어요",
+  });
+  await expect(commentItem).toContainText("안 읽음");
+
+  await commentItem.getByRole("link").click();
+
+  await author.page.waitForURL(`**/post/${postId}`);
+  await expect(author.page.getByText("읽을 댓글")).toBeVisible();
+  await expectUnread(author.page, 1);
+  // 서버에도 읽음으로 남았다.
+  await expect.poll(() => serverUnreadCount(author)).toBe(1);
+
+  await openNotificationList(author.page);
+
+  await expect(commentItem).toContainText("읽음");
+  await expect(commentItem).not.toContainText("안 읽음");
+  await expect(
+    notificationItems(author.page).filter({ hasText: "몬스터가 나타났어요" }),
+  ).toContainText("안 읽음");
+  await expectUnread(author.page, 1);
+
+  await closeAll(author, commenter);
+});
+
+test("US2-AC4 모두 읽음을 누르면 배지가 사라지고, 그 뒤에 온 알림은 안 읽은 채로 맨 위에 보인다", async ({
+  browser,
+}) => {
+  const author = await newMember(browser, "a");
+  const commenter = await newMember(browser, "b");
+  const liker = await newMember(browser, "c");
+  const postId = await writePostAndWaitForMonster(author, "모두 읽을 글");
+  await comment(commenter, postId, "첫 댓글");
+  await like(liker, postId);
+  await expectUnread(author.page, 3);
+  await openNotificationList(author.page);
+  const items = notificationItems(author.page);
+  await expect(items).toHaveCount(3);
+
+  await author.page.getByRole("button", { name: "모두 읽음" }).click();
+
+  await expectUnread(author.page, 0);
+  await expect(items.filter({ hasText: "안 읽음" })).toHaveCount(0);
+  await expect(author.page.getByRole("status")).toHaveText(
+    "모든 알림을 읽음으로 표시했어요.",
+  );
+  await expect.poll(() => serverUnreadCount(author)).toBe(0);
+
+  // 모두 읽음 뒤에 온 알림은 새로고침 없이 맨 위에 안 읽음으로 나타난다. 목록을 보고 있으므로 토스트는 없다.
+  await comment(commenter, postId, "모두 읽음 뒤의 댓글");
+
+  await expect(items).toHaveCount(4);
+  await expect(items.first()).toContainText("댓글을 남겼어요");
+  await expect(items.first()).toContainText("안 읽음");
+  await expect(items.filter({ hasText: "안 읽음" })).toHaveCount(1);
+  await expectUnread(author.page, 1);
+
+  // 새로 불러와도 서버 값이 같다.
+  await author.page.reload();
+  await expect(items).toHaveCount(4);
+  await expect(items.filter({ hasText: "안 읽음" })).toHaveCount(1);
+  await expectUnread(author.page, 1);
+
+  await closeAll(author, commenter, liker);
+});
+
+test("US2-AC5 지운 글의 알림은 목록에 '삭제된 글'로 남고, 누르면 이동하지 않고 안내를 받는다", async ({
+  browser,
+}) => {
+  const author = await newMember(browser, "a");
+  const commenter = await newMember(browser, "b");
+  const postId = await writePostAndWaitForMonster(author, "곧 지울 글");
+  await comment(commenter, postId, "지워질 글의 댓글");
+  await expectUnread(author.page, 2);
+  await deletePost(author, postId);
+
+  await openNotificationList(author.page);
+
+  const items = notificationItems(author.page);
+  await expect(items).toHaveCount(2);
+  const commentItem = items.filter({ hasText: "댓글을 남겼어요" });
+  await expect(commentItem).toContainText("삭제된 글");
+  await expect(author.page.getByRole("main")).not.toContainText("곧 지울 글");
+  // 갈 글이 없으므로 링크가 아니다.
+  await expect(commentItem.getByRole("link")).toHaveCount(0);
+
+  await commentItem.getByRole("button").click();
+
+  await expect(author.page.getByRole("status")).toHaveText("삭제된 글이에요.");
+  await expect(author.page).toHaveURL(/\/notifications$/);
+  // 목록에는 남고, 본 것이므로 읽음이 된다.
+  await expect(items).toHaveCount(2);
+  await expect(commentItem).toContainText("삭제된 글");
+  await expect(commentItem).not.toContainText("안 읽음");
+  await expectUnread(author.page, 1);
+
+  await closeAll(author, commenter);
+});
+
+test("로그인하지 않고 알림 목록을 열면 로그인 화면으로 간다(FR-014)", async ({
+  browser,
+}) => {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+
+  await page.goto("/notifications");
+
+  await page.waitForURL(/\/login\?next=%2Fnotifications$/);
+  await expect(page.getByRole("button", { name: "로그인" })).toBeVisible();
+
+  await context.close();
 });
