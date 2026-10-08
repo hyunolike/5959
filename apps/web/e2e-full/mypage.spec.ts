@@ -449,3 +449,107 @@ test("US4-AC5 다른 회원의 몬스터를 공격해 물리치면 함께 물리
 
   await closeAll(me, author, ...helpers);
 });
+
+function profileRow(page: Page, label: string): Locator {
+  return page
+    .getByText(label, { exact: true })
+    .locator("xpath=following-sibling::dd");
+}
+
+async function openProfileEdit(page: Page) {
+  await page.goto("/my");
+  await page.getByRole("link", { name: "프로필 수정" }).click();
+  await page.waitForURL("**/my/edit");
+  await expect(
+    page.getByRole("heading", { name: "프로필 수정" }),
+  ).toBeVisible();
+}
+
+test("US5-AC1 닉네임, 직군, 경력을 고치면 저장되고 마이페이지에 바로 보인다", async ({
+  browser,
+}) => {
+  const me = await newMember(browser, "a");
+  const renamed = uniqueNickname("new");
+  await openProfileEdit(me.page);
+  const save = me.page.getByRole("button", { name: "저장" });
+  await expect(me.page.getByLabel("닉네임")).toHaveValue(me.nickname);
+  await expect(me.page.getByLabel("직군")).toHaveValue("DESIGN");
+  await expect(me.page.getByLabel("경력")).toHaveValue("YEAR_3");
+  // 하나도 바꾸지 않으면 저장할 수 없다.
+  await expect(save).toBeDisabled();
+
+  await me.page.getByLabel("닉네임").fill(renamed);
+  await me.page.getByLabel("직군").selectOption("PLANNING");
+  await me.page.getByLabel("경력").selectOption("YEAR_5");
+  await expect(me.page.getByText("사용할 수 있는 닉네임입니다.")).toBeVisible();
+  await save.click();
+
+  await me.page.waitForURL(/\/my$/);
+  await expect(profileRow(me.page, "닉네임")).toHaveText(renamed);
+  await expect(profileRow(me.page, "직군")).toHaveText("기획");
+  await expect(profileRow(me.page, "경력")).toHaveText("5년차");
+  // 새로고침해도 서버에 저장된 값이다.
+  await me.page.reload();
+  await expect(profileRow(me.page, "닉네임")).toHaveText(renamed);
+  await expect(profileRow(me.page, "직군")).toHaveText("기획");
+
+  await closeAll(me);
+});
+
+test("US5-AC2 다른 회원의 닉네임(대소문자만 달라도)이나 허용되지 않는 문자는 저장되지 않고 온보딩과 같은 안내를 받는다", async ({
+  browser,
+}) => {
+  const me = await newMember(browser, "a");
+  const other = await newMember(browser, "b");
+  await openProfileEdit(me.page);
+  const nickname = me.page.getByLabel("닉네임");
+  const save = me.page.getByRole("button", { name: "저장" });
+
+  await nickname.fill(other.nickname.toUpperCase());
+  await expect(me.page.getByText("이미 사용 중인 닉네임입니다.")).toBeVisible();
+  await save.click();
+  await expect(me.page.locator("form").getByRole("alert")).toHaveText(
+    "이미 사용 중인 닉네임입니다.",
+  );
+  await expect(me.page).toHaveURL(/\/my\/edit$/);
+
+  await nickname.fill("오구!");
+  await save.click();
+  await expect(me.page.locator("form").getByRole("alert")).toHaveText(
+    "한글, 영문, 숫자로 1~10자를 입력하세요.",
+  );
+  await expect(me.page).toHaveURL(/\/my\/edit$/);
+
+  // 저장되지 않았다.
+  await me.page.goto("/my");
+  await expect(profileRow(me.page, "닉네임")).toHaveText(me.nickname);
+
+  await closeAll(me, other);
+});
+
+test("US5-AC3 직군과 경력을 바꿔도 예전 글은 쓸 때의 값으로 보이고 새 글부터 바뀐 값이 쓰인다", async ({
+  browser,
+}) => {
+  const me = await newMember(browser, "a");
+  await writePost(me, "직군을 바꾸기 전에 쓴 글");
+  await openProfileEdit(me.page);
+  await me.page.getByLabel("직군").selectOption("MARKETING");
+  await me.page.getByLabel("경력").selectOption("YEAR_7_PLUS");
+  await me.page.getByRole("button", { name: "저장" }).click();
+  await me.page.waitForURL(/\/my$/);
+  await writePost(me, "직군을 바꾼 뒤에 쓴 글");
+
+  await me.page.goto("/home");
+
+  const feed = me.page.getByRole("region", { name: "피드" });
+  const before = feed
+    .getByRole("listitem")
+    .filter({ hasText: "직군을 바꾸기 전에 쓴 글" });
+  const after = feed
+    .getByRole("listitem")
+    .filter({ hasText: "직군을 바꾼 뒤에 쓴 글" });
+  await expect(before).toContainText("디자인 · 3년차");
+  await expect(after).toContainText("마케팅 · 7년차 이상");
+
+  await closeAll(me);
+});
