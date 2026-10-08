@@ -12,7 +12,7 @@ export {
   useFeedQuery,
 } from "./api/use-feed-query";
 export { PostCard } from "./ui/post-card";
-export { COMMENT_TONE_LABELS } from "./model/types";
+export { COMMENT_TONE_LABELS, DELETED_POST_NOTICE } from "./model/types";
 export type {
   CommentTone,
   FeedFilter,

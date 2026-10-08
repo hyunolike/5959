@@ -66,6 +66,9 @@ function stubApi(unread: { count: number; latestSeq: number }) {
         expiresAt: "2026-10-06T00:00:30Z",
       });
     }
+    if (/^\/api\/notifications\/\d+\/read$/.test(path)) {
+      return new Response(null, { status: 204 });
+    }
     throw new Error(`예상하지 못한 요청: ${path}`);
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -235,17 +238,28 @@ describe("NotificationBell", () => {
     expect(screen.getByTestId("notification-badge")).toHaveTextContent("1");
   });
 
-  it("토스트를 누르면 관련 글로 이동한다", async () => {
-    stubApi({ count: 0, latestSeq: 17 });
+  it("US2-AC3 토스트를 누르면 그 알림을 읽음으로 바꾸고 관련 글로 이동하며 배지가 하나 준다", async () => {
+    const fetchMock = stubApi({ count: 0, latestSeq: 17 });
     renderBell();
     const source = await openedStream();
     emitNotification(source, notificationEvent());
+    expect(screen.getByTestId("notification-badge")).toHaveTextContent("1");
 
     await userEvent.click(
       screen.getByRole("button", { name: "오구 님이 내 글에 댓글을 남겼어요" }),
     );
 
     expect(pushMock).toHaveBeenCalledWith("/post/10");
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith("/api/notifications/5/read", {
+        method: "PUT",
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId("notification-badge"),
+      ).not.toBeInTheDocument(),
+    );
   });
 
   it("지워진 글의 알림 토스트는 눌러도 이동하지 않고 닫히기만 한다", async () => {

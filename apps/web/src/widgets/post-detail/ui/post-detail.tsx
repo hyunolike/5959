@@ -6,6 +6,7 @@ import { CAREER_YEAR_LABELS, JOB_ROLE_LABELS } from "@/entities/member";
 import { MonsterDisplay } from "@/entities/monster";
 import {
   COMMENT_TONE_LABELS,
+  DELETED_POST_NOTICE,
   usePostDetailQuery,
   type PostDetail as PostDetailData,
 } from "@/entities/post";
@@ -21,7 +22,7 @@ export function PostNotFound() {
   return (
     <Card className="w-full max-w-xl text-center">
       <p role="alert" className="text-sm text-neutral-600">
-        삭제된 글이에요.
+        {DELETED_POST_NOTICE}
       </p>
     </Card>
   );

@@ -338,6 +338,14 @@ export function useNotificationStreamStatus(): StreamStatus {
 }
 
 /**
+ * 이 탭의 실시간 연결이 마지막으로 받은 이벤트 id(seq). 연결 전이거나 닫았으면 `null`이다. 알림 목록이
+ * 모두 읽음의 `upToSeq`와, 목록이 스트림보다 뒤처졌는지를 정할 때 쓴다.
+ */
+export function useNotificationStreamLastEventId(): number | null {
+  return useStore(notificationStreamStore, (state) => state.lastEventId);
+}
+
+/**
  * 로그아웃에 성공했을 때 부른다. 연결과 예약한 재시도를 닫아, 끝난 세션으로 티켓을 다시 요청하지 않는다.
  * 다시 로그인하면 알림 종이 새로 마운트되면서 연결을 시작한다.
  */

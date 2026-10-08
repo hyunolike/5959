@@ -18,6 +18,7 @@ export {
   createNotificationStreamStore,
   notificationStreamStore,
   stopNotificationStream,
+  useNotificationStreamLastEventId,
   useNotificationStreamStatus,
 } from "./model/store";
 export type { StreamDeps, StreamState, StreamStatus } from "./model/store";
