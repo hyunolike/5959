@@ -119,15 +119,15 @@ Redis는 M3(004)에서 들어왔다. 실시간 알림의 인스턴스 간 pub/su
 |---|---|---|---|---|
 | `shared` (OPEN) | 공통 응답, 예외, 설정 | - | - | - |
 | `member` | 회원, 인증(이메일/카카오/구글), 로그인 실패 제한, 세션(JWT access·refresh), 프로필 수정, 실시간 알림 연결 표 | `MemberApi`(회원 조회, 연결 표 발급 `issueStreamTicket`과 소비 `consumeStreamTicket`) | `MemberWithdrawn`(회원 탈퇴는 M1 범위 밖이라 아직 발행하지 않는다) | - |
-| `post` | 고민 글, 댓글, 공감, 숨김 처리 | `PostApi`, `PostActivityApi`(회원 한 명의 글, 댓글, 공감 조회) | `PostCreated`, `CommentCreated`, `PostLiked`, `CommentLiked` | - |
-| `ai` | LLM 게이트웨이 (Spring AI, Resilience4j, 요청 제한) | `EmotionAnalyzer`(M2). `Embedder`, `RiskClassifier`, `LetterWriter`는 뒤 마일스톤 | - | - |
+| `post` | 고민 글, 댓글, 공감, 숨김 상태와 위험 단계의 열 | `PostApi`, `PostActivityApi`(회원 한 명의 글, 댓글, 공감 조회), `PostModerationApi`(`safety`만 쓴다. 판정할 원문 읽기, 숨기기와 풀기) | `PostCreated`, `CommentCreated`, `PostLiked`, `CommentLiked`, `PostWritten`, `CommentWritten`, `PostRemoved`, `CommentRemoved` | - |
+| `ai` | LLM 게이트웨이 (Spring AI, Resilience4j, 요청 제한) | `EmotionAnalyzer`(M2), `RiskClassifier`(M4). `Embedder`, `LetterWriter`는 뒤 마일스톤 | - | - |
 | `emotion` | 감정 분석 결과 | `EmotionApi` | `EmotionAnalyzed` | `PostCreated` |
 | `monster` | 몬스터 생성, HP, 처치 | `MonsterApi` | `MonsterSpawned`, `MonsterDefeated` | `EmotionAnalyzed`(커밋 후 비동기), `PostLiked`, `CommentCreated`, `CommentLiked`(post 트랜잭션 안에서 동기) |
-| `safety` | 위험 감지, 신고, 욕설 마스킹. 위험 글은 `PostApi.hide()`로 숨긴다 | `SafetyApi` | `RiskDetected` | `PostCreated`, `CommentCreated` |
+| `safety` | 위험 감지(키워드 규칙과 AI 분류), 신고, 재검토 요청, 운영자 처리, 욕설 가리기. 위기 글은 `PostModerationApi.hide`로 숨긴다 | - (HTTP API와 `shared`의 `ContentMask` 구현) | `RiskDetected`, `ContentRestored`, `ReviewResolved` | `PostWritten`, `CommentWritten`, `PostRemoved`, `CommentRemoved`(post 트랜잭션 안에서 동기) |
 | `raid` | 보스 몬스터, 동시 공격 | `RaidApi` | `RaidBossDefeated` | `CommentCreated` |
 | `recommend` | 임베딩 저장, 유사 글 검색 | `RecommendApi` | - | `PostCreated` |
 | `report` | 주간 리포트 배치 | `ReportApi` | `WeeklyReportPublished` | - |
-| `notification` | SSE 알림, 알림 이력, 읽음 | - (HTTP API만) | - | `PostLiked`, `CommentCreated`, `MonsterSpawned`, `MonsterDefeated`(M3). `RiskDetected`, `WeeklyReportPublished`는 뒤 마일스톤 |
+| `notification` | SSE 알림, 알림 이력, 읽음 | - (HTTP API만) | - | `PostLiked`, `CommentCreated`, `MonsterSpawned`, `MonsterDefeated`(M3), `RiskDetected`, `ContentRestored`, `ReviewResolved`(M4). `WeeklyReportPublished`는 뒤 마일스톤 |
 | `feed` | 피드, 글 상세, 마이페이지 목록과 감정 통계 조합 | - (HTTP API만) | - | - |
 
 의존 방향은 한쪽으로만 흐른다. Spring Modulith는 다른 모듈의 이벤트 타입을 참조하는 것도 의존으로 보므로, 이벤트 구독도 아래 방향을 따라야 한다.
@@ -139,6 +139,7 @@ flowchart BT
     emotion --> ai
     safety --> post
     safety --> ai
+    safety --> member
     recommend --> post
     recommend --> ai
     monster --> post
@@ -163,7 +164,8 @@ flowchart BT
 - `post`는 `member` 말고는 어떤 도메인 모듈도 모른다. 글에 몬스터 HP나 감정을 붙여 보여 주는 일은 `feed` 모듈이 각 파사드를 불러 조합한다.
 - `ai`는 도메인 모듈을 모른다.
 - 순환이 생기면 `ModularityTests`가 실패한다.
-- M3까지 만든 모듈은 `shared`, `member`, `post`, `ai`, `emotion`, `monster`, `feed`, `notification`이다. 나머지는 표에 적힌 마일스톤에서 들어온다.
+- M4까지 만든 모듈은 `shared`, `member`, `post`, `ai`, `emotion`, `monster`, `feed`, `notification`, `safety`다. 나머지는 표에 적힌 마일스톤에서 들어온다.
+- `post`는 `safety`를 모른다. 숨김 상태와 위험 단계는 `post`의 열이고 `safety`가 `PostModerationApi`로 바꾼다. 욕설 가리기는 `shared`의 `ContentMask` 인터페이스를 `safety`가 구현해, 본문을 내보내는 `post`, `feed`가 `safety`에 의존하지 않는다(005 research R1, R6).
 - 감정 통계는 `emotion`이 아니라 `feed`가 계산한다. 숫자의 원천이 `monsters`와 `monster_hp_log`라서 `emotion`이 `monster`를 알면 `monster → emotion`과 순환이 생긴다(004 research R1, R12).
 - 공격 반영, 몬스터 생성, 글 삭제가 함께 쓰는 글 단위 잠금(`PostLock`)은 두 모듈이 같은 키를 써야 해서 `shared/lock`에 둔다.
 
@@ -230,12 +232,19 @@ M2 스펙(specs/003-core-loop)에서 정한 값이다.
 - 글이 작성되면 `recommend` 모듈이 임베딩을 만들어 pgvector 컬럼에 저장한다. 임베딩 모델은 `text-embedding-3-small`(1536차원)을 쓴다.
 - 비슷한 고민은 코사인 거리 기준 상위 N개를 HNSW 인덱스로 찾는다. 본인 글과 숨김 처리된 글은 뺀다.
 
-### 5.6 위험 감지 (M4)
+### 5.6 위험 감지와 안전장치 (M4)
 
-- 글과 댓글을 AI로 분류해 위험도를 `NONE`, `CONCERN`, `CRISIS` 세 단계로 나눈다.
-- `CRISIS`면 작성자에게 도움 리소스(자살예방상담전화 109 등)를 바로 안내하고, 글은 공개 피드에서 숨긴다.
-- AI 분류가 실패하면 키워드 규칙으로 대신 판단한다. 안전 판단은 AI 장애 때문에 빠지면 안 되기 때문이다.
-- 위험 감지 결과와 신고는 DB에 기록하고, 처리 API를 둔다.
+설계는 [specs/005-safety](../../specs/005-safety/plan.md)에 있다.
+
+- 위험도는 `NONE`, `CONCERN`, `CRISIS` 세 단계다. 키워드 규칙과 AI 분류를 함께 쓰고 둘 가운데 높은 쪽을 따른다.
+- **키워드 규칙이 먼저, 저장과 같은 트랜잭션에서 돈다.** 목록에 있는 위기 표현이 든 글과 댓글은 저장과 숨김이 함께 커밋되어 한 번도 공개되지 않는다. AI 분류는 커밋 뒤에 따로 돌고, 실패하면 30초부터 최대 5분 간격으로 다시 시도하다 24시간 뒤 키워드 판정만으로 닫는다. AI가 내려가 있어도 글쓰기와 위기 감지는 그대로다.
+- `CRISIS`면 다른 회원에게서 숨긴다(피드, 상세, 댓글 목록, 알림). 작성자에게는 그대로 보이고, 숨겨졌다는 설명과 도움 리소스(자살예방상담전화 109 등)를 글 상세와 알림으로 안내한다. `CONCERN`은 숨기지 않고 작성자에게 안내만 한다. 판정은 올리기만 해서, 고쳐도 숨김은 자동으로 풀리지 않는다.
+- 숨겨진 글의 작성자는 대상마다 한 번 재검토를 요청할 수 있다. 운영자가 풀거나 유지하고 결과는 알림으로 간다.
+- 신고는 기록만 한다. 몇 건이 쌓여도 자동으로 숨기지 않고 운영자가 판단한다. 누가 신고했는지, 신고당했는지는 어떤 응답에도 없다. 회원마다 한 시간 20건까지다.
+- 운영자는 `member.role`로 지정하고(SQL) API를 직접 부른다. 화면은 없다. 운영자가 아니면 운영자 경로는 404다. 처리마다 누가 언제 무엇을 했는지 남긴다.
+- 욕설은 저장할 때 바꾸지 않고 읽을 때 글자 수만큼 `*`로 가린다. 작성자에게는 원문이다. 목록을 고치면 예전 글에도 바로 적용된다. 감정 분석과 위험 감지는 원문으로 한다.
+- 판정, 신고, 재검토 요청, 운영자 처리 기록은 1년 보관한다. 본문과 걸린 표현은 기록, 이벤트, 로그에 남기지 않는다.
+- 안전 기능 전에 쓰인 글과 댓글은 출시 때 키워드 규칙으로 한 번 훑는다.
 
 ### 5.7 주간 리포트 (M7)
 

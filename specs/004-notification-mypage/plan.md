@@ -161,4 +161,4 @@ docs/architecture/overview.md                    # 5.1 notification 의존과 �
 
 | 위반 | 필요한 이유 | 더 단순한 대안을 버린 이유 |
 |---|---|---|
-| Constitution IV: 참여 기능(알림)을 위기 감지(M4)보다 먼저 출시 | 로드맵상 M3가 M4보다 앞서고, M4의 위험 알림이 이 알림 체계 위에 붙는다 | M4를 먼저 하면 위험 알림을 보낼 채널이 없다. 완화: 관여자에게만 전달, 타인 본문 미노출, 노출 판단 단일 지점. 근거는 [ADR-0005](../../docs/adr/0005-notifications-before-safety.md) |
+| Constitution IV: 참여 기능(알림)을 위기 감지(M4)보다 먼저 출시 | 로드맵상 M3가 M4보다 앞서고, M4의 위험 알림이 이 알림 체계 위에 붙는다 | M4를 먼저 하면 위험 알림을 보낼 채널이 없다. 완화: 관여자에게만 전달, 타인 본문 미노출, 노출 판단 단일 지점. 근거는 [ADR-0005](../../docs/adr/0005-notifications-before-safety.md). **끝남**: 2026-10-08에 M4(005-safety)가 구현되어 이 예외는 005가 `develop`에 들어가는 날 끝난다 |
