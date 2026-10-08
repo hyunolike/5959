@@ -153,17 +153,17 @@ description: "Task list for 004-notification-mypage (알림과 마이페이지)"
 
 ### Tests for User Story 4 ⚠️
 
-- [ ] T053 [P] [US4] apps/api/src/test/kotlin/com/ogu/feed/application/EmotionStatsQueryTest.kt(시계 주입 단위 테스트): `US4-AC1 비율은 정수 %이고 합이 100이며 반올림 오차는 가장 큰 항목에서 맞춘다`(1:1:1 → 34/33/33, 가장 큰 항목이 여럿이면 가장 많은 감정 규칙으로 고름), `US4-AC2 가장 많은 감정이 같으면 그 가운데 가장 최근 몬스터의 감정`, `US4-AC3 8주는 한국 시간 월요일 0시 시작이고 오래된 주부터이며 빈 주는 0`(일요일 23:59:59 KST와 월요일 00:00:00 KST 경계, UTC로는 일요일 15:00), `US4-AC4 몬스터가 없으면 모두 0이고 가장 많은 감정은 null`
-- [ ] T054 [P] [US4] apps/api/src/test/kotlin/com/ogu/feed/presentation/EmotionStatsApiTests.kt: `US4-AC1 전체와 처치된 몬스터 수, 감정 5종 수와 비율`(지운 글과 분석 중인 글은 세지 않음), `US4-AC3 주별 추이는 글 작성 시각 기준`(분석이 늦어진 몬스터도 쓴 주에 듦), `US4-AC4 몬스터가 없는 회원은 숫자가 0`, `US4-AC5 내가 HP를 줄인 다른 사람의 처치된 몬스터 수가 함께 물리친 몬스터다`(처치 뒤 응원만 한 몬스터와 지운 글은 빼고, 한 몬스터에 기록이 여럿이어도 하나), 온보딩 전 회원은 403 `ONBOARDING_REQUIRED`
-- [ ] T055 [P] [US4] 웹 단위 테스트: apps/web/src/entities/emotion-stats/ui/distribution-bar.test.tsx(5종 고정 순서, 비율 표시), ui/weekly-chart.test.tsx(8개 막대, 빈 주는 높이 0), apps/web/src/widgets/emotion-stats-panel/ui/*.test.tsx(`US4-AC4 몬스터가 없으면 "아직 몬스터가 없어요"와 글쓰기 안내`, `US4-AC5 함께 물리친 몬스터 수 표시`)
-- [ ] T056 [US4] apps/web/e2e-full/mypage.spec.ts에 통계 시나리오를 더한다(T049와 같은 파일): `US4-AC1`, `US4-AC4`, `US4-AC5`(다른 회원 글을 공격해 처치한 뒤)
+- [x] T053 [P] [US4] apps/api/src/test/kotlin/com/ogu/feed/application/EmotionStatsQueryTest.kt(시계 주입 단위 테스트): `US4-AC1 비율은 정수 %이고 합이 100이며 반올림 오차는 가장 큰 항목에서 맞춘다`(1:1:1 → 34/33/33, 가장 큰 항목이 여럿이면 가장 많은 감정 규칙으로 고름), `US4-AC2 가장 많은 감정이 같으면 그 가운데 가장 최근 몬스터의 감정`, `US4-AC3 8주는 한국 시간 월요일 0시 시작이고 오래된 주부터이며 빈 주는 0`(일요일 23:59:59 KST와 월요일 00:00:00 KST 경계, UTC로는 일요일 15:00), `US4-AC4 몬스터가 없으면 모두 0이고 가장 많은 감정은 null`
+- [x] T054 [P] [US4] apps/api/src/test/kotlin/com/ogu/feed/presentation/EmotionStatsApiTests.kt: `US4-AC1 전체와 처치된 몬스터 수, 감정 5종 수와 비율`(지운 글과 분석 중인 글은 세지 않음), `US4-AC3 주별 추이는 글 작성 시각 기준`(분석이 늦어진 몬스터도 쓴 주에 듦), `US4-AC4 몬스터가 없는 회원은 숫자가 0`, `US4-AC5 내가 HP를 줄인 다른 사람의 처치된 몬스터 수가 함께 물리친 몬스터다`(처치 뒤 응원만 한 몬스터와 지운 글은 빼고, 한 몬스터에 기록이 여럿이어도 하나), 온보딩 전 회원은 403 `ONBOARDING_REQUIRED`
+- [x] T055 [P] [US4] 웹 단위 테스트: apps/web/src/entities/emotion-stats/ui/distribution-bar.test.tsx(5종 고정 순서, 비율 표시), ui/weekly-chart.test.tsx(8개 막대, 빈 주는 높이 0), apps/web/src/widgets/emotion-stats-panel/ui/*.test.tsx(`US4-AC4 몬스터가 없으면 "아직 몬스터가 없어요"와 글쓰기 안내`, `US4-AC5 함께 물리친 몬스터 수 표시`)
+- [x] T056 [US4] apps/web/e2e-full/mypage.spec.ts에 통계 시나리오를 더한다(T049와 같은 파일): `US4-AC1`, `US4-AC4`, `US4-AC5`(다른 회원 글을 공격해 처치한 뒤)
 
 ### Implementation for User Story 4
 
-- [ ] T057 [US4] 파사드: `PostApi.liveRefsByAuthor(authorId): List<PostRef>`, `PostApi.liveIds(postIds): Set<Long>`, `MonsterApi.statRows(postIds): List<MonsterStatRow>`, `MonsterApi.defeatedPostIdsDamagedBy(memberId): Set<Long>`(`hp_after < hp_before`이고 `DEFEATED`, 인덱스 `monster_hp_log_member_monster_idx`)
-- [ ] T058 [US4] feed 모듈 application/EmotionStatsQuery(research R12 순서 1~7, 주입한 `Clock`, `Asia/Seoul`)와 MyPageController `GET /api/v1/members/me/emotion-stats`. ContractTests `pendingPaths`에서 `getMyEmotionStats`를 뺀다
-- [ ] T015 [US4] 웹 엔티티 apps/web/src/entities/emotion-stats/: model/types.ts(`EmotionStats`, `EmotionShare`, `WeeklyEmotionCount`), index.ts. T059와 같은 배치에서 만들어 처음부터 위젯이 쓰게 한다(steiger override를 두지 않는다)
-- [ ] T059 [P] [US4] 웹: apps/web/src/entities/emotion-stats/api/queries.ts, ui/distribution-bar.tsx, ui/weekly-chart.tsx, apps/web/src/widgets/emotion-stats-panel/(숫자, 분포, 가장 많은 감정의 정지 이미지, 추이, 함께 물리친 몬스터, 빈 상태), apps/web/src/app/my/page.tsx의 통계 자리를 채운다.
+- [x] T057 [US4] 파사드: `PostApi.liveRefsByAuthor(authorId): List<PostRef>`, `PostApi.liveIds(postIds): Set<Long>`, `MonsterApi.statRows(postIds): List<MonsterStatRow>`, `MonsterApi.defeatedPostIdsDamagedBy(memberId): Set<Long>`(`hp_after < hp_before`이고 `DEFEATED`, 인덱스 `monster_hp_log_member_monster_idx`) **구현 메모**: `PostApi`가 detekt 함수 수 한도(11)에 닿아 `liveRefsByAuthor`, `liveIds`와 US3의 세 목록 조회를 `PostActivityApi`로 나눴다.
+- [x] T058 [US4] feed 모듈 application/EmotionStatsQuery(research R12 순서 1~7, 주입한 `Clock`, `Asia/Seoul`)와 MyPageController `GET /api/v1/members/me/emotion-stats`. ContractTests `pendingPaths`에서 `getMyEmotionStats`를 뺀다
+- [x] T015 [US4] 웹 엔티티 apps/web/src/entities/emotion-stats/: model/types.ts(`EmotionStats`, `EmotionShare`, `WeeklyEmotionCount`), index.ts. T059와 같은 배치에서 만들어 처음부터 위젯이 쓰게 한다(steiger override를 두지 않는다) **구현 메모**: 쓰는 곳이 위젯 하나라 steiger `insignificant-slice`와 `inconsistent-naming`에 걸려 `widgets/emotion-stats-panel/model/types.ts`로 옮겼다(override 없음).
+- [x] T059 [P] [US4] 웹: apps/web/src/entities/emotion-stats/api/queries.ts, ui/distribution-bar.tsx, ui/weekly-chart.tsx, apps/web/src/widgets/emotion-stats-panel/(숫자, 분포, 가장 많은 감정의 정지 이미지, 추이, 함께 물리친 몬스터, 빈 상태), apps/web/src/app/my/page.tsx의 통계 자리를 채운다. **구현 메모**: 조회와 차트는 `widgets/emotion-stats-panel/`의 `api/`, `ui/`에 있다(T015와 같은 이유).
 
 **Checkpoint**: 마이페이지 통계가 데이터와 맞는다
 

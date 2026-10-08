@@ -269,7 +269,7 @@ id, 연달아 실패한 횟수만 둔다. 알림과 안 읽은 수는 TanStack Q
 
 ## 마이페이지 (004-notification-mypage)
 
-`/my`는 프로필과 내 활동 탭(US3)으로 이루어진다. 세 탭은 내가 쓴 글, 내 댓글, 공감한 글이다.
+`/my`는 프로필, 감정 통계(US4), 내 활동 탭(US3)으로 이루어진다. 세 탭은 내가 쓴 글, 내 댓글, 공감한 글이다.
 
 ### 슬라이스
 
@@ -277,9 +277,18 @@ id, 연달아 실패한 횟수만 둔다. 알림과 안 읽은 수는 TanStack Q
 - `entities/comment`: `useMyCommentsQuery`, `MyCommentItem`(댓글 본문, 달린 글의 앞 50글자, 시각, 답글 표시).
 - `widgets/my-activity`: 탭과 목록. `model/tab.ts`가 주소의 `?tab=posts|comments|likes`를 읽고 쓴다. 없거나 모르는 값이면 `posts`이고, 기본 탭은 검색어를 남기지 않는다. `ui/activity-list.tsx`는 세 탭이 같이 쓰는 목록 틀이다(불러오는 중, 실패, 빈 상태, 무한 스크롤).
 
+- `widgets/emotion-stats-panel`: 감정 통계. 조회(`api/queries.ts`), 타입과 감정별 색(`model/types.ts`), 분포 막대와 8주 추이 차트(`ui/`)를 위젯 안에 둔다. 계획은 `entities/emotion-stats`였지만 쓰는 곳이 이 위젯 하나라 steiger의 `insignificant-slice`에 걸려 합쳤다. 감정 이름과 정지 이미지는 `entities/monster`의 `EMOTION_LABELS`, `MonsterSprite`를 쓴다.
+
+### 감정 통계 차트
+
+- 분포는 비율만큼 나눈 막대 하나와 범례다. 범례는 감정 5종을 고정 순서로 모두 보이고 이름, 수, 비율을 글자로 적는다. 색은 감정마다 고정이고(`EMOTION_COLORS`) 수에 따라 바뀌지 않는다.
+- 8주 추이는 주마다 감정별로 쌓은 막대다. 높이는 가장 많은 주가 기준이고 빈 주는 0이다. 같은 값을 화면 낭독기용 표로도 둔다.
+- 색만으로 값을 전하지 않는다. 바탕과 대비가 낮은 색이 있어서 숫자와 이름을 언제나 함께 보인다.
+- 내 몬스터가 없으면 분포와 추이 대신 "아직 몬스터가 없어요"와 글쓰기를 보인다(US4-AC4). 함께 물리친 수는 남의 글에서 생기므로 그때도 보인다.
+
 ### 쿼리 키
 
-`["my", "posts"]`, `["my", "comments"]`, `["my", "liked-posts"]`. 공감, 댓글, 글 삭제는 다른 화면에서 일어나므로 그 뮤테이션들이 이 키를 무효화하지 않는다. 대신 세 쿼리 모두 `refetchOnMount: "always"`라 탭을 열 때마다 서버 값으로 맞춘다. 고른 탭만 그리므로 목록도 그 탭을 열 때만 받는다.
+`["my", "emotion-stats"]`, `["my", "posts"]`, `["my", "comments"]`, `["my", "liked-posts"]`. 공감, 댓글, 글 삭제는 다른 화면에서 일어나므로 그 뮤테이션들이 이 키를 무효화하지 않는다. 대신 네 쿼리 모두 `refetchOnMount: "always"`라 마이페이지나 탭을 열 때마다 서버 값으로 맞춘다. 고른 탭만 그리므로 목록도 그 탭을 열 때만 받는다.
 
 ### 빈 상태
 

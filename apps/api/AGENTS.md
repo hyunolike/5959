@@ -164,10 +164,10 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
 
 | 모듈 | 공개 파사드와 타입 | 발행 이벤트 | 받는 이벤트 |
 |---|---|---|---|
-| `post` | `PostApi`(`find`, `page`, `likedPostIds`, `attacksSoFar`, `findComment`, `previews`, `pageByAuthor`, `pageCommentsByAuthor`, `pageLikedBy`), `PostSummary`, `PostPage`, `MyCommentPage`, `Attack`, `AttackAction`, `CommentSummary` | `PostCreated`(커밋 후), `PostLiked`, `CommentCreated`, `CommentLiked`(같은 트랜잭션) | - |
+| `post` | `PostApi`(`find`, `page`, `likedPostIds`, `attacksSoFar`, `findComment`, `previews`), `PostActivityApi`(`pageByAuthor`, `pageCommentsByAuthor`, `pageLikedBy`, `liveRefsByAuthor`, `liveIds`), `PostSummary`, `PostPage`, `MyCommentPage`, `Attack`, `AttackAction`, `CommentSummary` | `PostCreated`(커밋 후), `PostLiked`, `CommentCreated`, `CommentLiked`(같은 트랜잭션) | - |
 | `ai` | `EmotionAnalyzer`, `EmotionClassification`, `EmotionAnalysisFailed` | - | - |
 | `emotion` | `EmotionApi`(`findByPostIds`), `EmotionView`, `AnalysisStatus` | `EmotionAnalyzed` | `PostCreated` |
-| `monster` | `MonsterApi`(`findByPostIds`, `hasCountedComment`, `damagerIds`), `MonsterView` | `MonsterSpawned`, `MonsterDefeated` | `EmotionAnalyzed`, `PostLiked`, `CommentCreated`, `CommentLiked` |
+| `monster` | `MonsterApi`(`findByPostIds`, `hasCountedComment`, `damagerIds`, `statRows`, `defeatedPostIdsDamagedBy`), `MonsterView`, `MonsterStatRow` | `MonsterSpawned`, `MonsterDefeated` | `EmotionAnalyzed`, `PostLiked`, `CommentCreated`, `CommentLiked` |
 | `feed` | 없음(HTTP API만) | - | - |
 
 `post`는 몬스터를 모른다. 글에 감정과 몬스터를 붙여 보여 주는 일은 `feed`가
@@ -175,12 +175,19 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
 
 - **마이페이지 목록(004 US3, research R12).** `feed/presentation/MyPageController`가
   `GET /api/v1/members/me/posts`, `/comments`, `/liked-posts`를 받는다. 경로는 회원 아래지만 글, 몬스터,
-  감정을 모아야 해서 `feed`에 있다. 내가 쓴 글과 공감한 글은 `PostApi.pageByAuthor`, `pageLikedBy`가 준
+  감정을 모아야 해서 `feed`에 있다. 내가 쓴 글과 공감한 글은 `PostActivityApi.pageByAuthor`, `pageLikedBy`가 준
   쪽을 피드와 같은 `FeedAssembler`로 조합해 응답이 `FeedPage` 그대로이고 쿼리는 4개다. 내 댓글은
-  `PostApi.pageCommentsByAuthor`의 쿼리 하나다. 읽는 쪽은 `post/application`의 `MyPostsReader`(`id DESC`,
+  `PostActivityApi.pageCommentsByAuthor`의 쿼리 하나다. 읽는 쪽은 `post/application`의 `MyPostsReader`(`id DESC`,
   커서는 피드와 같은 `PostCursor`), `MyCommentsReader`(`id DESC`, 살아 있는 글의 살아 있는 댓글, 글 앞 50글자),
   `LikedPostsReader`(`(created_at DESC, post_id DESC)`, 커서는 공감 시각의 마이크로초와 글 ID)다. size는 1~50이고
   벗어나거나 커서가 틀리면 `400 INVALID_REQUEST`다.
+- **감정 통계(004 US4, research R12).** `GET /api/v1/members/me/emotion-stats`는 `feed/application/EmotionStatsQuery`가
+  파사드 네 번(`PostActivityApi.liveRefsByAuthor`, `MonsterApi.statRows`, `MonsterApi.defeatedPostIdsDamagedBy`,
+  `PostActivityApi.liveIds`)으로 읽어 메모리에서 센다. `posts`와 `monsters`는 소유 모듈이 달라 SQL로 조인하지 않는다.
+  비율은 정수로 반올림하고 합이 100이 아니면 가장 많은 감정에서 맞춘다. 가장 많은 감정은 수가 같으면 가장 최근에
+  생긴 몬스터의 감정이다. 주별 추이는 주입한 `Clock`으로 한국 시간 월요일 0시 기준 8주를 만들고, 몬스터가 생긴
+  시각이 아니라 글을 쓴 시각으로 묶는다. 함께 물리친 몬스터는 내가 HP를 실제로 줄인 처치된 몬스터 가운데 글이
+  살아 있는 것의 수다. `PostApi`가 detekt의 함수 수 한도에 닿아, 회원 한 명의 활동을 읽는 조회는 `PostActivityApi`로 나눴다.
 - **공격 반영은 동기다.** `PostLiked`, `CommentCreated`, `CommentLiked`는
   `@EventListener`(`monster/application/AttackListener`)가 post 트랜잭션 안에서
   받는다. 공감 저장과 HP 감소가 함께 성공하거나 함께 실패한다. 규칙은 이 순서로
