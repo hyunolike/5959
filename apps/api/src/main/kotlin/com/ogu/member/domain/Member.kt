@@ -67,6 +67,12 @@ class Member private constructor(
     var onboardedAt: Instant? = null
         protected set
 
+    /** 운영자 여부(005 research R10). 애플리케이션은 바꾸지 않는다. 지정은 운영 절차(SQL)로 한다. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false, insertable = false, updatable = false, length = 10)
+    var role: MemberRole = MemberRole.MEMBER
+        protected set
+
     val isOnboarded: Boolean
         get() = onboardedAt != null
 

@@ -59,7 +59,7 @@ class PostLikeRepository(
         jdbcClient
             .sql(
                 "update posts set like_count = like_count + :delta " +
-                    "where id = :postId and deleted_at is null returning like_count",
+                    "where id = :postId and ${Visibility.VISIBLE} returning like_count",
             ).param("delta", delta)
             .param("postId", postId)
             .query(Int::class.java)

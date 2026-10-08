@@ -20,5 +20,7 @@ data class FeedItemResponse(
     val likeCount: Int,
     val likedByMe: Boolean,
     val commentCount: Int,
+    /** 다른 회원에게 보이지 않는 내 글이면 true. 내가 쓴 글 목록에서만 true일 수 있다(005 research R5). */
+    val hidden: Boolean,
     val createdAt: Instant,
 )

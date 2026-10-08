@@ -12,6 +12,11 @@ interface MemberRepository : JpaRepository<Member, Long> {
 
     fun existsByNicknameKey(nicknameKey: String): Boolean
 
+    fun existsByIdAndRole(
+        id: Long,
+        role: MemberRole,
+    ): Boolean
+
     /** 같은 회원의 온보딩 요청이 겹칠 때 직렬화하려고 행을 잠근다. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select m from Member m where m.id = :id")

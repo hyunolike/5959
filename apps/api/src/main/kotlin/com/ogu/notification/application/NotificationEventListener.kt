@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component
  * 새 트랜잭션에서 받는다. 그래서 알림이 실패해도 댓글, 공감, HP 반영은 그대로이고(FR-003), 끝나지 않은 발행은 Event
  * Publication Registry에 남아 다시 온다. 같은 이벤트가 여러 번 와도 멱등 키와 참여자 키가 결과를 하나로 만든다.
  *
- * 글이 보이는지는 [PostApi.find] 하나로만 판단한다(규칙 1). 지운 글이면(M4부터는 숨긴 글도 같은 경로로) 만들지 않는다.
+ * 글이 보이는지는 [PostApi.findVisible] 하나로만 판단한다(규칙 1). 지웠거나 숨긴 글이면 만들지 않는다(005 research R8).
  * 행동한 회원과 받는 사람이 같으면 만들지 않는다(규칙 2, 몬스터 알림은 행동한 회원이 없다). 알림에는 댓글 본문을 담지 않는다.
  */
 @Component
@@ -28,7 +28,7 @@ class NotificationEventListener(
     /** 원 댓글은 글쓴이에게, 답글은 글쓴이와 원 댓글 주인에게 한 번씩. 받는 사람은 [PostApi.findComment]로 정한다. */
     @ApplicationModuleListener
     fun on(event: CommentCreated) {
-        val post = postApi.find(event.postId) ?: return
+        val post = postApi.findVisible(event.postId) ?: return
         val comment = postApi.findComment(event.commentId) ?: return
         writer.writeAll(commentDrafts(post.authorId, comment, event))
     }
@@ -36,7 +36,7 @@ class NotificationEventListener(
     /** 글쓴이의 안 읽은 공감 묶음에 더한다. 댓글 공감(`CommentLiked`)은 알리지 않는다. */
     @ApplicationModuleListener
     fun on(event: PostLiked) {
-        val post = postApi.find(event.postId) ?: return
+        val post = postApi.findVisible(event.postId) ?: return
         if (post.authorId == event.memberId) return
         writer.addLike(post.authorId, event.postId, event.memberId)
     }
@@ -44,7 +44,7 @@ class NotificationEventListener(
     /** 기본 몬스터(`defaulted = true`)도 똑같이 알린다(US1-AC3). */
     @ApplicationModuleListener
     fun on(event: MonsterSpawned) {
-        val post = postApi.find(event.postId) ?: return
+        val post = postApi.findVisible(event.postId) ?: return
         writer.writeAll(listOf(NotificationDraft.spawned(post.authorId, event.postId, event.monsterId)))
     }
 
@@ -56,7 +56,7 @@ class NotificationEventListener(
      */
     @ApplicationModuleListener
     fun on(event: MonsterDefeated) {
-        val post = postApi.find(event.postId) ?: return
+        val post = postApi.findVisible(event.postId) ?: return
         val authorId = post.authorId
         val together =
             (monsterApi.damagerIds(event.monsterId) - authorId).map { memberId ->

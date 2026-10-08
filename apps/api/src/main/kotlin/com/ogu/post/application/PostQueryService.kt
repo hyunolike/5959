@@ -10,6 +10,7 @@ import com.ogu.post.PostPreview
 import com.ogu.post.PostSummary
 import com.ogu.post.domain.Post
 import com.ogu.post.domain.PostRepository
+import com.ogu.post.domain.Visibility
 import com.ogu.shared.text.Grapheme
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Service
@@ -23,6 +24,13 @@ class PostQueryService(
     private val postPageReader: PostPageReader,
 ) : PostApi {
     override fun find(postId: Long): PostSummary? = postRepository.findByIdAndDeletedAtIsNull(postId)?.toSummary()
+
+    override fun findVisible(postId: Long): PostSummary? = postRepository.findVisible(postId)?.toSummary()
+
+    override fun findForViewer(
+        postId: Long,
+        viewerId: Long,
+    ): PostSummary? = postRepository.findOwnedOrVisible(postId, viewerId)?.toSummary()
 
     override fun likedPostIds(
         memberId: Long,
@@ -67,11 +75,15 @@ class PostQueryService(
             }.optional()
             .orElse(null)
 
-    override fun previews(postIds: Collection<Long>): Map<Long, PostPreview> {
+    override fun previews(
+        postIds: Collection<Long>,
+        viewerId: Long,
+    ): Map<Long, PostPreview> {
         if (postIds.isEmpty()) return emptyMap()
         return jdbcClient
-            .sql("select id, content, deleted_at is not null as deleted from posts where id in (:postIds)")
+            .sql(PREVIEWS)
             .param("postIds", postIds.toSet())
+            .param("viewerId", viewerId)
             .query { rs, _ ->
                 PostPreview(
                     postId = rs.getLong("id"),
@@ -93,17 +105,29 @@ class PostQueryService(
             likeCount = likeCount,
             commentCount = commentCount,
             createdAt = createdAt,
+            hidden = isHidden,
+            riskLevel = riskLevel,
+            reviewRequested = reviewRequestedAt != null,
         )
 
     private companion object {
-        /** 살아 있는 글의 살아 있는 댓글. 답글이면 원 댓글 주인도 함께 읽는다(원 댓글을 지우면 답글도 함께 지워진다). */
+        /** 숨긴 글은 그 글의 작성자가 보는 것이 아니면 지운 글과 같이 준다(005 research R8). */
+        val PREVIEWS =
+            """
+            select id, content,
+                   (deleted_at is not null or (hidden_at is not null and author_id <> :viewerId)) as deleted
+            from posts
+            where id in (:postIds)
+            """.trimIndent()
+
+        /** 보이는 글의 보이는 댓글. 답글이면 원 댓글 주인도 함께 읽는다(원 댓글을 지우면 답글도 함께 지워진다). */
         val FIND_COMMENT =
             """
             select c.post_id, c.author_id, c.parent_id, parent.author_id as parent_author_id
             from comments c
-                join posts p on p.id = c.post_id and p.deleted_at is null
+                join posts p on p.id = c.post_id and ${Visibility.visible("p")}
                 left join comments parent on parent.id = c.parent_id
-            where c.id = :commentId and c.deleted_at is null
+            where c.id = :commentId and ${Visibility.visible("c")}
             """.trimIndent()
 
         val ATTACKS_SO_FAR =

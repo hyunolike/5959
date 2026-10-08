@@ -34,6 +34,7 @@ class FeedAssembler(
                     likeCount = post.likeCount,
                     likedByMe = likedByMe,
                     commentCount = post.commentCount,
+                    hidden = post.hidden,
                     createdAt = post.createdAt,
                 )
             }

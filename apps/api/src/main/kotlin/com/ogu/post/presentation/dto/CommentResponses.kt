@@ -1,7 +1,9 @@
 package com.ogu.post.presentation.dto
 
+import com.fasterxml.jackson.annotation.JsonInclude
 import com.ogu.member.CareerYear
 import com.ogu.member.JobRole
+import com.ogu.post.ContentSafety
 import java.time.Instant
 
 /** 댓글 작성 요청. 필드가 빠지면 null로 받아 서비스 앞에서 400으로 거절한다. [parentId]가 있으면 답글이다. */
@@ -15,11 +17,17 @@ data class CommentUpdateRequest(
     val content: String? = null,
 )
 
-/** 계약의 `Comment`. 답글의 [replies]는 항상 비어 있다. */
+/**
+ * 계약의 `Comment`. 답글의 [replies]는 항상 비어 있다. 숨긴 댓글을 다른 회원이 보면 [hidden]이 true이고 [author]와
+ * [content]가 null이다. [safety]는 내 댓글일 때만 실리고 다른 회원의 응답에는 필드가 없다(005 research R5, R7).
+ */
 data class CommentResponse(
     val commentId: Long,
-    val author: CommentAuthorResponse,
-    val content: String,
+    val author: CommentAuthorResponse?,
+    val content: String?,
+    val hidden: Boolean,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL)
+    val safety: ContentSafety?,
     val likeCount: Int,
     val likedByMe: Boolean,
     val mine: Boolean,

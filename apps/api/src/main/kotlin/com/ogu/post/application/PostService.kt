@@ -3,6 +3,8 @@ package com.ogu.post.application
 import com.ogu.member.MemberApi
 import com.ogu.post.CommentTone
 import com.ogu.post.PostCreated
+import com.ogu.post.PostRemoved
+import com.ogu.post.PostWritten
 import com.ogu.post.domain.Post
 import com.ogu.post.domain.PostAuthor
 import com.ogu.post.domain.PostRepository
@@ -46,6 +48,8 @@ class PostService(
         val author = PostAuthor(authorId, jobRole, careerYear)
         val post = postRepository.save(Post.write(author, normalized, commentTone, now))
         events.publishEvent(PostCreated(post.id, authorId, post.createdAt))
+        // 같은 트랜잭션에서 safety가 키워드 규칙으로 판정한다. 위기면 저장과 숨김이 함께 커밋된다(005 research R2)
+        events.publishEvent(PostWritten(post.id, authorId, edited = false))
         return post.id
     }
 
@@ -64,7 +68,13 @@ class PostService(
             throw BusinessException(ErrorCode.INVALID_REQUEST, "고칠 본문이나 댓글 말투를 주세요.")
         }
         // 행 잠금을 잡고 읽는다. 겹친 삭제가 먼저 커밋했으면 여기서 404가 되어 지운 글을 고친 뒤 204를 돌려주지 않는다.
-        ownPost(postId, memberId, postRepository::findLiveForUpdate).edit(content, commentTone, now())
+        val post = ownPost(postId, memberId, postRepository::findOwnedOrVisibleForUpdate)
+        post.edit(content, commentTone, now())
+        if (content != null) {
+            // 리스너가 JdbcClient로 고친 본문을 읽으므로 먼저 내보낸다
+            postRepository.flush()
+            events.publishEvent(PostWritten(postId, memberId, edited = true))
+        }
     }
 
     /**
@@ -78,17 +88,19 @@ class PostService(
         postId: Long,
         memberId: Long,
     ) {
-        ownPost(postId, memberId, postRepository::findByIdAndDeletedAtIsNull)
+        ownPost(postId, memberId, postRepository::findOwnedOrVisible)
         if (postRepository.softDelete(postId, now()) == 0) throw BusinessException(ErrorCode.POST_NOT_FOUND)
         postLock.lock(postId)
+        events.publishEvent(PostRemoved(postId))
     }
 
     private fun ownPost(
         postId: Long,
         memberId: Long,
-        findLive: (Long) -> Post?,
+        find: (Long, Long) -> Post?,
     ): Post {
-        val post = findLive(postId) ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
+        // 남이 쓴 숨긴 글은 없는 것으로 본다(403으로 글이 있다는 것을 드러내지 않는다, 005 research R5)
+        val post = find(postId, memberId) ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
         if (post.authorId != memberId) throw BusinessException(ErrorCode.NOT_AUTHOR)
         return post
     }

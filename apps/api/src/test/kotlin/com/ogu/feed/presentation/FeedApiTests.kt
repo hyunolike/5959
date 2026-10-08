@@ -464,6 +464,8 @@ class FeedApiTests {
         const val MAX_PAGES = 200
         const val POPULAR_BASE = 1_000_000
         const val SHIFT_BASE = 500_000
-        const val ALIVE_POSTS = "select count(*) from posts where deleted_at is null"
+
+        // 피드에 나오는 글: 지우지 않았고 숨기지 않았다(005 research R5)
+        const val ALIVE_POSTS = "select count(*) from posts where deleted_at is null and hidden_at is null"
     }
 }

@@ -4,6 +4,7 @@ import com.ogu.emotion.EmotionApi
 import com.ogu.feed.presentation.dto.PostDetailResponse
 import com.ogu.member.MemberApi
 import com.ogu.monster.MonsterApi
+import com.ogu.post.ContentSafety
 import com.ogu.post.PostApi
 import com.ogu.shared.error.BusinessException
 import com.ogu.shared.error.ErrorCode
@@ -24,7 +25,8 @@ class PostDetailQuery(
         postId: Long,
         viewerId: Long,
     ): PostDetailResponse {
-        val post = postApi.find(postId) ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
+        val post = postApi.findForViewer(postId, viewerId) ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
+        val mine = post.authorId == viewerId
         val ids = listOf(postId)
         return PostDetailResponse(
             postId = post.postId,
@@ -36,7 +38,9 @@ class PostDetailQuery(
             likeCount = post.likeCount,
             likedByMe = postId in postApi.likedPostIds(viewerId, ids),
             commentCount = post.commentCount,
-            mine = post.authorId == viewerId,
+            mine = mine,
+            // 단계와 숨김 여부는 작성자에게만 싣는다(005 research R7)
+            safety = if (mine) ContentSafety(post.riskLevel, post.hidden, post.reviewRequested) else null,
             myCommentCounted = monsterApi.hasCountedComment(postId, viewerId),
             createdAt = post.createdAt,
         )

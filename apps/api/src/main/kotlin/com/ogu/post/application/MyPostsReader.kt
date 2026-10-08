@@ -1,12 +1,13 @@
 package com.ogu.post.application
 
 import com.ogu.post.PostPage
+import com.ogu.post.domain.Visibility
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Component
 
 /**
  * 마이페이지 "내가 쓴 글" 한 쪽(004 research R12). `id DESC` 키셋이고 부분 인덱스 posts_author_live_idx를 탄다.
- * 커서는 피드 최신순과 같은 [PostCursor]다(글 ID만 쓴다). 다음 쪽이 있는지는 한 개 더 읽어 확인한다.
+ * 작성자 자신의 목록이라 숨긴 글도 담는다(005 research R5). 커서는 피드 최신순과 같은 [PostCursor]다(글 ID만 쓴다). 다음 쪽이 있는지는 한 개 더 읽어 확인한다.
  */
 @Component
 class MyPostsReader(
@@ -26,7 +27,7 @@ class MyPostsReader(
                     select $POST_COLUMNS,
                            exists (select 1 from post_likes l where l.post_id = p.id and l.member_id = :authorId) as liked_by_me
                     from posts p
-                    where p.author_id = :authorId and p.deleted_at is null
+                    where p.author_id = :authorId and ${Visibility.notDeleted("p")}
                       ${if (cursorId != null) "and p.id < :cursorId" else ""}
                     order by p.id desc
                     limit :limit
