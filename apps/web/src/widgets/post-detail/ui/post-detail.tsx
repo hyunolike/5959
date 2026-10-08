@@ -16,6 +16,7 @@ import { ApiError } from "@/shared/api";
 import { Button, Card, Spinner } from "@/shared/ui";
 
 import { PostComments } from "./post-comments";
+import { SafetyNotice } from "./safety-notice";
 
 /** 없거나 지운 글(404), 숫자가 아닌 글 ID(400). */
 export function PostNotFound() {
@@ -74,6 +75,8 @@ function PostDetailContent({ detail }: { detail: PostDetailData }) {
 
   return (
     <article className="flex w-full max-w-xl flex-col gap-4">
+      {/* 내 글이 우려나 위기로 판정됐거나 숨겨졌을 때만 보인다(005 US1). 화면 맨 위에 둔다. */}
+      <SafetyNotice safety={detail.safety} target="post" />
       <Card aria-label="몬스터" className="flex flex-col gap-2">
         {monster ? (
           <MonsterDisplay

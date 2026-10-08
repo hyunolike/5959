@@ -12,6 +12,8 @@ export interface ToastItem {
   message: string;
   /** 누르면 실행한다. 실행한 뒤 토스트는 닫힌다. */
   onClick?: () => void;
+  /** 저절로 사라지기까지의 시간. 없으면 [TOAST_DURATION_MS]다. 꼭 읽어야 하는 안내는 더 길게 둔다. */
+  durationMs?: number;
 }
 
 /**
@@ -57,7 +59,7 @@ function Toast({
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const paused = hovered || focused;
-  const remainingRef = useRef(TOAST_DURATION_MS);
+  const remainingRef = useRef(toast.durationMs ?? TOAST_DURATION_MS);
 
   useEffect(() => {
     if (paused) {

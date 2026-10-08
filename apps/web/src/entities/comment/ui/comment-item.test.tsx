@@ -88,4 +88,55 @@ describe("CommentItem", () => {
     );
     expect(screen.queryByText("공감 3")).not.toBeInTheDocument();
   });
+
+  it('US1-AC5 숨긴 댓글을 다른 회원이 보면 "가려진 댓글이에요"만 보이고 답글은 그대로 보인다', () => {
+    render(
+      <CommentItem
+        comment={comment({
+          author: null,
+          content: null,
+          hidden: true,
+          replies: [
+            comment({
+              commentId: 2,
+              author: {
+                id: 3,
+                nickname: "답글러",
+                jobRole: "SALES",
+                careerYear: "YEAR_1",
+              },
+              content: "힘내세요",
+            }),
+          ],
+        })}
+        renderActions={() => <button type="button">공감</button>}
+      />,
+    );
+
+    const hidden = screen.getByRole("article", { name: "가려진 댓글" });
+    expect(hidden).toHaveTextContent("가려진 댓글이에요");
+    // 가려진 댓글에는 공감이나 답글 버튼을 두지 않는다
+    expect(within(hidden).queryByRole("button")).not.toBeInTheDocument();
+    const reply = screen.getByRole("article", { name: "답글러의 답글" });
+    expect(within(reply).getByText("힘내세요")).toBeInTheDocument();
+    expect(within(reply).getByRole("button", { name: "공감" })).toBeVisible();
+  });
+
+  it("내 댓글이 숨겨졌으면 내용과 함께 다른 회원에게 보이지 않는다는 표시가 보인다", () => {
+    render(
+      <CommentItem
+        comment={comment({
+          mine: true,
+          hidden: true,
+          safety: { level: "CRISIS", hidden: true, reviewRequested: false },
+        })}
+      />,
+    );
+
+    const item = screen.getByRole("article", { name: "공감러의 댓글" });
+    expect(within(item).getByText("힘내요")).toBeInTheDocument();
+    expect(
+      within(item).getByText("다른 회원에게 보이지 않아요"),
+    ).toBeInTheDocument();
+  });
 });

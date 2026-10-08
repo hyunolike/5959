@@ -16,6 +16,36 @@ import {
 } from "@/features/like";
 import { Button, Spinner } from "@/shared/ui";
 
+import { SafetyNotice, type ContentSafety } from "./safety-notice";
+
+const LEVEL_ORDER = { NONE: 0, CONCERN: 1, CRISIS: 2 } as const;
+
+/**
+ * 이 화면에 보이는 내 댓글과 답글의 `safety` 가운데 가장 무거운 것. 숨겨진 것이 하나라도 있으면 숨김으로 본다.
+ * 안내는 댓글마다 따로 띄우지 않고 목록 아래에 하나만 둔다.
+ */
+export function worstSafetyOfMine(
+  comments: readonly Comment[],
+): ContentSafety | undefined {
+  return comments
+    .flatMap((comment) => [comment, ...comment.replies])
+    .map((comment) => comment.safety)
+    .filter((safety) => safety !== undefined)
+    .reduce<ContentSafety | undefined>((worst, safety) => {
+      if (worst === undefined) {
+        return safety;
+      }
+      return {
+        level:
+          LEVEL_ORDER[safety.level] > LEVEL_ORDER[worst.level]
+            ? safety.level
+            : worst.level,
+        hidden: worst.hidden || safety.hidden,
+        reviewRequested: worst.reviewRequested && safety.reviewRequested,
+      };
+    }, undefined);
+}
+
 /**
  * 글의 댓글 영역(FR-012, US3-AC2~AC4): 원 댓글과 답글 목록, 댓글 공감, 답글 달기,
  * 댓글 쓰기. 원 댓글은 50개씩 이어 불러온다. 답글에는 다시 답글을 달 수 없으므로
@@ -35,6 +65,7 @@ export function PostComments({ postId }: { postId: number }) {
     fetchNextPage,
   } = useCommentsQuery(postId);
   const comments = data?.pages.flatMap((page) => page.items) ?? [];
+  const mySafety = worstSafetyOfMine(comments);
 
   return (
     <section
@@ -85,6 +116,9 @@ export function PostComments({ postId }: { postId: number }) {
           ))}
         </ul>
       )}
+
+      {/* 내 댓글이 우려나 위기로 판정됐을 때의 도움 안내(005 US1-AC5). */}
+      <SafetyNotice safety={mySafety} target="comment" />
 
       {hasNextPage ? (
         <Button

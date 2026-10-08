@@ -89,7 +89,15 @@ function CommentBody({
           : "flex flex-col gap-1"
       }
     >
-      <p className="text-sm font-medium text-neutral-900">{nickname}</p>
+      <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-neutral-900">
+        {nickname}
+        {comment.hidden ? (
+          // 내 댓글이 숨겨졌다. 나에게는 내용이 보이지만 다른 회원에게는 자리만 보인다(005 US1-AC5).
+          <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-normal text-amber-800">
+            다른 회원에게 보이지 않아요
+          </span>
+        ) : null}
+      </p>
       <p className="text-sm break-words whitespace-pre-wrap text-neutral-800">
         {comment.content}
       </p>
