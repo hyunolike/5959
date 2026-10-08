@@ -161,6 +161,8 @@ stateDiagram-v2
 **PostApi**
 - `findComment(commentId): CommentSummary?`: 살아 있는 댓글의 `postId`, `authorId`, `parentId`, `parentAuthorId`. 지웠으면 null
 - `previews(postIds): Map<Long, PostPreview>`: 지운 글도 포함해 `postId`, `contentPreview`(앞 50글자), `deleted`. 알림 목록이 쓴다
+
+**PostActivityApi** (구현하면서 `PostApi`에서 나눴다. `PostApi`가 detekt의 인터페이스 함수 수 한도 11에 닿았다)
 - `pageByAuthor(authorId, cursor, size): PostPage`: 내가 쓴 글(`id DESC`)
 - `pageLikedBy(memberId, cursor, size): PostPage`: 공감한 글(공감 시각 `DESC`)
 - `pageCommentsByAuthor(authorId, cursor, size): MyCommentPage`: 내 댓글(`id DESC`), 항목마다 `commentId`, `postId`, `content`, `isReply`, `createdAt`, 글 본문 앞부분. HTTP 응답에서는 계약대로 `reply`로 내보낸다(`@JsonProperty("reply")`)

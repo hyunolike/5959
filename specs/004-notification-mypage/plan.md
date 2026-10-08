@@ -98,7 +98,8 @@ apps/api/src/main/kotlin/com/ogu/
 │   ├── presentation/  MemberController(PATCH /me), dto/ProfileUpdateRequest
 │   └── infrastructure/security/SecurityPaths.kt # 스트림 공개 경로, 온보딩 허용 목록을 GET /me로 좁힘
 ├── post/
-│   ├── PostApi.kt                               # findComment, previews, pageByAuthor, pageLikedBy, pageCommentsByAuthor, liveRefsByAuthor, liveIds
+│   ├── PostApi.kt                               # findComment, previews
+│   ├── PostActivityApi.kt                       # pageByAuthor, pageLikedBy, pageCommentsByAuthor, liveRefsByAuthor, liveIds (구현 때 PostApi에서 나눔)
 │   ├── CommentSummary.kt, PostPreview.kt, PostRef.kt, MyCommentPage.kt
 │   └── application/   MyPostsReader, MyCommentsReader, LikedPostsReader(키셋)
 ├── monster/
@@ -130,7 +131,7 @@ apps/web/src/
 │   └── api/notifications/stream-ticket/route.ts # 전용 BFF 라우트(티켓 + streamUrl)
 ├── entities/
 │   ├── notification/   types, queries(useNotificationsQuery, useUnreadCountQuery), model/message.ts(문구), model/badge.ts(99+), ui/notification-item
-│   └── emotion-stats/  types, queries, ui/distribution-bar, ui/weekly-chart
+│   └── member/         model/profile-schema.ts(닉네임 규칙), api/use-nickname-check.ts (구현 때 온보딩 feature에서 옮김)
 ├── features/
 │   ├── notification-stream/ model/store.ts(Zustand), model/backoff.ts, api/connect.ts(티켓, EventSource), model/cache-sync.ts
 │   ├── read-notification/   mark-one, mark-all(upToSeq)
@@ -139,7 +140,7 @@ apps/web/src/
 │   ├── notification-bell/   종, 배지, 연결 시작, 토스트
 │   ├── notification-list/   무한 스크롤, 모두 읽음, 삭제된 글 안내
 │   ├── my-activity/         세 탭, 빈 상태
-│   └── emotion-stats-panel/
+│   └── emotion-stats-panel/ api/queries, model/types, ui/distribution-bar, ui/weekly-chart (구현 때 entities/emotion-stats를 합침)
 ├── shared/ui/toast.tsx
 └── shared/server/route-guard.ts                 # 보호 경로에 /notifications 추가
 apps/web/src/app/api/[...path]/route.ts          # notifications/stream-tickets 직접 전달 거부

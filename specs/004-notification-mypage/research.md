@@ -196,18 +196,19 @@
 ## R12. 마이페이지 목록과 감정 통계 (FR-011, FR-012)
 
 **결정**:
-- **내가 쓴 글** `GET /api/v1/members/me/posts`: `PostApi.pageByAuthor(authorId, cursor, size)`로 키셋(`id DESC`)을 읽고, 피드와 같은 조합기(`FeedAssembler`)로 몬스터, 감정, 작성자를 붙인다. 응답 항목은 피드의 `FeedItem`을 그대로 쓴다. 인덱스 `posts (author_id, id DESC) WHERE deleted_at IS NULL`.
-- **내 댓글** `GET /api/v1/members/me/comments`: `PostApi.pageCommentsByAuthor`가 살아 있는 글의 살아 있는 댓글을 `id DESC` 키셋으로 읽고, 글 본문 앞 50글자를 함께 준다. 인덱스 `comments (author_id, id DESC) WHERE deleted_at IS NULL`.
-- **공감한 글** `GET /api/v1/members/me/liked-posts`: `PostApi.pageLikedBy(memberId, cursor, size)`가 `post_likes`를 `(created_at DESC, post_id DESC)` 키셋으로 읽고 지운 글을 뺀다. 취소한 공감은 행이 없으니 자연히 빠진다. 조합은 내 글과 같다. 인덱스 `post_likes (member_id, created_at DESC, post_id DESC)`.
-- 세 목록 모두 쿼리 수가 쪽 크기와 상관없이 4~5개다(003 R7과 같다).
+- **내가 쓴 글** `GET /api/v1/members/me/posts`: `PostActivityApi.pageByAuthor(authorId, cursor, size)`로 키셋(`id DESC`)을 읽고, 피드와 같은 조합기(`FeedAssembler`)로 몬스터, 감정, 작성자를 붙인다. 응답 항목은 피드의 `FeedItem`을 그대로 쓴다. 인덱스 `posts (author_id, id DESC) WHERE deleted_at IS NULL`.
+- **내 댓글** `GET /api/v1/members/me/comments`: `PostActivityApi.pageCommentsByAuthor`가 살아 있는 글의 살아 있는 댓글을 `id DESC` 키셋으로 읽고, 글 본문 앞 50글자를 함께 준다. 인덱스 `comments (author_id, id DESC) WHERE deleted_at IS NULL`.
+- **공감한 글** `GET /api/v1/members/me/liked-posts`: `PostActivityApi.pageLikedBy(memberId, cursor, size)`가 `post_likes`를 `(created_at DESC, post_id DESC)` 키셋으로 읽고 지운 글을 뺀다. 취소한 공감은 행이 없으니 자연히 빠진다. 조합은 내 글과 같다. 인덱스 `post_likes (member_id, created_at DESC, post_id DESC)`.
+- 세 목록 모두 쿼리 수가 쪽 크기와 상관없이 4~5개다(003 R7과 같다). 구현에서는 글 목록 둘이 4개, 댓글 목록이 1개다.
+- 구현하면서 회원 한 명의 활동을 읽는 조회 다섯 개를 `PostApi`가 아니라 새 파사드 `PostActivityApi`에 두었다. `PostApi`에 더하면 detekt의 인터페이스 함수 수 한도(11)를 넘는다.
 - **감정 통계** `GET /api/v1/members/me/emotion-stats`:
-  1. `PostApi.liveRefsByAuthor(authorId)`가 내 살아 있는 글의 `(postId, createdAt)`을 준다.
+  1. `PostActivityApi.liveRefsByAuthor(authorId)`가 내 살아 있는 글의 `(postId, createdAt)`을 준다.
   2. `MonsterApi.statRows(postIds)`가 그 글들의 `(postId, emotion, status, createdAt)`을 준다. 몬스터가 없는(분석 중) 글은 빠진다.
   3. `feed`가 메모리에서 센다: 전체 수, 처치된 수, 감정 5종별 수.
   4. 비율은 정수 퍼센트로 반올림하고, 합이 100이 아니면 차이를 가장 큰 항목에 더하거나 뺀다. 가장 큰 항목이 여럿이면 아래 "가장 많은 감정"과 같은 규칙으로 하나를 고른다. 몬스터가 없으면 모두 0이다(US4-AC4).
   5. 가장 많은 감정은 수가 가장 큰 감정이고, 같으면 그 감정들 가운데 가장 최근에 생긴 몬스터(`createdAt`)의 감정이다(US4-AC2).
   6. 주별 추이는 글의 작성 시각을 한국 시간 월요일 0시 기준 주로 묶은 8개 구간(이번 주 포함, 오래된 주부터)이고, 글이 없는 주도 0으로 채운다(US4-AC3). 시계는 주입한 `Clock`을 쓴다.
-  7. 함께 물리친 몬스터는 `MonsterApi.defeatedPostIdsDamagedBy(memberId)`로 내가 HP를 줄인 처치된 몬스터의 글 ID를 받고, `PostApi.liveIds(ids)`로 지운 글을 뺀 수다(US4-AC5). 인덱스 `monster_hp_log (member_id, monster_id)`.
+  7. 함께 물리친 몬스터는 `MonsterApi.defeatedPostIdsDamagedBy(memberId)`로 내가 HP를 줄인 처치된 몬스터의 글 ID를 받고, `PostActivityApi.liveIds(ids)`로 지운 글을 뺀 수다(US4-AC5). 인덱스 `monster_hp_log (member_id, monster_id)`.
 
 **근거**:
 - 회원 한 명의 글이 1천 개여도 행 1천 개를 메모리에서 세는 것은 수 밀리초다(SC-004). SQL 집계로 내리려면 `posts`와 `monsters`를 조인해야 하는데 두 테이블의 소유 모듈이 달라 경계를 넘는다.
@@ -220,7 +221,7 @@
 
 **결정**: `PATCH /api/v1/members/me`에 `{ nickname?, jobRole?, careerYear? }`(하나 이상)를 받는다.
 - `member`의 `ProfileService`가 회원 행을 `FOR UPDATE`로 잠그고, 닉네임은 M1의 `Nickname.of`로 검증한다. 소문자 키가 내 지금 키와 같으면(대소문자만 바꾼 경우) 중복 확인을 건너뛰고, 다르면 `existsByNicknameKey`로 확인한다. 저장 때 유일 제약(`member.nickname_key`)에 걸리면 `409 NICKNAME_TAKEN`으로 바꾼다. 동시에 같은 닉네임을 저장하면 한 명만 성공한다(경계 상황).
-- 형식 오류는 M1과 같은 메시지의 `400 INVALID_REQUEST`다. 웹 폼은 M1의 닉네임 스키마와 `nickname-availability` 확인을 그대로 쓴다(US5-AC2).
+- 형식 오류는 M1과 같은 메시지의 `400 INVALID_REQUEST`다. 웹 폼은 M1의 닉네임 스키마와 `nickname-availability` 확인을 그대로 쓴다(US5-AC2). FSD에서 feature끼리는 가져올 수 없어서, 구현하면서 둘을 온보딩 feature에서 `entities/member`로 옮겨 함께 쓴다.
 - 응답은 `MemberProfile`이다. access 토큰에는 닉네임이 없으므로 새로 발급하지 않는다.
 - 글의 직군과 경력은 작성 시점 스냅숏(`posts.author_job_role`, `author_career_year`)이라 바꾸지 않는다(US5-AC3). 003 R7에 적은 "`MemberProfileChanged`로 스냅숏 갱신"은 이 스펙에서 뒤집혔으므로 이벤트를 만들지 않는다.
 - 닉네임은 어디서나 `MemberApi.getMembers`로 지금 값을 읽는다. 알림도 닉네임을 저장하지 않고 `actor_id`만 둔다(US5-AC4).
@@ -235,7 +236,7 @@
 - **캐시 반영**: `notification` 이벤트를 받으면 TanStack Query의 알림 목록 첫 쪽에서 같은 ID를 지우고 맨 앞에 넣고, 안 읽은 수 캐시를 `unreadCount`로 바꾼다. `unread-count` 이벤트는 배지만 바꾼다. 다시 연결하면 안 읽은 수를 새로 받는다.
 - **토스트**: 화면 오른쪽 아래에 4초 동안 보인다. 알림 페이지를 보고 있으면 띄우지 않는다. 토스트를 누르면 목록에서 누른 것과 같이 그 알림을 읽음으로 바꾸고 글 상세로 간다(Batch 7). `shared/ui/toast`를 직접 만든다(의존성을 늘리지 않는다).
 - **화면**: `/notifications`(목록, 모두 읽음, 무한 스크롤), `/my`(프로필과 감정 통계, 탭 `?tab=posts|comments|likes`), `/my/edit`(프로필 수정). `route-guard.ts`의 보호 경로에 `/notifications`를 더한다(FR-014).
-- **슬라이스**: `entities/notification`(타입, 목록과 안 읽은 수 쿼리, 알림 문구 함수, 항목 UI), `entities/emotion-stats`(쿼리, 통계 UI), `features/notification-stream`, `features/read-notification`, `features/edit-profile`, `widgets/notification-bell`, `widgets/notification-list`, `widgets/my-activity`(세 탭), `widgets/emotion-stats-panel`.
+- **슬라이스**: `entities/notification`(타입, 목록과 안 읽은 수 쿼리, 알림 문구 함수, 항목 UI), 감정 통계의 쿼리와 차트(계획은 `entities/emotion-stats`였으나 쓰는 곳이 하나라 steiger에 걸려 `widgets/emotion-stats-panel` 안에 둠), `features/notification-stream`, `features/read-notification`, `features/edit-profile`, `widgets/notification-bell`, `widgets/notification-list`, `widgets/my-activity`(세 탭), `widgets/emotion-stats-panel`.
 - **삭제된 글**: 목록 항목의 `post`가 `null`이면 "삭제된 글"로 보이고, 누르면 이동하지 않고 안내를 띄운다. 이미 연 상세가 `404 POST_NOT_FOUND`를 받아도 같은 안내를 쓴다(US2-AC5).
 
 **근거**: 서버 데이터(목록, 수)는 TanStack Query, 연결 상태만 Zustand라는 overview 6.4의 규칙을 그대로 따른다. 연결과 재시도를 직접 다루는 이유는 R3(일회용 티켓)에 있다.
