@@ -24,6 +24,13 @@ export const QUERY_KEYS = {
    */
   notifications: ["notifications", "list"] as const,
   unreadCount: ["notifications", "unread-count"] as const,
+  /**
+   * 마이페이지의 세 목록(004 US3). 공감, 댓글, 글 삭제가 다른 화면에서 일어나므로 무효화로 따라가지
+   * 않고, 탭을 열 때마다 다시 받는다(`refetchOnMount: "always"`).
+   */
+  myPosts: ["my", "posts"] as const,
+  myComments: ["my", "comments"] as const,
+  likedPosts: ["my", "liked-posts"] as const,
 };
 
 /**
