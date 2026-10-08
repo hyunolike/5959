@@ -19,7 +19,7 @@ import org.springframework.context.annotation.Import
  * 구현되어 지금은 비어 있다. 003-core-loop이 추가한 고민 글/피드/공감/댓글 13개 오퍼레이션도 각 스토리가
  * 컨트롤러를 추가할 때까지 여기 두었고 US4로 모두 빠졌다). 004-notification-mypage가 추가한 알림, 마이페이지,
  * 프로필 수정 11개 오퍼레이션도 각 스토리가 컨트롤러를 추가할 때까지 여기 둔다(US1에서 연결 표, 스트림, 안 읽은 수를,
- * US2에서 알림 목록, 하나 읽음, 모두 읽음을, US3에서 마이페이지 세 목록을, US4에서 감정 통계를 뺐다).
+ * US2에서 알림 목록, 하나 읽음, 모두 읽음을, US3에서 마이페이지 세 목록을, US4에서 감정 통계를, US5에서 프로필 수정을 빼서 지금은 비어 있다).
  * 실시간 스트림(`GET /api/v1/notifications/stream`)은 응답 형식(`text/event-stream`)까지만 계약으로 비교하고,
  * 그 안의 SSE 이벤트 형식(`notification`, `unread-count`, 하트비트)은 보지 않는다. 이벤트 형식은 SSE 통합 테스트가
  * 맡는다(004 research R15).
@@ -74,12 +74,9 @@ class ContractTests {
          * 003-core-loop이 계약에 더한 13개 중 아직 구현하지 않은 오퍼레이션이다(US1에서 createPost, getPostDetail을,
          * US2에서 getFeed를, US3에서 공감과 취소, 댓글 목록과 작성, 댓글 공감과 취소를,
          * US4에서 글과 댓글 수정, 삭제를 빼서 지금은 비어 있다).
-         * 004-notification-mypage가 더한 11개는 알림(US1, US2), 마이페이지(US3, US4), 프로필 수정(US5)을
-         * 구현하는 스토리가 각자 뺀다.
+         * 004-notification-mypage가 더한 11개도 알림(US1, US2), 마이페이지(US3, US4), 프로필 수정(US5)을
+         * 구현한 스토리가 각자 빼서 비어 있다.
          */
-        val pendingPaths =
-            setOf(
-                "PATCH /api/v1/members/me", // updateMyProfile
-            )
+        val pendingPaths = emptySet<String>()
     }
 }
