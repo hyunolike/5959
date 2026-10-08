@@ -80,7 +80,6 @@ class ContractTests {
          */
         val pendingPaths =
             setOf(
-                "POST /api/v1/reports", // reportContent
                 "POST /api/v1/review-requests", // requestReview
                 "GET /api/v1/operator/assessments", // listAssessments
                 "PUT /api/v1/operator/assessments/{assessmentId}/reviewed", // markAssessmentReviewed
