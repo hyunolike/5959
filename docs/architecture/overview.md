@@ -120,9 +120,9 @@ Redis는 처음 필요한 M3(SSE 팬아웃)에서 추가한다.
 | `shared` (OPEN) | 공통 응답, 예외, 설정 | - | - | - |
 | `member` | 회원, 인증(이메일/카카오/구글), 로그인 실패 제한, 세션(JWT access·refresh) | `MemberApi` | `MemberWithdrawn`(회원 탈퇴는 M1 범위 밖이라 아직 발행하지 않는다) | - |
 | `post` | 고민 글, 댓글, 공감, 숨김 처리 | `PostApi` | `PostCreated`, `CommentCreated`, `PostLiked`, `CommentLiked` | - |
-| `ai` | LLM 게이트웨이 (Spring AI, Resilience4j, 요청 제한) | `EmotionAnalyzer`, `Embedder`, `RiskClassifier`, `LetterWriter` | - | - |
+| `ai` | LLM 게이트웨이 (Spring AI, Resilience4j, 요청 제한) | `EmotionAnalyzer`(M2). `Embedder`, `RiskClassifier`, `LetterWriter`는 뒤 마일스톤 | - | - |
 | `emotion` | 감정 분석 결과, 감정 통계 | `EmotionApi` | `EmotionAnalyzed` | `PostCreated` |
-| `monster` | 몬스터 생성, HP, 처치 | `MonsterApi` | `MonsterDefeated` | `EmotionAnalyzed`, `CommentCreated`, `PostLiked`, `CommentLiked` |
+| `monster` | 몬스터 생성, HP, 처치 | `MonsterApi` | `MonsterDefeated` | `EmotionAnalyzed`(커밋 후 비동기), `PostLiked`, `CommentCreated`, `CommentLiked`(post 트랜잭션 안에서 동기) |
 | `safety` | 위험 감지, 신고, 욕설 마스킹. 위험 글은 `PostApi.hide()`로 숨긴다 | `SafetyApi` | `RiskDetected` | `PostCreated`, `CommentCreated` |
 | `raid` | 보스 몬스터, 동시 공격 | `RaidApi` | `RaidBossDefeated` | `CommentCreated` |
 | `recommend` | 임베딩 저장, 유사 글 검색 | `RecommendApi` | - | `PostCreated` |
@@ -161,6 +161,8 @@ flowchart BT
 - `post`는 `member` 말고는 어떤 도메인 모듈도 모른다. 글에 몬스터 HP나 감정을 붙여 보여 주는 일은 `feed` 모듈이 각 파사드를 불러 조합한다.
 - `ai`는 도메인 모듈을 모른다.
 - 순환이 생기면 `ModularityTests`가 실패한다.
+- M2까지 만든 모듈은 `shared`, `member`, `post`, `ai`, `emotion`, `monster`, `feed`다. 나머지는 표에 적힌 마일스톤에서 들어온다.
+- 공격 반영, 몬스터 생성, 글 삭제가 함께 쓰는 글 단위 잠금(`PostLock`)은 두 모듈이 같은 키를 써야 해서 `shared/lock`에 둔다.
 
 ### 5.2 핵심 흐름 (M2)
 
@@ -170,43 +172,48 @@ sequenceDiagram
     participant W as web (BFF)
     participant P as post
     participant E as emotion
-    participant S as safety
     participant A as ai
     participant M as monster
-    participant N as notification
 
     W->>P: POST /api/v1/posts
     P->>P: 글 저장 + PostCreated 기록 (같은 트랜잭션)
     P-->>W: 201 (analysisStatus: PENDING)
-    par 커밋 후 비동기
-        P--)E: PostCreated
-        E->>A: analyze(content)
+    P--)E: PostCreated (커밋 후 비동기)
+    E->>E: emotion_analysis 행 생성 (PENDING)
+    E->>A: analyze(content), 트랜잭션 밖
+    alt 성공
         A-->>E: 감정, 강도
-        E--)M: EmotionAnalyzed
-        M->>M: 몬스터 생성 (강도에 따라 maxHp)
-    and
-        P--)S: PostCreated
-        S->>A: classifyRisk(content)
-        A-->>S: 위험도
-        S->>P: hide(postId) (CRISIS일 때)
-        S--)N: RiskDetected
+        E->>E: ANALYZED + EmotionAnalyzed 기록
+    else 실패
+        E->>E: attempts+1, next_attempt_at을 뒤로 미룸
+        Note over E: RetryScheduler가 10초마다 차례가 된 행을 다시 시도.<br/>24시간이 지나면 DEFAULTED(무기력, 낮음)
     end
-    M--)N: MonsterDefeated (HP 0이 되면)
+    E--)M: EmotionAnalyzed (커밋 후 비동기)
+    M->>P: attacksSoFar(postId)
+    M->>M: 글 잠금 안에서 몬스터 생성 + 쌓인 공격 소급 반영
+    W->>P: POST /api/v1/posts/{id}/likes (공감, 댓글, 댓글 공감)
+    P->>M: PostLiked (같은 트랜잭션, 동기)
+    M->>M: 글 잠금 안에서 HP 감소, 0이 되면 MonsterDefeated
 ```
 
-- 이벤트는 `@ApplicationModuleListener`로 받는다. 커밋이 끝난 뒤 비동기로, 새 트랜잭션에서 실행된다.
-- Event Publication Registry가 이벤트를 `event_publication` 테이블에 기록한다. 리스너가 실패하면 미완료로 남고, 스케줄러가 재발행한다.
-- AI 호출은 Resilience4j로 재시도와 서킷 브레이커를 건다. 서킷이 열리면 즉시 실패시키고 이벤트는 미완료로 남긴다.
-- 분석이 끝나기 전에는 글의 `analysisStatus`가 `PENDING`이다. 프론트엔드는 "분석 중" 상태를 보여 주고, 끝나면 SSE로 갱신한다.
+- 분석 결과를 기다리는 이벤트(`PostCreated`, `EmotionAnalyzed`)는 `@ApplicationModuleListener`로 받는다. 커밋이 끝난 뒤 비동기로, 새 트랜잭션에서 실행된다.
+- 공감과 댓글 이벤트(`PostLiked`, `CommentCreated`, `CommentLiked`)는 `monster`가 `@EventListener`로 post 트랜잭션 안에서 동기로 받는다. 공감 저장과 HP 감소가 함께 성공하거나 함께 실패해야 하기 때문이다. 몬스터가 아직 없으면 반영하지 않고, 몬스터를 만들 때 `PostApi.attacksSoFar`로 그때까지의 공격을 소급 반영한다.
+- 잠금 순서는 언제나 `posts`나 `comments` 행을 먼저 잠그고 글 잠금(`PostLock`, advisory lock)을 나중에 잡는다. 공격 반영은 잠금을 잡은 뒤에 몬스터를 찾으므로, 생성과 겹쳐도 공격은 소급 반영과 생성 뒤 감소 가운데 정확히 한 곳에만 들어간다.
+- AI 재시도는 Resilience4j가 아니라 `emotion_analysis` 테이블이 맡는다. 실패하면 `next_attempt_at`을 `min(30초 x 2^(n-1), 5분)` 뒤로 미루고, 스케줄러가 `FOR UPDATE SKIP LOCKED`로 행을 맡아 다시 시도한다. 글을 쓴 지 24시간이 지나면 기본값으로 끝낸다. Resilience4j는 호출 한 번에 20초 타임아웃과 서킷 브레이커만 건다. 서킷이 열리면 호출 없이 실패로 기록하고 다음 시각을 기다린다.
+- Event Publication Registry가 이벤트를 `event_publication` 테이블에 기록한다. 비동기 리스너가 실패하면 미완료로 남고, 재전송 스케줄러가 1분마다 2분보다 오래된 것을 다시 보낸다. 처음 처리를 포함해 10번 실패하면 더 보내지 않고 WARN을 남긴다. 이 상한은 프로세스 하나 안에서만 지켜진다. 재시작(배포) 때는 `republish-outstanding-events-on-restart`가 상한에 걸린 발행까지 다시 한 번 보내고, 메모리에 둔 WARN 중복 방지도 처음부터 다시 센다. 원인을 고친 뒤에는 재시작하거나 그 발행의 `completion_attempts`를 0으로 되돌려 재전송 스케줄러가 다시 맡게 한다.
+- 분석이 끝나기 전에는 글의 `analysisStatus`가 `PENDING`이다. 프론트엔드는 "분석 중" 상태를 보여 주고, 몬스터가 생길 때까지 상세를 3초마다(2분 뒤부터 15초마다) 다시 불러온다. SSE 알림은 M3에서 들인다.
+- 위험 감지(`safety`)는 M4에서 같은 `PostCreated`를 받아 붙는다(5.6).
 
 ### 5.3 HP 규칙
 
-원본 규칙을 기본값으로 이어받는다. 수치는 M2 스펙에서 확정한다.
+M2 스펙(specs/003-core-loop)에서 정한 값이다.
 
-- 감정 강도에 따라 `maxHp`는 10, 20, 30 중 하나다.
-- 글 공감은 HP를 1 줄인다. 댓글과 댓글 공감의 감소량은 M2 스펙에서 정한다.
-- 같은 사용자가 같은 글에 여러 번 반응해도 행동 종류마다 한 번만 반영한다.
-- HP 변화는 `monster_hp_log`에 남긴다. 감정 통계와 주간 리포트가 이 이력을 쓴다.
+- 감정 강도에 따라 `maxHp`가 정해진다: 낮음 10, 보통 20, 높음 30. 분석이 24시간 안에 끝나지 않으면 무기력, 낮음(10)이다.
+- 감소량은 글 공감 1, 댓글 3(회원마다 글 하나에 첫 댓글 한 번만), 댓글 공감 1이다.
+- 글 작성자 자신의 공감과 댓글은 HP를 바꾸지 않는다.
+- 같은 공격은 한 번만 반영한다. `monster_hp_log`의 `UNIQUE (monster_id, member_id, action, target_id)`에 막히면 HP를 줄이지 않으므로, 공감을 취소했다가 다시 해도 다시 줄지 않는다.
+- HP는 0에서 멈춘다. 0이 되는 순간 몬스터는 처치됨이 되고 `MonsterDefeated`가 한 번 나간다. 처치된 뒤의 공격도 감소량을 그대로, HP는 0에서 0으로 기록해 "처치 뒤 응원"을 셀 수 있게 한다.
+- 몬스터가 생기기 전의 공격은 생성 때 `retroactive = true`로 기록한다. 감정 통계와 주간 리포트가 이 이력을 쓴다.
 
 ### 5.4 레이드 동시성 (M5)
 
@@ -262,11 +269,12 @@ import는 아래 방향으로만 한다. 같은 레이어의 슬라이스끼리�
 
 React Three Fiber로 몬스터를 코드로 만든다. 원본 그림은 쓰지 않고, 감정 5종(불안, 무기력, 외로움, 자기비하, 짜증)이라는 개념만 이어받는다.
 
-- `model/appearance.ts`: `(감정, HP 비율, 상태) → 외형 파라미터`를 계산하는 순수 함수다. 색, 크기, 흔들림, 금 간 정도를 돌려준다. 렌더링과 분리해서 Vitest로 테스트한다.
-- `ui/monster-3d.tsx`: R3F 장면이다. `next/dynamic`으로 글 상세와 레이드 화면에서만 불러온다. 첫 로딩 번들에 Three.js가 들어가지 않게 한다.
-- `ui/monster-sprite.tsx`: 목록용 정지 이미지다. `scripts/render-monsters.ts`가 Playwright로 3D 장면을 캡처해 감정 5종 × 상태별 PNG를 만든다.
-- WebGL을 쓸 수 없거나 `prefers-reduced-motion`이 켜진 기기에서는 정지 이미지로 대체한다.
-- 감정마다 색, 형태, 움직임으로 구분한다. 예를 들어 불안은 떨리는 뾰족한 형태, 무기력은 축 처진 형태로 표현한다. 레이드 보스는 같은 모델을 키우고 파티클을 더한다.
+- `model/appearance.ts`: `(감정, HP 비율, 상태) → 외형 파라미터`를 계산하는 순수 함수다. 색, 크기, 흔들림, 금 간 정도와 HP 단계(멀쩡함, 상처 입음, 약해짐, 쓰러짐)를 돌려준다. 렌더링과 분리해서 Vitest로 테스트한다.
+- `ui/monster-3d.tsx`: R3F 장면이다. `next/dynamic`으로 글 상세에서만 불러와 첫 로딩 번들에 Three.js가 들어가지 않게 한다. 화면에 보이고 움직이는 동안만 매 프레임 그리고, 쓰러졌거나 화면 밖이면 필요할 때만 그린다.
+- `ui/monster-sprite.tsx`: 정지 이미지다. `pnpm --filter web render:monsters`(`scripts/render-monsters.ts`)가 Vite 하네스로 3D 장면을 띄우고 Playwright로 찍어 감정 5종과 HP 단계 4개, 모두 20장의 PNG를 `public/monsters/`에 만든다. Node 22.18 이상이 필요하다.
+- 피드 카드는 언제나 정지 이미지다. 글 상세는 WebGL을 쓸 수 없거나 `prefers-reduced-motion`이 켜져 있으면 정지 이미지로 대신한다.
+- 3D 장면이 실패하면 `MonsterDisplay`의 오류 경계가 받아 정지 이미지로 바꾼다. 글 상세 전체는 오류 화면으로 넘어가지 않고, 실패는 글마다 기억해 다른 글로 가면 3D를 다시 시도한다.
+- 감정마다 색, 형태, 움직임으로 구분한다. 불안은 떨리는 뾰족한 형태, 무기력은 축 처진 형태로 표현한다. 레이드 보스(M5)는 같은 모델을 키우고 파티클을 더한다.
 
 ### 6.3 인증: BFF
 

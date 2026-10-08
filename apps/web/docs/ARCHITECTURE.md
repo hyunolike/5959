@@ -27,14 +27,15 @@ src/
 ├── core/        FSD's "app" layer, renamed to avoid colliding with Next's
 │                 own app/ directory. Global providers (TanStack Query)
 │                 and global styles. Nothing here is domain-specific.
-├── widgets/     Independent, composed UI blocks. Currently just
-│                 `service-status`. This is where features and entities
-│                 will get wired together once they exist — features never
-│                 import each other directly.
-├── features/    One user action per slice. Empty until real domain work
-│                 lands; depends on entities + shared only.
+├── widgets/     Independent, composed UI blocks: `feed-list`,
+│                 `post-detail`, `post-editor`, `service-status`. This is
+│                 where features and entities get wired together —
+│                 features never import each other directly.
+├── features/    One user action per slice: `auth`, `onboarding`,
+│                 `write-post`, `manage-post`, `like`, `comment`.
+│                 Depends on entities + shared only.
 ├── entities/    Domain nouns: types, the canonical read query, and dumb/
-│                 presentational UI. Empty until real domain work lands.
+│                 presentational UI: `member`, `post`, `comment`, `monster`.
 └── shared/      Zero domain knowledge. UI kit, the API client
                   (`fetchApiHealth`, the TanStack Query client factory,
                   `ApiError`), typed env vars, generic utils.
@@ -135,10 +136,72 @@ to the development-only secret in `shared/server/oauth-secret.ts`.
 (`resolveRouteGuardAction`) that the routing layer (`proxy.ts`) applies
 before a protected page renders, so an unauthenticated visit to a protected
 path never flashes page content (US4-AC4): `/`, `/onboarding`, `/login`,
-`/signup`, and the protected prefixes `/home`, `/write`, `/my`, `/settings`
+`/signup`, and the protected prefixes `/home`, `/write`, `/post`, `/my`, `/settings`
 each redirect based on whether `ogu_rt` and `ogu_ob` are present. A
 validated `next` query param (via `sanitizeNextPath`) sends the visitor back
 to where they started after login (US4-AC5).
+
+## 핵심 루프 (003-core-loop)
+
+고민 글을 쓰고, 감정 분석으로 몬스터가 생기고, 공감과 댓글로 HP를 깎는 흐름이다.
+페이지는 `/home`(피드), `/write`(글쓰기), `/post/[id]`(상세), `/post/[id]/edit`(수정)이고,
+모두 로그인과 온보딩이 필요한 보호 경로다. 브라우저는 여기서도 같은 출처 `/api/*`만
+부르고, 범용 프록시가 API의 `/api/v1/*`로 넘긴다.
+
+### 슬라이스
+
+- `entities/post`: 글 상세와 피드 조회(`usePostDetailQuery`, `useFeedQuery`), 피드 카드.
+- `entities/comment`: 댓글 목록 조회와 댓글 한 줄.
+- `entities/monster`: 외형 계산(`model/appearance.ts`), 정지 이미지 경로, 3D 장면과 몬스터 자리(`MonsterDisplay`).
+- `features/write-post`, `features/manage-post`: 글 쓰기, 수정, 삭제.
+- `features/like`, `features/comment`: 글 공감, 댓글 공감, 댓글 쓰기와 수정, 삭제. 낙관적 HP 계산이 여기 있다.
+- `widgets/feed-list`, `widgets/post-detail`, `widgets/post-editor`: 위 슬라이스를 화면 단위로 조립한다.
+
+### 쿼리 키와 폴링
+
+쿼리 키 루트는 둘이다(`shared/config/constants.ts`). 글 상세는 `["posts", id]`, 댓글
+목록은 그 아래 `["posts", id, "comments"]`이고, 피드는 따로 `["feed", filter]`다. 공격이
+끝나면 `["posts", id]` 하나를 무효화해 상세와 댓글을 함께 서버 값으로 맞추고, 피드는
+`["feed"]`로 낡은 것으로만 표시한다. 피드를 `["posts"]` 아래에 두지 않은 까닭은 상세를
+무효화할 때 피드까지 다시 불러오지 않게 하려는 것이다.
+
+상세는 몬스터가 생길 때까지 3초마다 다시 불러오고, 처음 불러온 지 2분이 지나면 15초로
+늦춘다(research R10). 몬스터가 생기면 멈추고, 4xx(지운 글 404 등)를 받아도 멈춘다. 5xx와
+네트워크 오류에는 멈추지 않는다. 글을 지우는 동안과 지운 뒤에도 멈춘다. 삭제
+뮤테이션이 `["deletePost", id]` 키를 쓰고, 상세 쿼리가 이 키의 상태를 보고
+`refetchInterval`을 끈다. 쿼리 자체(`enabled`)는 끄지 않는다. 성공한 삭제 뮤테이션은
+5분(gcTime) 동안 캐시에 남아서, 쿼리를 끄면 그동안 같은 글을 다시 열 때 로딩만 보이기
+때문이다. 폴링을 끄지 않으면 이동하기 전에 폴링이 한 번 더 돌아
+"삭제된 글이에요"가 잠깐 보인다. 피드는 무한 스크롤이며 목록 끝 200px 앞에서 다음 쪽을
+부르고, 인기순에서 같은 글이 두 쪽에 걸치면 처음 나온 자리에만 둔다.
+
+### 낙관적 HP
+
+공감과 댓글은 응답을 기다리지 않고 캐시의 HP를 먼저 줄인다(research R6). 감소량은
+서버와 같아서 공감 1, 회원별 첫 댓글 3, 댓글 공감 1이고, 작성자 자신의 행동이나 이미
+반영된 공격은 줄이지 않는다. 한 글을 공격하는 뮤테이션(글 공감과 취소, 댓글 공감과
+취소, 댓글 쓰기)은 모두 `["attack", postId]` 뮤테이션 키를 쓴다. 공격이 겹치면 먼저 끝난
+공격이 상세를 다시 불러와 아직 기다리는 공격의 낙관적 HP를 덮을 수 있어서,
+`isMutating`으로 세어 마지막 공격이 끝날 때만 다시 불러온다. 실패하면 그 사이 서버 값이
+들어오지 않았을 때만 되돌린다.
+
+### 3D 몬스터와 정지 이미지
+
+피드 카드는 언제나 정지 이미지(`public/monsters/{emotion}-{stage}.png`, 감정 5종에 HP
+단계 4개로 20장)를 쓴다. 상세는 WebGL을 쓸 수 있고 움직임 줄이기가 꺼져 있을 때만 3D
+장면을 그린다. three와 R3F는 `next/dynamic`으로만 불러와 첫 번들에 들어가지 않고(ADR-0003),
+불러오는 동안에는 그 자리에 정지 이미지를 둔다. 장면은 몬스터가 화면에 보이고 움직이는
+동안만 매 프레임 그린다. 쓰러졌거나 화면 밖에 있으면 HP가 바뀔 때처럼 필요할 때만 그린다.
+
+3D 장면이 실패하면(렌더러를 만들지 못했거나 청크를 받지 못했을 때) `MonsterDisplay`의
+오류 경계가 받아 정지 이미지로 바꾸고, 글 상세 전체는 오류 화면으로 넘어가지 않는다.
+실패는 글마다 기억한다. 같은 글에서는 정지 이미지로 남고, App Router가 트리를 유지한 채
+다른 글로 가면(`resetKey`가 바뀌면) 3D를 다시 시도한다.
+
+정지 이미지는 `pnpm --filter web render:monsters`로 만든다. Vite로
+`scripts/monster-capture` 하네스를 띄우고 Playwright Chromium이 3D 장면을 투명 배경
+512×512로 찍는다. 이 스크립트는 Node의 타입 지우기에 기대므로 Node 22.18 이상이
+필요하다. 외형이나 장면을 바꾸면 다시 돌려서 이미지를 커밋한다.
 
 ## Recent-practice choices worth calling out
 

@@ -65,12 +65,18 @@ https://github.com/user-attachments/assets/ce60a420-c1f4-43d1-8262-8f18a82cb71b
 
 새로 만드는 코드는 `apps/`에 있습니다. 설계는 [`docs/architecture/overview.md`](docs/architecture/overview.md)에서, 개발 원칙은 [`.specify/memory/constitution.md`](.specify/memory/constitution.md)에서 볼 수 있습니다.
 
+### 핵심 루프
+
+지금 `apps/`에는 서비스의 핵심 루프가 들어 있습니다. 고민 글을 쓰면 API가 글을 먼저 저장하고, 감정 분석은 뒤에서 따로 돌아 끝나는 대로 감정과 강도에 맞는 몬스터를 만듭니다. 분석이 실패하면 30초부터 최대 5분 간격으로 다시 시도하고, 24시간이 지나도 결과가 없으면 기본 몬스터를 붙입니다. 다른 사람이 남긴 공감은 HP 1을, 첫 댓글은 3을 깎고, 몬스터가 생기기 전에 받은 반응도 나중에 빠짐없이 반영됩니다. 피드에서는 정지 이미지로, 글 상세에서는 React Three Fiber로 그린 3D 몬스터로 보여 주고, WebGL을 쓸 수 없는 기기에서는 정지 이미지로 대신합니다. 자세한 요구사항과 설계는 [`specs/003-core-loop`](specs/003-core-loop/spec.md)에 있습니다.
+
 ### 로컬 실행
 
 ```bash
 cd apps/api && ./gradlew bootRun        # PostgreSQL은 compose로 자동 기동
 pnpm install && pnpm --filter web dev   # http://localhost:3000
 ```
+
+감정 분석 키(`AI_API_KEY`)가 없으면 글이 계속 "분석 중"에 머물고 몬스터가 생기지 않습니다. 실제 분석을 보려면 키를 환경 변수로 넣고, 키 없이 시연만 하려면 API를 `SPRING_PROFILES_ACTIVE=local,e2e ./gradlew bootRun`으로 띄워 본문 길이나 `[불안:높음]` 같은 머리말로 감정을 정하는 가짜 분석기를 씁니다.
 
 원본 저장소에 올라온 변경을 다시 받아오려면 아래 명령을 실행합니다.
 

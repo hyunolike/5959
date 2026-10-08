@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { waitForHomeLoaded } from "./support/home";
+
 // infra/compose.e2e.yaml로 띄운 실제 API + DB를 상대로 확인한다. BFF 라우트나
 // API를 목(mock)하지 않는다.
 
@@ -40,6 +42,7 @@ async function createOnboardedMember(
   await signup(page, email);
   await completeOnboarding(page, nickname);
   await page.waitForURL("**/home");
+  await waitForHomeLoaded(page);
 
   return { email, nickname };
 }
@@ -72,6 +75,7 @@ test("US2-AC5 로그아웃하면 로그인 화면으로 이동하고, 뒤로 가
   await page.context().clearCookies();
   await login(page, email);
   await page.waitForURL("**/home");
+  await waitForHomeLoaded(page);
   await expect(page.getByRole("heading")).toContainText(`${nickname}님`);
 
   await page.getByRole("button", { name: "로그아웃" }).click();

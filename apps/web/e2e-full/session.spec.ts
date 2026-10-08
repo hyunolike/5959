@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { waitForHomeLoaded } from "./support/home";
+
 // infra/compose.e2e.yaml로 띄운 실제 API + DB를 상대로 확인한다. 이 API는
 // access 토큰 유효 시간이 5초(OGU_AUTH_JWT_ACCESS_TOKEN_TTL=5s)라서, 몇 초만
 // 기다리면 BFF의 refresh 재시도를 실제로 거친다.
@@ -29,6 +31,7 @@ async function createOnboardedMember(page: Page, prefix: string) {
   await page.getByLabel("경력").selectOption("YEAR_1");
   await page.getByRole("button", { name: "완료" }).click();
   await page.waitForURL("**/home");
+  await waitForHomeLoaded(page);
   return { email, nickname };
 }
 

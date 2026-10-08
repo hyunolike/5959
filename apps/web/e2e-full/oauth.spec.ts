@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { waitForHomeLoaded } from "./support/home";
+
 // infra/compose.e2e.yaml로 띄운 실제 API(e2e 프로필, 가짜 OAuth 제공자) + DB를
 // 상대로 확인한다. 웹도 APP_ENV=e2e라서 OAuth 시작 라우트가 제공자 대신 자기
 // 콜백으로 바로 보낸다. 쿼리 e2e_id, e2e_email, e2e_outcome으로 제공자가 돌려줄
@@ -38,6 +40,7 @@ test("US3-AC1 처음 쓰는 카카오 계정으로 로그인하면 새 회원이
   const nickname = uniqueNickname("k");
   await completeOnboarding(page, nickname);
   await page.waitForURL("**/home");
+  await waitForHomeLoaded(page);
   await expect(page.getByRole("heading")).toContainText(`${nickname}님`);
 });
 
@@ -55,11 +58,13 @@ test("US3-AC2 온보딩까지 마친 구글 계정으로 다시 로그인하면 
   const nickname = uniqueNickname("g");
   await completeOnboarding(page, nickname);
   await page.waitForURL("**/home");
+  await waitForHomeLoaded(page);
 
   await page.context().clearCookies();
 
   await page.goto(startUrl("google", query));
   await page.waitForURL("**/home");
+  await waitForHomeLoaded(page);
   await expect(page.getByRole("heading")).toContainText(`${nickname}님`);
 });
 

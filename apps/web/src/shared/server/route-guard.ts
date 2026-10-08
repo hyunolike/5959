@@ -10,7 +10,7 @@ import { sanitizeNextPath } from "@/shared/lib";
  * | 경로 | 조건 | 동작 |
  * |---|---|---|
  * | `/` | `ogu_rt` 있음 | `/home` |
- * | 보호 경로(`/home`, `/write`, `/my`, `/settings` 이하) | `ogu_rt` 없음 | `/login?next=<원래 경로>` |
+ * | 보호 경로(`/home`, `/write`, `/post`, `/my`, `/settings` 이하) | `ogu_rt` 없음 | `/login?next=<원래 경로>` |
  * | 보호 경로 | `ogu_rt` 있고 `ogu_ob` 없음 | `/onboarding` |
  * | `/onboarding` | `ogu_rt` 없음 | `/login` |
  * | `/onboarding` | `ogu_ob` 있음 | `/home`(검증한 `next`가 있으면 그곳) |
@@ -19,7 +19,17 @@ import { sanitizeNextPath } from "@/shared/lib";
  * `next`는 `sanitizeNextPath`를 통과할 때만 따르고, 아니면 `/home`이다.
  */
 
-const PROTECTED_PATH_PREFIXES = ["/home", "/write", "/my", "/settings"];
+/**
+ * `/post`(글 상세, 003-core-loop)도 API가 온보딩을 마친 회원에게만 열어 두므로
+ * 화면이 401/403을 받기 전에 여기서 로그인이나 온보딩으로 보낸다.
+ */
+const PROTECTED_PATH_PREFIXES = [
+  "/home",
+  "/write",
+  "/post",
+  "/my",
+  "/settings",
+];
 
 export interface RouteGuardCookies {
   hasRefreshToken: boolean;

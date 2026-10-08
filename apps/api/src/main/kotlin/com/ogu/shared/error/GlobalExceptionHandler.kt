@@ -10,6 +10,7 @@ import org.springframework.web.ErrorResponse
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
@@ -39,6 +40,19 @@ class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException::class)
     fun handleHttpMessageNotReadable(e: HttpMessageNotReadableException): ResponseEntity<ApiResponse<Unit>> {
         log.warn("HttpMessageNotReadableException: {}", e.message)
+        return ResponseEntity
+            .status(HttpStatus.BAD_REQUEST)
+            .body(ApiResponse.error(ErrorCode.INVALID_REQUEST))
+    }
+
+    /**
+     * 경로 변수나 쿼리 파라미터의 형식이 틀렸다(예: `GET /api/v1/posts/abc`, `?size=many`). 클라이언트 잘못이므로 400이다.
+     * 상위 타입 TypeMismatchException으로 넓히지 않는다. 형제인 ConversionNotSupportedException은 변환기가 없는
+     * 서버 쪽 문제라 [handleException]에서 500과 ERROR 로그로 처리한다.
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException::class)
+    fun handleTypeMismatch(e: MethodArgumentTypeMismatchException): ResponseEntity<ApiResponse<Unit>> {
+        log.warn("MethodArgumentTypeMismatchException: name={}, requiredType={}", e.name, e.requiredType?.simpleName)
         return ResponseEntity
             .status(HttpStatus.BAD_REQUEST)
             .body(ApiResponse.error(ErrorCode.INVALID_REQUEST))

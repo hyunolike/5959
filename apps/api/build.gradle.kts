@@ -32,6 +32,10 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-flyway")
     implementation("org.flywaydb:flyway-database-postgresql")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
+    // 003-core-loop 감정 분석(research): Batch 4가 ogu.ai.*에서 직접 OpenAiApi를 만들어 쓴다.
+    // 스타터의 OpenAiChatAutoConfiguration은 spring.ai.openai.* 자동설정이라 여기서는 끈다(아래 application.yml 참고).
+    implementation("org.springframework.ai:spring-ai-starter-model-openai")
+    implementation("io.github.resilience4j:resilience4j-spring-boot4:2.4.0")
 
     runtimeOnly("org.springframework.modulith:spring-modulith-runtime")
     runtimeOnly("org.postgresql:postgresql")
@@ -50,6 +54,8 @@ dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation("io.swagger.parser.v3:swagger-parser:2.1.48")
+    // 피드 쿼리 수 고정(T029, research R7)을 확인할 때 JDBC 문장을 센다(JPA와 JdbcClient 모두)
+    testImplementation("net.ttddyy:datasource-proxy:1.11.0")
     // swagger-parser가 끌어오는 io.swagger:swagger-core(1.x, v2 변환용)는 JDK에서 제거된 JAXB를 참조한다
     testRuntimeOnly("javax.xml.bind:jaxb-api:2.3.1")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
@@ -58,6 +64,7 @@ dependencies {
 dependencyManagement {
     imports {
         mavenBom("org.springframework.modulith:spring-modulith-bom:${property("springModulithVersion")}")
+        mavenBom("org.springframework.ai:spring-ai-bom:2.0.1")
     }
 }
 
