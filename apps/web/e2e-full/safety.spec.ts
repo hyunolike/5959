@@ -8,6 +8,7 @@ import {
 } from "@playwright/test";
 
 import { waitForHomeLoaded } from "./support/home";
+import { callAsOperator, grantOperator } from "./support/operator";
 
 // infra/compose.e2e.yaml로 띄운 실제 API와 DB를 상대로 위험 감지와 안전장치(005)를 확인한다.
 // 작성자와 다른 회원은 서로 다른 브라우저 컨텍스트(쿠키)를 쓴다.
@@ -22,6 +23,7 @@ interface Member {
   context: BrowserContext;
   page: Page;
   nickname: string;
+  email: string;
 }
 
 function uniqueEmail(prefix: string): string {
@@ -38,8 +40,9 @@ async function newMember(browser: Browser, prefix: string): Promise<Member> {
   const context = await browser.newContext();
   const page = await context.newPage();
   const nickname = uniqueNickname(prefix);
+  const email = uniqueEmail(`safe-${prefix}`);
   await page.goto("/signup");
-  await page.getByLabel("이메일").fill(uniqueEmail(`safe-${prefix}`));
+  await page.getByLabel("이메일").fill(email);
   await page.getByLabel("비밀번호").fill(PASSWORD);
   await page.getByRole("button", { name: "가입하기" }).click();
   await page.waitForURL("**/onboarding");
@@ -49,7 +52,7 @@ async function newMember(browser: Browser, prefix: string): Promise<Member> {
   await page.getByRole("button", { name: "완료" }).click();
   await page.waitForURL("**/home");
   await waitForHomeLoaded(page);
-  return { context, page, nickname };
+  return { context, page, nickname, email };
 }
 
 /** 지금 로그인한 회원으로 같은 출처 BFF를 부른다. 화면은 건드리지 않는다. */
@@ -409,4 +412,194 @@ test("US3-AC3 내 글과 내 댓글에는 신고가 없다", async ({ browser })
   expect(direct.status()).toBe(403);
 
   await closeAll(author);
+});
+
+/** 가입한 회원을 DB에서 운영자로 지정한다. 운영자는 화면 없이 API를 직접 부른다(005 research R10). */
+async function newOperator(browser: Browser) {
+  const member = await newMember(browser, "op");
+  grantOperator(member.email);
+  return { member, account: { email: member.email, password: PASSWORD } };
+}
+
+/** 운영자 조회에서 이 글의 열린 재검토 요청을 찾는다. */
+async function findReview(
+  page: Page,
+  account: { email: string; password: string },
+  postId: number,
+): Promise<number> {
+  const response = await callAsOperator(
+    page.request,
+    account,
+    "GET",
+    "/review-requests?size=50",
+  );
+  expect(response.status()).toBe(200);
+  const { data } = (await response.json()) as {
+    data: {
+      items: {
+        reviewId: number;
+        target: { targetType: string; targetId: number; content: string };
+      }[];
+    };
+  };
+  const review = data.items.find(
+    (item) =>
+      item.target.targetType === "POST" && item.target.targetId === postId,
+  );
+  expect(review).toBeDefined();
+  return review!.reviewId;
+}
+
+async function requestReviewOnScreen(author: Member, postId: number) {
+  await author.page.goto(`/post/${postId}`);
+  await notice(author.page)
+    .getByRole("button", { name: "다시 살펴봐 달라고 요청하기" })
+    .click();
+  await expect(notice(author.page).getByRole("status")).toContainText(
+    "다시 살펴봐 달라고 요청했어요",
+  );
+}
+
+test("US4-AC8 숨겨진 내 글을 다시 살펴봐 달라고 요청하면 안내로 바뀌고 운영자 조회에 나타난다", async ({
+  browser,
+}) => {
+  const author = await newMember(browser, "a");
+  const operator = await newOperator(browser);
+  const marker = `재검토 글 ${Date.now()}`;
+  const postId = await writePost(author, `[실패] ${CRISIS_TEXT} ${marker}`);
+
+  await requestReviewOnScreen(author, postId);
+
+  // 새로고침해도 요청한 상태가 남고 다시 누를 수 없다
+  await author.page.reload();
+  await expect(notice(author.page).getByRole("status")).toContainText(
+    "다시 살펴봐 달라고 요청했어요",
+  );
+  await expect(
+    notice(author.page).getByRole("button", {
+      name: "다시 살펴봐 달라고 요청하기",
+    }),
+  ).toHaveCount(0);
+  const again = await call(author.page, "/api/review-requests", {
+    targetType: "POST",
+    targetId: postId,
+  });
+  expect(again.status()).toBe(409);
+
+  await findReview(operator.member.page, operator.account, postId);
+
+  await closeAll(author, operator.member);
+});
+
+test("US4-AC3 운영자가 숨김을 풀면 다른 회원의 피드에 다시 보이고 작성자에게 알림이 온다", async ({
+  browser,
+}) => {
+  const author = await newMember(browser, "a");
+  const other = await newMember(browser, "b");
+  const operator = await newOperator(browser);
+  const marker = `풀릴 글 ${Date.now()}`;
+  const postId = await writePost(author, `[실패] ${CRISIS_TEXT} ${marker}`);
+  await requestReviewOnScreen(author, postId);
+  await other.page.goto("/home");
+  await waitForHomeLoaded(other.page);
+  await expect(feed(other.page)).not.toContainText(marker);
+  const reviewId = await findReview(
+    operator.member.page,
+    operator.account,
+    postId,
+  );
+
+  const decided = await callAsOperator(
+    operator.member.page.request,
+    operator.account,
+    "PUT",
+    `/review-requests/${reviewId}/decision`,
+    { decision: "RESTORE" },
+  );
+  expect(decided.status()).toBe(204);
+
+  await other.page.reload();
+  await waitForHomeLoaded(other.page);
+  await expect(feed(other.page)).toContainText(marker);
+  // 작성자의 글에서 숨김 설명과 요청 안내가 사라진다. 위기 판정의 도움 안내는 남는다
+  await author.page.reload();
+  await expect(notice(author.page)).toBeVisible();
+  await expect(notice(author.page)).not.toContainText(
+    "다른 회원에게 보이지 않아요",
+  );
+  await author.page.goto("/notifications");
+  await expect(author.page.getByRole("list", { name: "알림" })).toContainText(
+    "가려졌던 글이 다시 보여요",
+  );
+
+  await closeAll(author, other, operator.member);
+});
+
+test("US4-AC9 운영자가 유지로 닫으면 글은 숨긴 채이고 작성자에게 살펴봤다는 알림이 온다", async ({
+  browser,
+}) => {
+  const author = await newMember(browser, "a");
+  const other = await newMember(browser, "b");
+  const operator = await newOperator(browser);
+  const marker = `유지될 글 ${Date.now()}`;
+  const postId = await writePost(author, `[실패] ${CRISIS_TEXT} ${marker}`);
+  await requestReviewOnScreen(author, postId);
+  const reviewId = await findReview(
+    operator.member.page,
+    operator.account,
+    postId,
+  );
+
+  const decided = await callAsOperator(
+    operator.member.page.request,
+    operator.account,
+    "PUT",
+    `/review-requests/${reviewId}/decision`,
+    { decision: "KEEP", note: "기준대로 유지" },
+  );
+  expect(decided.status()).toBe(204);
+
+  await author.page.goto("/notifications");
+  await expect(author.page.getByRole("list", { name: "알림" })).toContainText(
+    "요청하신 글을 다시 살펴봤어요",
+  );
+  await other.page.goto(`/post/${postId}`);
+  await expect(other.page.getByText("삭제된 글이에요.")).toBeVisible();
+  // 유지로 닫힌 뒤에도 요청했다는 안내가 남고 다시 요청할 수 없다
+  await author.page.goto(`/post/${postId}`);
+  await expect(notice(author.page).getByRole("status")).toContainText(
+    "다시 살펴봐 달라고 요청했어요",
+  );
+
+  await closeAll(author, other, operator.member);
+});
+
+test("US4-AC6 운영자 경로는 브라우저 세션으로 닿지 않고, 운영자가 아닌 회원이 API를 직접 불러도 404다", async ({
+  browser,
+}) => {
+  const member = await newMember(browser, "a");
+  const operator = await newOperator(browser);
+
+  // 운영자의 브라우저 세션으로도 BFF는 넘기지 않는다
+  const viaBff = await operator.member.page.request.get(
+    "/api/operator/assessments",
+  );
+  expect(viaBff.status()).toBe(404);
+
+  const direct = await callAsOperator(
+    member.page.request,
+    { email: member.email, password: PASSWORD },
+    "GET",
+    "/assessments",
+  );
+  expect(direct.status()).toBe(404);
+  const allowed = await callAsOperator(
+    operator.member.page.request,
+    operator.account,
+    "GET",
+    "/assessments",
+  );
+  expect(allowed.status()).toBe(200);
+
+  await closeAll(member, operator.member);
 });
