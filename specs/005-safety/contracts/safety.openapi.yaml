@@ -139,7 +139,7 @@ components:
         targetType: { $ref: '#/components/schemas/TargetType' }
         targetId: { type: integer, format: int64 }
         postId: { type: integer, format: int64 }
-        authorId: { type: integer, format: int64 }
+        authorId: { type: [integer, 'null'], format: int64, description: 지워진 대상의 신고에서는 null }
         content: { type: [string, 'null'], description: 지워졌으면 null }
         hidden: { type: boolean }
         deleted: { type: boolean }

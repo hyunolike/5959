@@ -9,6 +9,8 @@ import com.ogu.post.CommentSummary
 import com.ogu.post.ContentType
 import com.ogu.post.PostApi
 import com.ogu.post.PostLiked
+import com.ogu.safety.ContentRestored
+import com.ogu.safety.ReviewResolved
 import com.ogu.safety.RiskDetected
 import org.springframework.modulith.events.ApplicationModuleListener
 import org.springframework.stereotype.Component
@@ -83,10 +85,35 @@ class NotificationEventListener(
      */
     @ApplicationModuleListener
     fun on(event: RiskDetected) {
-        val commentId = event.targetId.takeIf { event.targetType == ContentType.COMMENT }
         val dedupKey = "RISK:${event.targetType}:${event.targetId}:${event.level}"
-        writer.writeAll(listOf(NotificationDraft.support(event.authorId, event.postId, commentId, dedupKey)))
+        val commentId = commentIdOf(event.targetType, event.targetId)
+        val type = NotificationType.SUPPORT_NOTICE
+        writer.writeAll(listOf(NotificationDraft.toAuthor(type, event.authorId, event.postId, commentId, dedupKey)))
     }
+
+    /** 운영자가 숨김을 풀면 작성자에게 알린다(005 US4-AC3). 푼 처리마다 한 번이라, 다시 숨겼다 풀면 또 간다. */
+    @ApplicationModuleListener
+    fun on(event: ContentRestored) {
+        val dedupKey = "RESTORED:${event.targetType}:${event.targetId}:${event.actionId}"
+        val commentId = commentIdOf(event.targetType, event.targetId)
+        val type = NotificationType.CONTENT_RESTORED
+        writer.writeAll(listOf(NotificationDraft.toAuthor(type, event.authorId, event.postId, commentId, dedupKey)))
+    }
+
+    /** 재검토 결과 숨김을 유지하면 요청한 작성자에게 알린다(005 US4-AC9). 풀었을 때는 [ContentRestored]가 알린다. */
+    @ApplicationModuleListener
+    fun on(event: ReviewResolved) {
+        if (!event.kept) return
+        val commentId = commentIdOf(event.targetType, event.targetId)
+        val type = NotificationType.REVIEW_KEPT
+        val dedupKey = "REVIEW:${event.requestId}"
+        writer.writeAll(listOf(NotificationDraft.toAuthor(type, event.requesterId, event.postId, commentId, dedupKey)))
+    }
+
+    private fun commentIdOf(
+        type: ContentType,
+        targetId: Long,
+    ): Long? = targetId.takeIf { type == ContentType.COMMENT }
 
     private fun commentDrafts(
         postAuthorId: Long,

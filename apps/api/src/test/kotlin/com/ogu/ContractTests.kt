@@ -23,6 +23,7 @@ import org.springframework.context.annotation.Import
  * 실시간 스트림(`GET /api/v1/notifications/stream`)은 응답 형식(`text/event-stream`)까지만 계약으로 비교하고,
  * 그 안의 SSE 이벤트 형식(`notification`, `unread-count`, 하트비트)은 보지 않는다. 이벤트 형식은 SSE 통합 테스트가
  * 맡는다(004 research R15).
+ * 005-safety가 추가한 도움 리소스, 신고, 재검토 요청, 운영자 14개 오퍼레이션도 같은 식으로 두었고 US4에서 모두 빠졌다.
  * 각 스토리가 컨트롤러를 추가할 때마다 해당 오퍼레이션을 [pendingPaths]에서 뺀다.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -78,20 +79,6 @@ class ContractTests {
          * 구현한 스토리가 각자 뺐다. 005-safety가 더한 14개는 도움 리소스(US1), 신고(US3), 재검토 요청과
          * 운영자(US4)를 구현하는 스토리가 각자 뺀다.
          */
-        val pendingPaths =
-            setOf(
-                "POST /api/v1/review-requests", // requestReview
-                "GET /api/v1/operator/assessments", // listAssessments
-                "PUT /api/v1/operator/assessments/{assessmentId}/reviewed", // markAssessmentReviewed
-                "GET /api/v1/operator/reports", // listReports
-                "PUT /api/v1/operator/reports/{reportId}/decision", // decideReport
-                "GET /api/v1/operator/review-requests", // listReviewRequests
-                "PUT /api/v1/operator/review-requests/{reviewId}/decision", // decideReview
-                "PUT /api/v1/operator/contents/{targetType}/{targetId}/hidden", // hideContent
-                "DELETE /api/v1/operator/contents/{targetType}/{targetId}/hidden", // unhideContent
-                "GET /api/v1/operator/terms", // listTerms
-                "POST /api/v1/operator/terms", // addTerm
-                "DELETE /api/v1/operator/terms/{termId}", // removeTerm
-            )
+        val pendingPaths = emptySet<String>()
     }
 }

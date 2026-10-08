@@ -178,6 +178,17 @@ class RiskAssessmentRepository(
             .param("attempts", claim.attempts)
             .update()
     }
+
+    /** 운영자가 확인했다고 적는다. 이미 확인했으면 처음 시각을 그대로 둔다. 없는 판정이면 false다. */
+    fun markReviewed(
+        id: Long,
+        now: Instant,
+    ): Boolean =
+        jdbcClient
+            .sql("update risk_assessment set reviewed_at = coalesce(reviewed_at, :now) where id = :id")
+            .param("now", Timestamp.from(now))
+            .param("id", id)
+            .update() == 1
 }
 
 /** 맡은 판정 시도 하나. [attempts]는 이번 시도까지 센 횟수다. */

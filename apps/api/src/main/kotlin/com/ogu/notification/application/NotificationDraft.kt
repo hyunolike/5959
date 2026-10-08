@@ -60,25 +60,24 @@ data class NotificationDraft(
         }
 
         /**
-         * 도움 안내(005 research R7, R8). 받는 사람은 그 글이나 댓글의 작성자다. 같은 대상에 같은 단계로는 한 번만 만든다.
-         * [commentId]는 대상이 댓글일 때만 있다.
+         * 작성자에게 가는 안전 알림(005 research R7, R8): 도움 안내, 숨김 해제, 재검토 결과. 받는 사람은 그 글이나 댓글의
+         * 작성자다. [commentId]는 대상이 댓글일 때만 있다. 멱등 키는 부르는 쪽이 종류에 맞게 만든다.
          */
-        fun support(
+        fun toAuthor(
+            type: NotificationType,
             receiverId: Long,
             postId: Long,
             commentId: Long?,
             dedupKey: String,
-        ): NotificationDraft =
-            NotificationDraft(
-                receiverId,
-                NotificationType.SUPPORT_NOTICE,
-                postId,
-                commentId = commentId,
-                dedupKey = dedupKey,
-            )
+        ): NotificationDraft {
+            require(type in AUTHOR_TYPES) { "작성자에게 가는 안전 알림 종류가 아닙니다: $type" }
+            return NotificationDraft(receiverId, type, postId, commentId = commentId, dedupKey = dedupKey)
+        }
 
         private val COMMENT_TYPES =
             setOf(NotificationType.POST_COMMENT, NotificationType.POST_REPLY, NotificationType.COMMENT_REPLY)
+        private val AUTHOR_TYPES =
+            setOf(NotificationType.SUPPORT_NOTICE, NotificationType.CONTENT_RESTORED, NotificationType.REVIEW_KEPT)
         private val DEFEATED_TYPES =
             setOf(NotificationType.MONSTER_DEFEATED, NotificationType.MONSTER_DEFEATED_TOGETHER)
     }

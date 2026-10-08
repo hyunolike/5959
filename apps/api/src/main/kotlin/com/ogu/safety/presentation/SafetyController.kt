@@ -3,6 +3,7 @@ package com.ogu.safety.presentation
 import com.ogu.member.AuthenticatedMember
 import com.ogu.post.ContentType
 import com.ogu.safety.application.ReportService
+import com.ogu.safety.application.ReviewRequestService
 import com.ogu.safety.domain.ReportReason
 import com.ogu.shared.error.BusinessException
 import com.ogu.shared.error.ErrorCode
@@ -43,6 +44,12 @@ data class ReportRequest(
     }
 }
 
+/** 계약의 `ReviewRequestBody`. */
+data class ReviewRequestBody(
+    val targetType: ContentType? = null,
+    val targetId: Long? = null,
+)
+
 /** 도움 리소스, 신고, 재검토 요청(005). 온보딩 전 회원은 `OnboardingGuard`가 403으로 막는다. */
 @Tag(name = "safety")
 @RestController
@@ -50,6 +57,7 @@ data class ReportRequest(
 class SafetyController(
     private val jdbcClient: JdbcClient,
     private val reportService: ReportService,
+    private val reviewRequestService: ReviewRequestService,
 ) {
     @Operation(
         operationId = "reportContent",
@@ -75,6 +83,33 @@ class SafetyController(
     ) {
         val (type, targetId, reason) = request.required()
         reportService.report(member.memberId, type, targetId, reason, request.detail)
+    }
+
+    @Operation(
+        operationId = "requestReview",
+        summary = "숨겨진 내 글이나 댓글의 재검토 요청 (US4-AC8). 대상마다 한 번",
+        responses = [
+            DocResponse(responseCode = "204", description = "접수됨"),
+            DocResponse(responseCode = "400", description = "입력 검증 실패 (INVALID_REQUEST)"),
+            DocResponse(responseCode = "401", description = "인증 없음 또는 세션 만료"),
+            DocResponse(responseCode = "403", description = "온보딩 전 (ONBOARDING_REQUIRED)"),
+            DocResponse(
+                responseCode = "404",
+                description = "내 것이 아니거나, 숨겨지지 않았거나, 없는 대상 (POST_NOT_FOUND, COMMENT_NOT_FOUND)",
+            ),
+            DocResponse(responseCode = "409", description = "이미 요청함 (REVIEW_ALREADY_REQUESTED)"),
+        ],
+    )
+    @PostMapping("/api/v1/review-requests")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun requestReview(
+        member: AuthenticatedMember,
+        @RequestBody request: ReviewRequestBody,
+    ) {
+        if (request.targetType == null || request.targetId == null) {
+            throw BusinessException(ErrorCode.INVALID_REQUEST, "재검토할 대상을 주세요.")
+        }
+        reviewRequestService.request(member.memberId, request.targetType, request.targetId)
     }
 
     @Operation(

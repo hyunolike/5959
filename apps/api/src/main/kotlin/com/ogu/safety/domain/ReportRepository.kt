@@ -99,6 +99,28 @@ class ReportRepository(
             .param("postId", postId)
             .update()
 
+    /** 신고의 대상. 없는 신고면 null이다. */
+    fun targetOf(id: Long): Pair<ContentType, Long>? =
+        jdbcClient
+            .sql("select target_type, target_id from report where id = :id")
+            .param("id", id)
+            .query { rs, _ -> ContentType.valueOf(rs.getString("target_type")) to rs.getLong("target_id") }
+            .optional()
+            .orElse(null)
+
+    /** 열린 신고 하나를 [status]로 닫는다. 이미 닫혀 있으면 false다. */
+    fun close(
+        id: Long,
+        status: String,
+        now: Instant,
+    ): Boolean =
+        jdbcClient
+            .sql("update report set status = :status, closed_at = :now where id = :id and status = 'PENDING'")
+            .param("status", status)
+            .param("now", Timestamp.from(now))
+            .param("id", id)
+            .update() == 1
+
     private companion object {
         /** advisory lock 두 정수 키 중 첫째. 신고 제한 전용 값이다(글 작성 제한, 글 잠금과 겹치지 않는다). */
         const val LOCK_NAMESPACE = 0x72707274 // "rprt"

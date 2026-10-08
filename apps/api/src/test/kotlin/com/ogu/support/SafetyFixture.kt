@@ -1,10 +1,13 @@
 package com.ogu.support
 
 import org.awaitility.Awaitility.await
+import org.springframework.http.HttpMethod
+import org.springframework.http.MediaType
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.ResultActions
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.json.JsonMapper
 import java.sql.Timestamp
@@ -37,6 +40,58 @@ class SafetyFixture(
         params.forEach { (name, value) -> request.queryParam(name, value) }
         return mockMvc.perform(request)
     }
+
+    /** 인증한 요청. [body]가 있으면 JSON으로 보낸다. */
+    fun send(
+        member: TestMember,
+        method: HttpMethod,
+        path: String,
+        body: Any? = null,
+    ): ResultActions {
+        val request = request(method, path).bearer(member.accessToken)
+        if (body != null) {
+            val json = body as? String ?: jsonMapper.writeValueAsString(body)
+            request.contentType(MediaType.APPLICATION_JSON).content(json)
+        }
+        return mockMvc.perform(request)
+    }
+
+    /** 운영자는 화면 없이 DB에서 지정한다(005 research R10). */
+    fun grantOperator(member: TestMember) {
+        jdbcTemplate.update("update member set role = 'OPERATOR' where id = ?", member.id)
+    }
+
+    fun revokeOperator(member: TestMember) {
+        jdbcTemplate.update("update member set role = 'MEMBER' where id = ?", member.id)
+    }
+
+    /** 운영자 조회를 끝 쪽까지 이어 불러 모든 항목을 모은다. */
+    fun allPages(
+        operator: TestMember,
+        path: String,
+        vararg params: Pair<String, String>,
+    ): List<JsonNode> {
+        val items = mutableListOf<JsonNode>()
+        var cursor: String? = null
+        do {
+            val paging = listOfNotNull(cursor?.let { "cursor" to it })
+            val page = data(operator, path, *params, *paging.toTypedArray())
+            items += page.get("items").values()
+            cursor = page.get("nextCursor").takeUnless { it.isNull }?.asString()
+        } while (cursor != null)
+        return items
+    }
+
+    /** 대상에 남은 운영자 처리 기록. 오래된 것부터. */
+    fun actions(
+        targetType: String,
+        targetId: Long,
+    ): List<Map<String, Any?>> =
+        jdbcTemplate.queryForList(
+            "select * from moderation_action where target_type = ? and target_id = ? order by id",
+            targetType,
+            targetId,
+        )
 
     fun feedPostIds(
         viewer: TestMember,

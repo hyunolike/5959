@@ -7,14 +7,13 @@ import com.ogu.post.PostRemoved
 import com.ogu.safety.domain.NewReport
 import com.ogu.safety.domain.ReportReason
 import com.ogu.safety.domain.ReportRepository
+import com.ogu.safety.domain.ReviewRequestRepository
 import com.ogu.shared.error.BusinessException
 import com.ogu.shared.error.ErrorCode
 import com.ogu.shared.text.Grapheme
 import org.springframework.context.event.EventListener
-import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.sql.Timestamp
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -114,40 +113,25 @@ class ReportService(
 @Service
 class RemovalListener(
     private val reports: ReportRepository,
-    private val jdbcClient: JdbcClient,
+    private val reviews: ReviewRequestRepository,
     private val clock: Clock,
 ) {
     @EventListener
     fun on(event: PostRemoved) {
         val now = clock.instant().truncatedTo(ChronoUnit.MICROS)
         reports.closeOpenByPost(event.postId, CLOSED, now)
-        jdbcClient
-            .sql(
-                """
-                update review_request set status = 'KEPT', closed_at = :now
-                where post_id = :postId and status = 'PENDING'
-                """.trimIndent(),
-            ).param("now", Timestamp.from(now))
-            .param("postId", event.postId)
-            .update()
+        reviews.closeOpenByPost(event.postId, KEPT, now)
     }
 
     @EventListener
     fun on(event: CommentRemoved) {
         val now = clock.instant().truncatedTo(ChronoUnit.MICROS)
         reports.closeOpenByTarget(ContentType.COMMENT, event.commentId, CLOSED, now)
-        jdbcClient
-            .sql(
-                """
-                update review_request set status = 'KEPT', closed_at = :now
-                where target_type = 'COMMENT' and target_id = :commentId and status = 'PENDING'
-                """.trimIndent(),
-            ).param("now", Timestamp.from(now))
-            .param("commentId", event.commentId)
-            .update()
+        reviews.closeOpenByTarget(ContentType.COMMENT, event.commentId, KEPT, now)
     }
 
     private companion object {
         const val CLOSED = "CLOSED"
+        const val KEPT = "KEPT"
     }
 }
