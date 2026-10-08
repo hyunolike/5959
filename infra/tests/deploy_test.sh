@@ -134,8 +134,9 @@ service_block() {
 }
 
 # 서비스 블록의 depends_on에서 대상 서비스의 condition 값을 뽑는다.
-# 아래 assert의 eval 문자열 안에서만 부르므로 shellcheck는 사용처를 보지 못한다
-# shellcheck disable=SC2329
+# 아래 assert의 eval 문자열 안에서만 부르므로 shellcheck는 사용처를 보지 못한다.
+# 판에 따라 SC2329(쓰이지 않는 함수)나 SC2317(닿지 않는 명령)로 알린다. CI의 shellcheck는 SC2317을 낸다
+# shellcheck disable=SC2329,SC2317
 depends_condition() {
   awk -v target="$2" '
     /^    depends_on:/ { deps = 1; next }
