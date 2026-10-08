@@ -603,3 +603,38 @@ test("US4-AC6 운영자 경로는 브라우저 세션으로 닿지 않고, 운�
 
   await closeAll(member, operator.member);
 });
+
+test("US5-AC1, US5-AC5 욕설은 다른 회원에게 별표로 가려지고 작성자에게는 그대로 보인다", async ({
+  browser,
+}) => {
+  const author = await newMember(browser, "a");
+  const other = await newMember(browser, "b");
+  const marker = `가릴 글 ${Date.now()}`;
+  const postId = await writePost(author, `[실패] 병신 같은 회의였다 ${marker}`);
+  const commented = await call(author.page, `/api/posts/${postId}/comments`, {
+    content: "진짜 시 발 너무했다",
+  });
+  expect(commented.status()).toBe(201);
+
+  // 다른 회원: 피드 미리보기, 글 상세, 댓글에서 가려진다
+  await other.page.goto("/home");
+  await waitForHomeLoaded(other.page);
+  const card = feed(other.page).getByRole("listitem").filter({
+    hasText: marker,
+  });
+  await expect(card).toContainText("** 같은 회의였다");
+  await expect(card).not.toContainText("병신");
+  await other.page.goto(`/post/${postId}`);
+  const main = other.page.getByRole("main");
+  await expect(main).toContainText(`** 같은 회의였다 ${marker}`);
+  await expect(main).toContainText("진짜 *** 너무했다");
+  await expect(main).not.toContainText("병신");
+
+  // 작성자: 자기 글과 댓글은 원문 그대로다
+  await author.page.goto(`/post/${postId}`);
+  const mine = author.page.getByRole("main");
+  await expect(mine).toContainText(`병신 같은 회의였다 ${marker}`);
+  await expect(mine).toContainText("진짜 시 발 너무했다");
+
+  await closeAll(author, other);
+});
