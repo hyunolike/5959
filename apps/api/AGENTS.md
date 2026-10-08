@@ -164,7 +164,7 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
 
 | 모듈 | 공개 파사드와 타입 | 발행 이벤트 | 받는 이벤트 |
 |---|---|---|---|
-| `post` | `PostApi`(`find`, `page`, `likedPostIds`, `attacksSoFar`, `findComment`, `previews`), `PostSummary`, `PostPage`, `Attack`, `AttackAction`, `CommentSummary` | `PostCreated`(커밋 후), `PostLiked`, `CommentCreated`, `CommentLiked`(같은 트랜잭션) | - |
+| `post` | `PostApi`(`find`, `page`, `likedPostIds`, `attacksSoFar`, `findComment`, `previews`, `pageByAuthor`, `pageCommentsByAuthor`, `pageLikedBy`), `PostSummary`, `PostPage`, `MyCommentPage`, `Attack`, `AttackAction`, `CommentSummary` | `PostCreated`(커밋 후), `PostLiked`, `CommentCreated`, `CommentLiked`(같은 트랜잭션) | - |
 | `ai` | `EmotionAnalyzer`, `EmotionClassification`, `EmotionAnalysisFailed` | - | - |
 | `emotion` | `EmotionApi`(`findByPostIds`), `EmotionView`, `AnalysisStatus` | `EmotionAnalyzed` | `PostCreated` |
 | `monster` | `MonsterApi`(`findByPostIds`, `hasCountedComment`, `damagerIds`), `MonsterView` | `MonsterSpawned`, `MonsterDefeated` | `EmotionAnalyzed`, `PostLiked`, `CommentCreated`, `CommentLiked` |
@@ -173,6 +173,14 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
 `post`는 몬스터를 모른다. 글에 감정과 몬스터를 붙여 보여 주는 일은 `feed`가
 파사드를 한 번씩 불러 조합한다. 피드 한 쪽은 쿼리 네 개로 끝난다.
 
+- **마이페이지 목록(004 US3, research R12).** `feed/presentation/MyPageController`가
+  `GET /api/v1/members/me/posts`, `/comments`, `/liked-posts`를 받는다. 경로는 회원 아래지만 글, 몬스터,
+  감정을 모아야 해서 `feed`에 있다. 내가 쓴 글과 공감한 글은 `PostApi.pageByAuthor`, `pageLikedBy`가 준
+  쪽을 피드와 같은 `FeedAssembler`로 조합해 응답이 `FeedPage` 그대로이고 쿼리는 4개다. 내 댓글은
+  `PostApi.pageCommentsByAuthor`의 쿼리 하나다. 읽는 쪽은 `post/application`의 `MyPostsReader`(`id DESC`,
+  커서는 피드와 같은 `PostCursor`), `MyCommentsReader`(`id DESC`, 살아 있는 글의 살아 있는 댓글, 글 앞 50글자),
+  `LikedPostsReader`(`(created_at DESC, post_id DESC)`, 커서는 공감 시각의 마이크로초와 글 ID)다. size는 1~50이고
+  벗어나거나 커서가 틀리면 `400 INVALID_REQUEST`다.
 - **공격 반영은 동기다.** `PostLiked`, `CommentCreated`, `CommentLiked`는
   `@EventListener`(`monster/application/AttackListener`)가 post 트랜잭션 안에서
   받는다. 공감 저장과 HP 감소가 함께 성공하거나 함께 실패한다. 규칙은 이 순서로

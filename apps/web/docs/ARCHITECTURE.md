@@ -267,6 +267,24 @@ id, 연달아 실패한 횟수만 둔다. 알림과 안 읽은 수는 TanStack Q
 - 글이 있는 항목은 `/post/{id}`로 가는 링크이고, 글이 지워진 항목(`post == null`)은 버튼이다. 버튼을 누르면 이동하지 않고 "삭제된 글이에요." 안내를 띄우고 읽음으로 바꾼다. 안내 문구는 글 상세의 404 안내와 같은 상수(`DELETED_POST_NOTICE`)다.
 - 안 읽음은 색과 함께 "안 읽음" 글자로 보인다. 읽은 항목은 화면 낭독기에만 "읽음"을 읽어 준다. 모두 읽음 버튼은 누른 뒤에도 초점이 남도록 `disabled` 대신 `aria-disabled`로 막는다.
 
+## 마이페이지 (004-notification-mypage)
+
+`/my`는 프로필과 내 활동 탭(US3)으로 이루어진다. 세 탭은 내가 쓴 글, 내 댓글, 공감한 글이다.
+
+### 슬라이스
+
+- `entities/post`: `useMyPostsQuery`, `useLikedPostsQuery`. 응답은 피드와 같은 `FeedPage`라 `PostCard`를 그대로 쓴다. 마이페이지에서는 `showCreatedAt`으로 작성 시각도 보인다.
+- `entities/comment`: `useMyCommentsQuery`, `MyCommentItem`(댓글 본문, 달린 글의 앞 50글자, 시각, 답글 표시).
+- `widgets/my-activity`: 탭과 목록. `model/tab.ts`가 주소의 `?tab=posts|comments|likes`를 읽고 쓴다. 없거나 모르는 값이면 `posts`이고, 기본 탭은 검색어를 남기지 않는다. `ui/activity-list.tsx`는 세 탭이 같이 쓰는 목록 틀이다(불러오는 중, 실패, 빈 상태, 무한 스크롤).
+
+### 쿼리 키
+
+`["my", "posts"]`, `["my", "comments"]`, `["my", "liked-posts"]`. 공감, 댓글, 글 삭제는 다른 화면에서 일어나므로 그 뮤테이션들이 이 키를 무효화하지 않는다. 대신 세 쿼리 모두 `refetchOnMount: "always"`라 탭을 열 때마다 서버 값으로 맞춘다. 고른 탭만 그리므로 목록도 그 탭을 열 때만 받는다.
+
+### 빈 상태
+
+탭에 항목이 없으면 안내와 "글쓰기"(`/write`), "피드 보기"(`/home`) 링크를 보인다(US3-AC4).
+
 ## Recent-practice choices worth calling out
 
 - **Next.js 16 / React 19**, App Router, Turbopack builds.
