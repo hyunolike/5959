@@ -14,6 +14,7 @@ import {
   CommentLikeButton,
   settleAttack,
 } from "@/features/like";
+import { ReportButton } from "@/features/report-content";
 import { Button, Spinner } from "@/shared/ui";
 
 import { SafetyNotice, type ContentSafety } from "./safety-notice";
@@ -108,7 +109,13 @@ export function PostComments({ postId }: { postId: number }) {
                         comment={target}
                         focusAfterDelete={() => sectionRef.current}
                       />
-                    ) : null}
+                    ) : (
+                      // 다른 회원의 댓글에만 신고를 둔다(005 US3-AC3).
+                      <ReportButton
+                        targetType="COMMENT"
+                        targetId={target.commentId}
+                      />
+                    )}
                   </>
                 )}
               />

@@ -151,6 +151,34 @@ describe("scrubEvent", () => {
     });
   });
 
+  it("글과 댓글의 본문(content), 신고 설명(detail)을 지운다(005 SC-008)", () => {
+    const post: ScrubbableEvent = {
+      request: {
+        url: "https://ogu.example/api/posts",
+        data: { content: "남기면 안 되는 글 본문", commentTone: "COMFORT_ME" },
+      },
+    };
+    const report: ScrubbableEvent = {
+      request: {
+        url: "https://ogu.example/api/reports",
+        data: JSON.stringify({
+          targetType: "POST",
+          targetId: 7,
+          reason: "OTHER",
+          detail: "남기면 안 되는 신고 설명",
+        }),
+      },
+    };
+
+    expect(scrubEvent(post).request?.data).toEqual({
+      content: "[Filtered]",
+      commentTone: "COMFORT_ME",
+    });
+    const scrubbedReport = JSON.stringify(scrubEvent(report).request?.data);
+    expect(scrubbedReport).not.toContain("남기면 안 되는");
+    expect(scrubbedReport).toContain("OTHER");
+  });
+
   it("US5-AC2 요청 본문이 JSON 문자열이어도 password 필드를 지운다", () => {
     const event: ScrubbableEvent = {
       request: {

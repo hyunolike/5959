@@ -12,6 +12,7 @@ import {
 } from "@/entities/post";
 import { PostLikeButton } from "@/features/like";
 import { DeletePostButton } from "@/features/manage-post";
+import { ReportButton } from "@/features/report-content";
 import { ApiError } from "@/shared/api";
 import { Button, Card, Spinner } from "@/shared/ui";
 
@@ -111,7 +112,10 @@ function PostDetailContent({ detail }: { detail: PostDetailData }) {
               </Button>
               <DeletePostButton postId={detail.postId} />
             </div>
-          ) : null}
+          ) : (
+            // 다른 회원의 글에만 신고를 둔다(005 US3-AC3).
+            <ReportButton targetType="POST" targetId={detail.postId} />
+          )}
         </header>
         <p className="text-base whitespace-pre-wrap text-neutral-900">
           {detail.content}

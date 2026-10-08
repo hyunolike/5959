@@ -10,6 +10,7 @@
  * - 요청 쿠키(헤더의 `Cookie`/`Set-Cookie`, `request.cookies` 필드)
  * - `Authorization`, `X-Ogu-Bff-Key` 헤더
  * - `password` 필드(객체든, JSON 문자열이든, 몇 겹 중첩되어 있든)
+ * - `content`, `detail` 필드(글과 댓글의 본문, 신고 설명. 005 SC-008)
  * - OAuth 콜백 URL의 `code`, `state` 쿼리 파라미터
  * - 실시간 알림 스트림 주소의 일회용 `ticket` 쿼리 파라미터
  * - `event.user` 전체(SDK의 `dataCollection.userInfo` 기본값이 `true`라
@@ -38,6 +39,9 @@ const SENSITIVE_KEYS = new Set([
   "x-ogu-bff-key",
   "set-cookie",
   "password",
+  // 005: 글과 댓글의 본문, 신고 설명. 위기 신호가 든 글이 오류 수집 도구로 나가지 않게 한다(SC-008).
+  "content",
+  "detail",
 ]);
 
 /** URL에서 지우는 쿼리 파라미터. OAuth 콜백의 인가 코드/상태값. */
