@@ -204,16 +204,18 @@ to where they started after login (US4-AC5).
 512×512로 찍는다. 이 스크립트는 Node의 타입 지우기에 기대므로 Node 22.18 이상이
 필요하다. 외형이나 장면을 바꾸면 다시 돌려서 이미지를 커밋한다.
 
-## 실시간 알림 (004-notification-mypage)
+## 알림 (004-notification-mypage)
 
 내 글에 댓글이나 공감이 달리거나 몬스터가 생기고 처치되면, 새로고침 없이 알림 종의 배지와
-토스트로 알린다. 알림 목록 화면(`/notifications`)은 US2에서 들어온다.
+토스트로 알린다. 지난 알림은 목록 화면(`/notifications`)에서 보고 읽음으로 바꾼다.
 
 ### 슬라이스
 
-- `entities/notification`: 타입, 알림 문구(`notificationMessage`), 배지 글자(`badgeLabel`), 안 읽은 수 조회(`useUnreadCountQuery`).
+- `entities/notification`: 타입, 알림 문구(`notificationMessage`), 배지 글자(`badgeLabel`), 안 읽은 수 조회(`useUnreadCountQuery`), 목록 조회(`useNotificationsQuery`), 쪽 펼치기(`uniqueNotifications`), 목록 한 줄(`NotificationItem`).
 - `features/notification-stream`: 티켓 발급과 `EventSource`(`api/connect.ts`), 연결 상태 스토어(`model/store.ts`), 대기 시간(`model/backoff.ts`), 캐시 반영(`model/cache-sync.ts`).
+- `features/read-notification`: 하나 읽음과 모두 읽음(`api/`), 캐시 반영과 `upToSeq` 계산(`model/`).
 - `widgets/notification-bell`: 종과 배지, 토스트. 마운트된 동안 연결을 열어 둔다.
+- `widgets/notification-list`: 목록 화면의 본문. 무한 스크롤, 모두 읽음, 삭제된 글 안내.
 
 ### 연결
 
@@ -250,8 +252,20 @@ id, 연달아 실패한 횟수만 둔다. 알림과 안 읽은 수는 TanStack Q
 ### 토스트
 
 문구는 알림 종류, 행동한 회원의 닉네임, 묶인 인원 수로만 만든다. 글이나 댓글 본문은 넣지
-않는다(ADR-0005). 누르면 관련 글로 간다. 글이 지워졌으면 이동하지 않고 닫히기만 한다. 알림
-페이지를 보고 있으면 띄우지 않는다.
+않는다(ADR-0005). 누르면 그 알림을 읽음으로 바꾸고 관련 글로 간다(목록에서 누른 것과 같다).
+글이 지워졌으면 이동하지 않고 닫히기만 한다. 알림 페이지를 보고 있으면 띄우지 않는다.
+
+### 목록과 읽음
+
+목록은 `useInfiniteQuery`로 20개씩 받고, 실시간 이벤트가 고치는 것과 같은 캐시
+(`["notifications", "list"]`)를 쓴다. 화면을 열 때마다 다시 받는다(`refetchOnMount: "always"`).
+
+- 쪽을 펼칠 때 같은 알림 ID는 한 번만 둔다(`uniqueNotifications`). 공감 묶음은 쪽 사이에 갱신되면 뒤쪽에서 빠지고, 실시간 이벤트가 맨 앞에 다시 넣는다.
+- 목록을 받는 동안 온 이벤트는 캐시에 들어가지 못하거나 늦게 온 응답에 덮인다. 받은 목록의 가장 큰 번호가 스트림의 마지막 이벤트 id보다 작으면 한 번 다시 받는다. 같은 id로는 되풀이하지 않는다.
+- 하나 읽음은 응답 전에 그 항목과 배지를 바꾸고, 실패하면 그 항목과 줄인 수만 되돌린다. 캐시를 통째로 덮지 않아서 그 사이 들어온 알림을 지우지 않는다. 끝나면 안 읽은 수를 다시 받는다(연결이 끊겨 `unread-count` 이벤트가 오지 않을 때를 위해서다).
+- 모두 읽음은 `upToSeq`로 목록 첫 항목의 번호, 스트림의 마지막 이벤트 id, 안 읽은 수 응답의 `latestSeq` 가운데 큰 값을 보낸다. 응답이 오면 그 번호 이하만 읽음으로 바꾸므로 누르는 사이에 온 알림은 안 읽은 채 남는다. 마지막 이벤트 id는 다른 feature의 스토어에 있어서 위젯이 넘긴다.
+- 글이 있는 항목은 `/post/{id}`로 가는 링크이고, 글이 지워진 항목(`post == null`)은 버튼이다. 버튼을 누르면 이동하지 않고 "삭제된 글이에요." 안내를 띄우고 읽음으로 바꾼다. 안내 문구는 글 상세의 404 안내와 같은 상수(`DELETED_POST_NOTICE`)다.
+- 안 읽음은 색과 함께 "안 읽음" 글자로 보인다. 읽은 항목은 화면 낭독기에만 "읽음"을 읽어 준다. 모두 읽음 버튼은 누른 뒤에도 초점이 남도록 `disabled` 대신 `aria-disabled`로 막는다.
 
 ## Recent-practice choices worth calling out
 
