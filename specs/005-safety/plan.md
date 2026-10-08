@@ -43,7 +43,7 @@ API에는 `safety` 모듈을 추가한다. 글이 저장되는 트랜잭션 안�
 - `post`는 `safety`를 모른다. 모듈 순환을 만들지 않는다
 - 숨긴 글과 댓글은 다른 회원의 모든 조회에서 지운 것과 같이 다룬다. 조건이 한 곳이라도 빠지면 위기 글이 새어 나간다
 
-**Scale/Scope**: 인수 조건 34개(US1 8, US2 5, US3 6, US4 9, US5 6). 새 모듈 1개, 새 테이블 7개, 바뀌는 테이블 4개, 계약 연산 16개 추가와 기존 스키마 4개 변경. `deleted_at IS NULL`을 거는 기존 조회 30여 곳을 보이는 것만과 작성자 포함 둘로 나눈다
+**Scale/Scope**: 인수 조건 34개(US1 8, US2 5, US3 6, US4 9, US5 6). 새 모듈 1개, 새 테이블 7개, 바뀌는 테이블 4개, 계약 연산 14개 추가와 기존 스키마 4개 변경. `deleted_at IS NULL`을 거는 기존 조회 30여 곳을 보이는 것만과 작성자 포함 둘로 나눈다
 
 ## Constitution Check
 
@@ -52,7 +52,7 @@ API에는 `safety` 모듈을 추가한다. 글이 저장되는 트랜잭션 안�
 | 원칙 | 이 계획에서 | 판정 |
 |---|---|---|
 | I. 경계는 테스트로 강제한다 | 새 모듈 `safety`는 `post`, `ai`, `member`, `shared`에만 의존하고 `notification → safety`가 더해진다. overview 5.1의 그래프와 같다. `post`가 `safety`의 가리기를 쓰는 길은 `shared`의 인터페이스로 뒤집어 `post → safety`를 만들지 않는다(R6). `ModularityTests`가 확인한다. 웹의 새 슬라이스는 steiger가 검사한다. M3에서 `insignificant-slice`에 걸린 경험이 있어 `entities/safety`는 위젯과 feature 둘 이상이 쓰도록 잡았다(R16) | 통과 |
-| II. 계약이 코드보다 먼저다 | [contracts/safety.openapi.yaml](contracts/safety.openapi.yaml)에 연산 16개와 기존 스키마의 변경을 먼저 적었다. 구현 첫 작업에서 루트 계약에 합치고 ContractTests의 `pendingPaths`에 올린 뒤 스토리마다 뺀다 | 통과 |
+| II. 계약이 코드보다 먼저다 | [contracts/safety.openapi.yaml](contracts/safety.openapi.yaml)에 연산 14개와 기존 스키마의 변경을 먼저 적었다. 구현 첫 작업에서 루트 계약에 합치고 ContractTests의 `pendingPaths`에 올린 뒤 스토리마다 뺀다 | 통과 |
 | III. 인수 조건은 곧 테스트다 | 인수 조건 34개에 ID를 붙였다. SC-005의 AI 포함 성적과 실제 전화 연결은 자동화할 수 없어 quickstart의 수동 절차에 둔다 | 통과 |
 | IV. 사용자 안전이 기능보다 먼저다 | 이 마일스톤이 그 원칙의 구현이다. AI가 실패해도 키워드 규칙이 같은 트랜잭션에서 판정하고(R2), AI는 그 위에 더할 뿐 낮추지 못한다(US2-AC2). M3가 남긴 예외(ADR-0005)는 `PostApi.find`, `previews`가 숨긴 글을 거르면서 끝난다 | 통과 |
 | V. AI 장애가 핵심 흐름을 막지 않는다 | AI 분류는 커밋 뒤 비동기이고 일정 테이블로 재시도한다. 같은 트랜잭션에서 도는 것은 메모리 안의 키워드 규칙뿐이다. 낱말 목록을 읽지 못해도 마지막 목록이나 내장 목록으로 판정해 글 저장을 막지 않는다(R2) | 통과 |
@@ -78,7 +78,7 @@ specs/005-safety/
 ├── data-model.md              # 바뀌는 테이블 4개, 새 테이블 7개, 이벤트, 파사드, 의존 그래프
 ├── quickstart.md              # 수동 시나리오, 평가 절차, 운영 준비
 ├── contracts/
-│   └── safety.openapi.yaml    # 이번 추가분(연산 16개). 구현 때 루트 contracts/openapi.yaml에 합친다
+│   └── safety.openapi.yaml    # 이번 추가분(연산 14개). 구현 때 루트 contracts/openapi.yaml에 합친다
 ├── checklists/requirements.md
 └── tasks.md                   # /speckit-tasks가 만든다
 ```
@@ -108,7 +108,7 @@ apps/api/src/main/kotlin/com/ogu/
 │   └── presentation/  SafetyController(support-resources, reports, review-requests), OperatorController(/api/v1/operator/**)
 ├── post/
 │   ├── PostApi.kt                               # find, findComment는 보이는 것만. previews(postIds, viewerId)
-│   ├── PostModerationApi.kt                     # contentOf, markRisk, hide, unhide, scan (새 파사드)
+│   ├── PostModerationApi.kt                     # contentOf, markRisk, markReviewRequested, hide, unhide, scan (새 파사드)
 │   ├── PostWritten.kt, CommentWritten.kt, PostRemoved.kt, CommentRemoved.kt
 │   ├── application/Visibility.kt                # 조회 조건 둘(VISIBLE, OWNED_OR_VISIBLE)
 │   └── application/ ...                         # 기존 조회 30여 곳을 Visibility로 바꾼다

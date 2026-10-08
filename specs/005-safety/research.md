@@ -155,6 +155,7 @@ plan의 Technical Context에서 정해야 했던 것과 그 근거다. 번호는
 **결정**: `review_request` 테이블. `(target_type, target_id)` 유일 제약으로 대상마다 하나다(`409 REVIEW_ALREADY_REQUESTED`).
 
 - 숨겨진 대상의 작성자만 요청할 수 있다. 숨겨지지 않았거나 남의 것이면 `404`다.
+- 접수하면 `PostModerationApi.markReviewRequested`로 대상 행의 `review_requested_at`을 적는다. 글 상세와 댓글 응답의 `safety.reviewRequested`는 이 열에서 읽는다. `post`와 `feed`가 `safety`에 묻지 않아도 된다(단계를 `risk_level` 열에 두는 것과 같은 이유, R7).
 - 운영자가 숨김을 풀면 `ContentRestored`가, 유지하면 `ReviewResolved(kept = true)`가 나가 작성자에게 알림이 간다(R8).
 - 유지로 닫힌 뒤에는 다시 요청할 수 없다. 글을 고쳐 다시 판정받아도 숨김은 자동으로 풀리지 않는다(US2-AC5).
 

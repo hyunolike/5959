@@ -11,6 +11,7 @@ Flyway `V5__safety.sql` 하나로 만든다. 제약은 모두 이름을 붙이�
 | `hidden_at` | `TIMESTAMPTZ` NULL | 다른 회원에게 보이지 않게 된 시각. NULL이면 보인다 |
 | `hidden_reason` | `VARCHAR(20)` NULL | `RISK`(위기 판정), `OPERATOR`(운영자 처리) |
 | `risk_level` | `VARCHAR(10)` NOT NULL DEFAULT `'NONE'` | 가장 최근 판정의 단계. 작성자에게만 응답에 실린다 |
+| `review_requested_at` | `TIMESTAMPTZ` NULL | 작성자가 재검토를 요청한 시각. 작성자에게만 `safety.reviewRequested`로 실린다 |
 
 - 제약: `hidden_at`과 `hidden_reason`은 함께 NULL이거나 함께 값이 있다. `hidden_reason IN ('RISK', 'OPERATOR')`, `risk_level IN ('NONE', 'CONCERN', 'CRISIS')`.
 - 보이는 글의 조건은 `deleted_at IS NULL AND hidden_at IS NULL`이다.
@@ -166,6 +167,7 @@ Flyway `V5__safety.sql` 하나로 만든다. 제약은 모두 이름을 붙이�
 **PostModerationApi** (새 파사드, post 모듈)
 - `contentOf(targetType, targetId): ModerationTarget?`: 원문, 작성자, 글 ID, `updatedAt`, 숨김 여부. 지운 것은 null. safety만 쓴다.
 - `markRisk(targetType, targetId, level)`: `risk_level` 열을 적는다.
+- `markReviewRequested(targetType, targetId)`: `review_requested_at` 열을 적는다.
 - `hide(targetType, targetId, reason): Boolean`: 이미 숨겨져 있으면 false.
 - `unhide(targetType, targetId): Boolean`: 숨겨져 있지 않거나 지워졌으면 false.
 - `scan(targetType, afterId, limit): List<ModerationTarget>`: 이미 있는 글 훑기(R14).
