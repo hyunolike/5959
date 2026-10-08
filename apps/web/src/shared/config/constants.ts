@@ -31,6 +31,8 @@ export const QUERY_KEYS = {
   myPosts: ["my", "posts"] as const,
   myComments: ["my", "comments"] as const,
   likedPosts: ["my", "liked-posts"] as const,
+  /** 마이페이지 감정 통계(004 US4). 세 목록과 같이 마이페이지를 열 때마다 다시 받는다. */
+  emotionStats: ["my", "emotion-stats"] as const,
 };
 
 /**

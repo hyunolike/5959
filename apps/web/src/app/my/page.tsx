@@ -11,10 +11,11 @@ import {
 import { LogoutButton } from "@/features/auth/logout";
 import { stopNotificationStream } from "@/features/notification-stream";
 import { Button, Card, Spinner } from "@/shared/ui";
+import { EmotionStatsPanel } from "@/widgets/emotion-stats-panel";
 import { MyActivity } from "@/widgets/my-activity";
 
 /**
- * 마이페이지: 내 프로필(FR-015)과 내 활동 탭(004 US3). 로그인과 온보딩은 proxy.ts의 라우트 가드가
+ * 마이페이지: 내 프로필(FR-015), 감정 통계(004 US4), 내 활동 탭(004 US3). 로그인과 온보딩은 proxy.ts의 라우트 가드가
  * 먼저 확인한다.
  */
 export default function MyPage() {
@@ -30,6 +31,7 @@ export default function MyPage() {
         </div>
       </header>
       <Profile />
+      <EmotionStatsPanel />
       {/* 고른 탭을 주소 검색어에서 읽는다(useSearchParams). */}
       <Suspense
         fallback={
