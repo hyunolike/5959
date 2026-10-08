@@ -1,6 +1,8 @@
 package com.ogu.feed.presentation
 
+import com.ogu.feed.application.EmotionStatsQuery
 import com.ogu.feed.application.MyPageQuery
+import com.ogu.feed.presentation.dto.EmotionStatsResponse
 import com.ogu.feed.presentation.dto.FeedPageResponse
 import com.ogu.member.AuthenticatedMember
 import com.ogu.post.MyCommentPage
@@ -14,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController
 import io.swagger.v3.oas.annotations.responses.ApiResponse as DocResponse
 
 /**
- * 마이페이지 조회(004 US3). 글, 몬스터, 감정을 모아야 해서 feed 모듈에 둔다. 온보딩 전 회원은 `OnboardingGuard`가
+ * 마이페이지 조회(004 US3, US4). 글, 몬스터, 감정을 모아야 해서 feed 모듈에 둔다. 온보딩 전 회원은 `OnboardingGuard`가
  * 403 ONBOARDING_REQUIRED로 막는다.
  */
 @Tag(name = "mypage")
@@ -22,6 +24,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse as DocResponse
 @SecurityRequirement(name = "bearer")
 class MyPageController(
     private val myPageQuery: MyPageQuery,
+    private val emotionStatsQuery: EmotionStatsQuery,
 ) {
     @Operation(
         operationId = "getMyPosts",
@@ -73,4 +76,17 @@ class MyPageController(
         @RequestParam(required = false) cursor: String?,
         @RequestParam(defaultValue = "20") size: Int,
     ): ApiResponse<FeedPageResponse> = ApiResponse.success(myPageQuery.likedPosts(member.memberId, cursor, size))
+
+    @Operation(
+        operationId = "getMyEmotionStats",
+        summary = "감정 통계 (US4-AC1~AC5)",
+        responses = [
+            DocResponse(responseCode = "200", description = "감정 통계"),
+            DocResponse(responseCode = "401", description = "인증 없음 또는 세션 만료"),
+            DocResponse(responseCode = "403", description = "온보딩 전 (ONBOARDING_REQUIRED)"),
+        ],
+    )
+    @GetMapping("/api/v1/members/me/emotion-stats")
+    fun getMyEmotionStats(member: AuthenticatedMember): ApiResponse<EmotionStatsResponse> =
+        ApiResponse.success(emotionStatsQuery.get(member.memberId))
 }
