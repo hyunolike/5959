@@ -50,28 +50,28 @@ description: "Task list for 006-raid (보스 레이드)"
 
 ## Phase 4: US2 실시간 (묶음 5)
 
-- [ ] T014 [US2] `shared/realtime/TopicBroadcaster`(인터페이스와 `@ConditionalOnMissingBean` 기본 구현). `notification.stream`: 연결의 `topics`, 연결마다 주제별 최신 값 하나, `StreamTask.BROADCAST`, `SseHub`가 `TopicBroadcaster`를 구현. 스트림 컨트롤러가 `topics`를 받는다(모르는 주제는 무시)
-- [ ] T015 [US2] `raid` application/RaidBroadcaster: 250ms마다 듣는 연결이 있으면 Redis를 읽어 바뀌었을 때만 보낸다. 새로 붙은 연결에는 지금 값을 한 번 보낸다. Redis를 읽지 못하면 `available = false`를 한 번
-- [ ] T016 [P] [US2] `RaidStreamTests`: `US2-AC1 다른 회원의 공격이 1초 안에 raid 이벤트로 온다`, `US2-AC3 공격 50번이 몰려도 1초에 받는 이벤트는 넷 이하이고 마지막 값이 정확하다`, `US2-AC4 참여자 수가 이벤트에 실린다`, `US2-AC5 다시 붙으면 지금 값을 한 번 받는다`, `US2-AC7 처치되면 status DEFEATED 이벤트가 온다`, 주제 없이 연 연결은 받지 않는다, `raid` 이벤트에 id가 없어 알림의 `lastEventId`가 바뀌지 않는다, 이벤트에 회원 정보가 없다
+- [x] T014 [US2] `shared/realtime/TopicBroadcaster`(인터페이스와 `@ConditionalOnMissingBean` 기본 구현). `notification.stream`: 연결의 `topics`, 연결마다 주제별 최신 값 하나, `StreamTask.BROADCAST`, `SseHub`가 `TopicBroadcaster`를 구현. 스트림 컨트롤러가 `topics`를 받는다(모르는 주제는 무시) **구현 메모**: `SseHub`에 함수를 더하면 detekt 한도를 넘어, 구현을 `StreamTopicBroadcaster`로 따로 두고 허브의 연결 목록과 쓰기를 모듈 안에서만 보이게 열었다. 새 연결이 지금 값을 받도록 인터페이스에 `joinCount`를 두었다. 내보내는 쪽이 이 수가 달라지면 다시 보낸다.
+- [x] T015 [US2] `raid` application/RaidBroadcaster: 250ms마다 듣는 연결이 있으면 Redis를 읽어 바뀌었을 때만 보낸다. 새로 붙은 연결에는 지금 값을 한 번 보낸다. Redis를 읽지 못하면 `available = false`를 한 번
+- [x] T016 [P] [US2] `RaidStreamTests`: `US2-AC1 다른 회원의 공격이 1초 안에 raid 이벤트로 온다`, `US2-AC3 공격 50번이 몰려도 1초에 받는 이벤트는 넷 이하이고 마지막 값이 정확하다`, `US2-AC4 참여자 수가 이벤트에 실린다`, `US2-AC5 다시 붙으면 지금 값을 한 번 받는다`, `US2-AC7 처치되면 status DEFEATED 이벤트가 온다`, 주제 없이 연 연결은 받지 않는다, `raid` 이벤트에 id가 없어 알림의 `lastEventId`가 바뀌지 않는다, 이벤트에 회원 정보가 없다
 
 ## Phase 5: 웹 US1, US2 (묶음 6)
 
-- [ ] T017 [P] [US2] apps/web/src/entities/raid/: 타입, `useRaidQuery`(스트림이 닫혀 있을 때만 3초마다), `mergeRaidState`(같은 보스면 작은 HP, epoch가 커지면 받은 값, 보스가 바뀌면 새 보스), `BossBanner`. 단위 테스트: `US2-AC2 늦게 온 큰 HP가 화면의 HP를 올리지 않는다`, `US2-AC6 스트림이 닫혀 있으면 3초마다 다시 받는다`, epoch가 커지면 받은 값을 따른다
-- [ ] T018 [P] [US2] `features/notification-stream`: 스토어에 `topics`, 바뀌면 다시 연결, `raid` 이벤트를 `entities/raid`의 캐시에 합친다. 단위 테스트
-- [ ] T019 [P] [US1] `features/raid-attack`: 공격 뮤테이션과 버튼. 응답의 `cooldownMs`로 잠그고, 429면 `Retry-After`만큼, 409면 조회를 다시, 503이면 쉬는 중 안내. 단위 테스트: `US1-AC2`, `US1-AC3 쿨다운 동안 버튼이 눌리지 않는다`, `US1-AC6`, `US3-AC6`
-- [ ] T020 [US1] `widgets/raid-arena`와 `app/raid/page.tsx`: 보스(3D, 못 그리면 정지 이미지 `US1-AC8`), HP 막대(`progressbar`), 참여자 수, 내 기여, 공격 버튼. `entities/monster`의 `MonsterDisplay`에 보스 크기와 효과. 레이드 화면에 있는 동안 스트림 주제를 `raid`로. 미들웨어의 보호 경로에 `/raid`(`US1-AC7`)
+- [x] T017 [P] [US2] apps/web/src/entities/raid/: 타입, `useRaidQuery`(스트림이 닫혀 있을 때만 3초마다), `mergeRaidState`(같은 보스면 작은 HP, epoch가 커지면 받은 값, 보스가 바뀌면 새 보스), `BossBanner`. 단위 테스트: `US2-AC2 늦게 온 큰 HP가 화면의 HP를 올리지 않는다`, `US2-AC6 스트림이 닫혀 있으면 3초마다 다시 받는다`, epoch가 커지면 받은 값을 따른다 **구현 메모**: `BossBanner`는 감정 이름과 그림(`entities/monster`)이 필요한데 엔티티끼리는 가져올 수 없어 `widgets/raid-arena`에 두었다. `entities/raid`에는 화면이 없다.
+- [x] T018 [P] [US2] `features/notification-stream`: 스토어에 `topics`, 바뀌면 다시 연결, `raid` 이벤트를 `entities/raid`의 캐시에 합친다. 단위 테스트
+- [x] T019 [P] [US1] `features/raid-attack`: 공격 뮤테이션과 버튼. 응답의 `cooldownMs`로 잠그고, 429면 `Retry-After`만큼, 409면 조회를 다시, 503이면 쉬는 중 안내. 단위 테스트: `US1-AC2`, `US1-AC3 쿨다운 동안 버튼이 눌리지 않는다`, `US1-AC6`, `US3-AC6` **구현 메모**: 쓰는 곳이 `widgets/raid-arena` 하나라 steiger 예외에 더했다(005의 신고, 재검토 요청과 같은 이유). 잠긴 동안에도 초점이 남도록 `disabled` 대신 `aria-disabled`로 막는다.
+- [x] T020 [US1] `widgets/raid-arena`와 `app/raid/page.tsx`: 보스(3D, 못 그리면 정지 이미지 `US1-AC8`), HP 막대(`progressbar`), 참여자 수, 내 기여, 공격 버튼. `entities/monster`의 `MonsterDisplay`에 보스 크기와 효과. 레이드 화면에 있는 동안 스트림 주제를 `raid`로. 미들웨어의 보호 경로에 `/raid`(`US1-AC7`) **구현 메모**: 보스의 모습은 `MonsterDisplay`에 `variant="boss"`(더 크게)를 더해 쓴다. 파티클 효과는 넣지 않았다.
 
 ## Phase 6: US4 처치 뒤 (묶음 7)
 
-- [ ] T021 [P] [US4] `RaidNotificationTests`: `US4-AC1 처치되면 참여한 회원마다 RAID_BOSS_DEFEATED 알림이 하나`, `US4-AC2 공격한 적 없는 회원에게는 없다`, `US4-AC7 물러난 보스는 알리지 않고 수도 그대로`, `US4-AC5 감정 통계의 raidBossesDefeated가 1 는다`, 이벤트가 다시 와도 알림은 하나, 알림 응답의 `post`가 null
-- [ ] T022 [US4] `raid` RaidFacade(`RaidApi`), `notification`: `NotificationType`, 드래프트, `on(RaidBossDefeated)`(500명씩), 저장소와 응답이 `post_id` NULL을 다룬다. `feed`: 감정 통계에 `raidBossesDefeated`
-- [ ] T023 [P] [US4] 웹: `widgets/raid-arena`의 결과 화면(`US4-AC3`, `US4-AC4`), `entities/notification`의 문구와 이동할 곳(`US4-AC6`), 종의 토스트, `widgets/emotion-stats-panel`에 함께 물리친 보스 수(`US4-AC5`). 단위 테스트
+- [x] T021 [P] [US4] `RaidNotificationTests`: `US4-AC1 처치되면 참여한 회원마다 RAID_BOSS_DEFEATED 알림이 하나`, `US4-AC2 공격한 적 없는 회원에게는 없다`, `US4-AC7 물러난 보스는 알리지 않고 수도 그대로`, `US4-AC5 감정 통계의 raidBossesDefeated가 1 는다`, 이벤트가 다시 와도 알림은 하나, 알림 응답의 `post`가 null
+- [x] T022 [US4] `raid` RaidFacade(`RaidApi`), `notification`: `NotificationType`, 드래프트, `on(RaidBossDefeated)`(500명씩), 저장소와 응답이 `post_id` NULL을 다룬다. `feed`: 감정 통계에 `raidBossesDefeated` **구현 메모**: 알림을 500명씩 나눠 쓰지 않았다. 이벤트 하나가 트랜잭션 하나라 나눠도 달라지는 것이 없다.
+- [x] T023 [P] [US4] 웹: `widgets/raid-arena`의 결과 화면(`US4-AC3`, `US4-AC4`), `entities/notification`의 문구와 이동할 곳(`US4-AC6`), 종의 토스트, `widgets/emotion-stats-panel`에 함께 물리친 보스 수(`US4-AC5`). 단위 테스트
 
 ## Phase 7: US5 보스의 생애 (묶음 8)
 
-- [ ] T024 [P] [US5] `RaidLifecycleTests`(시계 주입): `US5-AC1 보스가 없으면 HP 300의 첫 보스`, `US5-AC2 최근 7일의 가장 많은 감정, 같으면 정해진 순서, 없으면 무기력`, `US5-AC3 처치 다음 날 0시(한국 시간)에 새 보스이고 그 전에는 nextBossAt`, `US5-AC4 HP는 직전 참여자 수 × 100을 300과 5000 사이로`, `US5-AC5 7일 뒤 물러나고 다음 날 HP 300`, `US5-AC6 동시에 만들어도 살아 있는 보스는 하나`, `US5-AC8 숨긴 글과 지운 글은 세지 않는다`, 23시 59분에 끝나도 다음 날 0시
-- [ ] T025 [US5] `PostApi.visibleIdsSince`, application/RaidBossLifecycle(나타남, 물러남, 감정과 HP), 1분 주기와 기동 때 한 번
-- [ ] T026 [P] [US5] 웹: 홈에 `BossBanner`(`US5-AC7`), 끝난 뒤 새 보스가 나오면 화면이 새 보스로 바뀐다. 단위 테스트
+- [x] T024 [P] [US5] `RaidLifecycleTests`(시계 주입): `US5-AC1 보스가 없으면 HP 300의 첫 보스`, `US5-AC2 최근 7일의 가장 많은 감정, 같으면 정해진 순서, 없으면 무기력`, `US5-AC3 처치 다음 날 0시(한국 시간)에 새 보스이고 그 전에는 nextBossAt`, `US5-AC4 HP는 직전 참여자 수 × 100을 300과 5000 사이로`, `US5-AC5 7일 뒤 물러나고 다음 날 HP 300`, `US5-AC6 동시에 만들어도 살아 있는 보스는 하나`, `US5-AC8 숨긴 글과 지운 글은 세지 않는다`, 23시 59분에 끝나도 다음 날 0시
+- [x] T025 [US5] `PostApi.visibleIdsSince`, application/RaidBossLifecycle(나타남, 물러남, 감정과 HP), 1분 주기와 기동 때 한 번 **구현 메모**: 감정과 HP를 정하는 일은 `RaidBossPlanner`로 나눴다. 주기 작업은 `RaidLifecycleScheduler`가 맡고 `ogu.raid.lifecycle-scheduler-enabled=false`로 끌 수 있다. 시계를 앞으로 돌린 테스트 컨텍스트가 남아서 다른 테스트의 보스를 물러나게 했기 때문이다.
+- [x] T026 [P] [US5] 웹: 홈에 `BossBanner`(`US5-AC7`), 끝난 뒤 새 보스가 나오면 화면이 새 보스로 바뀐다. 단위 테스트
 
 ## Phase 8: e2e와 부하 (묶음 9)
 
