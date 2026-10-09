@@ -29,4 +29,4 @@ M3를 M4보다 먼저 출시하고, 이것을 원칙 IV의 예외로 남긴다(0
 - M3와 M4 사이 기간에는 위험한 글에도 알림이 간다. 받는 사람은 이미 그 글을 본 사람들이다.
 - M4는 `PostApi.find`와 `PostApi.previews`가 숨긴 글을 걸러 내게 하고, `RiskDetected`를 받아 알림을 만드는 일을 범위에 넣어야 한다.
 - M4가 출시되면 이 예외는 끝난다. 그때 004 plan의 Complexity Tracking 항목에 끝난 날짜를 적는다.
-- **2026-10-08**: M4([005-safety](../../specs/005-safety/spec.md))가 구현됐다. 숨긴 글과 댓글에는 알림이 새로 생기지 않고, 이미 있는 알림에서는 삭제된 글로 보이며, 위험 판정이 `RiskDetected`로 작성자에게 도움 안내를 보낸다(`SafetyNotificationTests`, `HiddenContentMatrixTests`). 005가 `develop`에 들어가는 날 이 예외는 끝난다.
+- **2026-10-08**: M4([005-safety](../../specs/005-safety/spec.md))가 구현됐다. 숨긴 글과 댓글에는 알림이 새로 생기지 않고, 이미 있는 알림에서는 삭제된 글로 보이며, 위험 판정이 `RiskDetected`로 작성자에게 도움 안내를 보낸다(`SafetyNotificationTests`, `HiddenContentMatrixTests`). 005가 `develop`에 들어간 2026-10-09(#23)에 이 예외는 끝났다.
