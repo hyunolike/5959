@@ -21,6 +21,8 @@ export interface StreamHandlers {
   onPing: () => void;
   /** 연결이 끊겼다. 이 연결은 이미 닫혔으므로 새 티켓으로 다시 열어야 한다. */
   onError: () => void;
+  /** 연결할 때 고른 주제의 소식(006 research R6). 이벤트 이름이 곧 주제 이름이다. id가 없다. */
+  onTopic?: (topic: string, data: unknown) => void;
 }
 
 export interface StreamConnection {
@@ -34,6 +36,8 @@ export interface EventSourceLike {
 }
 
 export interface OpenStreamOptions {
+  /** 함께 받을 주제. 서버는 고른 주제의 소식만 보낸다. */
+  topics?: readonly string[];
   fetchImpl?: typeof fetch;
   createEventSource?: (url: string) => EventSourceLike;
 }
@@ -52,13 +56,21 @@ export function fetchStreamTicket(
   );
 }
 
-/** 주소에는 티켓과 마지막 번호만 싣는다. 새 `EventSource`는 `Last-Event-ID` 헤더를 붙일 수 없다. */
-function streamAddress(ticket: StreamTicket, lastEventId: number): string {
+/** 주소에는 티켓, 마지막 번호, 고른 주제만 싣는다. 새 `EventSource`는 `Last-Event-ID` 헤더를 붙일 수 없다. */
+function streamAddress(
+  ticket: StreamTicket,
+  lastEventId: number,
+  topics: readonly string[],
+): string {
   const url = new URL(ticket.streamUrl);
-  url.search = new URLSearchParams({
+  const params = new URLSearchParams({
     ticket: ticket.ticket,
     lastEventId: String(lastEventId),
-  }).toString();
+  });
+  if (topics.length > 0) {
+    params.set("topics", topics.join(","));
+  }
+  url.search = params.toString();
   return url.toString();
 }
 
@@ -82,12 +94,13 @@ export async function openStream(
   lastEventId: number,
   handlers: StreamHandlers,
   {
+    topics = [],
     fetchImpl = fetch,
     createEventSource = (url) => new EventSource(url),
   }: OpenStreamOptions = {},
 ): Promise<StreamConnection> {
   const ticket = await fetchStreamTicket(fetchImpl);
-  const source = createEventSource(streamAddress(ticket, lastEventId));
+  const source = createEventSource(streamAddress(ticket, lastEventId, topics));
   let closed = false;
   const close = () => {
     closed = true;
@@ -123,6 +136,14 @@ export async function openStream(
       handlers.onUnreadCount(body);
     }
   });
+  for (const topic of topics) {
+    source.addEventListener(topic, (event) => {
+      const body = parseJson<unknown>(event);
+      if (!closed && body !== null) {
+        handlers.onTopic?.(topic, body);
+      }
+    });
+  }
   source.addEventListener("ping", () => {
     if (!closed) {
       handlers.onPing();

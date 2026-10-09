@@ -46,10 +46,12 @@ export function EmotionStatsPanel() {
 function Stats({ stats }: { stats: EmotionStats }) {
   return (
     <>
-      <dl className="grid grid-cols-3 gap-3 text-center">
+      <dl className="grid grid-cols-2 gap-3 text-center sm:grid-cols-4">
         <Figure label="내 몬스터" value={stats.totalMonsters} />
         <Figure label="물리친 몬스터" value={stats.defeatedMonsters} />
         <Figure label="함께 물리친 몬스터" value={stats.defeatedTogether} />
+        {/* 레이드에서 내가 공격에 참여해 처치한 보스(006 US4-AC5). */}
+        <Figure label="함께 물리친 보스" value={stats.raidBossesDefeated} />
       </dl>
       {stats.totalMonsters === 0 || stats.topEmotion === null ? (
         <div className="flex flex-col items-center gap-3 text-center">

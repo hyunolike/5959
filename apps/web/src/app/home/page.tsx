@@ -8,6 +8,7 @@ import { LogoutButton } from "@/features/auth/logout";
 import { stopNotificationStream } from "@/features/notification-stream";
 import { Button, Spinner } from "@/shared/ui";
 import { FeedList } from "@/widgets/feed-list";
+import { BossBanner } from "@/widgets/raid-arena";
 
 /**
  * 홈은 피드다(US2). 로그인과 온보딩은 proxy.ts의 라우트 가드가 먼저 확인한다
@@ -36,6 +37,8 @@ export default function HomePage() {
           <LogoutButton onLoggedOut={stopNotificationStream} />
         </div>
       </header>
+      {/* 살아 있는 보스가 있으면 레이드로 가는 안내를 보인다(006 US5-AC7). */}
+      <BossBanner />
       {/* 정렬과 필터를 주소 검색어에서 읽는다(useSearchParams). */}
       <Suspense
         fallback={

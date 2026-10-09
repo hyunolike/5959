@@ -60,4 +60,12 @@ export default defineConfig([
       "fsd/insignificant-slice": "off",
     },
   },
+  // 006-raid: features/raid-attack is the one user action on the raid screen.
+  // Only widgets/raid-arena composes it, for the same reason as above.
+  {
+    files: ["./src/features/raid-attack/**"],
+    rules: {
+      "fsd/insignificant-slice": "off",
+    },
+  },
 ]);

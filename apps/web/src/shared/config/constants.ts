@@ -37,6 +37,8 @@ export const QUERY_KEYS = {
   likedPosts: ["my", "liked-posts"] as const,
   /** 마이페이지 감정 통계(004 US4). 세 목록과 같이 마이페이지를 열 때마다 다시 받는다. */
   emotionStats: ["my", "emotion-stats"] as const,
+  /** 지금의 레이드(006). 실시간 이벤트와 공격 응답이 이 캐시를 직접 고친다. */
+  raid: ["raid"] as const,
   /** 도움 리소스(005). 바뀌는 일이 드물어 오래 둔다. */
   supportResources: ["safety", "support-resources"] as const,
 };

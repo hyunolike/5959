@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useStore } from "zustand";
 import { createStore, type StoreApi } from "zustand/vanilla";
 
@@ -33,9 +34,12 @@ export interface StreamDeps {
   onUnreadCount: (event: StreamUnreadCountEvent) => void;
   /** 끊겼다가 다시 열렸다. `unread-count` 이벤트는 다시 오지 않으므로 안 읽은 수를 새로 받는다. */
   onReconnected: () => void;
+  /** 고른 주제의 소식이 왔다(006). 주제를 고르지 않으면 불리지 않는다. */
+  onTopic?: (topic: string, data: unknown) => void;
   openStream?: (
     lastEventId: number,
     handlers: StreamHandlers,
+    options?: { topics?: readonly string[] },
   ) => Promise<StreamConnection>;
   random?: () => number;
 }
@@ -47,6 +51,13 @@ export interface StreamState {
   lastEventId: number | null;
   /** 연달아 실패한 횟수. 20초 동안 열려 있으면 0으로 돌아간다. */
   attempt: number;
+  /** 함께 받는 주제(006 research R6). 이름순으로 둔다. */
+  topics: readonly string[];
+  /**
+   * 주제를 더하거나 뺀다. 화면마다 필요한 주제가 다르므로 화면이 들어오고 나갈 때 부른다. 주제가 바뀌면
+   * 열려 있는 연결을 닫고 새 주제로 다시 연다. 마지막 이벤트 id를 그대로 쓰므로 빠지는 알림은 없다.
+   */
+  setTopic: (topic: string, enabled: boolean) => void;
   /** 연결을 시작한다. 이미 연결 중이거나 열려 있으면 아무것도 하지 않는다(탭마다 연결 하나). */
   start: (deps: StreamDeps) => void;
   /** 연결과 예약한 재시도를 모두 닫고 `idle`로 돌아간다. 로그아웃과 위젯 언마운트에서 부른다. */
@@ -193,6 +204,12 @@ export function createNotificationStreamStore(): StoreApi<StreamState> {
             armSilenceTimer();
           }
         },
+        onTopic: (topic, data) => {
+          if (isCurrent()) {
+            armSilenceTimer();
+            current.onTopic?.(topic, data);
+          }
+        },
         onError: () => {
           if (isCurrent()) {
             drop();
@@ -213,6 +230,7 @@ export function createNotificationStreamStore(): StoreApi<StreamState> {
         const opened = await (current.openStream ?? defaultOpenStream)(
           lastEventId,
           handlers,
+          { topics: get().topics },
         );
         if (mine !== session) {
           opened.close();
@@ -305,6 +323,24 @@ export function createNotificationStreamStore(): StoreApi<StreamState> {
       status: "idle",
       lastEventId: null,
       attempt: 0,
+      topics: [],
+      setTopic: (topic, enabled) => {
+        const current = get().topics;
+        if (current.includes(topic) === enabled) {
+          return;
+        }
+        const topics = enabled
+          ? [...current, topic].sort()
+          : current.filter((name) => name !== topic);
+        set({ topics });
+        const { status } = get();
+        if (status === "idle" || status === "stopped") {
+          return;
+        }
+        // 지금 연결은 옛 주제로 열렸다. 닫고 바로 다시 연다.
+        closeConnection();
+        void connect();
+      },
       start: (nextDeps) => {
         const { status } = get();
         if (status !== "idle" && status !== "stopped") {
@@ -351,4 +387,16 @@ export function useNotificationStreamLastEventId(): number | null {
  */
 export function stopNotificationStream(): void {
   notificationStreamStore.getState().stop();
+}
+
+/**
+ * 이 화면이 보이는 동안 실시간 스트림에서 [topic]의 소식도 받는다(006 research R6). 레이드 화면이 쓴다.
+ * 화면을 떠나면 주제를 빼, 보지 않는 소식으로 기기를 깨우지 않는다.
+ */
+export function useStreamTopic(topic: string): void {
+  useEffect(() => {
+    const { setTopic } = notificationStreamStore.getState();
+    setTopic(topic, true);
+    return () => notificationStreamStore.getState().setTopic(topic, false);
+  }, [topic]);
 }

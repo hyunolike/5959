@@ -12,6 +12,7 @@ const PROTECTED_PATHS = [
   "/my",
   "/settings",
   "/notifications",
+  "/raid",
 ];
 
 /**
