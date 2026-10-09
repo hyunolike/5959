@@ -83,4 +83,4 @@ description: "Task list for 006-raid (보스 레이드)"
 - [x] T029 [P] 인수 조건 38개가 모두 테스트 이름에 있는지 확인하고 빠진 것을 더한다
 - [x] T030 [P] 문서: apps/api/AGENTS.md에 `raid` 절, apps/web/docs/ARCHITECTURE.md에 레이드 절, docs/architecture/overview.md 5.1 표와 그래프, 5.4를 구현과 맞춘다. README에 한 단락과 측정값
 - [x] T031 성능 측정(SC-004, SC-005, SC-008)과 quickstart의 수동 시나리오 22개를 로컬에서 실행하고 결과를 quickstart.md에 남긴다 **구현 메모**: 22개를 API로 차례로 실행했다. 화면은 e2e와 단위 테스트가 본다.
-- [ ] T032 일관성을 확인하고 PR을 연다(스펙 링크, 인수 조건 체크리스트, 운영 준비 항목)
+- [x] T032 일관성을 확인하고 PR을 연다(스펙 링크, 인수 조건 체크리스트, 운영 준비 항목) **구현 메모**: PR #24.
