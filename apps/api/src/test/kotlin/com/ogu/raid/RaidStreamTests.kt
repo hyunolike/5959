@@ -89,7 +89,9 @@ class RaidStreamTests {
         // id가 없어 알림의 마지막 번호를 바꾸지 않는다
         assertThat(event.id).isNull()
         // 회원의 정보는 싣지 않는다(US4-AC4)
-        assertThat(event.data).doesNotContain("myDamage", "memberId", "nickname", attacker.id.toString())
+        assertThat(event.data).doesNotContain("myDamage", "memberId", "nickname", "damage")
+        assertThat(body.propertyNames().toList())
+            .containsExactlyInAnyOrder("bossId", "hp", "maxHp", "status", "participantCount", "available", "epoch")
     }
 
     @Test

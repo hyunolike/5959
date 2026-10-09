@@ -2,6 +2,7 @@ package com.ogu.support
 
 import com.ogu.raid.domain.RaidRedis
 import org.awaitility.Awaitility.await
+import org.springframework.dao.DuplicateKeyException
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.jdbc.core.JdbcTemplate
 import java.time.Duration
@@ -20,21 +21,28 @@ class RaidFixture(
         maxHp: Int,
         emotion: String = "LETHARGY",
     ): Long {
-        jdbcTemplate.update("update raid_boss set status = 'RETREATED', ended_at = now() where status = 'ALIVE'")
-        val bossId =
-            jdbcTemplate.queryForObject(
-                """
-                insert into raid_boss (emotion, max_hp, hp, status, spawned_at)
-                values (?, ?, ?, 'ALIVE', now())
-                returning id
-                """.trimIndent(),
-                Long::class.java,
-                emotion,
-                maxHp,
-                maxHp,
-            )!!
+        val bossId = replaceBoss(maxHp, emotion)
         redis.delete(RaidRedis.BOSS_KEY)
         return bossId
+    }
+
+    /**
+     * 물러나게 한 직후 다른 컨텍스트의 주기 작업이 먼저 보스를 만들면 유일 제약에 걸린다. 그때는 다시 한다.
+     */
+    private fun replaceBoss(
+        maxHp: Int,
+        emotion: String,
+    ): Long {
+        var last: DuplicateKeyException? = null
+        repeat(REPLACE_ATTEMPTS) {
+            try {
+                jdbcTemplate.update(RETIRE_ALIVE)
+                return jdbcTemplate.queryForObject(INSERT_ALIVE, Long::class.java, emotion, maxHp, maxHp)!!
+            } catch (e: DuplicateKeyException) {
+                last = e
+            }
+        }
+        throw IllegalStateException("보스를 놓지 못했습니다", last)
     }
 
     /** 다른 테스트와 겹치지 않는 회원 ID. 레이드의 기록은 회원 테이블을 참조하지 않는다. */
@@ -90,6 +98,12 @@ class RaidFixture(
 
     companion object {
         private val MEMBER_IDS = AtomicLong(System.currentTimeMillis())
+        private const val REPLACE_ATTEMPTS = 5
+        private const val RETIRE_ALIVE =
+            "update raid_boss set status = 'RETREATED', ended_at = now() where status = 'ALIVE'"
+        private const val INSERT_ALIVE =
+            "insert into raid_boss (emotion, max_hp, hp, status, spawned_at) " +
+                "values (?, ?, ?, 'ALIVE', now()) returning id"
         val AWAIT_LIMIT: Duration = Duration.ofSeconds(10)
         val POLL: Duration = Duration.ofMillis(50)
     }

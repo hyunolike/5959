@@ -54,6 +54,7 @@ class RaidRedis(
 ) {
     private val attackScript = listScript("raid-attack")
     private val flushScript = listScript("raid-flush")
+    private val readScript = listScript("raid-read")
     private val endScript = script("raid-end", Long::class.java)
     private val loadScript = script("raid-load", Long::class.java)
 
@@ -81,21 +82,21 @@ class RaidRedis(
             }
         }
 
-    /** 지금의 보스. Redis에 없으면 null이다. */
+    /** 지금의 보스. Redis에 없으면 null이다. 스크립트 하나로 읽어 왕복이 한 번이다. */
     fun read(): RaidBoss? =
         guarded {
-            val fields = redis.opsForHash<String, String>().entries(BOSS_KEY)
-            val id = fields["id"]?.toLong() ?: return@guarded null
+            val fields = redis.execute(readScript, BOSS_KEYS).orEmpty().map { it?.toString().orEmpty() }
+            if (fields.isEmpty()) return@guarded null
             RaidBoss(
-                id = id,
-                emotion = EmotionType.valueOf(fields.getValue("emotion")),
-                maxHp = fields.getValue("maxHp").toInt(),
-                hp = fields.getValue("hp").toInt().coerceAtLeast(0),
-                status = RaidBossStatus.valueOf(fields.getValue("status")),
-                participantCount = redis.opsForHash<String, String>().size(contributionsKey(id)).toInt(),
-                spawnedAt = Instant.ofEpochMilli(fields.getValue("spawnedAt").toLong()),
-                endedAt = fields["endedAt"]?.toInstantOrNull(),
-                epoch = fields["epoch"]?.toLong() ?: 0,
+                id = fields[READ_ID].toLong(),
+                emotion = EmotionType.valueOf(fields[READ_EMOTION]),
+                maxHp = fields[READ_MAX_HP].toInt(),
+                hp = fields[READ_HP].toInt().coerceAtLeast(0),
+                status = RaidBossStatus.valueOf(fields[READ_STATUS]),
+                participantCount = fields[READ_PARTICIPANTS].toInt(),
+                spawnedAt = Instant.ofEpochMilli(fields[READ_SPAWNED_AT].toLong()),
+                endedAt = fields[READ_ENDED_AT].toInstantOrNull(),
+                epoch = fields[READ_EPOCH].toLong(),
             )
         }
 
@@ -227,6 +228,15 @@ class RaidRedis(
         private const val FLUSH_PARTICIPANTS_INDEX = 3
         private const val FLUSH_ENDED_AT_INDEX = 4
         private const val FLUSH_HEADER_SIZE = 5
+        private const val READ_ID = 0
+        private const val READ_EMOTION = 1
+        private const val READ_MAX_HP = 2
+        private const val READ_HP = 3
+        private const val READ_STATUS = 4
+        private const val READ_SPAWNED_AT = 5
+        private const val READ_ENDED_AT = 6
+        private const val READ_EPOCH = 7
+        private const val READ_PARTICIPANTS = 8
 
         fun contributionsKey(bossId: Long) = "raid:contrib:$bossId"
 

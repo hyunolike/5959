@@ -6,9 +6,12 @@ import com.ogu.raid.domain.RaidBossStatus
 import com.ogu.raid.domain.RaidUnavailableException
 import com.ogu.shared.realtime.TopicBroadcaster
 import org.slf4j.LoggerFactory
-import org.springframework.scheduling.annotation.Scheduled
+import org.springframework.context.SmartLifecycle
 import org.springframework.stereotype.Component
 import tools.jackson.databind.json.JsonMapper
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.TimeUnit
 
 /** 계약의 `RaidLive`. 모든 연결에 같은 내용이 가므로 회원의 기여는 싣지 않는다(research R13). */
 data class RaidLive(
@@ -34,7 +37,8 @@ class RaidBroadcaster(
     private val queryService: RaidQueryService,
     private val bosses: RaidBossRepository,
     private val jsonMapper: JsonMapper,
-) {
+    private val properties: RaidProperties,
+) : SmartLifecycle {
     private val log = LoggerFactory.getLogger(javaClass)
 
     @Volatile
@@ -43,7 +47,38 @@ class RaidBroadcaster(
     @Volatile
     private var lastJoins = 0L
 
-    @Scheduled(fixedDelayString = "\${ogu.raid.broadcast-interval:250ms}")
+    private var executor: ScheduledExecutorService? = null
+
+    /**
+     * 전용 스레드 하나로 돈다. 공용 스케줄러에 두면 옮기기나 재시도 같은 긴 작업 뒤에서 기다려 주기가 늘어진다.
+     */
+    override fun start() {
+        val thread =
+            Executors.newSingleThreadScheduledExecutor { task ->
+                Thread(task, "raid-broadcast").apply { isDaemon = true }
+            }
+        val interval = properties.broadcastInterval.toMillis()
+        thread.scheduleWithFixedDelay(::tickSafely, interval, interval, TimeUnit.MILLISECONDS)
+        executor = thread
+    }
+
+    override fun stop() {
+        executor?.shutdownNow()
+        executor = null
+    }
+
+    override fun isRunning(): Boolean = executor != null
+
+    /** 한 번의 실패가 주기 작업을 멈추지 않게 한다. 예외를 밖으로 내면 실행기가 다음 주기를 버린다. */
+    @Suppress("TooGenericExceptionCaught")
+    private fun tickSafely() {
+        try {
+            tick()
+        } catch (e: RuntimeException) {
+            log.warn("레이드 상태를 내보내지 못했습니다: {}", e.javaClass.simpleName)
+        }
+    }
+
     fun tick() {
         if (broadcaster.listenerCount(TOPIC) == 0) return
         val joins = broadcaster.joinCount(TOPIC)
