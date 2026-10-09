@@ -4,6 +4,7 @@ import com.ogu.TestcontainersConfiguration
 import com.ogu.raid.application.RaidAttackService
 import com.ogu.raid.application.RaidFlusher
 import com.ogu.raid.application.RaidQueryService
+import com.ogu.raid.domain.AttackOutcome
 import com.ogu.raid.domain.RaidBossStatus
 import com.ogu.raid.domain.RaidContributionRepository
 import com.ogu.raid.domain.RaidRedis
@@ -19,6 +20,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.jdbc.core.JdbcTemplate
+import java.time.Duration
 import java.time.Instant
 
 /** T012: 옮기기와 다시 채우기(006 US3-AC5, AC8, research R3~R5). */
@@ -151,21 +153,26 @@ class RaidDurabilityTests {
     fun `처치를 기록에 남기지 못했으면 다음 옮기기가 마무리한다`() {
         val bossId = raid.freshBoss(maxHp = 2)
         val (first, second) = raid.memberIds(2)
-        attackService.attack(first, bossId)
-        attackService.attack(second, bossId)
-        raid.awaitStatus(bossId, "DEFEATED")
-        // 처치는 Redis에만 남고 기록은 살아 있는 상태로 되돌린다
-        jdbcTemplate.update("update raid_boss set status = 'ALIVE', ended_at = null, hp = 1 where id = ?", bossId)
-        redis.markDirty(bossId, listOf(first))
+        queryService.current()
+        // 서비스를 거치지 않고 스크립트로만 공격한다. Redis의 보스는 처치됐지만 기록에 남기는 일은 일어나지 않았다.
+        // 처치 직후 기록에 남기다 실패한 것과 같은 상태다
+        redis.attack(bossId, first, COOLDOWN, Instant.now())
+        val last = redis.attack(bossId, second, COOLDOWN, Instant.now())
+        assertThat((last as AttackOutcome.Accepted).defeated).isTrue()
 
         flusher.flush()
 
         raid.awaitStatus(bossId, "DEFEATED")
         assertThat(raid.boss(bossId)).containsEntry("hp", 0).containsEntry("participant_count", 2)
         assertThat(raid.recordedDamageSum(bossId)).isEqualTo(2)
+        assertThat(raid.boss(bossId)["ended_at"]).isNotNull()
     }
 
     private fun wipeRedis(bossId: Long) {
         redisTemplate.delete(listOf(RaidRedis.BOSS_KEY, RaidRedis.contributionsKey(bossId), RaidRedis.dirtyKey(bossId)))
+    }
+
+    private companion object {
+        val COOLDOWN: Duration = Duration.ofSeconds(1)
     }
 }
