@@ -28,25 +28,25 @@ description: "Task list for 006-raid (보스 레이드)"
 
 ## Phase 1: Setup (묶음 1)
 
-- [ ] T001 `specs/006-raid/contracts/raid.openapi.yaml`을 루트 `contracts/openapi.yaml`에 합친다(0.6.0, 연산 2개, `RaidBoss`, `RaidState`, `RaidLive`, `RaidAttackRequest`, `RaidAttackResult`, `EmotionStats.raidBossesDefeated`, `NotificationType`에 `RAID_BOSS_DEFEATED`, `Notification.post` null 허용, 스트림의 `topics`). ContractTests `pendingPaths`에 두 연산을 올리고 `pnpm --filter web gen:api`
-- [ ] T002 `V6__raid.sql`: `raid_boss`, `raid_contribution`, 부분 유일 인덱스, `notification`의 `post_id` NULL 허용과 `raid_boss_id`, 종류와 대상 CHECK(data-model.md). `RaidMigrationTests`로 제약을 확인한다(살아 있는 보스 둘은 거절, `DEFEATED`면 hp 0, 종류와 `post_id`의 짝)
-- [ ] T003 `raid` 모듈 뼈대: `package-info.java`(shared, post, emotion), `RaidProperties`와 `application.yml`의 `ogu.raid.*`, `ErrorCode`에 `RAID_COOLDOWN`(429), `RAID_BOSS_ENDED`(409), `RAID_UNAVAILABLE`(503). `ModularityTests`에 `raid`를 더한다
+- [x] T001 `specs/006-raid/contracts/raid.openapi.yaml`을 루트 `contracts/openapi.yaml`에 합친다(0.6.0, 연산 2개, `RaidBoss`, `RaidState`, `RaidLive`, `RaidAttackRequest`, `RaidAttackResult`, `EmotionStats.raidBossesDefeated`, `NotificationType`에 `RAID_BOSS_DEFEATED`, `Notification.post` null 허용, 스트림의 `topics`). ContractTests `pendingPaths`에 두 연산을 올리고 `pnpm --filter web gen:api` **구현 메모**: 두 연산을 같은 묶음에서 구현해 `pendingPaths`에 올릴 일이 없었다.
+- [x] T002 `V6__raid.sql`: `raid_boss`, `raid_contribution`, 부분 유일 인덱스, `notification`의 `post_id` NULL 허용과 `raid_boss_id`, 종류와 대상 CHECK(data-model.md). `RaidMigrationTests`로 제약을 확인한다(살아 있는 보스 둘은 거절, `DEFEATED`면 hp 0, 종류와 `post_id`의 짝)
+- [x] T003 `raid` 모듈 뼈대: `package-info.java`(shared, post, emotion), `RaidProperties`와 `application.yml`의 `ogu.raid.*`, `ErrorCode`에 `RAID_COOLDOWN`(429), `RAID_BOSS_ENDED`(409), `RAID_UNAVAILABLE`(503). `ModularityTests`에 `raid`를 더한다 **구현 메모**: 컨트롤러가 인증된 회원 타입(`member.AuthenticatedMember`)을 받으므로 허용 의존에 `member`를 더했다(`safety`와 같다). plan의 "shared, post, emotion"에서 달라진 점이다.
 
 ## Phase 2: Foundational (묶음 2)
 
-- [ ] T004 [P] `resources/redis/raid-attack.lua`, `raid-flush.lua`, `raid-end.lua`, `raid-load.lua`(research R2~R5, data-model의 키)
-- [ ] T005 `raid` domain/RaidRedis: 스크립트 넷과 `raid:boss` 읽기를 감싼다. Redis를 쓸 수 없으면 `RaidUnavailableException` 하나로 바꿔 던진다
-- [ ] T006 `RaidScriptTests`(Testcontainers Redis): `US1-AC3 쿨다운 안의 공격은 HP와 기여를 바꾸지 않고 만료를 늘리지 않는다`, `US1-AC5 참여자 수는 회원마다 한 번만 는다`, `US3-AC2 HP는 0에서 멈추고 남은 만큼만 받아들인다`, `US3-AC4 기여의 합은 줄어든 HP와 같다`, 처치로 바꾸는 공격은 하나뿐, 끝난 보스는 쿨다운을 걸지 않는다, 요청의 보스 ID가 다르면 ENDED, 보스가 없으면 MISSING, 옮기기 스크립트가 집합을 비우며 값을 준다, 다시 채우면 epoch가 오른다
-- [ ] T007 [P] domain/RaidBossRepository(삽입, 살아 있는 보스, 가장 최근 보스, 조건부 끝내기, `least`로 HP 적기), RaidContributionRepository(`greatest`로 여러 건 적기, 보스의 모든 기여, 회원의 기여, 참여자, 처치된 보스 수)
+- [x] T004 [P] `resources/redis/raid-attack.lua`, `raid-flush.lua`, `raid-end.lua`, `raid-load.lua`(research R2~R5, data-model의 키)
+- [x] T005 `raid` domain/RaidRedis: 스크립트 넷과 `raid:boss` 읽기를 감싼다. Redis를 쓸 수 없으면 `RaidUnavailableException` 하나로 바꿔 던진다 **구현 메모**: 다시 채우는 잠금은 잡기와 풀기를 따로 두지 않고 `withLoadLock`으로 묶었다.
+- [x] T006 `RaidScriptTests`(Testcontainers Redis): `US1-AC3 쿨다운 안의 공격은 HP와 기여를 바꾸지 않고 만료를 늘리지 않는다`, `US1-AC5 참여자 수는 회원마다 한 번만 는다`, `US3-AC2 HP는 0에서 멈추고 남은 만큼만 받아들인다`, `US3-AC4 기여의 합은 줄어든 HP와 같다`, 처치로 바꾸는 공격은 하나뿐, 끝난 보스는 쿨다운을 걸지 않는다, 요청의 보스 ID가 다르면 ENDED, 보스가 없으면 MISSING, 옮기기 스크립트가 집합을 비우며 값을 준다, 다시 채우면 epoch가 오른다
+- [x] T007 [P] domain/RaidBossRepository(삽입, 살아 있는 보스, 가장 최근 보스, 조건부 끝내기, `least`로 HP 적기), RaidContributionRepository(`greatest`로 여러 건 적기, 보스의 모든 기여, 회원의 기여, 참여자, 처치된 보스 수)
 
 ## Phase 3: US1 공격과 조회, US3 정확성 (묶음 3, 4)
 
-- [ ] T008 [P] [US1] `RaidApiTests`: `US1-AC1 조회에 감정, HP, 참여자 수, 내 기여가 있다`, `US1-AC2 공격하면 HP가 1 줄고 내 기여가 1 오른다`, `US1-AC3 1초 안의 두 번째 공격은 429 RAID_COOLDOWN과 Retry-After`, `US1-AC4 같은 회원의 동시 공격은 하나만 반영된다`, `US1-AC6 끝난 보스는 409 RAID_BOSS_ENDED`, `US1-AC7 온보딩 전 회원은 403`, 보스가 한 번도 없으면 `boss`가 null, `bossId`가 빠지면 400, 응답에 다른 회원의 정보가 없다(`US4-AC4`)
-- [ ] T009 [P] [US3] `RaidConcurrencyTests`: `US3-AC1 회원 64명의 동시 공격에서 줄어든 HP가 받아들여진 수와 같다`, `US3-AC2 남은 HP보다 많은 공격이 와도 0에서 멈춘다`, `US3-AC3 마지막 HP를 다퉈도 처치 기록과 이벤트는 하나다`, `US3-AC4 기여의 합이 줄어든 HP와 같다(Redis와, 옮긴 뒤 Postgres)`
-- [ ] T010 [US1] application/RaidAttackService(스크립트 호출, MISSING이면 다시 채우고 한 번 더, 결과를 응답으로), RaidQueryService(Redis의 값, 안 되면 Postgres의 마지막 기록과 `available = false`, `nextBossAt`), presentation/RaidController(`GET /api/v1/raid`, `POST /api/v1/raid/attacks`). `pendingPaths`를 비운다
-- [ ] T011 [US3] application/RaidFlusher(1초마다 옮기기, 실패하면 집합에 되돌리기, 인스턴스 여럿이어도 안전), 처치 마무리(모든 기여를 적고 조건부로 `DEFEATED`, 같은 트랜잭션에서 `RaidBossDefeated`), "Redis는 끝났는데 Postgres는 살아 있음"을 다시 마무리
-- [ ] T012 [P] [US3] `RaidDurabilityTests`: `US3-AC5 옮긴 뒤 Redis의 상태가 그대로면 API를 다시 띄운 것과 같이 이어진다`(서비스 빈을 새로 만들어 확인), `US3-AC8 Redis를 비우면 마지막 기록에서 이어지고 epoch가 오른다`, `US3-AC8 처치된 보스는 Redis를 비워도 처치된 채다`, 옮기기를 두 번 하거나 순서를 바꿔도 결과가 같다, 처치 마무리가 실패한 뒤 다음 옮기기가 마무리한다
-- [ ] T013 [P] [US3] `RaidRedisOutageTest`(Redis 컨테이너를 멈춘다): `US3-AC6 공격은 503 RAID_UNAVAILABLE이고 조회는 마지막 기록과 available false`, `US3-AC7 글쓰기와 댓글, 알림 목록은 그대로`
+- [x] T008 [P] [US1] `RaidApiTests`: `US1-AC1 조회에 감정, HP, 참여자 수, 내 기여가 있다`, `US1-AC2 공격하면 HP가 1 줄고 내 기여가 1 오른다`, `US1-AC3 1초 안의 두 번째 공격은 429 RAID_COOLDOWN과 Retry-After`, `US1-AC4 같은 회원의 동시 공격은 하나만 반영된다`, `US1-AC6 끝난 보스는 409 RAID_BOSS_ENDED`, `US1-AC7 온보딩 전 회원은 403`, 보스가 한 번도 없으면 `boss`가 null, `bossId`가 빠지면 400, 응답에 다른 회원의 정보가 없다(`US4-AC4`)
+- [x] T009 [P] [US3] `RaidConcurrencyTests`: `US3-AC1 회원 64명의 동시 공격에서 줄어든 HP가 받아들여진 수와 같다`, `US3-AC2 남은 HP보다 많은 공격이 와도 0에서 멈춘다`, `US3-AC3 마지막 HP를 다퉈도 처치 기록과 이벤트는 하나다`, `US3-AC4 기여의 합이 줄어든 HP와 같다(Redis와, 옮긴 뒤 Postgres)` **구현 메모**: 처치 이벤트가 하나인지는 알림 수로 본다. 알림 리스너가 생기는 T021에서 더한다. 여기서는 처치 기록과 기여의 합을 본다.
+- [x] T010 [US1] application/RaidAttackService(스크립트 호출, MISSING이면 다시 채우고 한 번 더, 결과를 응답으로), RaidQueryService(Redis의 값, 안 되면 Postgres의 마지막 기록과 `available = false`, `nextBossAt`), presentation/RaidController(`GET /api/v1/raid`, `POST /api/v1/raid/attacks`). `pendingPaths`를 비운다
+- [x] T011 [US3] application/RaidFlusher(1초마다 옮기기, 실패하면 집합에 되돌리기, 인스턴스 여럿이어도 안전), 처치 마무리(모든 기여를 적고 조건부로 `DEFEATED`, 같은 트랜잭션에서 `RaidBossDefeated`), "Redis는 끝났는데 Postgres는 살아 있음"을 다시 마무리
+- [x] T012 [P] [US3] `RaidDurabilityTests`: `US3-AC5 옮긴 뒤 Redis의 상태가 그대로면 API를 다시 띄운 것과 같이 이어진다`(서비스 빈을 새로 만들어 확인), `US3-AC8 Redis를 비우면 마지막 기록에서 이어지고 epoch가 오른다`, `US3-AC8 처치된 보스는 Redis를 비워도 처치된 채다`, 옮기기를 두 번 하거나 순서를 바꿔도 결과가 같다, 처치 마무리가 실패한 뒤 다음 옮기기가 마무리한다
+- [x] T013 [P] [US3] `RaidRedisOutageTest`(Redis 컨테이너를 멈춘다): `US3-AC6 공격은 503 RAID_UNAVAILABLE이고 조회는 마지막 기록과 available false`, `US3-AC7 글쓰기와 댓글, 알림 목록은 그대로` **구현 메모**: 공용 테스트 Redis를 멈추지 않고, 아무것도 듣지 않는 포트를 Redis 주소로 준 컨텍스트를 따로 띄운다.
 
 ## Phase 4: US2 실시간 (묶음 5)
 
