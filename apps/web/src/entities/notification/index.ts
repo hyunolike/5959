@@ -7,7 +7,7 @@ export {
 } from "./api/queries";
 export { BADGE_MAX, badgeLabel } from "./model/badge";
 export { uniqueNotifications } from "./model/list";
-export { notificationMessage } from "./model/message";
+export { notificationHref, notificationMessage } from "./model/message";
 export { newestUnreadCount } from "./model/unread";
 export type {
   Notification,

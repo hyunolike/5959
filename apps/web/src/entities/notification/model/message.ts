@@ -40,5 +40,23 @@ export function notificationMessage(
       return "가려졌던 글이 다시 보여요";
     case "REVIEW_KEPT":
       return "요청하신 글을 다시 살펴봤어요";
+    case "RAID_BOSS_DEFEATED":
+      return "함께 보스를 물리쳤어요";
   }
+}
+
+/** 레이드 화면. 처치 알림을 누르면 여기로 간다(006 US4-AC6). */
+const RAID_PATH = "/raid";
+
+/**
+ * 알림을 눌렀을 때 갈 곳. 글이 지워졌으면 갈 곳이 없어 null이다(US2-AC5).
+ * 보스 처치 알림은 글이 없고 레이드 화면으로 간다(006 US4-AC6).
+ */
+export function notificationHref(
+  notification: Pick<Notification, "type" | "post" | "postId">,
+): string | null {
+  if (notification.type === "RAID_BOSS_DEFEATED") {
+    return RAID_PATH;
+  }
+  return notification.post === null ? null : `/post/${notification.postId}`;
 }
