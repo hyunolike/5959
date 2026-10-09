@@ -10,7 +10,8 @@ data class Notification(
     val id: Long,
     val receiverId: Long,
     val type: NotificationType,
-    val postId: Long,
+    /** 보스 처치 알림(006)은 글이 없어 null이다. */
+    val postId: Long?,
     val commentId: Long?,
     val monsterId: Long?,
     val latestActorId: Long?,
@@ -26,13 +27,14 @@ data class Notification(
 data class NewNotification(
     val receiverId: Long,
     val type: NotificationType,
-    val postId: Long,
+    val postId: Long?,
     val commentId: Long?,
     val monsterId: Long?,
     val actorId: Long?,
     val dedupKey: String,
     val seq: Long,
     val createdAt: Instant,
+    val raidBossId: Long? = null,
 ) {
     init {
         require(type != NotificationType.POST_LIKE) { "공감 알림은 묶음으로만 만든다" }

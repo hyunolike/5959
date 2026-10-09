@@ -81,6 +81,7 @@ class NotificationWriter(
                 dedupKey = draft.dedupKey,
                 seq = seq,
                 createdAt = now(),
+                raidBossId = draft.raidBossId,
             )
         notifications.insertIfAbsent(notification) ?: return
         signals.publish(NotificationSignal.New(draft.receiverId, seq))

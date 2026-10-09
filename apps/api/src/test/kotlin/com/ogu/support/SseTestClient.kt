@@ -91,6 +91,18 @@ class SseStream internal constructor(
         return notifications()
     }
 
+    /** `event: raid`만 모은 것(006). */
+    fun raidEvents(): List<SseEvent> = events.filter { it.event == "raid" }
+
+    /** 조건에 맞는 raid 이벤트가 올 때까지 기다리고 그 이벤트를 돌려준다. */
+    fun awaitRaid(
+        limit: Duration = AWAIT_LIMIT,
+        matches: (JsonNode) -> Boolean,
+    ): SseEvent {
+        await().atMost(limit).pollInterval(POLL).until { raidEvents().any { matches(it.json()) } }
+        return raidEvents().first { matches(it.json()) }
+    }
+
     fun awaitEnded(limit: Duration = AWAIT_LIMIT) {
         await().atMost(limit).pollInterval(POLL).until { ended }
     }
@@ -118,11 +130,13 @@ object SseTestClient {
         ticket: String?,
         lastEventId: Long? = null,
         headers: Map<String, String> = emptyMap(),
+        topics: String? = null,
     ): SseStream {
         val query =
             listOfNotNull(
                 ticket?.let { "ticket=" + URLEncoder.encode(it, Charsets.UTF_8) },
                 lastEventId?.let { "lastEventId=$it" },
+                topics?.let { "topics=" + URLEncoder.encode(it, Charsets.UTF_8) },
             ).joinToString("&")
         val uri = URI.create("http://localhost:$port$STREAM_PATH" + if (query.isEmpty()) "" else "?$query")
         val client = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build()

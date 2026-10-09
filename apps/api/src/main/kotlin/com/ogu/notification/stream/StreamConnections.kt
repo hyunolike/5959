@@ -1,6 +1,7 @@
 package com.ogu.notification.stream
 
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * 이 인스턴스의 회원별 연결 목록. 회원 한 명의 연결은 [maxPerMember]개까지 두고, 넘으면 가장 오래된 것부터 밀어낸다.
@@ -10,6 +11,7 @@ class StreamConnections(
     private val maxPerMember: Int,
 ) {
     private val byMember = ConcurrentHashMap<Long, List<StreamConnection>>()
+    private val joins = ConcurrentHashMap<String, AtomicLong>()
 
     /** 등록하고 상한을 넘어 밀려난 연결(가장 오래된 것부터)을 돌려준다. 닫기는 부르는 쪽이 맵 잠금 밖에서 한다. */
     fun register(connection: StreamConnection): List<StreamConnection> {
@@ -20,6 +22,7 @@ class StreamConnections(
             if (overflow > 0) evicted = list.take(overflow)
             list.drop(overflow.coerceAtLeast(0)) + connection
         }
+        connection.topics.forEach { topic -> joins.computeIfAbsent(topic) { AtomicLong() }.incrementAndGet() }
         return evicted
     }
 
@@ -38,4 +41,12 @@ class StreamConnections(
     fun all(): List<StreamConnection> = byMember.values.flatten()
 
     fun memberIds(): Set<Long> = byMember.keys.toSet()
+
+    /** [topic]을 고른 연결(006 research R6). */
+    fun listening(topic: String): List<StreamConnection> = all().filter { topic in it.topics }
+
+    fun listenerCount(topic: String): Int = byMember.values.sumOf { list -> list.count { topic in it.topics } }
+
+    /** [topic]을 고른 연결이 지금까지 등록된 횟수. 새 연결이 붙었는지 알아보는 데 쓴다. */
+    fun joinCount(topic: String): Long = joins[topic]?.get() ?: 0
 }

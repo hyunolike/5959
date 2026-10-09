@@ -9,11 +9,13 @@ import com.ogu.notification.domain.NotificationType
 data class NotificationDraft(
     val receiverId: Long,
     val type: NotificationType,
-    val postId: Long,
+    /** 보스 처치 알림(006)만 글이 없다. */
+    val postId: Long?,
     val commentId: Long? = null,
     val monsterId: Long? = null,
     val actorId: Long? = null,
     val dedupKey: String,
+    val raidBossId: Long? = null,
 ) {
     companion object {
         /** 댓글과 답글 알림. 글쓴이와 원 댓글 주인이 같은 키를 써서 한 답글로 한 회원에게 두 개가 생기지 않는다. */
@@ -73,6 +75,19 @@ data class NotificationDraft(
             require(type in AUTHOR_TYPES) { "작성자에게 가는 안전 알림 종류가 아닙니다: $type" }
             return NotificationDraft(receiverId, type, postId, commentId = commentId, dedupKey = dedupKey)
         }
+
+        /** 보스를 함께 물리쳤다(006 research R11). 보스마다 회원에게 한 번이다. 글이 없다. */
+        fun raidDefeated(
+            receiverId: Long,
+            bossId: Long,
+        ): NotificationDraft =
+            NotificationDraft(
+                receiverId,
+                NotificationType.RAID_BOSS_DEFEATED,
+                postId = null,
+                dedupKey = "RAID:$bossId",
+                raidBossId = bossId,
+            )
 
         private val COMMENT_TYPES =
             setOf(NotificationType.POST_COMMENT, NotificationType.POST_REPLY, NotificationType.COMMENT_REPLY)

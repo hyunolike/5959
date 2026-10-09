@@ -102,6 +102,11 @@ class StreamWriter(
                         .name(PING_EVENT)
                         .data(PING_DATA),
                 )
+            // 주제 소식은 id가 없어 알림의 마지막 번호를 바꾸지 않는다(006 research R6)
+            StreamTask.BROADCAST ->
+                connection.takeMessages().forEach { message ->
+                    connection.emitter.send(SseEmitter.event().name(message.event).data(message.json))
+                }
         }
     }
 

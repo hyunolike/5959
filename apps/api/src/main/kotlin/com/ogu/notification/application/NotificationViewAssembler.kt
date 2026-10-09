@@ -37,10 +37,14 @@ class NotificationViewAssembler(
         val previews =
             notifications
                 .groupBy { it.receiverId }
-                .mapValues { (receiverId, group) -> postApi.previews(group.map { it.postId }, receiverId) }
+                .mapValues { (receiverId, group) -> postApi.previews(group.mapNotNull { it.postId }, receiverId) }
         val members = memberApi.getMembers(notifications.mapNotNull { it.latestActorId })
         return notifications.map { notification ->
-            val post = previews.getValue(notification.receiverId)[notification.postId]?.takeUnless { it.deleted }
+            // 보스 처치 알림(006)은 글이 없다
+            val post =
+                notification.postId
+                    ?.let { previews.getValue(notification.receiverId)[it] }
+                    ?.takeUnless { it.deleted }
             val actor =
                 notification.latestActorId?.let { id ->
                     members[id]?.nickname?.let { nickname -> NotificationActorView(id, nickname) }

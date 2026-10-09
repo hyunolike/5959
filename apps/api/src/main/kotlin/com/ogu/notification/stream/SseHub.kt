@@ -33,10 +33,10 @@ class SseHub(
     @Qualifier(StreamConfig.STREAM_EXECUTOR) executor: Executor,
 ) : NotificationSignalHandler,
     SmartLifecycle {
-    private val connections = StreamConnections(properties.maxConnectionsPerMember)
+    internal val connections = StreamConnections(properties.maxConnectionsPerMember)
 
     // 쓰기 실패. 끊긴 연결이면 컨테이너가 응답을 끝내므로 지우기만 하고, 그 밖에는 닫는다
-    private val writer =
+    internal val writer =
         StreamWriter(notifications, views, executor) { connection, complete ->
             if (complete) close(connection) else connections.discard(connection)
         }
@@ -47,11 +47,12 @@ class SseHub(
 
     /**
      * 연결을 연다. [lastEventId]가 있으면 그 뒤 번호를, 없으면 지금 이 회원의 마지막 번호 뒤부터 보낸다. 보관 기간이 지난 알림은
-     * 다시 보내지 않는다.
+     * 다시 보내지 않는다. [topics]를 고르면 그 주제의 소식도 받는다(006).
      */
     fun open(
         memberId: Long,
         lastEventId: Long?,
+        topics: Set<String> = emptySet(),
     ): SseEmitter {
         // 멈추는 중이면 받지 않고 바로 끝낸다. 웹은 끊김으로 보고 다른 인스턴스에 다시 붙는다
         if (!running) return SseEmitter().apply { complete() }
@@ -59,7 +60,7 @@ class SseHub(
         val current = sequences.current(memberId)
         val startSeq = minOf(lastEventId ?: current, current)
         val emitter = SseEmitter(properties.connectionLifetime.toMillis())
-        val connection = StreamConnection(ids.incrementAndGet(), memberId, emitter, startSeq)
+        val connection = StreamConnection(ids.incrementAndGet(), memberId, emitter, startSeq, topics)
         // 끝난 연결은 닫힌 것으로 표시해, 이미 올라가 있던 하트비트나 따라잡기가 조용히 건너뛰게 한다
         emitter.onCompletion { connections.discard(connection) }
         // 연결 수명(15분)이 지나면 서버가 닫는다. 웹은 새 표와 마지막 번호로 다시 붙는다

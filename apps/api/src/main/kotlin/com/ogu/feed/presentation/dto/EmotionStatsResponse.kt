@@ -8,6 +8,8 @@ data class EmotionStatsResponse(
     val totalMonsters: Int,
     val defeatedMonsters: Int,
     val defeatedTogether: Int,
+    /** 내가 공격에 참여한 레이드 보스 가운데 처치된 수(006 US4-AC5). */
+    val raidBossesDefeated: Int,
     val distribution: List<EmotionShareResponse>,
     val topEmotion: EmotionType?,
     val weekly: List<WeeklyEmotionCountResponse>,

@@ -9,7 +9,7 @@ data class NotificationResponse(
     val notificationId: Long,
     val seq: Long,
     val type: NotificationType,
-    val postId: Long,
+    val postId: Long?,
     val post: NotificationPostResponse?,
     val commentId: Long?,
     val actor: NotificationActorResponse?,
