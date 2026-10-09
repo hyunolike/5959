@@ -341,6 +341,43 @@ id, 연달아 실패한 횟수만 둔다. 알림과 안 읽은 수는 TanStack Q
 
 운영자 화면은 없다. BFF 프록시(`app/api/[...path]/route.ts`)는 `operator/**`를 API로 넘기지 않고 404로 끊는다. 브라우저 세션이 운영자 기능에 닿는 길을 두지 않는다.
 
+## 레이드 (006-raid)
+
+모든 회원이 보스 한 마리를 버튼으로 함께 공격한다. 다른 회원의 공격이 새로고침 없이 HP에 보인다.
+
+### 슬라이스
+
+- `entities/raid`: 타입, 조회(`useRaidQuery`), 합치기(`mergeRaidLive`, `mergeRaidAttack`, `mergeRaidFetch`), 실시간 이벤트를 캐시에 넣기(`applyRaidLive`). 화면은 없다.
+- `features/raid-attack`: 공격 뮤테이션과 버튼. 쓰는 곳이 하나라 steiger 예외에 있다.
+- `features/notification-stream`: 스트림이 함께 받을 주제(`setTopic`, `useStreamTopic`)와 주제 소식 전달(`onTopic`).
+- `widgets/raid-arena`: 레이드 화면의 본문(`RaidArena`)과 홈의 보스 안내(`BossBanner`). 안내는 감정 이름과 그림(`entities/monster`)이 필요한데 엔티티끼리는 가져올 수 없어 위젯에 두었다.
+- `app/raid/page.tsx`: 조립만. `/raid`는 라우트 가드의 보호 경로다.
+
+### HP는 줄어들기만 한다
+
+레이드 캐시(`["raid"]`) 하나를 공격 응답, 실시간 이벤트, 조회 응답이 함께 고친다. 셋이 어떤 순서로 와도 화면의 HP가 뒤로 돌아가지 않게, 넣기 전에 `entities/raid/model/merge.ts`로 합친다.
+
+- 같은 보스면 HP는 작은 쪽, 참여자 수와 내 기여는 큰 쪽을 남긴다.
+- `epoch`가 커졌으면 서버의 값이 기록에서 다시 채워진 것이다(Redis가 다시 떴다). 이때만 받은 값을 그대로 따른다.
+- 한 번 끝난 보스는 늦게 온 소식으로 되살아나지 않는다.
+- 보스가 바뀌었거나 끝났으면 이벤트만으로는 화면을 채울 수 없어 조회를 다시 한다(새 보스의 감정, 끝난 때, 다음 보스가 나오는 때).
+
+### 실시간
+
+- 레이드 소식은 알림 스트림으로 온다. 스트림을 따로 열지 않는다(탭마다 연결 하나).
+- `RaidArena`가 보이는 동안 `useStreamTopic("raid")`가 주제를 더한다. 주제가 바뀌면 스토어가 연결을 닫고 마지막 이벤트 id와 새 주제로 다시 연다. 화면을 떠나면 주제를 뺀다.
+- 연결이 열려 있지 않으면 3초마다 조회한다. 열려 있으면 조회하지 않는다.
+
+### 공격 버튼
+
+- 받아들여지면 응답의 `cooldownMs` 동안 잠근다. 잠금은 편의이고 판단은 서버가 한다. 서버가 429를 주면 그만큼 더 잠근다.
+- 잠긴 동안에도 초점이 남도록 `disabled` 대신 `aria-disabled`로 막는다. 연달아 누르는 버튼이다.
+- 보스가 끝났다는 응답이면 조회를 다시 해 결과 화면으로 넘어가고, 쉬는 중이라는 응답이면 캐시의 `available`을 내린다.
+
+### 보이지 않는 것
+
+순위, 다른 회원의 닉네임과 기여는 응답에도 화면에도 없다. 보이는 것은 참여자 수와 내 기여뿐이다.
+
 ## Recent-practice choices worth calling out
 
 - **Next.js 16 / React 19**, App Router, Turbopack builds.

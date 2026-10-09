@@ -75,12 +75,12 @@ description: "Task list for 006-raid (보스 레이드)"
 
 ## Phase 8: e2e와 부하 (묶음 9)
 
-- [ ] T027 apps/web/e2e-full/raid.spec.ts: `US1-AC1`, `US1-AC2`, `US2-AC1`(브라우저 둘), `US2-AC7`과 `US4-AC1`, `US4-AC3`(HP가 작은 보스를 둘이 처치), `US5-AC7`, `US1-AC7`. 보스의 HP는 테스트가 DB와 Redis에서 맞춘다(`support/raid.ts`)
-- [ ] T028 `infra/k6/raid-attack.js`와 `apps/api/src/test/resources/seed/m5-raid-load.sql`. 유지 실행과 처치 실행을 로컬에서 돌려 `docs/benchmarks/raid-attack.md`에 남긴다(SC-001, SC-002, SC-003)
+- [x] T027 apps/web/e2e-full/raid.spec.ts: `US1-AC1`, `US1-AC2`, `US2-AC1`(브라우저 둘), `US2-AC7`과 `US4-AC1`, `US4-AC3`(HP가 작은 보스를 둘이 처치), `US5-AC7`, `US1-AC7`. 보스의 HP는 테스트가 DB와 Redis에서 맞춘다(`support/raid.ts`) **구현 메모**: DB와 Redis에 닿는 길을 `support/db.ts`로 모았다(`E2E_PSQL`, `E2E_REDIS_CLI`). 보스가 서비스 전체에 하나라 이 파일의 테스트는 차례로 돈다.
+- [x] T028 `infra/k6/raid-attack.js`와 `apps/api/src/test/resources/seed/m5-raid-load.sql`. 유지 실행과 처치 실행을 로컬에서 돌려 `docs/benchmarks/raid-attack.md`에 남긴다(SC-001, SC-002, SC-003) **구현 메모**: SQL 시드는 두지 않았다. k6의 `setup`이 회원을 가입시킨다. `infra/k6/run-raid-load.sh`가 보스를 놓고 끝난 뒤 값을 견준다. 측정하다가 부하 중에 실시간 갱신이 초당 한 번으로 늘어지는 것을 보고 내보내는 일을 전용 스레드로 옮겼다.
 
 ## Phase 9: Polish (묶음 10)
 
-- [ ] T029 [P] 인수 조건 38개가 모두 테스트 이름에 있는지 확인하고 빠진 것을 더한다
-- [ ] T030 [P] 문서: apps/api/AGENTS.md에 `raid` 절, apps/web/docs/ARCHITECTURE.md에 레이드 절, docs/architecture/overview.md 5.1 표와 그래프, 5.4를 구현과 맞춘다. README에 한 단락과 측정값
-- [ ] T031 성능 측정(SC-004, SC-005, SC-008)과 quickstart의 수동 시나리오 22개를 로컬에서 실행하고 결과를 quickstart.md에 남긴다
+- [x] T029 [P] 인수 조건 38개가 모두 테스트 이름에 있는지 확인하고 빠진 것을 더한다
+- [x] T030 [P] 문서: apps/api/AGENTS.md에 `raid` 절, apps/web/docs/ARCHITECTURE.md에 레이드 절, docs/architecture/overview.md 5.1 표와 그래프, 5.4를 구현과 맞춘다. README에 한 단락과 측정값
+- [x] T031 성능 측정(SC-004, SC-005, SC-008)과 quickstart의 수동 시나리오 22개를 로컬에서 실행하고 결과를 quickstart.md에 남긴다 **구현 메모**: 22개를 API로 차례로 실행했다. 화면은 e2e와 단위 테스트가 본다.
 - [ ] T032 일관성을 확인하고 PR을 연다(스펙 링크, 인수 조건 체크리스트, 운영 준비 항목)

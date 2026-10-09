@@ -53,7 +53,7 @@ API에는 `raid` 모듈을 추가한다. 살아 있는 보스의 HP와 회원별
 
 | 원칙 | 이 계획에서 | 판정 |
 |---|---|---|
-| I. 경계는 테스트로 강제한다 | 새 모듈 `raid`는 `shared`, `post`, `emotion`에만 의존한다. `notification → raid`, `feed → raid`가 더해진다. 실시간 전달은 `shared/realtime`의 인터페이스로 뒤집어 `raid → notification`을 만들지 않는다(R6). overview 5.1의 `raid → monster`와 `CommentCreated` 구독은 버튼 공격으로 정하면서 없어져 표를 고친다(R1). `ModularityTests`와 steiger가 확인한다 | 통과 |
+| I. 경계는 테스트로 강제한다 | 새 모듈 `raid`는 `shared`, `post`, `emotion`에만 의존한다(구현에서 컨트롤러가 받는 인증된 회원 타입 때문에 `member`가 더해졌다. `safety`와 같다). `notification → raid`, `feed → raid`가 더해진다. 실시간 전달은 `shared/realtime`의 인터페이스로 뒤집어 `raid → notification`을 만들지 않는다(R6). overview 5.1의 `raid → monster`와 `CommentCreated` 구독은 버튼 공격으로 정하면서 없어져 표를 고친다(R1). `ModularityTests`와 steiger가 확인한다 | 통과 |
 | II. 계약이 코드보다 먼저다 | [contracts/raid.openapi.yaml](contracts/raid.openapi.yaml)에 연산 2개와 기존 스키마의 변경, 스트림의 `raid` 이벤트를 먼저 적었다. 구현 첫 작업에서 루트 계약에 합친다 | 통과 |
 | III. 인수 조건은 곧 테스트다 | 인수 조건 38개에 ID를 붙였다. 가상 사용자 500명의 측정(SC-001~003)은 CI 밖에서 k6로 재고, 같은 불변식을 통합 테스트가 PR마다 확인한다(R15) | 통과 |
 | IV. 사용자 안전이 기능보다 먼저다 | M4가 먼저 출시됐다. 레이드는 순위와 다른 회원의 기여를 보이지 않고(R13), 글자를 입력하는 곳이 없으며, 보스의 감정은 보이는 글만 세고 글의 내용을 싣지 않는다(R9). 쿨다운이 한 회원의 몰아치기를 막는다 | 통과 |

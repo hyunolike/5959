@@ -79,14 +79,13 @@ cd apps/api && ./gradlew test --tests "*RaidConcurrencyTests*" --rerun-tasks
 로컬에서만 돌린다. 운영 VM에는 걸지 않는다.
 
 ```bash
-# 1. 회원 500명 시드(같은 비밀번호)와 HP가 큰 보스
-docker exec -i <postgres 컨테이너> psql -U ogu -d ogu -v ON_ERROR_STOP=1 < apps/api/src/test/resources/seed/m5-raid-load.sql
+# 스크립트가 보스를 놓고, k6가 회원 500명을 가입시켜 60초 동안 1초에 한 번씩 공격하고, 끝나면 값을 견준다
+MODE=sustain infra/k6/run-raid-load.sh     # 보스가 버티는 실행(HP 1,000,000)
+MODE=defeat  infra/k6/run-raid-load.sh     # 보스가 중간에 처치되는 실행(HP 10,000)
 
-# 2. 유지 실행: 가상 사용자 500명이 60초 동안 1초에 한 번씩 공격
-k6 run -e API=http://localhost:8080 -e MODE=sustain infra/k6/raid-attack.js
-
-# 3. 처치 실행: HP를 받아들여질 수보다 작게 잡고 같은 부하
-k6 run -e API=http://localhost:8080 -e MODE=defeat infra/k6/raid-attack.js
+# DB와 Redis를 compose가 아닌 방식으로 띄웠으면 명령을 준다
+PSQL="docker exec -i my-pg psql -U ogu -d ogu" REDIS_CLI="docker exec -i my-redis redis-cli" \
+  API=http://localhost:8080 MODE=sustain infra/k6/run-raid-load.sh
 ```
 
 스크립트가 끝에 확인하는 것:
@@ -110,3 +109,50 @@ k6 run -e API=http://localhost:8080 -e MODE=defeat infra/k6/raid-attack.js
 3. **첫 보스.** 배포 뒤 API가 뜨면 1분 안에 HP 300의 보스가 나타난다. `select * from raid_boss`로 본다.
 4. **값을 바꾸려면** `OGU_RAID_*` 환경 변수를 고치고 다시 띄운다. 다음에 나오는 보스부터 적용된다.
 5. **Redis를 다시 띄우면** 직전 1초 안의 공격이 사라질 수 있다. 보스가 살아 있는 동안에는 되도록 다시 띄우지 않는다.
+
+## 실행 결과 (2026-10-09, 로컬)
+
+환경: macOS(Apple M1 Pro), API는 `e2e` 프로필의 jar를 호스트에서 띄우고 PostgreSQL과 Redis는 컨테이너다.
+
+### 자동 검증
+
+| 대상 | 결과 |
+|---|---|
+| `./gradlew ktlintCheck detekt test` | 970개 통과 |
+| `pnpm --filter web test` | 965개 통과 |
+| `pnpm --filter web test:e2e:full` | 81개 통과(`raid.spec.ts` 4개) |
+| 인수 조건 38개 | 모두 테스트 이름에 있음 |
+
+### 수동 시나리오
+
+22개를 API에 차례로 불러 확인했고 모두 기대 결과와 같았다. 화면의 문구와 동작은 `raid.spec.ts`와 단위 테스트가 본다. 아래는 덧붙일 것이 있는 항목이다.
+
+| # | 덧붙임 |
+|---|---|
+| 6 | 스트림을 `topics=raid`로 열어 두고 다른 회원이 공격했다. 0.37초 뒤에 왔다 |
+| 9 | 스트림 없이 조회로 값이 맞는 것까지 봤다. 화면이 3초마다 다시 받는 것은 단위 테스트가 본다 |
+| 15 | 처치된 보스의 `ended_at`을 어제로 고치자 1분 안에 새 보스가 나왔다 |
+| 16 | 새 보스의 감정이 최근 7일의 보이는 글에서 가장 많은 감정(로컬 DB에서는 불안)과 같았다 |
+| 17 | `spawned_at`을 8일 전으로 고치자 1분 안에 물러났다 |
+| 18, 19 | API의 401까지 봤다. 화면의 이동과 정지 이미지는 e2e와 단위 테스트가 본다 |
+| 20 | API를 죽였다 다시 띄운 뒤 HP 297, 내 기여 2가 그대로였다 |
+| 21 | Redis 컨테이너를 멈춘 동안 공격은 503, 조회는 `available = false`와 마지막 HP, 글쓰기는 201이었다 |
+| 22 | Redis를 다시 띄운 뒤 첫 공격이 마지막 기록(297)에서 이어져 296이 됐고, 앞서 처치한 보스는 `DEFEATED`였다 |
+
+### 부하 테스트와 성능
+
+부하 테스트의 자세한 기록은 [docs/benchmarks/raid-attack.md](../../docs/benchmarks/raid-attack.md)에 있다.
+
+| 측정 | 결과 | 목표 |
+|---|---|---|
+| 가상 사용자 500명, 60초: 받아들여진 공격, 줄어든 HP, 기여의 합(Redis, Postgres) | 모두 24,554 | 서로 같다(SC-001) |
+| 처치 실행: 받아들여진 공격과 보스의 HP, 처치 기록, 알림 | 10,000 = 10,000, 1건, 회원 500명에게 하나씩 | 처치 1건(SC-002) |
+| 같은 부하에서 공격 응답 p95 | 233ms | 300ms 이하(SC-003) |
+| 공격 응답에서 다른 회원의 스트림에 닿기까지(20번) | p50 65ms, p95 103ms, 최대 215ms | 1초 이하(SC-004) |
+| 부하 중 스트림 하나가 초마다 받은 `raid` 이벤트 | 1~2개 | 4개 이하(SC-005) |
+| API를 다시 띄운 뒤 사라진 공격 | 0건 | 0건(SC-006) |
+| Redis가 멈춘 동안 글쓰기, 댓글, 알림 | 모두 성공(`RaidRedisOutageTest`, 시나리오 21) | 100%(SC-007) |
+| 새 회원이 홈에서 첫 공격까지(e2e) | 30초 안 | 30초 이하(SC-008) |
+| 살아 있는 보스가 둘 이상인 순간 | 없음(유일 인덱스, `US5-AC6` 테스트) | 없음(SC-009) |
+
+응답 시간은 API, DB, Redis, k6가 한 기기에서 CPU를 나눠 쓴 조건의 값이다. 운영의 무료 VM에는 부하를 걸지 않았다.

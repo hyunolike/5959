@@ -124,7 +124,7 @@ Redis는 M3(004)에서 들어왔다. 실시간 알림의 인스턴스 간 pub/su
 | `emotion` | 감정 분석 결과 | `EmotionApi` | `EmotionAnalyzed` | `PostCreated` |
 | `monster` | 몬스터 생성, HP, 처치 | `MonsterApi` | `MonsterSpawned`, `MonsterDefeated` | `EmotionAnalyzed`(커밋 후 비동기), `PostLiked`, `CommentCreated`, `CommentLiked`(post 트랜잭션 안에서 동기) |
 | `safety` | 위험 감지(키워드 규칙과 AI 분류), 신고, 재검토 요청, 운영자 처리, 욕설 가리기. 위기 글은 `PostModerationApi.hide`로 숨긴다 | - (HTTP API와 `shared`의 `ContentMask` 구현) | `RiskDetected`, `ContentRestored`, `ReviewResolved` | `PostWritten`, `CommentWritten`, `PostRemoved`, `CommentRemoved`(post 트랜잭션 안에서 동기) |
-| `raid` | 보스 몬스터, 동시 공격 | `RaidApi` | `RaidBossDefeated` | `CommentCreated` |
+| `raid` | 보스 한 마리를 모든 회원이 버튼으로 함께 공격, 보스의 생애, 실시간으로 내보낼 레이드 상태 | `RaidApi`(끝난 보스의 참여자, 회원이 함께 물리친 보스 수) | `RaidBossDefeated` | - |
 | `recommend` | 임베딩 저장, 유사 글 검색 | `RecommendApi` | - | `PostCreated` |
 | `report` | 주간 리포트 배치 | `ReportApi` | `WeeklyReportPublished` | - |
 | `notification` | SSE 알림, 알림 이력, 읽음 | - (HTTP API만) | - | `PostLiked`, `CommentCreated`, `MonsterSpawned`, `MonsterDefeated`(M3), `RiskDetected`, `ContentRestored`, `ReviewResolved`(M4). `WeeklyReportPublished`는 뒤 마일스톤 |
@@ -145,7 +145,8 @@ flowchart BT
     monster --> post
     monster --> emotion
     raid --> post
-    raid --> monster
+    raid --> emotion
+    raid --> member
     report --> emotion
     report --> monster
     report --> ai
@@ -153,18 +154,21 @@ flowchart BT
     notification --> member
     notification --> monster
     notification --> safety
+    notification --> raid
     notification --> report
     feed --> post
     feed --> member
     feed --> monster
     feed --> emotion
     feed --> recommend
+    feed --> raid
 ```
 
 - `post`는 `member` 말고는 어떤 도메인 모듈도 모른다. 글에 몬스터 HP나 감정을 붙여 보여 주는 일은 `feed` 모듈이 각 파사드를 불러 조합한다.
 - `ai`는 도메인 모듈을 모른다.
 - 순환이 생기면 `ModularityTests`가 실패한다.
-- M4까지 만든 모듈은 `shared`, `member`, `post`, `ai`, `emotion`, `monster`, `feed`, `notification`, `safety`다. 나머지는 표에 적힌 마일스톤에서 들어온다.
+- M5까지 만든 모듈은 `shared`, `member`, `post`, `ai`, `emotion`, `monster`, `feed`, `notification`, `safety`, `raid`다. 나머지는 표에 적힌 마일스톤에서 들어온다.
+- `raid`는 `monster`를 모른다. 보스는 글의 몬스터와 다른 것이고, 공격도 댓글이 아니라 레이드 화면의 버튼이다. `raid`와 `notification`은 서로를 부르지 않는다. 실시간 전달은 `shared`의 `TopicBroadcaster` 인터페이스를 `notification`의 스트림이 구현해 잇는다(006 research R1, R6).
 - `post`는 `safety`를 모른다. 숨김 상태와 위험 단계는 `post`의 열이고 `safety`가 `PostModerationApi`로 바꾼다. 욕설 가리기는 `shared`의 `ContentMask` 인터페이스를 `safety`가 구현해, 본문을 내보내는 `post`, `feed`가 `safety`에 의존하지 않는다(005 research R1, R6).
 - 감정 통계는 `emotion`이 아니라 `feed`가 계산한다. 숫자의 원천이 `monsters`와 `monster_hp_log`라서 `emotion`이 `monster`를 알면 `monster → emotion`과 순환이 생긴다(004 research R1, R12).
 - 공격 반영, 몬스터 생성, 글 삭제가 함께 쓰는 글 단위 잠금(`PostLock`)은 두 모듈이 같은 키를 써야 해서 `shared/lock`에 둔다.
@@ -220,12 +224,18 @@ M2 스펙(specs/003-core-loop)에서 정한 값이다.
 - HP는 0에서 멈춘다. 0이 되는 순간 몬스터는 처치됨이 되고 `MonsterDefeated`가 한 번 나간다. 처치된 뒤의 공격도 감소량을 그대로, HP는 0에서 0으로 기록해 "처치 뒤 응원"을 셀 수 있게 한다.
 - 몬스터가 생기기 전의 공격은 생성 때 `retroactive = true`로 기록한다. 감정 통계와 주간 리포트가 이 이력을 쓴다.
 
-### 5.4 레이드 동시성 (M5)
+### 5.4 레이드 (M5)
 
-- 보스 몬스터 HP는 Redis에 두고, 공격은 Lua 스크립트로 원자적으로 감소시킨다. 0 아래로 내려가지 않게 하고, 처치 이벤트가 정확히 한 번만 나가게 한다.
-- Postgres에는 공격 로그를 비동기로 쌓아 두고, 주기적으로 HP 스냅샷을 동기화한다. Redis가 재시작되면 스냅샷과 로그로 복구한다.
-- HP 변화는 SSE로 전달하되, 초당 최대 4회로 묶어서 보낸다.
-- k6로 동시 공격 부하 테스트를 하고 결과를 `docs/benchmarks/`에 남긴다.
+설계는 [specs/006-raid](../../specs/006-raid/plan.md)에, 측정은 [docs/benchmarks/raid-attack.md](../benchmarks/raid-attack.md)에 있다.
+
+- 보스는 언제나 한 마리다. 최근 7일의 보이는 글에서 가장 많은 감정으로 만들고, 처치되거나 7일이 지나 물러나면 다음 날 0시(한국 시간)에 새로 나온다. 살아 있는 보스가 하나라는 것은 Postgres의 부분 유일 인덱스가 지킨다.
+- 공격은 레이드 화면의 버튼이다. 한 번에 HP 1, 회원마다 1초에 한 번이다. 글에 남긴 공감과 댓글은 보스에 영향을 주지 않는다. 순위와 다른 회원의 기여는 어디에도 보이지 않는다.
+- 살아 있는 보스의 HP, 회원별 기여, 쿨다운은 Redis에 두고 공격 한 번을 Lua 스크립트 한 번으로 처리한다. 스크립트 안에서 쿨다운 확인, HP 감소, 기여 증가, 처치 판정이 함께 일어나므로 몰려도 HP 갱신이 빠지지 않고 0 아래로 내려가지 않으며 처치로 바꾸는 공격은 하나뿐이다.
+- Postgres에는 1초마다 뒤따라 적는다. 공격 하나하나가 아니라 회원별 기여와 HP의 절댓값을 한쪽으로만 움직이게 적으므로(`greatest`, `least`) 두 번 적거나 인스턴스 여럿이 함께 적어도 결과가 같다.
+- 처치는 Postgres에 적은 뒤에 응답하고 알린다. 보스 행의 조건부 UPDATE가 처치 이벤트를 한 번만 낸다.
+- Redis는 디스크에 저장하지 않는다. 내려가 있으면 공격만 503으로 거절하고 나머지 기능은 그대로다. 다시 뜨면 Postgres의 기록에서 채워 이어 가고, 잃을 수 있는 것은 직전 1초 안의 공격이다. 처치된 보스는 되살아나지 않는다.
+- HP 변화는 M3의 알림 스트림에 `raid` 주제를 고른 연결에만, 초당 최대 4회로 묶어 보낸다. 웹은 받은 값 가운데 작은 HP를 남겨 순서가 뒤바뀌어도 HP가 뒤로 돌아가지 않는다.
+- 가상 사용자 500명의 동시 공격을 k6로 쟀다. 유실 0건, 처치 1건, 공격 응답 p95 233ms(로컬 한 기기)다.
 
 ### 5.5 추천 (M6)
 
@@ -410,7 +420,7 @@ Spring Modulith `Documenter`가 만든 모듈 다이어그램은 CI 산출물로
 | M2 | AI 장애 주입 중 글 작성 성공률 | 100%, 복구 후 밀린 이벤트 전부 재처리 |
 | M3 | SSE 재연결 뒤 놓친 알림 | 0건 |
 | M4 | AI 장애 중 위험 감지 | 키워드 규칙으로 계속 동작 |
-| M5 | k6 가상 사용자 500명 동시 공격 | HP 갱신 유실 0건, p95 응답 시간 기록 |
+| M5 | k6 가상 사용자 500명 동시 공격 | HP 갱신 유실 0건, p95 응답 시간 기록. 결과: 유실 0건, p95 233ms([기록](../benchmarks/raid-attack.md)) |
 | M6 | 추천 쿼리 | p95 응답 시간 기록 (글 1만 건 기준) |
 | M7 | 주간 배치 | 일부 사용자가 실패해도 나머지는 완료 |
 
