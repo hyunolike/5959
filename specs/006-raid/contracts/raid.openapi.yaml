@@ -1,0 +1,201 @@
+openapi: 3.1.0
+info:
+  title: 오구오구 API - 보스 레이드 (006 추가분)
+  version: 0.6.0
+  description: |
+    006-raid에서 추가하고 바꾸는 경로와 스키마다. 구현 첫 작업에서 저장소 루트의
+    contracts/openapi.yaml(누적 계약)에 합친다(003 research R13). 이 파일은 리뷰와 검증용으로
+    단독으로도 유효하게 두며, ErrorEnvelope, EmotionType은 루트 계약의 정의와 같다.
+
+    모든 경로는 인증이 필요하고, 온보딩 전 회원에게는 403 ONBOARDING_REQUIRED를 돌려준다.
+
+    레이드의 어떤 응답에도 다른 회원의 ID, 닉네임, 기여, 순위를 싣지 않는다(research R13).
+
+    기존 계약의 변경(루트 계약에 합칠 때 반영한다):
+    - EmotionStats: raidBossesDefeated(integer)를 더한다. 내가 공격에 참여한 보스 가운데 처치된 것의 수다.
+    - NotificationType: RAID_BOSS_DEFEATED를 더한다.
+    - Notification: post가 null일 수 있다(RAID_BOSS_DEFEATED). 이 종류는 누르면 레이드 화면으로 간다.
+    - GET /api/v1/notifications/stream: 쿼리 topics(쉼표로 나눈 주제, 지금은 raid 하나)를 더한다.
+      topics에 raid가 있는 연결은 `raid` 이벤트(data는 RaidLive)를 받는다. 이 이벤트에는 id가 없다.
+      연결 직후 지금 값을 한 번 받고, 그 뒤로는 바뀔 때마다 1초에 네 번을 넘지 않게 받는다(research R6, R7).
+servers:
+  - url: http://localhost:8080
+tags:
+  - name: raid
+    description: 보스 레이드
+security:
+  - bearer: []
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string }
+        message: { type: string }
+    ErrorEnvelope:
+      type: object
+      required: [success, data, error]
+      properties:
+        success: { type: boolean, const: false }
+        data: { type: 'null' }
+        error: { $ref: '#/components/schemas/ErrorResponse' }
+    EmotionType:
+      type: string
+      enum: [ANXIETY, LETHARGY, LONELINESS, SELF_DEPRECATION, IRRITATION]
+    RaidBossStatus:
+      type: string
+      description: ALIVE 살아 있음, DEFEATED 처치됨, RETREATED 7일 동안 처치되지 않아 물러남
+      enum: [ALIVE, DEFEATED, RETREATED]
+    RaidBoss:
+      type: object
+      required: [bossId, emotion, maxHp, hp, status, participantCount, spawnedAt, endedAt]
+      properties:
+        bossId: { type: integer, format: int64 }
+        emotion: { $ref: '#/components/schemas/EmotionType' }
+        maxHp: { type: integer }
+        hp: { type: integer, minimum: 0 }
+        status: { $ref: '#/components/schemas/RaidBossStatus' }
+        participantCount: { type: integer, description: 한 번이라도 공격한 회원 수 }
+        spawnedAt: { type: string, format: date-time }
+        endedAt: { type: [string, 'null'], format: date-time }
+    RaidState:
+      type: object
+      description: |
+        레이드 화면이 그리는 전부. boss는 살아 있는 보스이거나, 없으면 가장 최근에 끝난 보스다.
+        보스가 한 번도 없었으면 null이다.
+      required: [boss, myDamage, nextBossAt, available, epoch]
+      properties:
+        boss:
+          oneOf:
+            - $ref: '#/components/schemas/RaidBoss'
+            - type: 'null'
+        myDamage: { type: integer, description: 이 보스에게 내가 준 피해. 공격한 적 없으면 0 }
+        nextBossAt:
+          type: [string, 'null']
+          format: date-time
+          description: 살아 있는 보스가 없을 때 다음 보스가 나오는 때. 살아 있으면 null
+        available:
+          type: boolean
+          description: false면 지금 공격을 받을 수 없다. 값은 마지막으로 기록된 것이다(research R4)
+        epoch:
+          type: integer
+          description: 값이 기록에서 다시 채워질 때마다 오른다. 커지면 화면의 HP를 받은 값으로 바꾼다(research R8)
+    RaidLive:
+      type: object
+      description: 실시간 `raid` 이벤트의 data. 모든 연결에 같은 내용이 가므로 내 기여는 없다
+      required: [bossId, hp, maxHp, status, participantCount, available, epoch]
+      properties:
+        bossId: { type: [integer, 'null'], format: int64 }
+        hp: { type: integer }
+        maxHp: { type: integer }
+        status: { $ref: '#/components/schemas/RaidBossStatus' }
+        participantCount: { type: integer }
+        available: { type: boolean }
+        epoch: { type: integer }
+    RaidAttackRequest:
+      type: object
+      required: [bossId]
+      properties:
+        bossId:
+          type: integer
+          format: int64
+          description: 화면이 보고 있는 보스. 그 사이 보스가 바뀌었으면 409다
+    RaidAttackResult:
+      type: object
+      required: [bossId, hp, maxHp, status, participantCount, myDamage, defeated, cooldownMs]
+      properties:
+        bossId: { type: integer, format: int64 }
+        hp: { type: integer, minimum: 0 }
+        maxHp: { type: integer }
+        status: { $ref: '#/components/schemas/RaidBossStatus' }
+        participantCount: { type: integer }
+        myDamage: { type: integer }
+        defeated: { type: boolean, description: 이 공격으로 처치됐다 }
+        cooldownMs: { type: integer, description: 다음 공격까지 기다릴 시간 }
+  responses:
+    Unauthorized:
+      description: 인증 없음 또는 세션 만료, 무효 (UNAUTHORIZED, SESSION_EXPIRED)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Forbidden:
+      description: 온보딩 전 (ONBOARDING_REQUIRED)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+paths:
+  /api/v1/raid:
+    get:
+      tags: [raid]
+      operationId: getRaid
+      summary: 지금의 레이드 (US1-AC1, US4-AC3, US5-AC3). 살아 있는 보스가 없으면 가장 최근에 끝난 보스와 다음 보스가 나오는 때
+      responses:
+        '200':
+          description: 레이드 상태. HP를 들고 있는 장치가 내려가 있으면 available이 false이고 값은 마지막 기록이다
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, error]
+                properties:
+                  success: { type: boolean, const: true }
+                  data: { $ref: '#/components/schemas/RaidState' }
+                  error: { type: 'null' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/raid/attacks:
+    post:
+      tags: [raid]
+      operationId: attackRaidBoss
+      summary: 보스 공격 (US1-AC2~AC6). HP를 1 줄인다. 회원마다 1초에 한 번
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RaidAttackRequest' }
+      responses:
+        '200':
+          description: 받아들임
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, error]
+                properties:
+                  success: { type: boolean, const: true }
+                  data: { $ref: '#/components/schemas/RaidAttackResult' }
+                  error: { type: 'null' }
+        '400':
+          description: 입력 검증 실패 (INVALID_REQUEST)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: 보스가 처치됐거나 물러났거나, 요청의 보스가 지금 보스가 아님 (RAID_BOSS_ENDED)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '429':
+          description: 쿨다운 안 (RAID_COOLDOWN). HP와 기여는 그대로다
+          headers:
+            Retry-After:
+              description: 다시 시도할 수 있을 때까지의 초(올림)
+              schema: { type: integer }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '503':
+          description: HP를 들고 있는 장치가 내려가 있어 공격을 받을 수 없음 (RAID_UNAVAILABLE). 공격은 반영되지 않았다
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
