@@ -119,7 +119,7 @@ PSQL="docker exec -i my-pg psql -U ogu -d ogu" REDIS_CLI="docker exec -i my-redi
 | 대상 | 결과 |
 |---|---|
 | `./gradlew ktlintCheck detekt test` | 970개 통과 |
-| `pnpm --filter web test` | 965개 통과 |
+| `pnpm --filter web test` | 968개 통과 |
 | `pnpm --filter web test:e2e:full` | 81개 통과(`raid.spec.ts` 4개) |
 | 인수 조건 38개 | 모두 테스트 이름에 있음 |
 
