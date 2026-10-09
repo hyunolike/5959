@@ -45,4 +45,19 @@ export default defineConfig([
       "fsd/insignificant-slice": "off",
     },
   },
+  // 005-safety: features/report-content and features/request-review are user
+  // actions on a post or comment, like features/like above. Only
+  // widgets/post-detail composes them today, but folding a mutation and its
+  // dialog into the widget would break the one-action-per-feature layout.
+  // (Display-only pieces with a single consumer were folded into the widget
+  // instead: the support notice and its query live in widgets/post-detail.)
+  {
+    files: [
+      "./src/features/report-content/**",
+      "./src/features/request-review/**",
+    ],
+    rules: {
+      "fsd/insignificant-slice": "off",
+    },
+  },
 ]);

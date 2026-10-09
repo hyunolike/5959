@@ -16,7 +16,7 @@ export {
   useLikedPostsQuery,
 } from "./api/use-liked-posts-query";
 export { fetchMyPostsPage, useMyPostsQuery } from "./api/use-my-posts-query";
-export { PostCard } from "./ui/post-card";
+export { HIDDEN_FROM_OTHERS_LABEL, PostCard } from "./ui/post-card";
 export { COMMENT_TONE_LABELS, DELETED_POST_NOTICE } from "./model/types";
 export type {
   CommentTone,

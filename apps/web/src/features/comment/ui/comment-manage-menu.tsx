@@ -137,7 +137,7 @@ function EditCommentForm({
     formState: { errors, isSubmitting },
   } = useForm<WriteCommentFormInput, unknown, WriteCommentFormValues>({
     resolver: zodResolver(writeCommentSchema),
-    defaultValues: { content: comment.content },
+    defaultValues: { content: comment.content ?? "" },
   });
   const content = useWatch({ control, name: "content" }) ?? "";
   const length = countGraphemes(content.trim());

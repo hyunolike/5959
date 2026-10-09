@@ -4,6 +4,7 @@ import com.ogu.post.MyCommentPage
 import com.ogu.post.PostActivityApi
 import com.ogu.post.PostPage
 import com.ogu.post.PostRef
+import com.ogu.post.domain.Visibility
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -36,7 +37,7 @@ class PostActivityQueryService(
 
     override fun liveRefsByAuthor(authorId: Long): List<PostRef> =
         jdbcClient
-            .sql("select id, created_at from posts where author_id = :authorId and deleted_at is null")
+            .sql("select id, created_at from posts where author_id = :authorId and ${Visibility.NOT_DELETED}")
             .param("authorId", authorId)
             .query { rs, _ -> PostRef(rs.getLong("id"), rs.getTimestamp("created_at").toInstant()) }
             .list()
@@ -44,7 +45,7 @@ class PostActivityQueryService(
     override fun liveIds(postIds: Collection<Long>): Set<Long> {
         if (postIds.isEmpty()) return emptySet()
         return jdbcClient
-            .sql("select id from posts where id in (:postIds) and deleted_at is null")
+            .sql("select id from posts where id in (:postIds) and ${Visibility.VISIBLE}")
             .param("postIds", postIds.toSet())
             .query(Long::class.java)
             .list()

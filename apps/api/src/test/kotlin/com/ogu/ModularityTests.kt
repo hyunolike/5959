@@ -77,7 +77,10 @@ class ModularityTests {
                 "monster" to setOf("post", "emotion"),
                 "feed" to setOf("post", "monster", "emotion", "member"),
                 // 004: 행동한 회원 닉네임과 연결 표 때문에 member를 더한다. 몬스터 생성은 MonsterSpawned로 받아 emotion을 모른다
-                "notification" to setOf("post", "monster", "member"),
+                // 005: 위험 감지 결과를 safety의 이벤트로 받는다
+                "notification" to setOf("post", "monster", "member", "safety"),
+                // 005: post의 이벤트를 받아 판정하고 PostModerationApi로 숨긴다. post는 safety를 모른다
+                "safety" to setOf("post", "ai", "member"),
             )
     }
 }

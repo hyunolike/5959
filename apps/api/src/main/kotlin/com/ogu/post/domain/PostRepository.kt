@@ -9,16 +9,41 @@ import org.springframework.data.repository.query.Param
 import java.time.Instant
 
 interface PostRepository : JpaRepository<Post, Long> {
+    /** 지우지 않은 글. 숨긴 글도 돌려준다. 감정 분석, 몬스터처럼 숨김과 상관없이 글을 다루는 쪽이 쓴다. */
     fun findByIdAndDeletedAtIsNull(id: Long): Post?
+
+    /** 다른 회원에게 보이는 글: 지우지 않았고 숨기지 않았다(005 research R5). */
+    @Query("select p from Post p where p.id = :id and p.deletedAt is null and p.hiddenAt is null")
+    fun findVisible(
+        @Param("id") id: Long,
+    ): Post?
+
+    /** [viewerId]에게 보이는 글: 지우지 않았고, 숨기지 않았거나 자기 글이다. */
+    @Query(
+        """
+        select p from Post p
+        where p.id = :id and p.deletedAt is null and (p.hiddenAt is null or p.authorId = :viewerId)
+        """,
+    )
+    fun findOwnedOrVisible(
+        @Param("id") id: Long,
+        @Param("viewerId") viewerId: Long,
+    ): Post?
 
     /**
      * 수정할 글을 행 잠금과 함께 읽는다. 겹친 삭제가 먼저 잠갔으면 그 커밋을 기다렸다가 다시 평가해 null이 된다(지운 글 수정은
-     * 404). 수정이 먼저 잡으면 삭제가 기다린다.
+     * 404). 수정이 먼저 잡으면 삭제가 기다린다. 남이 쓴 숨긴 글은 없는 것으로 본다([findOwnedOrVisible]과 같은 조건).
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select p from Post p where p.id = :id and p.deletedAt is null")
-    fun findLiveForUpdate(
+    @Query(
+        """
+        select p from Post p
+        where p.id = :id and p.deletedAt is null and (p.hiddenAt is null or p.authorId = :viewerId)
+        """,
+    )
+    fun findOwnedOrVisibleForUpdate(
         @Param("id") id: Long,
+        @Param("viewerId") viewerId: Long,
     ): Post?
 
     /** 작성 제한(research R9)용. 지운 글도 센다(FR-018). */

@@ -93,4 +93,21 @@ describe("notificationMessage", () => {
       expect(notificationMessage(notification(type))).not.toContain("미리보기");
     }
   });
+
+  it.each([
+    [
+      "SUPPORT_NOTICE",
+      "마음이 많이 힘드신가요? 도움받을 수 있는 곳을 안내해 드려요",
+    ],
+    ["CONTENT_RESTORED", "가려졌던 글이 다시 보여요"],
+    ["REVIEW_KEPT", "요청하신 글을 다시 살펴봤어요"],
+  ] as const)(
+    "US1-AC6 %s 문구에는 단계 이름과 글 내용이 없다",
+    (type, expected) => {
+      const message = notificationMessage(notification(type, { actor: null }));
+
+      expect(message).toBe(expected);
+      expect(message).not.toMatch(/위기|우려|CRISIS|CONCERN|본문/);
+    },
+  );
 });

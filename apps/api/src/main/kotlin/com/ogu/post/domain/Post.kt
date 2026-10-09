@@ -82,8 +82,25 @@ class Post private constructor(
     var updatedAt: Instant = createdAt
         protected set
 
+    /** 다른 회원에게 보이지 않게 된 시각(005 research R5). 작성자에게는 계속 보인다. safety 모듈이 파사드로만 바꾼다. */
+    @Column(name = "hidden_at", insertable = false, updatable = false)
+    var hiddenAt: Instant? = null
+        protected set
+
+    /** 가장 최근 위험 판정의 단계(`NONE`, `CONCERN`, `CRISIS`). 작성자에게만 응답에 실린다(005 research R7). */
+    @Column(name = "risk_level", nullable = false, insertable = false, updatable = false, length = 10)
+    var riskLevel: String = RISK_NONE
+        protected set
+
+    @Column(name = "review_requested_at", insertable = false, updatable = false)
+    var reviewRequestedAt: Instant? = null
+        protected set
+
     val isDeleted: Boolean
         get() = deletedAt != null
+
+    val isHidden: Boolean
+        get() = hiddenAt != null
 
     /**
      * 본문이나 댓글 말투를 고친다(US4-AC1, FR-013). null인 쪽은 그대로 둔다. 본문 규칙은 작성과 같다([normalizeContent]).
@@ -101,6 +118,7 @@ class Post private constructor(
 
     companion object {
         const val CONTENT_MAX_LENGTH = 500
+        const val RISK_NONE = "NONE"
         const val CONTENT_MAX_CODE_POINTS = 5000
 
         fun write(

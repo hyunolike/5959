@@ -1,7 +1,10 @@
 package com.ogu.post.presentation.dto
 
+import com.fasterxml.jackson.annotation.JsonInclude
 import com.ogu.member.CareerYear
 import com.ogu.member.JobRole
+import com.ogu.post.ContentSafety
+import com.ogu.shared.text.ContentMask
 import java.time.Instant
 
 /** 댓글 작성 요청. 필드가 빠지면 null로 받아 서비스 앞에서 400으로 거절한다. [parentId]가 있으면 답글이다. */
@@ -15,11 +18,17 @@ data class CommentUpdateRequest(
     val content: String? = null,
 )
 
-/** 계약의 `Comment`. 답글의 [replies]는 항상 비어 있다. */
+/**
+ * 계약의 `Comment`. 답글의 [replies]는 항상 비어 있다. 숨긴 댓글을 다른 회원이 보면 [hidden]이 true이고 [author]와
+ * [content]가 null이다. [safety]는 내 댓글일 때만 실리고 다른 회원의 응답에는 필드가 없다(005 research R5, R7).
+ */
 data class CommentResponse(
     val commentId: Long,
-    val author: CommentAuthorResponse,
-    val content: String,
+    val author: CommentAuthorResponse?,
+    val content: String?,
+    val hidden: Boolean,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL)
+    val safety: ContentSafety?,
     val likeCount: Int,
     val likedByMe: Boolean,
     val mine: Boolean,
@@ -34,6 +43,16 @@ data class CommentAuthorResponse(
     val jobRole: JobRole?,
     val careerYear: CareerYear?,
 )
+
+/**
+ * 다른 회원의 댓글과 답글에서 욕설을 가린다(005 US5-AC1). 내 댓글은 원문 그대로다(US5-AC5). 숨겨서 내용이 없는 댓글은
+ * 그대로 둔다.
+ */
+fun CommentResponse.masked(mask: ContentMask): CommentResponse =
+    copy(
+        content = if (mine) content else content?.let(mask::mask),
+        replies = replies.map { it.masked(mask) },
+    )
 
 /** 계약의 `CommentPage`. 원 댓글(오래된 순)과 각 답글. 다음 쪽이 없으면 [nextCursor]는 null이다. */
 data class CommentPageResponse(

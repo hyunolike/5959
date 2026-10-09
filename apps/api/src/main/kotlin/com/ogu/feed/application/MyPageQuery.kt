@@ -18,7 +18,7 @@ class MyPageQuery(
         memberId: Long,
         cursor: String?,
         size: Int,
-    ): FeedPageResponse = feedAssembler.assemble(postActivityApi.pageByAuthor(memberId, cursor, size))
+    ): FeedPageResponse = feedAssembler.assemble(postActivityApi.pageByAuthor(memberId, cursor, size), memberId)
 
     fun comments(
         memberId: Long,
@@ -30,5 +30,5 @@ class MyPageQuery(
         memberId: Long,
         cursor: String?,
         size: Int,
-    ): FeedPageResponse = feedAssembler.assemble(postActivityApi.pageLikedBy(memberId, cursor, size))
+    ): FeedPageResponse = feedAssembler.assemble(postActivityApi.pageLikedBy(memberId, cursor, size), memberId)
 }

@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useId, useLayoutEffect, useRef } from "react";
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  type ReactNode,
+} from "react";
 
 import { Button } from "./button";
 
@@ -23,6 +29,7 @@ export function ConfirmDialog({
   pending = false,
   error,
   finalFocus,
+  children,
   onConfirm,
   onCancel,
 }: {
@@ -36,6 +43,8 @@ export function ConfirmDialog({
   error?: string | null;
   /** 닫힐 때 초점을 옮길 요소. 없거나 null을 돌려주면 연 요소(아직 화면에 있으면)로 돌려준다. */
   finalFocus?: () => HTMLElement | null;
+  /** 설명 아래에 둘 입력(고를 것, 적을 것). 대화상자 안의 초점 순환에 함께 든다. */
+  children?: ReactNode;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -136,6 +145,7 @@ export function ConfirmDialog({
             </p>
           ) : null}
         </div>
+        {children}
         {error ? (
           <p role="alert" className="text-sm text-red-600">
             {error}

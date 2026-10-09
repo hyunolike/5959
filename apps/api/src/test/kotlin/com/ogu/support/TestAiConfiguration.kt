@@ -1,9 +1,12 @@
 package com.ogu.support
 
+import com.ogu.ai.ClassifiedRisk
 import com.ogu.ai.EmotionAnalyzer
 import com.ogu.ai.EmotionClassification
+import com.ogu.ai.RiskClassifier
 import com.ogu.ai.infrastructure.EmotionResponseParser
 import com.ogu.ai.infrastructure.FakeEmotionAnalyzer
+import com.ogu.ai.infrastructure.FakeRiskClassifier
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Primary
@@ -18,6 +21,41 @@ class TestAiConfiguration {
     @Bean
     @Primary
     fun scriptedEmotionAnalyzer(): ScriptedEmotionAnalyzer = ScriptedEmotionAnalyzer(FakeEmotionAnalyzer())
+
+    /** 위험 분류도 가짜를 쓴다(005 research R3). 본문의 `[위기]`, `[우려]`, `[위험분류실패:N]` 표지로 결과를 정한다. */
+    @Bean
+    @Primary
+    fun scriptedRiskClassifier(): ScriptedRiskClassifier = ScriptedRiskClassifier(FakeRiskClassifier())
+}
+
+/**
+ * [FakeRiskClassifier]에 테스트용 손잡이를 단 분류기. 대상마다 호출 횟수를 세고, [beforeAnswer]로 답하기 직전에 일을
+ * 끼워 넣는다(분류하는 사이에 글이 고쳐지는 경우 흉내).
+ */
+class ScriptedRiskClassifier(
+    private val delegate: RiskClassifier,
+) : RiskClassifier {
+    private val calls = ConcurrentHashMap<String, AtomicInteger>()
+    private val beforeAnswer = ConcurrentHashMap<String, () -> Unit>()
+
+    override fun classify(
+        key: String,
+        content: String,
+    ): ClassifiedRisk {
+        calls.computeIfAbsent(key) { AtomicInteger() }.incrementAndGet()
+        beforeAnswer.remove(key)?.invoke()
+        return delegate.classify(key, content)
+    }
+
+    fun callsFor(key: String): Int = calls[key]?.get() ?: 0
+
+    /** 이 대상을 다음에 분류할 때 답하기 직전에 [action]을 한 번 실행한다. */
+    fun beforeAnswer(
+        key: String,
+        action: () -> Unit,
+    ) {
+        beforeAnswer[key] = action
+    }
 }
 
 /**

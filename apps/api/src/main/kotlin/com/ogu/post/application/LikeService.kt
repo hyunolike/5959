@@ -78,11 +78,15 @@ class LikeService(
         return LikeResultResponse(likeCount, likedByMe = false)
     }
 
-    private fun livePost(postId: Long): Post =
-        postRepository.findByIdAndDeletedAtIsNull(postId) ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
+    private fun livePost(postId: Long): Post {
+        val post = postRepository.findVisible(postId)
+        return post ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
+    }
 
-    private fun liveComment(commentId: Long): Comment =
-        commentRepository.findLive(commentId) ?: throw BusinessException(ErrorCode.COMMENT_NOT_FOUND)
+    private fun liveComment(commentId: Long): Comment {
+        val comment = commentRepository.findVisible(commentId)
+        return comment ?: throw BusinessException(ErrorCode.COMMENT_NOT_FOUND)
+    }
 
     private fun now() = clock.instant().truncatedTo(ChronoUnit.MICROS)
 }

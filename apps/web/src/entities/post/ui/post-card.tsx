@@ -8,6 +8,9 @@ import type { FeedItem } from "../model/types";
 
 type MonsterView = NonNullable<FeedItem["monster"]>;
 
+/** 숨겨진 내 글과 댓글에 붙는 표시(005 US1-AC3). 내 글 목록과 글 상세가 같은 말을 쓴다. */
+export const HIDDEN_FROM_OTHERS_LABEL = "다른 회원에게 보이지 않아요";
+
 /**
  * 피드의 글 하나(US2-AC1). 직군과 경력 라벨, 몬스터 그림은 다른 엔티티(member, monster)의
  * 것이라 위젯이 넘긴다. 몬스터가 아직 없으면(`monster == null`) 분석 중이다.
@@ -54,6 +57,11 @@ export function PostCard({
             </span>
           ) : null}
           <span>댓글 {item.commentCount}</span>
+          {item.hidden ? (
+            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-800">
+              {HIDDEN_FROM_OTHERS_LABEL}
+            </span>
+          ) : null}
           {showCreatedAt ? (
             <time
               dateTime={item.createdAt}

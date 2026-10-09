@@ -301,6 +301,46 @@ id, 연달아 실패한 횟수만 둔다. 알림과 안 읽은 수는 TanStack Q
 
 탭에 항목이 없으면 안내와 "글쓰기"(`/write`), "피드 보기"(`/home`) 링크를 보인다(US3-AC4).
 
+## 안전 (005-safety)
+
+위기나 우려로 판정된 글과 댓글의 작성자에게 도움받을 곳을 안내하고, 다른 회원의 글과 댓글을 신고할 수 있게 한다.
+판정, 숨김, 욕설 가리기는 모두 API가 한다. 웹은 응답에 실린 것만 그린다.
+
+### 슬라이스
+
+- `widgets/post-detail`: 도움 안내(`ui/safety-notice.tsx`)와 도움 리소스 조회(`api/use-support-resources-query.ts`). 계획은 `entities/safety`와 `widgets/safety-banner`였지만 쓰는 곳이 글 상세 하나라 steiger의 `insignificant-slice`에 걸려 위젯 안에 두었다.
+- `features/report-content`: 신고 버튼과 대화상자. 사유 넷과, 기타일 때의 설명(200자).
+- `features/request-review`: 숨겨진 내 글과 댓글의 재검토 요청 버튼.
+- 두 feature는 쓰는 곳이 `widgets/post-detail` 하나라 `steiger.config.ts`에 `insignificant-slice` 예외를 두었다. 행동 하나에 feature 하나라는 배치를 지키려는 것이다.
+
+### 도움 안내
+
+- 응답에 `safety`가 있을 때만 그린다. `safety`는 작성자에게만 온다(글 상세, 댓글 목록의 내 댓글).
+- 위기이거나 숨겨졌으면 닫을 수 없고, 우려면 접을 수 있다. 숨겨졌으면 다른 회원에게 보이지 않는다는 설명과 재검토 요청 버튼을 함께 보인다.
+- 단계 이름("위기", "우려")은 화면에 쓰지 않는다. 판정을 통보하는 자리가 아니라 도움받을 곳을 알리는 자리다.
+- 전화번호는 `tel:` 링크다. 도움 리소스 목록을 못 받아도 109 하나는 보인다.
+- 댓글은 화면에 보이는 내 댓글의 `safety` 가운데 가장 무거운 것으로 안내 하나를 그린다. 재검토 요청은 숨겨진 내 댓글마다 그 댓글의 행동 줄에 둔다.
+
+### 숨긴 글과 댓글
+
+- 숨긴 글은 다른 회원에게 삭제된 글과 똑같이 보인다(404). 작성자의 목록에서는 `hidden`으로 "다른 회원에게 보이지 않아요" 표시를 단다.
+- 숨긴 댓글은 다른 회원에게 작성자와 내용이 `null`로 온다. 자리만 남기고 답글은 그대로 그린다.
+
+### 신고와 재검토 요청
+
+- 신고 버튼은 다른 회원의 글과 댓글에만 둔다. 접수와 "이미 신고했어요"는 버튼 자리에, 한도 초과와 그 밖의 실패는 대화상자 안에 알린다. 서버는 내가 신고했는지를 알려 주지 않으므로 새로고침하면 버튼이 다시 보인다.
+- 재검토 요청은 대상마다 한 번이다. 요청하면 버튼 자리가 안내로 바뀌고, 서버의 `safety.reviewRequested`가 그 상태를 이어 준다.
+- 오류 수집 도구로 보내기 전에 `content`, `detail` 키를 지운다(`shared/lib/scrub-event.ts`). 글 본문과 신고 설명이 나가지 않는다.
+
+### 알림
+
+- 종류 셋이 늘었다: `SUPPORT_NOTICE`(도움 안내), `CONTENT_RESTORED`(숨김 해제), `REVIEW_KEPT`(재검토 결과 유지). 문구는 `entities/notification`의 `notificationMessage`에 있다.
+- 도움 안내 토스트는 8초 보인다. 다른 토스트는 그대로다.
+
+### 운영자
+
+운영자 화면은 없다. BFF 프록시(`app/api/[...path]/route.ts`)는 `operator/**`를 API로 넘기지 않고 404로 끊는다. 브라우저 세션이 운영자 기능에 닿는 길을 두지 않는다.
+
 ## Recent-practice choices worth calling out
 
 - **Next.js 16 / React 19**, App Router, Turbopack builds.

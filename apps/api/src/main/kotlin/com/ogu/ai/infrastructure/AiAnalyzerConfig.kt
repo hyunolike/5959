@@ -1,6 +1,7 @@
 package com.ogu.ai.infrastructure
 
 import com.ogu.ai.EmotionAnalyzer
+import com.ogu.ai.RiskClassifier
 import com.ogu.shared.config.AiProperties
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry
 import io.github.resilience4j.timelimiter.TimeLimiterRegistry
@@ -36,6 +37,29 @@ class SpringAiAnalyzerConfig {
             timeLimiterRegistry.timeLimiter(SpringAiEmotionAnalyzer.RESILIENCE_NAME),
         )
     }
+
+    /**
+     * 실제 위험 분류기(005 research R3). 키가 비어 있으면 외부로 호출하지 않고 바로 실패하는 분류기를 쓴다. 그때는
+     * 키워드 규칙의 판정이 최종이 된다.
+     */
+    @Bean
+    fun springAiRiskClassifier(
+        properties: AiProperties,
+        circuitBreakerRegistry: CircuitBreakerRegistry,
+        timeLimiterRegistry: TimeLimiterRegistry,
+    ): RiskClassifier {
+        if (properties.apiKey.isBlank()) {
+            LoggerFactory
+                .getLogger(javaClass)
+                .warn("ogu.ai.api-key(AI_API_KEY)가 비어 있어 AI 위험 분류를 끕니다. 키워드 규칙만으로 판정합니다.")
+            return FakeRiskClassifier.Disabled()
+        }
+        return SpringAiRiskClassifier.create(
+            properties,
+            circuitBreakerRegistry.circuitBreaker(SpringAiRiskClassifier.RESILIENCE_NAME),
+            timeLimiterRegistry.timeLimiter(SpringAiRiskClassifier.RESILIENCE_NAME),
+        )
+    }
 }
 
 /** e2e 프로필은 결정적인 가짜 분석기를 쓴다(research R3). 테스트는 테스트 설정에서 따로 등록한다. */
@@ -44,4 +68,7 @@ class SpringAiAnalyzerConfig {
 class FakeEmotionAnalyzerConfig {
     @Bean
     fun fakeEmotionAnalyzer(): EmotionAnalyzer = FakeEmotionAnalyzer()
+
+    @Bean
+    fun fakeRiskClassifier(): RiskClassifier = FakeRiskClassifier()
 }

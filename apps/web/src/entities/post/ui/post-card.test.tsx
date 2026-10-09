@@ -16,6 +16,7 @@ function item(overrides: Partial<FeedItem> = {}): FeedItem {
     contentPreview: "내일 발표가 걱정돼요",
     analysisStatus: "ANALYZED",
     monster: { emotion: "ANXIETY", hp: 7, maxHp: 10, status: "ALIVE" },
+    hidden: false,
     likeCount: 3,
     likedByMe: true,
     commentCount: 2,

@@ -248,6 +248,53 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   400 `INVALID_REQUEST`다. 변환기가 없는 `ConversionNotSupportedException`은
   서버 문제라 500으로 남긴다.
 
+## Safety (`safety` module)
+
+005-safety에서 생겼다. 허용 의존은 `shared`, `post`, `ai`, `member`이고 `notification`이 `safety`의 이벤트를 받는다.
+`post`는 `safety`를 모른다.
+
+| 모듈 | 공개 타입 | 발행 이벤트 | 받는 이벤트 |
+|---|---|---|---|
+| `safety` | `RiskLevel` | `RiskDetected`, `ContentRestored`, `ReviewResolved`(모두 커밋 후 `notification`이 받는다) | `PostWritten`, `CommentWritten`, `PostRemoved`, `CommentRemoved`(post 트랜잭션 안에서 동기) |
+| `post`(더한 것) | `PostModerationApi`(`contentOf`, `contentsOf`, `markRisk`, `markReviewRequested`, `hide`, `unhide`, `scan`), `PostApi.findVisible`, `findForViewer`, `ContentType`, `ContentSafety`, `ModerationTarget` | `PostWritten`, `CommentWritten`(쓰거나 고칠 때), `PostRemoved`, `CommentRemoved` | - |
+| `ai`(더한 것) | `RiskClassifier`, `ClassifiedRisk`, `RiskClassificationFailed` | - | - |
+| `shared`(더한 것) | `text/ContentMask`(구현은 `safety`의 `ProfanityMask`) | - | - |
+
+- **숨김 상태는 `post`의 열이다.** `posts`와 `comments`의 `hidden_at`, `hidden_reason`, `risk_level`,
+  `review_requested_at`은 `PostModerationApi`로만 바꾼다. 엔티티에서는 읽기 전용이다
+  (`insertable = false, updatable = false`). 다른 모듈이 숨김 여부를 `safety`에 묻지 않아도 된다.
+- **조회 조건은 둘이다.** 다른 회원에게 보이는 것은 `Visibility.visible`(지우지 않았고 숨기지 않았다),
+  작성자에게 보이는 것은 `Visibility.ownedOrVisible`(지우지 않았고, 숨겼어도 내 것이면 보인다)이다.
+  글이나 댓글을 읽는 쿼리를 새로 쓸 때 `deleted_at is null`만 쓰면 숨긴 글이 샌다.
+  `HiddenContentMatrixTests`가 경로마다 확인한다. `PostApi.find`는 지우지 않은 글(숨긴 것 포함)이라
+  다른 회원에게 보일 것을 정할 때는 `findVisible`이나 `findForViewer`를 쓴다.
+- **키워드 판정은 저장과 같은 트랜잭션에서 돈다.** `ScreeningListener`가 `PostWritten`, `CommentWritten`을
+  동기 `@EventListener`로 받아 판정하고 위기면 그 자리에서 숨긴다. 저장과 숨김이 함께 커밋되므로 목록에 있는
+  위기 표현이 든 글은 한 번도 공개되지 않는다(SC-001). 여기서는 메모리 계산과 짧은 쓰기만 한다.
+  글과 댓글을 고치는 쪽은 이벤트를 내기 전에 flush한다(`PostModerationService`가 JdbcClient라서).
+- **AI 분류는 커밋 뒤에 따로 돈다.** `RiskClassificationRunner`가 트랜잭션 밖에서 `RiskClassifier`를 부르고,
+  실패하면 `risk_assessment.next_attempt_at`으로 다시 시도한다(30초부터 두 배씩, 최대 5분, 24시간 뒤 `FALLBACK`).
+  감정 분석의 `AnalysisStore`, `AnalysisRetryScheduler`와 같은 구조다. 판정은 키워드와 AI 가운데 높은 쪽이고,
+  올리기만 한다. 위기 표현을 지워 고쳐도 숨김은 풀리지 않는다. 고친 뒤 늦게 온 분류 결과는 `content_version`으로 버린다.
+- **낱말 목록은 `TermCache`가 메모리에 올려 둔다.** 30초마다 행 수와 가장 늦은 `updated_at`만 보고 바뀌었을 때만
+  다시 읽는다. 읽지 못하면 마지막 목록을, 한 번도 읽지 못했으면 `SafetyTerms.BUILT_IN`을 쓴다.
+  낱말은 `TextNormalizer.termOf`로 다듬은 꼴로 저장한다. 시드를 고치면 `KeywordRuleEvalTest`가 평가 묶음
+  (`src/test/resources/safety/eval-set.tsv`)으로 다시 잰다.
+- **욕설은 읽을 때 가린다.** 원문은 바꾸지 않는다. `feed`(피드와 내 활동의 미리보기, 글 상세),
+  `post`(댓글 목록, 내 댓글의 글 앞부분, 알림에 붙는 `previews`)가 `ContentMask.maskFor(viewerId, authorId, text)`로
+  가린다. 작성자에게는 원문이다. 미리보기는 가린 뒤 자른다. 본문을 내보내는 응답을 새로 만들면 여기를 거쳐야 한다.
+  감정 분석과 위험 감지는 원문으로 한다.
+- **운영자.** `member.role`이 `OPERATOR`인 회원이다. 지정은 SQL로 한다(005 quickstart). `/api/v1/operator/**`는
+  `OperatorInterceptor`가 입력을 읽기 전에 막아, 운영자가 아니면 언제나 404다. 역할은 요청마다 DB에서 읽고
+  JWT에 넣지 않는다. 웹의 BFF는 이 경로를 넘기지 않는다. 상태를 바꾼 처리만 `moderation_action`에 남는다.
+- **한 번 도는 작업과 정리.** `SafetyBackfill`이 기동 뒤 따로 도는 스레드에서 안전 기능 전에 쓰인 글과 댓글을
+  키워드 규칙으로 훑는다(`safety_backfill` 표지로 이어서 하고 끝나면 다시 돌지 않는다. `ogu.safety.backfill.enabled`).
+  `SafetyPurgeJob`이 매일 04:30(한국 시간)에 1년 지난 기록을 지운다. 열린 신고와 재검토 요청은 남긴다.
+- **민감 정보.** 이벤트, 로그, `risk_assessment`에 본문과 걸린 표현을 싣지 않는다(`SensitiveLogTests`).
+  운영자 조회 응답만 원문을 싣는다. 알림 문구에는 단계와 글 내용이 없다.
+- **테스트 표지.** 가짜 분류기(`FakeRiskClassifier`)는 본문의 `[위기]`, `[우려]`, `[위험분류실패]`,
+  `[위험분류실패:N]`을 읽는다. 키워드에 걸리는 문장은 `SafetyFixture`의 상수를 쓴다.
+
 ## Gotchas
 
 - Kotlin can't express package-level annotations: module metadata such as

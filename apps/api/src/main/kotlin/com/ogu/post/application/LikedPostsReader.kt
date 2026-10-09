@@ -1,13 +1,14 @@
 package com.ogu.post.application
 
 import com.ogu.post.PostPage
+import com.ogu.post.domain.Visibility
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Component
 import java.sql.Timestamp
 
 /**
  * 마이페이지 "공감한 글" 한 쪽(004 research R12). `post_likes`를 `(created_at DESC, post_id DESC)` 키셋으로 읽고
- * 인덱스 post_likes_member_created_idx를 탄다. 지운 글은 빼고, 취소한 공감은 행이 없어 빠진다. 다시 공감하면 새 행이라
+ * 인덱스 post_likes_member_created_idx를 탄다. 지웠거나 숨긴 글은 빼고, 취소한 공감은 행이 없어 빠진다. 다시 공감하면 새 행이라
  * 다시 공감한 시각 자리에 온다. 모두 내가 공감한 글이므로 공감 여부는 언제나 참이다.
  */
 @Component
@@ -28,7 +29,7 @@ class LikedPostsReader(
                     """
                     select $POST_COLUMNS, true as liked_by_me, l.created_at as liked_at
                     from post_likes l
-                        join posts p on p.id = l.post_id and p.deleted_at is null
+                        join posts p on p.id = l.post_id and ${Visibility.visible("p")}
                     where l.member_id = :memberId
                       $after
                     order by l.created_at desc, l.post_id desc

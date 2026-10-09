@@ -5,6 +5,7 @@ import com.ogu.member.MemberInfo
 import com.ogu.member.StreamTicket
 import com.ogu.member.domain.Member
 import com.ogu.member.domain.MemberRepository
+import com.ogu.member.domain.MemberRole
 import com.ogu.shared.error.BusinessException
 import com.ogu.shared.error.ErrorCode
 import org.springframework.data.repository.findByIdOrNull
@@ -28,6 +29,8 @@ class MemberQueryService(
         if (ids.isEmpty()) return emptyMap()
         return memberRepository.findAllById(ids.toSet()).associate { it.id to it.toInfo() }
     }
+
+    override fun isOperator(memberId: Long): Boolean = memberRepository.existsByIdAndRole(memberId, MemberRole.OPERATOR)
 
     // 연결 표는 쓰기라 읽기 전용 트랜잭션 밖에서 한 문장씩 자동 커밋한다
     @Transactional(propagation = Propagation.NOT_SUPPORTED)

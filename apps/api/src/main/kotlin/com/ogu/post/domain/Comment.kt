@@ -64,8 +64,24 @@ class Comment private constructor(
     var updatedAt: Instant = createdAt
         protected set
 
+    /** 다른 회원에게 보이지 않게 된 시각(005 research R5). 자리는 남고 내용과 작성자만 가린다. */
+    @Column(name = "hidden_at", insertable = false, updatable = false)
+    var hiddenAt: Instant? = null
+        protected set
+
+    @Column(name = "risk_level", nullable = false, insertable = false, updatable = false, length = 10)
+    var riskLevel: String = "NONE"
+        protected set
+
+    @Column(name = "review_requested_at", insertable = false, updatable = false)
+    var reviewRequestedAt: Instant? = null
+        protected set
+
     val isReply: Boolean
         get() = parentId != null
+
+    val isHidden: Boolean
+        get() = hiddenAt != null
 
     /** 본문을 고친다(US4-AC3, FR-014). 규칙은 작성과 같다([normalizeContent]). */
     fun edit(

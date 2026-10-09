@@ -72,7 +72,7 @@ class CommentLikeRepository(
         jdbcClient
             .sql(
                 "update comments set like_count = like_count + :delta " +
-                    "where id = :commentId and deleted_at is null returning like_count",
+                    "where id = :commentId and ${Visibility.VISIBLE} returning like_count",
             ).param("delta", delta)
             .param("commentId", commentId)
             .query(Int::class.java)

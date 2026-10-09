@@ -13,7 +13,7 @@ import java.sql.ResultSet
 /** 피드와 마이페이지의 글 목록이 함께 읽는 `posts p`의 열. [toPostPageItem]과 짝이다. */
 internal const val POST_COLUMNS =
     "p.id, p.author_id, p.author_job_role, p.author_career_year, p.content, p.comment_tone, " +
-        "p.like_count, p.comment_count, p.created_at"
+        "p.like_count, p.comment_count, p.created_at, p.hidden_at, p.risk_level, p.review_requested_at"
 
 /** 알림과 내 댓글에 붙이는 글 미리보기 글자 수(사람이 보는 글자 단위). */
 internal const val POST_PREVIEW_LENGTH = 50
@@ -32,6 +32,9 @@ internal fun ResultSet.toPostPageItem(): PostPageItem =
                 likeCount = getInt("like_count"),
                 commentCount = getInt("comment_count"),
                 createdAt = getTimestamp("created_at").toInstant(),
+                hidden = getTimestamp("hidden_at") != null,
+                riskLevel = getString("risk_level"),
+                reviewRequested = getTimestamp("review_requested_at") != null,
             ),
         likedByMe = getBoolean("liked_by_me"),
     )

@@ -9,4 +9,13 @@ enum class NotificationType {
     MONSTER_SPAWNED,
     MONSTER_DEFEATED,
     MONSTER_DEFEATED_TOGETHER,
+
+    /** 005: 위험 판정 뒤 작성자에게 가는 도움 안내. 문구에 단계나 글 내용을 싣지 않는다. */
+    SUPPORT_NOTICE,
+
+    /** 005: 운영자가 숨김을 풀었다. */
+    CONTENT_RESTORED,
+
+    /** 005: 재검토 결과 숨김을 유지한다. */
+    REVIEW_KEPT,
 }

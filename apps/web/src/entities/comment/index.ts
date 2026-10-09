@@ -7,7 +7,7 @@ export {
   fetchMyCommentsPage,
   useMyCommentsQuery,
 } from "./api/use-my-comments-query";
-export { CommentItem } from "./ui/comment-item";
+export { CommentItem, HIDDEN_COMMENT_LABEL } from "./ui/comment-item";
 export { MyCommentItem } from "./ui/my-comment-item";
 export type { CommentActionContext } from "./ui/comment-item";
 export type {

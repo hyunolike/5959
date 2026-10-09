@@ -33,5 +33,12 @@ export function notificationMessage(
       return "내 몬스터가 처치됐어요";
     case "MONSTER_DEFEATED_TOGETHER":
       return "함께 공격한 몬스터가 처치됐어요";
+    // 005: 단계 이름이나 글 내용을 싣지 않는다(FR-007).
+    case "SUPPORT_NOTICE":
+      return "마음이 많이 힘드신가요? 도움받을 수 있는 곳을 안내해 드려요";
+    case "CONTENT_RESTORED":
+      return "가려졌던 글이 다시 보여요";
+    case "REVIEW_KEPT":
+      return "요청하신 글을 다시 살펴봤어요";
   }
 }

@@ -38,5 +38,11 @@ enum class ErrorCode(
 
     // 004-notification-mypage 계약(contracts/openapi.yaml)의 오류 코드
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "알림을 찾을 수 없습니다."),
+
+    // 005 위험 감지와 안전장치
+    ALREADY_REPORTED(HttpStatus.CONFLICT, "이미 신고했습니다."),
+    CANNOT_REPORT_OWN_CONTENT(HttpStatus.FORBIDDEN, "내 글이나 댓글은 신고할 수 없습니다."),
+    REPORT_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "신고를 너무 자주 보내고 있습니다. 잠시 후 다시 시도해 주세요."),
+    REVIEW_ALREADY_REQUESTED(HttpStatus.CONFLICT, "이미 재검토를 요청했습니다."),
     STREAM_TICKET_INVALID(HttpStatus.UNAUTHORIZED, "실시간 연결 표가 유효하지 않습니다. 다시 연결해 주세요."),
 }

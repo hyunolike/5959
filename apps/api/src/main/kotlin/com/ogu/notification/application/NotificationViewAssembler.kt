@@ -33,10 +33,14 @@ class NotificationViewAssembler(
 ) {
     fun assemble(notifications: List<Notification>): List<NotificationView> {
         if (notifications.isEmpty()) return emptyList()
-        val previews = postApi.previews(notifications.map { it.postId })
+        // 미리보기는 받는 사람 기준이다. 숨긴 글은 그 글의 작성자에게만 그대로 보인다(005 research R8).
+        val previews =
+            notifications
+                .groupBy { it.receiverId }
+                .mapValues { (receiverId, group) -> postApi.previews(group.map { it.postId }, receiverId) }
         val members = memberApi.getMembers(notifications.mapNotNull { it.latestActorId })
         return notifications.map { notification ->
-            val post = previews[notification.postId]?.takeUnless { it.deleted }
+            val post = previews.getValue(notification.receiverId)[notification.postId]?.takeUnless { it.deleted }
             val actor =
                 notification.latestActorId?.let { id ->
                     members[id]?.nickname?.let { nickname -> NotificationActorView(id, nickname) }

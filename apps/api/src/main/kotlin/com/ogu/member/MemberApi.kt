@@ -11,6 +11,12 @@ interface MemberApi {
     /** 여러 회원을 쿼리 한 번으로 읽는다. 없는 ID는 결과에서 빠진다. */
     fun getMembers(ids: Collection<Long>): Map<Long, MemberInfo>
 
+    /**
+     * 운영자인가(005 research R10). 요청마다 DB에서 읽는다. 토큰에 역할을 넣지 않으므로 권한을 거두면 바로 반영된다.
+     * 없는 회원이면 false다.
+     */
+    fun isOperator(memberId: Long): Boolean
+
     /** 실시간 알림 스트림용 일회용 연결 표를 발급한다(004 research R3). 30초 안에 한 번만 쓸 수 있다. */
     fun issueStreamTicket(
         memberId: Long,

@@ -28,8 +28,11 @@ const UNSAFE_SEGMENT_PATTERN = /[/\\?#]/;
  * 응답의 accessToken/refreshToken을 쿠키로 바꾸고 본문에서 지우는 역할).
  * 이 캐치올이 그대로 넘기면 토큰이 응답 본문에 그대로 실려 브라우저
  * 스크립트에 노출된다(FR-012, bff-routes.md).
+ *
+ * `operator/**`(005 research R10)는 어떤 라우트도 다루지 않는다. 운영자는 API를 직접 부른다.
+ * 브라우저 세션이 운영자 기능에 닿는 길을 두지 않으려고 여기서 404로 끊는다.
  */
-const DENIED_TOP_LEVEL_SEGMENTS = new Set(["auth"]);
+const DENIED_TOP_LEVEL_SEGMENTS = new Set(["auth", "operator"]);
 /**
  * `notifications/stream-tickets`도 전용 라우트(`/api/notifications/stream-ticket`)에서만
  * 다룬다. 티켓은 그 라우트가 `streamUrl`과 함께 내보낸다(004 research R3).
@@ -94,7 +97,8 @@ function notFoundResponse(): NextResponse {
  * 바꾸는 요청에는 origin-guard를 적용한다. 세그먼트를 검증하고
  * `encodeURIComponent`로 다시 인코딩한 뒤 경로 접두사를 한 번 더 확인해
  * 경로 조작(`..`, 인코딩된 `/`)을 막고, `auth/**`, `members/me/onboarding`,
- * `notifications/stream-tickets`는 전용 라우트만 다루므로 404로 막는다.
+ * `notifications/stream-tickets`는 전용 라우트만 다루므로, `operator/**`는
+ * 브라우저에서 부를 일이 없으므로 404로 막는다.
  *
  * 세션 갱신(US4-AC1)은 `callWithSessionRefresh`(shared/server/session-refresh.ts)
  * 규칙을 따른다: `ogu_at`이 없고 `ogu_rt`만 있으면 먼저 refresh하고, API가
