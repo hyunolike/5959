@@ -81,6 +81,9 @@ class ModularityTests {
                 "notification" to setOf("post", "monster", "member", "safety"),
                 // 005: post의 이벤트를 받아 판정하고 PostModerationApi로 숨긴다. post는 safety를 모른다
                 "safety" to setOf("post", "ai", "member"),
+                // 006: 보스의 감정을 post와 emotion으로 정한다. member는 컨트롤러가 받는 인증된 회원 타입 때문이다.
+                // monster와는 서로 모른다(글의 몬스터와 보스는 다른 것이다)
+                "raid" to setOf("post", "emotion", "member"),
             )
     }
 }

@@ -154,6 +154,19 @@ ogu:
     backfill:
       enabled: true
       batch-size: 1000
+  # 006 레이드(data-model.md "설정"). 바꾸면 다음에 나오는 보스부터 적용된다
+  raid:
+    cooldown: 1s
+    hp:
+      per-participant: 100
+      min: 300
+      max: 5000
+    emotion-window: 7d
+    retreat-after: 7d
+    flush-interval: 1s
+    broadcast-interval: 250ms
+    lifecycle-interval: 1m
+    zone: Asia/Seoul
   # 004 실시간 알림(research R2~R5, R10)
   notification:
     heartbeat: 25s

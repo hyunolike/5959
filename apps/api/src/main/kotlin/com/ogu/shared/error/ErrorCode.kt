@@ -44,5 +44,8 @@ enum class ErrorCode(
     CANNOT_REPORT_OWN_CONTENT(HttpStatus.FORBIDDEN, "내 글이나 댓글은 신고할 수 없습니다."),
     REPORT_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "신고를 너무 자주 보내고 있습니다. 잠시 후 다시 시도해 주세요."),
     REVIEW_ALREADY_REQUESTED(HttpStatus.CONFLICT, "이미 재검토를 요청했습니다."),
+    RAID_COOLDOWN(HttpStatus.TOO_MANY_REQUESTS, "조금 뒤에 다시 공격해 주세요."),
+    RAID_BOSS_ENDED(HttpStatus.CONFLICT, "이 보스와의 레이드는 끝났습니다."),
+    RAID_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "레이드가 잠시 쉬고 있습니다. 잠시 후 다시 시도해 주세요."),
     STREAM_TICKET_INVALID(HttpStatus.UNAUTHORIZED, "실시간 연결 표가 유효하지 않습니다. 다시 연결해 주세요."),
 }
