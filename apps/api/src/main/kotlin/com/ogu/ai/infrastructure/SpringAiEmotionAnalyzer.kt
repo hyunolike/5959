@@ -140,6 +140,7 @@ class SpringAiEmotionAnalyzer(
                     .maxTokens(properties.maxTokens)
                     .timeout(properties.timeout)
                     .maxRetries(0)
+                    .withReasoningEffort(properties.reasoningEffort)
                     .build()
             val chatModel = OpenAiChatModel.builder().options(options).build()
             return SpringAiEmotionAnalyzer(

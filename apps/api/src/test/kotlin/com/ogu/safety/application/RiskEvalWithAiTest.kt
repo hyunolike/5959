@@ -50,10 +50,11 @@ class RiskEvalWithAiTest {
         val wronglyHidden = safe.filter { it.final == RiskLevel.CRISIS }
         val unanswered = rows.count { it.ai == null }
 
+        val used = properties()
         val lines =
             listOf(
-                "model ${properties().model}, max tokens ${maxTokens()}",
-                "sentences ${rows.size}, AI unanswered $unanswered",
+                "model ${used.model}, max tokens ${used.riskMaxTokens}, effort ${used.reasoningEffort}",
+                "set ${env("AI_EVAL_SET") ?: "eval-set"}, sentences ${rows.size}, AI unanswered $unanswered",
                 "crisis judged CRISIS ${percent(crisis.size - missed.size, crisis.size)}",
                 "crisis judged NONE ${percent(crisis.count { it.final == RiskLevel.NONE }, crisis.size)}",
                 "concern judged CONCERN+ ${percent(concern.count { it.final != RiskLevel.NONE }, concern.size)}",
@@ -109,17 +110,21 @@ class RiskEvalWithAiTest {
     ): String = "$count/$total (${count * PERCENT_INT / total}%)"
 
     private fun newClassifier(): SpringAiRiskClassifier =
-        SpringAiRiskClassifier.create(properties(), neverOpen(), TimeLimiter.of(TIME_LIMIT), maxTokens())
+        SpringAiRiskClassifier.create(properties(), neverOpen(), TimeLimiter.of(TIME_LIMIT))
 
-    /** 추론 과정을 먼저 내는 모델은 답까지 토큰이 더 든다. 평가할 때만 늘려 본다. */
-    private fun maxTokens(): Int = System.getenv("AI_RISK_MAX_TOKENS")?.toIntOrNull() ?: DEFAULT_MAX_TOKENS
-
-    private fun properties() =
-        AiProperties(
+    /** 모델, 토큰 상한, 추론 정도를 환경 변수로 바꿔 가며 잴 수 있다. 주지 않으면 서비스의 기본값이다. */
+    private fun properties(): AiProperties {
+        val defaults = AiProperties()
+        return defaults.copy(
             apiKey = System.getenv("AI_API_KEY").orEmpty(),
-            model = System.getenv("AI_MODEL")?.takeIf { it.isNotBlank() } ?: AiProperties().model,
+            model = env("AI_MODEL") ?: defaults.model,
+            riskMaxTokens = env("AI_RISK_MAX_TOKENS")?.toIntOrNull() ?: defaults.riskMaxTokens,
+            reasoningEffort = System.getenv("AI_REASONING_EFFORT") ?: defaults.reasoningEffort,
             timeout = Duration.ofSeconds(60),
         )
+    }
+
+    private fun env(name: String): String? = System.getenv(name)?.takeIf { it.isNotBlank() }
 
     /** 평가에서는 연달아 실패해도 계속 불러야 한다. 열리지 않는 서킷 브레이커를 쓴다. */
     private fun neverOpen(): CircuitBreaker =
@@ -133,7 +138,7 @@ class RiskEvalWithAiTest {
         )
 
     private fun evalSet(): List<Pair<RiskLevel, String>> =
-        resource("/safety/eval-set.tsv")
+        resource(env("AI_EVAL_SET") ?: "/safety/eval-set.tsv")
             .lines()
             .filter { it.isNotBlank() && !it.startsWith("#") }
             .map { line ->
@@ -172,7 +177,6 @@ class RiskEvalWithAiTest {
         val TIME_LIMIT: TimeLimiterConfig = TimeLimiterConfig.custom().timeoutDuration(Duration.ofSeconds(60)).build()
         const val ATTEMPTS = 4
         const val PACE_MILLIS = 500L
-        const val DEFAULT_MAX_TOKENS = 30
         const val RETRY_WAIT_MILLIS = 5_000L
         const val SLIDING_WINDOW = 100_000
         const val MAX_UNANSWERED = 4
