@@ -3,6 +3,7 @@ package com.ogu.report
 import com.ogu.TestcontainersConfiguration
 import com.ogu.report.application.WeekRange
 import com.ogu.report.application.WeeklyReportJob
+import com.ogu.support.FutureClockSchedulers
 import com.ogu.support.MutableClock
 import com.ogu.support.ReportFaults
 import com.ogu.support.ReportFixture
@@ -24,7 +25,16 @@ import java.time.Duration
  * 몇 번을 돌려도 회원마다 리포트와 알림이 하나다. 회원과 글은 SQL로 바로 넣는다. 한 차례의 한도는 운영과 같은
  * 500이다(다른 리포트 테스트는 4로 줄여 쓴다).
  */
-@SpringBootTest(properties = ["ogu.report.scheduler-enabled=false"])
+@SpringBootTest(
+    properties = [
+        FutureClockSchedulers.REPORT,
+        FutureClockSchedulers.RAID,
+        FutureClockSchedulers.EMOTION,
+        FutureClockSchedulers.SAFETY,
+        FutureClockSchedulers.RECOMMEND,
+        FutureClockSchedulers.RECOMMEND_BACKFILL,
+    ],
+)
 @Import(TestcontainersConfiguration::class, ReportTestConfiguration::class)
 class WeeklyReportScaleTests {
     @Autowired

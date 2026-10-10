@@ -23,7 +23,22 @@ class RaidFixture(
     ): Long {
         val bossId = replaceBoss(maxHp, emotion)
         redis.delete(RaidRedis.BOSS_KEY)
+        dropStaleBoss(bossId)
         return bossId
+    }
+
+    /**
+     * 방금 물러나게 한 보스가 뒤늦게 Redis에 올라오면 지운다. 컨텍스트가 막 떴을 때 보스의 생애 주기 작업이 첫 실행에서
+     * 보스를 만들고, 우리가 그 보스를 물러나게 한 뒤에야 Redis에 올리는 수가 있다. 올리기는 ID가 더 큰 보스만 받아
+     * 주므로 그 뒤로는 우리 보스가 올라온다. 지우지 않으면 물러난 보스가 Redis에 남아 실시간 소식이 그 보스만 싣는다
+     * (CI에서 RaidStreamTests가 이 때문에 실패했다).
+     */
+    private fun dropStaleBoss(bossId: Long) {
+        repeat(SETTLE_CHECKS) {
+            val loaded = redis.opsForHash<String, String>().get(RaidRedis.BOSS_KEY, "id")?.toLongOrNull()
+            if (loaded != null && loaded < bossId) redis.delete(RaidRedis.BOSS_KEY)
+            Thread.sleep(SETTLE_GAP_MILLIS)
+        }
     }
 
     /**
@@ -99,6 +114,8 @@ class RaidFixture(
     companion object {
         private val MEMBER_IDS = AtomicLong(System.currentTimeMillis())
         private const val REPLACE_ATTEMPTS = 5
+        const val SETTLE_CHECKS = 8
+        const val SETTLE_GAP_MILLIS = 25L
         private const val RETIRE_ALIVE =
             "update raid_boss set status = 'RETREATED', ended_at = now() where status = 'ALIVE'"
         private const val INSERT_ALIVE =
