@@ -65,4 +65,4 @@ description: "Task list for 008-weekly-report (주간 리포트)"
 - [x] T026 [P] 인수 조건 25개가 모두 테스트 이름에 있는지 확인한다
 - [x] T027 [P] 문서: apps/api/AGENTS.md, apps/web/docs/ARCHITECTURE.md, overview 5.1과 5.7(ShedLock을 쓰지 않는 까닭), README
 - [x] T028 quickstart의 수동 시나리오 17개를 로컬에서 실행한다 **구현 메모**: 17개 모두 통과.
-- [ ] T029 PR을 연다
+- [x] T029 PR을 연다 (#27)
