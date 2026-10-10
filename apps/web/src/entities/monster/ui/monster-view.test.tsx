@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { MonsterView } from "../model/types";
@@ -236,9 +236,12 @@ describe("MonsterDisplay 3D와 정지 이미지 고르기", () => {
     const MonsterDisplay = await loadDisplay();
     render(<MonsterDisplay monster={ANXIETY_FULL} variant="detail" />);
 
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    const sprite = screen.getByRole("img", { name: "불안 몬스터, 멀쩡함" });
-    expect(sprite.tagName).toBe("IMG");
+    // 실패가 드러나는 때는 기기마다 다르다. 정해 둔 시간만 기다리면 느린 CI에서 아직 3D 자리(div)가 보인다
+    await waitFor(() =>
+      expect(
+        screen.getByRole("img", { name: "불안 몬스터, 멀쩡함" }).tagName,
+      ).toBe("IMG"),
+    );
     expect(screen.queryByTestId("monster-3d")).not.toBeInTheDocument();
     expect(
       screen.getByRole("progressbar", { name: "몬스터 HP" }),
