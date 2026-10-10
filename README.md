@@ -1,6 +1,6 @@
 <div align="center">
 
-<a href="docs/assets/intro/brag.mp4"><img src="docs/assets/intro/brag.jpg" alt="오구오구 소개 영상" width="100%" /></a>
+<img src="docs/assets/intro/brag.jpg" alt="오구오구" width="100%" />
 
 # 🐾 오구오구 (5959)
 
@@ -18,13 +18,17 @@ AI가 감정을 읽어 몬스터로 만들고, 함께 응원하며 그 몬스터
 
 ## 🎬 소개 영상
 
-위 그림을 누르면 21초짜리 소개 영상([`docs/assets/intro/brag.mp4`](docs/assets/intro/brag.mp4))이 열립니다. 고민 한 줄이 불안 몬스터가 되고, 공감과 댓글이 HP를 깎고, 모두가 보스를 함께 물리치고, 월요일에 편지가 오기까지를 담았습니다.
+https://github.com/user-attachments/assets/66e48d11-21bb-498c-986b-3680f20c1de7
+
+고민 한 줄이 불안 몬스터가 되고, 공감과 댓글이 HP를 깎고, 모두가 보스를 함께 물리치고, 월요일에 편지가 오기까지를 21초에 담았습니다.
 
 <br>
 
 ## 🐾 이 저장소는
 
-오구오구는 DDD 13기 WEBBB 팀이 만든 감정 공유 커뮤니티입니다. 저는 그 팀의 백엔드 개발자였고, 이 저장소에서 서비스를 처음부터 다시 만들었습니다. 원본의 기획만 이어받고 구조와 코드는 새로 썼습니다.
+<a href="https://github.com/DDD-Community"><img src="docs/assets/intro/ddd.png" alt="DDD 커뮤니티 로고" width="96" align="right" /></a>
+
+오구오구는 개발자와 디자이너가 함께 사이드 프로젝트를 만드는 동아리 [DDD](https://github.com/DDD-Community)의 13기 WEBBB 팀이 만든 감정 공유 커뮤니티입니다. 저는 그 팀의 백엔드 개발자였고, 이 저장소에서 서비스를 처음부터 다시 만들었습니다. 원본의 기획만 이어받고 구조와 코드는 새로 썼습니다.
 
 > 👤 **[장현호](https://github.com/hyunolike)** (DDD 13기 WEBBB 팀 백엔드)
 
@@ -192,4 +196,6 @@ cd apps/api && SPRING_PROFILES_ACTIVE=local,e2e ./gradlew bootRun
 
 ## 👥 원본 프로젝트
 
-오구오구의 기획과 원본 서비스는 DDD 13기 WEBBB 팀이 함께 만들었습니다. 팀원과 원본의 구조는 [원본 서비스 문서](docs/original-service.md#-원본-프로젝트-멤버)에 있습니다.
+<a href="https://github.com/DDD-Community"><img src="docs/assets/intro/ddd.png" alt="DDD 커뮤니티 로고" width="64" /></a>
+
+오구오구의 기획과 원본 서비스는 [DDD](https://github.com/DDD-Community) 13기 WEBBB 팀이 함께 만들었습니다. 팀원과 원본의 구조는 [원본 서비스 문서](docs/original-service.md#-원본-프로젝트-멤버)에 있습니다.

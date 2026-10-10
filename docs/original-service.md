@@ -1,5 +1,7 @@
 # 원본 서비스 (DDD 13기 WEBBB)
 
+<a href="https://github.com/DDD-Community"><img src="assets/intro/ddd.png" alt="DDD 커뮤니티 로고" width="96" align="right" /></a>
+
 오구오구는 DDD 13기 WEBBB 팀이 만든 감정 공유 커뮤니티입니다. 이 문서는 그 원본 서비스의 기록입니다. 원본 코드는 이 저장소의 [`webbb-be/`](../webbb-be)와 [`webbb-fe/`](../webbb-fe)에 참고용으로 들어 있고, 다시 만든 서비스는 [README](../README.md)에서 볼 수 있습니다.
 
 - 원본 백엔드: [DDD-Community/DDD-13-WEBBB_BE](https://github.com/DDD-Community/DDD-13-WEBBB_BE)
