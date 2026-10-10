@@ -114,6 +114,7 @@ class SpringAiRiskClassifier(
             properties: AiProperties,
             circuitBreaker: CircuitBreaker,
             timeLimiter: TimeLimiter,
+            maxTokens: Int = MAX_TOKENS,
         ): SpringAiRiskClassifier {
             require(properties.apiKey.isNotBlank()) { "키가 없으면 DisabledRiskClassifier를 씁니다." }
             val options =
@@ -123,7 +124,7 @@ class SpringAiRiskClassifier(
                     .apiKey(properties.apiKey)
                     .model(properties.model)
                     .temperature(0.0)
-                    .maxTokens(MAX_TOKENS)
+                    .maxTokens(maxTokens)
                     .timeout(properties.timeout)
                     .maxRetries(0)
                     .build()
