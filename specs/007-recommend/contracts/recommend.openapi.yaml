@@ -1,0 +1,100 @@
+openapi: 3.1.0
+info:
+  title: 오구오구 API - 비슷한 고민 추천 (007 추가분)
+  version: 0.7.0
+  description: |
+    007-recommend에서 추가하는 경로와 스키마다. 구현 첫 작업에서 저장소 루트의
+    contracts/openapi.yaml(누적 계약)에 합친다. FeedItem, ErrorEnvelope, PostId는 루트 계약의 정의와 같다.
+
+    인증이 필요하고, 온보딩 전 회원에게는 403 ONBOARDING_REQUIRED를 돌려준다.
+    추천의 글은 피드와 같은 FeedItem이다. 숨긴 글과 지운 글은 나오지 않고 욕설은 가려져 나간다.
+servers:
+  - url: http://localhost:8080
+tags:
+  - name: feed
+    description: 피드와 글 상세 조회
+security:
+  - bearer: []
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ErrorEnvelope:
+      type: object
+      required: [success, data, error]
+      properties:
+        success: { type: boolean, const: false }
+        data: { type: 'null' }
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }
+    FeedItem:
+      type: object
+      description: 루트 계약의 FeedItem과 같다
+    RecommendationBasis:
+      type: string
+      description: |
+        SIMILAR 뜻이 가까운 글, SAME_EMOTION 같은 감정의 최근 글(임베딩이 없거나 가까운 글이 없을 때),
+        NONE 보여 줄 글이 없음(화면은 구역을 숨긴다)
+      enum: [SIMILAR, SAME_EMOTION, NONE]
+    SimilarPosts:
+      type: object
+      required: [basis, items, pending]
+      properties:
+        basis: { $ref: '#/components/schemas/RecommendationBasis' }
+        items:
+          type: array
+          maxItems: 5
+          items: { $ref: '#/components/schemas/FeedItem' }
+        pending:
+          type: boolean
+          description: 이 글의 임베딩을 아직 만들고 있다. true면 화면이 잠시 뒤 다시 받는다
+paths:
+  /api/v1/posts/{postId}/similar:
+    parameters:
+      - name: postId
+        in: path
+        required: true
+        schema: { type: integer, format: int64 }
+    get:
+      tags: [feed]
+      operationId: getSimilarPosts
+      summary: 이 글과 비슷한 고민 (US1-AC1, US2-AC2). 가까운 순서로 최대 5개. 지금 글, 내 글, 숨긴 글, 지운 글은 없다
+      responses:
+        '200':
+          description: 추천
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, error]
+                properties:
+                  success: { type: boolean, const: true }
+                  data: { $ref: '#/components/schemas/SimilarPosts' }
+                  error: { type: 'null' }
+        '400':
+          description: 글 ID 형식이 틀림 (INVALID_REQUEST)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '401':
+          description: 인증 없음 또는 세션 만료
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '403':
+          description: 온보딩 전 (ONBOARDING_REQUIRED)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '404':
+          description: 없거나, 지웠거나, 다른 회원에게 숨긴 글 (POST_NOT_FOUND)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
