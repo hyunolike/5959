@@ -9,7 +9,7 @@ import java.time.Duration
 @ConfigurationProperties("ogu.recommend")
 data class RecommendProperties(
     /** 코사인 거리가 이보다 가까운 글만 비슷한 고민으로 보인다(research R5, R9). */
-    val maxDistance: Double = 0.40,
+    val maxDistance: Double = 0.25,
     /** 보이는 글만 거르기 전에 읽는 후보 수. 숨긴 글과 지운 글이 섞여 있어도 다섯 개를 채울 만큼 넉넉히 읽는다. */
     val candidates: Int = 30,
     val retry: Retry = Retry(),

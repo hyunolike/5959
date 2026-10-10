@@ -48,12 +48,12 @@ description: "Task list for 007-recommend (비슷한 고민 추천)"
 
 ## Phase 8: 평가와 성능 (묶음 8)
 
-- [ ] T015 `recommend/eval-set.tsv`(주제 10개 × 6문장), `eval-holdout.tsv`(30문장), `RecommendEvalTest`(켰을 때만). 기준값을 바꿔 가며 SC-001, SC-002를 출력하고 `max-distance`를 정한다
-- [ ] T016 `seed/m6-recommend-perf.sql`과 성능 측정(SC-003, SC-004, SC-005). 결과를 quickstart.md에 남긴다
+- [x] T015 `recommend/eval-set.tsv`(주제 10개 × 6문장), `eval-holdout.tsv`(30문장), `RecommendEvalTest`(켰을 때만). 기준값을 바꿔 가며 SC-001, SC-002를 출력하고 `max-distance`를 정한다 **구현 메모**: 지금 모델은 목표에 못 미쳤다(research R9). 공급자를 그대로 두기로 해 기준을 0.25로 좁혔고, 테스트는 목표를 단정하지 않고 표를 출력한다.
+- [x] T016 `seed/m6-recommend-perf.sql`과 성능 측정(SC-003, SC-004, SC-005). 결과를 quickstart.md에 남긴다
 
 ## Phase 9: Polish (묶음 9)
 
-- [ ] T017 [P] 인수 조건 23개가 모두 테스트 이름에 있는지 확인한다
-- [ ] T018 [P] 문서: apps/api/AGENTS.md, apps/web/docs/ARCHITECTURE.md, overview 5.1과 5.5, README
-- [ ] T019 quickstart의 수동 시나리오 13개를 로컬에서 실행한다
+- [x] T017 [P] 인수 조건 23개가 모두 테스트 이름에 있는지 확인한다
+- [x] T018 [P] 문서: apps/api/AGENTS.md, apps/web/docs/ARCHITECTURE.md, overview 5.1과 5.5, README
+- [x] T019 quickstart의 수동 시나리오 13개를 로컬에서 실행한다 **구현 메모**: 밀린 글 1만 건이 있는 상태에서 7번이 실패해, 차례를 나중에 요청된 글부터 잡게 고쳤다.
 - [ ] T020 PR을 연다

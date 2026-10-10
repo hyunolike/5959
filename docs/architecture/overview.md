@@ -125,7 +125,7 @@ Redis는 M3(004)에서 들어왔다. 실시간 알림의 인스턴스 간 pub/su
 | `monster` | 몬스터 생성, HP, 처치 | `MonsterApi` | `MonsterSpawned`, `MonsterDefeated` | `EmotionAnalyzed`(커밋 후 비동기), `PostLiked`, `CommentCreated`, `CommentLiked`(post 트랜잭션 안에서 동기) |
 | `safety` | 위험 감지(키워드 규칙과 AI 분류), 신고, 재검토 요청, 운영자 처리, 욕설 가리기. 위기 글은 `PostModerationApi.hide`로 숨긴다 | - (HTTP API와 `shared`의 `ContentMask` 구현) | `RiskDetected`, `ContentRestored`, `ReviewResolved` | `PostWritten`, `CommentWritten`, `PostRemoved`, `CommentRemoved`(post 트랜잭션 안에서 동기) |
 | `raid` | 보스 한 마리를 모든 회원이 버튼으로 함께 공격, 보스의 생애, 실시간으로 내보낼 레이드 상태 | `RaidApi`(끝난 보스의 참여자, 회원이 함께 물리친 보스 수) | `RaidBossDefeated` | - |
-| `recommend` | 임베딩 저장, 유사 글 검색 | `RecommendApi` | - | `PostCreated` |
+| `recommend` | 글의 임베딩과 처리 일정, 비슷한 글 고르기(글 ID만), 같은 감정의 글로 대신하기 | `RecommendApi` | - | `PostWritten`, `PostRemoved`(커밋 뒤) |
 | `report` | 주간 리포트 배치 | `ReportApi` | `WeeklyReportPublished` | - |
 | `notification` | SSE 알림, 알림 이력, 읽음 | - (HTTP API만) | - | `PostLiked`, `CommentCreated`, `MonsterSpawned`, `MonsterDefeated`(M3), `RiskDetected`, `ContentRestored`, `ReviewResolved`(M4). `WeeklyReportPublished`는 뒤 마일스톤 |
 | `feed` | 피드, 글 상세, 마이페이지 목록과 감정 통계 조합 | - (HTTP API만) | - | - |
@@ -142,6 +142,7 @@ flowchart BT
     safety --> member
     recommend --> post
     recommend --> ai
+    recommend --> emotion
     monster --> post
     monster --> emotion
     raid --> post
@@ -239,8 +240,14 @@ M2 스펙(specs/003-core-loop)에서 정한 값이다.
 
 ### 5.5 추천 (M6)
 
-- 글이 작성되면 `recommend` 모듈이 임베딩을 만들어 pgvector 컬럼에 저장한다. 임베딩 모델은 `text-embedding-3-small`(1536차원)을 쓴다.
-- 비슷한 고민은 코사인 거리 기준 상위 N개를 HNSW 인덱스로 찾는다. 본인 글과 숨김 처리된 글은 뺀다.
+설계는 [specs/007-recommend](../../specs/007-recommend/plan.md)에 있다.
+
+- 글이 저장되거나 고쳐지면 커밋 뒤에 `recommend` 모듈이 임베딩을 만들어 pgvector의 `halfvec(2048)` 열에 저장한다. 모델은 채팅 모델과 같은 공급자의 `nvidia/nemotron-3-embed-1b`다. 실패하면 간격을 늘려 다시 시도하고 24시간 뒤 그만둔다. 글쓰기는 임베더를 기다리지 않는다.
+- 비슷한 고민은 코사인 거리가 기준 안인 글을 HNSW 인덱스로 찾아 가까운 순서로 5개까지 보인다. 보는 사람의 글, 숨긴 글, 지운 글은 뺀다. `recommend`는 글 ID만 고르고 조립은 피드와 같은 길로 해, 숨김과 욕설 가리기가 그대로 적용된다.
+- 기준 안의 글이 없거나 임베딩이 아직 없으면 같은 감정의 최근 글로 대신하고, 화면은 "같은 감정의 고민"이라고 다르게 부른다.
+- 이미 있는 글과 옛 모델로 만든 값은 기동 뒤에 차례로 다시 만든다. 새 글이 먼저 처리된다.
+- 글 1만 건에서 추천 조회 p95는 62ms다(로컬 한 기기).
+- **지금 모델은 품질 목표에 못 미친다.** 직접 쓴 문장 60개에서 가장 가까운 글이 같은 주제인 비율이 37%였고, 기준값으로는 나아지지 않았다. 기준을 좁혀(0.25) 아주 가까운 글만 비슷한 고민으로 보이게 했고, 한국어 문장을 더 잘 가르는 모델로 바꾸는 일이 남았다([research R9](../../specs/007-recommend/research.md)).
 
 ### 5.6 위험 감지와 안전장치 (M4)
 

@@ -336,6 +336,43 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   `RaidFixture.freshBoss`로 바꿔 놓는다. 시계를 움직이는 테스트는 `ogu.raid.lifecycle-scheduler-enabled=false`로
   주기 작업을 끈다. 켜 두면 앞서간 시계가 다른 테스트의 보스를 물러나게 한다.
 
+## Recommend (`recommend` module)
+
+007-recommend에서 생겼다. 허용 의존은 `shared`, `post`, `ai`, `emotion`이다. `feed`가 `recommend`에 의존한다.
+
+| 모듈 | 공개 타입 | 발행 이벤트 | 받는 이벤트 |
+|---|---|---|---|
+| `recommend` | `RecommendApi.similar`(글 ID와 근거만 돌려준다) | - | `PostWritten`, `PostRemoved`(커밋 뒤) |
+| `ai`(더한 것) | `Embedder`, `Embedding`, `EmbeddingFailed` | - | - |
+| `post`(더한 것) | `PostSelectionApi`(`visibleIds`, `pageOf`, `authorsAfter`) | - | - |
+| `emotion`(더한 것) | `EmotionApi.recentPostIds` | - | - |
+
+- **`recommend`는 글 ID만 고른다.** 본문을 싣거나 카드를 만들지 않는다. 조립은 `feed`의 `SimilarPostsQuery`가
+  `PostSelectionApi.pageOf`와 `FeedAssembler`로 한다. 피드와 같은 길이라 숨김, 욕설 가리기, 몬스터가 그대로 적용된다.
+  추천에만 쓰는 조립을 따로 만들지 않는다. 만들면 숨긴 글이 새는 길이 하나 더 생긴다.
+- **보이는지는 조회할 때마다 `post`에 묻는다.** `post_embedding`에 숨김이나 삭제를 복사해 두지 않는다. 가까운 글을
+  넉넉히(`candidates`) 뽑아 `visibleIds`로 거른 뒤 5개를 남긴다.
+- **임베딩은 커밋 뒤, 트랜잭션 밖에서 만든다.** `EmbeddingListener`가 `PostWritten`을 받아 행을 만들고 바로 한 번
+  시도한다. 실패하면 30초부터 두 배씩 최대 5분 간격으로 `EmbeddingRetryScheduler`가 다시 하고 24시간 뒤 `GIVEN_UP`이다.
+  글쓰기는 임베더를 기다리지 않는다.
+- **늦게 온 결과는 버린다.** 글을 고치면 `requested_seq`가 오른다. 결과를 적을 때 번호가 다르면 적지 않는다. 고쳐서
+  다시 기다리는 동안에는 이전 값이 남아 추천이 비지 않는다.
+- **차례는 나중에 요청된 글부터다.** 이미 있는 글이 밀려 있어도 새 글의 재시도가 그 뒤에 서지 않는다
+  (`PostEmbeddingRepository.lockDue`의 `order by requested_at desc`). `next_attempt_at` 순서로 되돌리지 않는다.
+- **모델이 다른 값은 견주지 않는다.** 가까운 글 찾기는 지금 모델(`Embedder.model`)로 만든 값끼리만 한다. 모델을
+  바꾸면 `EmbeddingBackfill`이 기동 뒤에 옛 값을 차례로 다시 만든다. 그동안은 같은 감정의 글이 대신 보인다.
+- **대비책은 같은 감정의 최근 글이다.** 기준(`ogu.recommend.max-distance`) 안의 글이 없으면 `SAME_EMOTION`, 감정
+  분석도 없으면 `NONE`이다. 응답의 `pending`은 이 글의 값이 아직 만들어지는 중이라는 뜻이다.
+- **임베더는 채팅 모델의 주소와 키를 함께 쓴다.** `HttpEmbedder`는 Spring AI가 아니라 JDK `HttpClient`로 부른다.
+  공급자가 `input_type`을 요구하는데 OpenAI 표준에 없다. 키가 없으면 `FakeEmbedder.Disabled`가 바로 실패해 본문이
+  나가지 않는다. 로그와 `last_error`에는 실패의 분류만 남긴다.
+- **지금 모델은 품질 목표에 못 미친다.** `specs/007-recommend/research.md`의 R9에 측정이 있다. 모델을 바꾸면
+  `RecommendEvalTest`(`OGU_RUN_AI_EVAL=true`)로 다시 재고 `max-distance`를 정한다. 차원이 2048이 아니면
+  `halfvec(2048)` 열과 색인을 바꾸는 마이그레이션이 필요하다.
+- **테스트 표지.** 가짜 임베더(`FakeEmbedder`)는 본문의 `[주제:이름]`, `[멀기:N]`, `[임베딩실패]`, `[임베딩실패:N]`을
+  읽는다. 주제 이름은 `RecommendFixture.topic()`으로 테스트마다 새로 짓는다. 시계를 움직이는 테스트는
+  `ogu.recommend.retry.scheduler-enabled=false`와 `ogu.recommend.backfill.enabled=false`로 주기 작업을 끈다.
+
 ## Gotchas
 
 - Kotlin can't express package-level annotations: module metadata such as

@@ -89,7 +89,7 @@ flowchart BT
 | 키 | 기본값 | 뜻 |
 |---|---|---|
 | `ogu.ai.embedding-model` | `nvidia/nemotron-3-embed-1b` | 임베딩 모델(`AI_EMBEDDING_MODEL`) |
-| `ogu.recommend.max-distance` | 0.40 | 이보다 가까운 글만 비슷한 고민이다(R5, R9) |
+| `ogu.recommend.max-distance` | 0.25 | 이보다 가까운 글만 비슷한 고민이다(R5, R9) |
 | `ogu.recommend.candidates` | 30 | 거르기 전에 읽는 후보 수 |
 | `ogu.recommend.retry.*` | 30s, 5m, 24h, 10s, 20 | 처음 간격, 최대 간격, 기한, 훑는 주기, 한 번에 맡는 수 |
 | `ogu.recommend.backfill.enabled` / `batch-size` | true / 1000 | 이미 있는 글 처리(R7) |

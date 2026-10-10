@@ -174,7 +174,8 @@ ogu:
   # 007 추천(data-model.md "설정")
   recommend:
     # 코사인 거리가 이보다 가까운 글만 비슷한 고민으로 보인다. 평가 묶음으로 정한 값이다(research R9)
-    max-distance: 0.40
+    # 평가(research R9)에서 지금 모델은 주제를 잘 가르지 못했다. 아주 가까운 글만 비슷한 고민으로 보이게 좁게 둔다
+    max-distance: 0.25
     candidates: 30
     retry:
       initial: 30s
