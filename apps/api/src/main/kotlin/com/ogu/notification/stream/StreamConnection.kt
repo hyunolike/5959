@@ -15,7 +15,16 @@ enum class StreamTask {
 
     /** `: hb` 주석 줄과 `ping` 이벤트를 보낸다. */
     HEARTBEAT,
+
+    /** 주제별로 들고 있는 가장 최근 소식을 보낸다(006). */
+    BROADCAST,
 }
+
+/** 주제로 내보내는 소식 하나. [json]을 그대로 `data`에 쓴다. */
+data class TopicMessage(
+    val event: String,
+    val json: String,
+)
 
 /**
  * SSE 연결 하나(research R2, R5). [lastSentSeq]는 이 연결에 마지막으로 보낸 알림 번호다. 따라잡기는 언제나 DB에서
@@ -29,6 +38,8 @@ class StreamConnection(
     val memberId: Long,
     val emitter: SseEmitter,
     startSeq: Long,
+    /** 연결할 때 고른 주제(006 research R6). 고르지 않은 주제의 소식은 받지 않는다. */
+    val topics: Set<String> = emptySet(),
 ) {
     @Volatile
     var lastSentSeq: Long = startSeq
@@ -43,13 +54,26 @@ class StreamConnection(
     private val running = AtomicBoolean()
     private val pending: MutableSet<StreamTask> = ConcurrentHashMap.newKeySet()
 
+    private val latestByTopic = ConcurrentHashMap<String, TopicMessage>()
+
     val closed: Boolean get() = closedFlag.get()
+
+    /** 주제의 최신 소식을 바꿔 둔다. 아직 보내지 않은 앞의 값은 버린다. */
+    fun offer(
+        topic: String,
+        message: TopicMessage,
+    ) {
+        latestByTopic[topic] = message
+    }
+
+    /** 들고 있던 소식을 지우며 돌려준다. 쓰기 권한을 쥔 스레드만 부른다. */
+    fun takeMessages(): List<TopicMessage> = latestByTopic.keys.toList().mapNotNull(latestByTopic::remove)
 
     fun request(task: StreamTask) {
         pending += task
     }
 
-    /** 표시돼 있던 할 일을 지우며 돌려준다. [StreamTask] 순서(따라잡기, 안 읽은 수, 하트비트)대로다. */
+    /** 표시돼 있던 할 일을 지우며 돌려준다. [StreamTask] 순서(따라잡기, 안 읽은 수, 하트비트, 주제 소식)대로다. */
     fun takePending(): Set<StreamTask> =
         EnumSet.noneOf(StreamTask::class.java).apply {
             StreamTask.entries.filter { pending.remove(it) }.forEach(::add)

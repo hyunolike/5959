@@ -9,6 +9,7 @@ import {
   type Notification,
   type UnreadCount,
 } from "@/entities/notification";
+import { applyRaidLive, RAID_TOPIC, type RaidLive } from "@/entities/raid";
 import { QUERY_KEYS } from "@/shared/config";
 
 import { applyNotificationEvent, applyUnreadCountEvent } from "./cache-sync";
@@ -54,6 +55,12 @@ export function useNotificationStream(
         onNotificationRef.current(event.notification);
       },
       onUnreadCount: (event) => applyUnreadCountEvent(queryClient, event),
+      // 레이드 화면이 주제를 골랐을 때만 온다. 값은 레이드 캐시에 합친다(006 research R8).
+      onTopic: (topic, data) => {
+        if (topic === RAID_TOPIC) {
+          applyRaidLive(queryClient, data as RaidLive);
+        }
+      },
       onReconnected: () =>
         void queryClient.invalidateQueries({
           queryKey: QUERY_KEYS.unreadCount,

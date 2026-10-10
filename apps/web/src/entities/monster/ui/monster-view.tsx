@@ -62,6 +62,7 @@ class Monster3DBoundary extends Component<
 }
 
 const DETAIL_SIZES = "(min-width: 640px) 224px, 192px";
+const BOSS_SIZES = "(min-width: 640px) 288px, 240px";
 
 /**
  * 몬스터 자리(US5). 감정 이름, 몬스터 그림, HP 바와 숫자, 처치됨 표시를 보여 준다.
@@ -80,8 +81,13 @@ export function MonsterDisplay({
   resetKey,
   className,
 }: {
-  monster: MonsterView;
-  variant: "detail" | "card";
+  /** 글의 몬스터이거나 레이드 보스다. 보스는 최대 HP가 훨씬 크다(006). */
+  monster: Pick<MonsterView, "emotion" | "status"> & {
+    hp: number;
+    maxHp: number;
+  };
+  /** `boss`는 `detail`과 같되 더 크게 그린다(ADR-0003, 006 research R14). */
+  variant: "detail" | "card" | "boss";
   /**
    * 몬스터가 속한 글을 가리키는 값(글 ID). 3D가 실패하면 이 값이 같은 동안은 정지 이미지로 남고,
    * 바뀌면(App Router가 트리를 유지한 채 다른 글로 갔을 때) 3D를 다시 시도한다.
@@ -93,7 +99,7 @@ export function MonsterDisplay({
   // 실패를 어느 글에서 겪었는지 기억한다. 다른 글이면 실패가 아니다.
   const [failure, setFailure] = useState<{ key: typeof resetKey } | null>(null);
   const failed3D = failure !== null && failure.key === resetKey;
-  const use3D = variant === "detail" && can3D && !failed3D;
+  const use3D = variant !== "card" && can3D && !failed3D;
   const look = appearance(
     monster.emotion,
     monster.hp / monster.maxHp,
@@ -110,11 +116,17 @@ export function MonsterDisplay({
     <MonsterSprite
       emotion={monster.emotion}
       stage={look.stage}
-      sizes={variant === "card" ? "64px" : DETAIL_SIZES}
+      sizes={
+        variant === "card"
+          ? "64px"
+          : variant === "boss"
+            ? BOSS_SIZES
+            : DETAIL_SIZES
+      }
     />
   );
 
-  const detail = variant === "detail";
+  const detail = variant !== "card";
 
   return (
     <div
@@ -125,7 +137,14 @@ export function MonsterDisplay({
       )}
     >
       <div
-        className={cn("shrink-0", detail ? "size-48 sm:size-56" : "size-16")}
+        className={cn(
+          "shrink-0",
+          variant === "boss"
+            ? "size-60 sm:size-72"
+            : detail
+              ? "size-48 sm:size-56"
+              : "size-16",
+        )}
       >
         {use3D ? (
           <Monster3DBoundary

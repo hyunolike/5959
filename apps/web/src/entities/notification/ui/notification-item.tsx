@@ -2,11 +2,14 @@ import Link from "next/link";
 
 import { cn, formatDate } from "@/shared/lib";
 
-import { notificationMessage } from "../model/message";
+import { notificationHref, notificationMessage } from "../model/message";
 import type { Notification } from "../model/types";
 
 /** 관련 글이 지워진 알림에서 글 앞부분 자리에 쓰는 말(US2-AC5). */
 export const DELETED_POST_LABEL = "삭제된 글";
+
+/** 보스 처치 알림에서 글 앞부분 자리에 쓰는 말(006). 이 알림에는 글이 없다. */
+const RAID_NOTICE_LABEL = "레이드 결과 보기";
 
 const ITEM_CLASS =
   "flex w-full flex-col gap-1 rounded-lg border px-4 py-3 text-left transition-colors hover:border-neutral-300 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none";
@@ -29,6 +32,7 @@ export function NotificationItem({
   onSelect: (notification: Notification) => void;
 }) {
   const { post, read, updatedAt } = notification;
+  const href = notificationHref(notification);
   const className = cn(
     ITEM_CLASS,
     read ? "border-neutral-200 bg-white" : "border-blue-200 bg-blue-50",
@@ -55,10 +59,14 @@ export function NotificationItem({
       <span
         className={cn(
           "text-sm break-words",
-          post ? "text-neutral-700" : "text-neutral-500 italic",
+          href === null ? "text-neutral-500 italic" : "text-neutral-700",
         )}
       >
-        {post ? post.contentPreview : DELETED_POST_LABEL}
+        {post
+          ? post.contentPreview
+          : href === null
+            ? DELETED_POST_LABEL
+            : RAID_NOTICE_LABEL}
       </span>
       <time dateTime={updatedAt} className="text-xs text-neutral-500">
         {formatDate(updatedAt, "YYYY.MM.DD HH:mm")}
@@ -66,7 +74,7 @@ export function NotificationItem({
     </>
   );
 
-  if (post === null) {
+  if (href === null) {
     return (
       <button
         type="button"
@@ -80,7 +88,7 @@ export function NotificationItem({
 
   return (
     <Link
-      href={`/post/${notification.postId}`}
+      href={href}
       className={className}
       onClick={() => onSelect(notification)}
     >

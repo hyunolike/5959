@@ -1,5 +1,7 @@
 package com.ogu.post
 
+import java.time.Instant
+
 /**
  * post 모듈이 다른 모듈에 노출하는 파사드. 다른 모듈은 posts, comments, 공감 테이블을 직접 읽지 않는다.
  */
@@ -55,4 +57,13 @@ interface PostApi {
         postIds: Collection<Long>,
         viewerId: Long,
     ): Map<Long, PostPreview>
+
+    /**
+     * [since] 뒤에 쓰인, 다른 회원에게 보이는 글의 ID. 최근 것부터 [limit]개까지다. 레이드 보스의 감정을 정할 때 쓴다
+     * (006 research R9). 숨겼거나 지운 글은 빠진다.
+     */
+    fun visibleIdsSince(
+        since: Instant,
+        limit: Int,
+    ): List<Long>
 }

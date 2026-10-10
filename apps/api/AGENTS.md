@@ -295,6 +295,42 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
 - **테스트 표지.** 가짜 분류기(`FakeRiskClassifier`)는 본문의 `[위기]`, `[우려]`, `[위험분류실패]`,
   `[위험분류실패:N]`을 읽는다. 키워드에 걸리는 문장은 `SafetyFixture`의 상수를 쓴다.
 
+## Raid (`raid` module)
+
+006-raid에서 생겼다. 허용 의존은 `shared`, `post`, `emotion`, `member`다. `notification`과 `feed`가 `raid`에 의존한다.
+`monster`와는 서로 모른다. 보스는 글의 몬스터와 다른 것이다.
+
+| 모듈 | 공개 타입 | 발행 이벤트 | 받는 이벤트 |
+|---|---|---|---|
+| `raid` | `RaidApi`(`participantIds`, `defeatedCount`) | `RaidBossDefeated`(커밋 후 `notification`이 받는다) | - |
+| `post`(더한 것) | `PostApi.visibleIdsSince` | - | - |
+| `shared`(더한 것) | `realtime/TopicBroadcaster`(구현은 `notification`의 `StreamTopicBroadcaster`) | - | - |
+
+- **판단은 Redis의 스크립트가 한다.** 공격, 옮길 것 꺼내기, 끝내기, 올리기, 읽기가 각각 Lua 스크립트 하나다
+  (`src/main/resources/redis/raid-*.lua`, `RaidRedis`가 감싼다). 공격 스크립트 안에서 쿨다운, HP, 기여, 처치가
+  함께 바뀐다. 이 규칙을 Kotlin 쪽에서 나눠서 다시 구현하지 않는다. 나누면 그 사이에 다른 공격이 끼어든다.
+- **불변식.** 받아들인 공격 수 = 줄어든 HP = 기여의 합. `RaidConcurrencyTests`와 k6(`infra/k6/run-raid-load.sh`)가 본다.
+- **Postgres는 기록이고 뒤따라 적힌다.** `RaidFlusher`가 1초마다 절댓값을 적는다(기여는 `greatest`, HP는 `least`).
+  살아 있는 보스의 정확한 값은 Redis에 있다. 살아 있는 보스의 `raid_boss.hp`를 읽어 판단하지 않는다.
+- **처치는 기록에 남긴 뒤에 알린다.** `RaidFinisher.finish`가 모든 기여를 적고 `WHERE status = 'ALIVE'` 조건으로
+  끝낸 뒤 같은 트랜잭션에서 `RaidBossDefeated`를 낸다. 겹쳐 불려도 이벤트는 하나다. 마무리가 실패하면 다음 옮기기가
+  다시 한다.
+- **Redis가 비어 있는 모든 경우를 `RaidLoader`가 다룬다.** 처음, Redis가 다시 뜬 뒤, 새 보스가 나온 뒤가 같은 길이다.
+  살아 있는 보스의 HP는 기록된 기여의 합으로 다시 계산해 올린다. 올릴 때마다 `epoch`가 커지고 웹은 그것으로
+  "값이 돌아갔다"를 알아본다.
+- **Redis를 쓸 수 없으면 `RaidUnavailableException` 하나로 온다.** 공격은 503 `RAID_UNAVAILABLE`, 조회는 마지막
+  기록과 `available = false`다. 주기 작업은 조용히 건너뛴다. 다른 기능에 번지지 않게 한다(`RaidRedisOutageTest`).
+- **살아 있는 보스는 하나다.** 부분 유일 인덱스 `raid_boss_alive_key`가 지킨다. 스케줄러의 잠금에 기대지 않는다.
+  `RaidBossLifecycle.tick`은 여러 인스턴스가 함께 돌아도 된다.
+- **실시간.** `RaidBroadcaster`가 전용 스레드에서 250ms마다 돈다. `raid` 주제를 듣는 연결이 있을 때만 Redis를 읽고,
+  지난번과 다르거나 새 연결이 붙었을 때만 `TopicBroadcaster`로 보낸다. 공용 스케줄러에 두면 부하 중에 주기가
+  늘어진다. 스트림은 연결할 때 `topics`로 고른 주제만 보내고, 주제 소식에는 SSE `id`가 없다.
+- **다른 회원의 정보를 싣지 않는다.** 응답과 이벤트에 나가는 것은 보스의 상태, 참여자 수, 요청한 회원의 기여뿐이다.
+  순위나 기여 목록을 주는 조회를 더하지 않는다(스펙 FR-013).
+- **테스트.** 컨텍스트들이 Postgres와 Redis를 함께 쓰고 다른 컨텍스트의 주기 작업도 계속 돈다. 보스를 지우지 말고
+  `RaidFixture.freshBoss`로 바꿔 놓는다. 시계를 움직이는 테스트는 `ogu.raid.lifecycle-scheduler-enabled=false`로
+  주기 작업을 끈다. 켜 두면 앞서간 시계가 다른 테스트의 보스를 물러나게 한다.
+
 ## Gotchas
 
 - Kotlin can't express package-level annotations: module metadata such as

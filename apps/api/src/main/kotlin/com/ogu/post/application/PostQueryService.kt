@@ -17,6 +17,8 @@ import com.ogu.shared.text.maskFor
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.sql.Timestamp
+import java.time.Instant
 
 @Service
 @Transactional(readOnly = true)
@@ -90,19 +92,28 @@ class PostQueryService(
             .query { rs, _ ->
                 PostPreview(
                     postId = rs.getLong("id"),
-                    contentPreview = previewFor(viewerId, rs.getLong("author_id"), rs.getString("content")),
+                    // 다른 회원의 글은 욕설을 가린 뒤 자른다(005 US5-AC1)
+                    contentPreview =
+                        Grapheme.take(
+                            contentMask.maskFor(viewerId, rs.getLong("author_id"), rs.getString("content")),
+                            POST_PREVIEW_LENGTH,
+                        ),
                     deleted = rs.getBoolean("deleted"),
                 )
             }.list()
             .associateBy { it.postId }
     }
 
-    /** 다른 회원의 글은 욕설을 가린 뒤 자른다(005 US5-AC1). */
-    private fun previewFor(
-        viewerId: Long,
-        authorId: Long,
-        content: String,
-    ): String = Grapheme.take(contentMask.maskFor(viewerId, authorId, content), POST_PREVIEW_LENGTH)
+    override fun visibleIdsSince(
+        since: Instant,
+        limit: Int,
+    ): List<Long> =
+        jdbcClient
+            .sql(VISIBLE_IDS_SINCE)
+            .param("since", Timestamp.from(since))
+            .param("limit", limit)
+            .query { rs, _ -> rs.getLong("id") }
+            .list()
 
     private fun Post.toSummary(): PostSummary =
         PostSummary(
@@ -122,6 +133,14 @@ class PostQueryService(
 
     private companion object {
         /** 숨긴 글은 그 글의 작성자가 보는 것이 아니면 지운 글과 같이 준다(005 research R8). */
+        val VISIBLE_IDS_SINCE =
+            """
+            select id from posts
+            where created_at > :since and ${Visibility.VISIBLE}
+            order by id desc
+            limit :limit
+            """.trimIndent()
+
         val PREVIEWS =
             """
             select id, author_id, content,

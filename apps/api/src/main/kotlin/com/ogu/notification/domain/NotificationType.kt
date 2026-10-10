@@ -18,4 +18,7 @@ enum class NotificationType {
 
     /** 005: 재검토 결과 숨김을 유지한다. */
     REVIEW_KEPT,
+
+    /** 006: 내가 공격한 레이드 보스가 처치됐다. 글이 없고 누르면 레이드 화면으로 간다. */
+    RAID_BOSS_DEFEATED,
 }

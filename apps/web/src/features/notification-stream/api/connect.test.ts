@@ -227,3 +227,49 @@ describe("openStream", () => {
     expect(sources).toHaveLength(0);
   });
 });
+
+describe("주제 소식(006 research R6)", () => {
+  it("고른 주제를 주소에 싣고 그 이름의 이벤트를 onTopic으로 전한다", async () => {
+    const { sources, handlers, options } = setup(ticketFetch("t-1"));
+    const onTopic = vi.fn();
+
+    await openStream(
+      5,
+      { ...handlers, onTopic },
+      { ...options, topics: ["raid"] },
+    );
+
+    expect(new URL(sources[0].url).searchParams.get("topics")).toBe("raid");
+    sources[0].emit("raid", { data: JSON.stringify({ bossId: 7, hp: 199 }) });
+    expect(onTopic).toHaveBeenCalledWith("raid", { bossId: 7, hp: 199 });
+    // id가 없는 이벤트라 알림으로 전하지 않는다
+    expect(handlers.onNotification).not.toHaveBeenCalled();
+  });
+
+  it("주제를 고르지 않으면 주소에 topics가 없고 그 이벤트를 듣지 않는다", async () => {
+    const { sources, handlers, options } = setup(ticketFetch("t-1"));
+    const onTopic = vi.fn();
+
+    await openStream(5, { ...handlers, onTopic }, options);
+
+    expect(new URL(sources[0].url).searchParams.has("topics")).toBe(false);
+    sources[0].emit("raid", { data: JSON.stringify({ bossId: 7 }) });
+    expect(onTopic).not.toHaveBeenCalled();
+  });
+
+  it("닫은 뒤나 깨진 본문의 소식은 전하지 않는다", async () => {
+    const { sources, handlers, options } = setup(ticketFetch("t-1"));
+    const onTopic = vi.fn();
+    const connection = await openStream(
+      5,
+      { ...handlers, onTopic },
+      { ...options, topics: ["raid"] },
+    );
+
+    sources[0].emit("raid", { data: "{깨진" });
+    connection.close();
+    sources[0].emit("raid", { data: JSON.stringify({ bossId: 7 }) });
+
+    expect(onTopic).not.toHaveBeenCalled();
+  });
+});

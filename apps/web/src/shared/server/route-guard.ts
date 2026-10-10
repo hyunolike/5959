@@ -31,6 +31,7 @@ const PROTECTED_PATH_PREFIXES = [
   "/my",
   "/settings",
   "/notifications",
+  "/raid",
 ];
 
 export interface RouteGuardCookies {

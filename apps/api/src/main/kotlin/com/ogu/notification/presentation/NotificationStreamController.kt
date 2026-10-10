@@ -77,6 +77,8 @@ class NotificationStreamController(
         @RequestParam(required = false) lastEventId: Long?,
         @Parameter(description = "표준 재연결 헤더. 쿼리와 함께 오면 헤더를 쓴다")
         @RequestHeader(name = LAST_EVENT_ID, required = false) lastEventIdHeader: String?,
+        @Parameter(description = "쉼표로 나눈 주제(006). 지금은 raid 하나다. 모르는 주제는 무시한다")
+        @RequestParam(required = false) topics: String?,
     ): ResponseEntity<SseEmitter> {
         val startAfter = resolveLastEventId(lastEventIdHeader, lastEventId)
         val memberId =
@@ -87,8 +89,18 @@ class NotificationStreamController(
             .contentType(MediaType.TEXT_EVENT_STREAM)
             .header(HttpHeaders.CACHE_CONTROL, "no-store")
             .header(X_ACCEL_BUFFERING, "no")
-            .body(hub.open(memberId, startAfter))
+            .body(hub.open(memberId, startAfter, topicsOf(topics)))
     }
+
+    /** 주제 이름의 꼴만 본다. 어떤 주제가 있는지는 내보내는 모듈이 안다. 꼴이 틀리거나 너무 많으면 버린다. */
+    private fun topicsOf(raw: String?): Set<String> =
+        raw
+            .orEmpty()
+            .split(",")
+            .map(String::trim)
+            .filter(TOPIC_FORMAT::matches)
+            .take(MAX_TOPICS)
+            .toSet()
 
     /**
      * 이 컨트롤러의 오류는 JSON으로 쓴다. `EventSource`는 `Accept: text/event-stream`으로 오므로 내용 협상에 맡기면 오류
@@ -146,5 +158,7 @@ class NotificationStreamController(
         val log = LoggerFactory.getLogger(NotificationStreamController::class.java)
         const val LAST_EVENT_ID = "Last-Event-ID"
         const val X_ACCEL_BUFFERING = "X-Accel-Buffering"
+        private val TOPIC_FORMAT = Regex("^[a-z][a-z-]{0,19}$")
+        private const val MAX_TOPICS = 5
     }
 }

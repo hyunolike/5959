@@ -13,6 +13,9 @@ vi.mock("@/entities/member", () => ({
 vi.mock("@/features/auth/logout", () => ({
   LogoutButton: () => <button type="button">로그아웃</button>,
 }));
+vi.mock("@/widgets/raid-arena", () => ({
+  BossBanner: () => <a href="/raid">레이드</a>,
+}));
 vi.mock("@/widgets/feed-list", () => ({
   FeedList: () => <section aria-label="피드" />,
 }));
@@ -33,6 +36,11 @@ describe("HomePage", () => {
       "/write",
     );
     expect(screen.getByRole("region", { name: "피드" })).toBeInTheDocument();
+    // 006 US5-AC7: 홈에서 레이드로 가는 안내가 있다
+    expect(screen.getByRole("link", { name: "레이드" })).toHaveAttribute(
+      "href",
+      "/raid",
+    );
   });
 
   it("프로필을 불러오지 못하면 안내를 보여 준다", () => {

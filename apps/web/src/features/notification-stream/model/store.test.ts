@@ -8,6 +8,7 @@ import { createNotificationStreamStore, type StreamDeps } from "./store";
 
 interface Attempt {
   lastEventId: number;
+  topics: readonly string[];
   handlers: StreamHandlers;
   close: ReturnType<typeof vi.fn>;
 }
@@ -42,9 +43,14 @@ function setup() {
     // 흔들기가 0이 되는 값이라 대기 시간이 정확히 1초, 2초, 4초다.
     random: () => 0.5,
     openStream: vi.fn<NonNullable<StreamDeps["openStream"]>>(
-      async (lastEventId, handlers) => {
+      async (lastEventId, handlers, options) => {
         const close = vi.fn();
-        attempts.push({ lastEventId, handlers, close });
+        attempts.push({
+          lastEventId,
+          topics: options?.topics ?? [],
+          handlers,
+          close,
+        });
         return { close };
       },
     ),
@@ -569,5 +575,62 @@ describe("알림 스트림 연결 상태", () => {
     expect(attempts).toHaveLength(2);
     expect(attempts[1].lastEventId).toBe(3);
     store.getState().stop();
+  });
+});
+
+describe("주제(006 research R6)", () => {
+  it("열려 있는 동안 주제를 더하면 닫고 같은 번호와 새 주제로 다시 연다", async () => {
+    const { store, deps, attempts } = setup();
+    const onTopic = vi.fn();
+    store.getState().start({ ...deps, onTopic });
+    await flush();
+    attempts[0].handlers.onOpen();
+    attempts[0].handlers.onNotification(notificationEvent(1, 18), 18);
+    expect(attempts[0].topics).toEqual([]);
+
+    store.getState().setTopic("raid", true);
+    await flush();
+
+    expect(attempts[0].close).toHaveBeenCalled();
+    expect(attempts).toHaveLength(2);
+    expect(attempts[1].topics).toEqual(["raid"]);
+    // 마지막으로 받은 번호를 그대로 써서 빠지는 알림이 없다
+    expect(attempts[1].lastEventId).toBe(18);
+    expect(deps.loadLatestSeq).toHaveBeenCalledTimes(1);
+
+    attempts[1].handlers.onOpen();
+    attempts[1].handlers.onTopic?.("raid", { hp: 199 });
+    expect(onTopic).toHaveBeenCalledWith("raid", { hp: 199 });
+    // 닫은 옛 연결의 소식은 버린다
+    attempts[0].handlers.onTopic?.("raid", { hp: 300 });
+    expect(onTopic).toHaveBeenCalledTimes(1);
+  });
+
+  it("주제를 빼면 주제 없이 다시 열고, 같은 값으로 다시 부르면 아무것도 하지 않는다", async () => {
+    const { store, deps, attempts } = setup();
+    store.getState().setTopic("raid", true);
+    store.getState().start(deps);
+    await flush();
+    expect(attempts[0].topics).toEqual(["raid"]);
+
+    store.getState().setTopic("raid", true);
+    await flush();
+    expect(attempts).toHaveLength(1);
+
+    store.getState().setTopic("raid", false);
+    await flush();
+    expect(attempts).toHaveLength(2);
+    expect(attempts[1].topics).toEqual([]);
+  });
+
+  it("연결 전에 고른 주제는 기억만 하고 연결하지 않는다", async () => {
+    const { store, deps, attempts } = setup();
+
+    store.getState().setTopic("raid", true);
+    await flush();
+
+    expect(attempts).toHaveLength(0);
+    expect(store.getState().status).toBe("idle");
+    expect(deps.openStream).not.toHaveBeenCalled();
   });
 });

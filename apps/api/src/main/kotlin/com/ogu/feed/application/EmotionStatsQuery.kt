@@ -9,6 +9,7 @@ import com.ogu.monster.MonsterApi
 import com.ogu.monster.MonsterStatRow
 import com.ogu.monster.MonsterStatus
 import com.ogu.post.PostActivityApi
+import com.ogu.raid.RaidApi
 import org.springframework.stereotype.Service
 import java.time.Clock
 import java.time.DayOfWeek
@@ -26,6 +27,7 @@ import kotlin.math.roundToInt
 class EmotionStatsQuery(
     private val postActivityApi: PostActivityApi,
     private val monsterApi: MonsterApi,
+    private val raidApi: RaidApi,
     private val clock: Clock,
 ) {
     fun get(memberId: Long): EmotionStatsResponse {
@@ -38,6 +40,7 @@ class EmotionStatsQuery(
             totalMonsters = monsters.size,
             defeatedMonsters = monsters.count { it.status == MonsterStatus.DEFEATED },
             defeatedTogether = defeatedTogether,
+            raidBossesDefeated = raidApi.defeatedCount(memberId),
             distribution = distribution(counts, topEmotion),
             topEmotion = topEmotion,
             weekly = weekly(monsters, postedAt),

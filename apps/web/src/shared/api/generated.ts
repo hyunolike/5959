@@ -419,6 +419,8 @@ export interface paths {
      *     - `event: ping`, id 없음, `data: StreamPingEvent(JSON, 빈 객체)`. 하트비트 주석과 같이 25초마다 보낸다.
      *       브라우저 EventSource는 주석 줄을 스크립트에 알리지 않으므로, 웹은 이 이벤트로 연결이 살아 있는지 본다.
      *       id가 없어 마지막 이벤트 id를 바꾸지 않는다. 웹은 60초 동안 아무 이벤트도 없으면 닫고 다시 붙는다.
+     *     - `event: raid`, id 없음, `data: RaidLive(JSON)`. topics에 raid가 있는 연결만 받는다(006).
+     *       연결 직후 지금 값을 한 번 받고, 그 뒤로는 바뀔 때마다 1초에 네 번을 넘지 않게 받는다.
      *
      *     서버는 15분 뒤 연결을 닫는다. 웹은 새 티켓과 마지막 id로 다시 붙는다(research R14).
      *     회원 한 명의 동시 연결은 5개까지이고, 넘으면 가장 오래된 연결을 닫는다.
@@ -717,6 +719,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/raid": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 지금의 레이드 (US1-AC1, US4-AC3, US5-AC3). 살아 있는 보스가 없으면 가장 최근에 끝난 보스와 다음 보스가 나오는 때 */
+    get: operations["getRaid"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/raid/attacks": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 보스 공격 (US1-AC2~AC6). HP를 1 줄인다. 회원마다 1초에 한 번 */
+    post: operations["attackRaidBoss"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -935,7 +971,8 @@ export interface components {
      * @description POST_COMMENT 내 글의 댓글, POST_REPLY 내 글의 답글, COMMENT_REPLY 내 댓글의 답글,
      *     POST_LIKE 내 글 공감(묶음), MONSTER_SPAWNED 몬스터 생성, MONSTER_DEFEATED 내 몬스터 처치,
      *     MONSTER_DEFEATED_TOGETHER 함께 공격한 몬스터 처치,
-     *     SUPPORT_NOTICE 도움 안내(005), CONTENT_RESTORED 가려졌던 글이 다시 보임(005), REVIEW_KEPT 재검토 결과 숨김 유지(005)
+     *     SUPPORT_NOTICE 도움 안내(005), CONTENT_RESTORED 가려졌던 글이 다시 보임(005), REVIEW_KEPT 재검토 결과 숨김 유지(005),
+     *     RAID_BOSS_DEFEATED 내가 공격한 보스 처치(006). 글이 없고 누르면 레이드 화면으로 간다
      * @enum {string}
      */
     NotificationType:
@@ -948,7 +985,8 @@ export interface components {
       | "MONSTER_DEFEATED_TOGETHER"
       | "SUPPORT_NOTICE"
       | "CONTENT_RESTORED"
-      | "REVIEW_KEPT";
+      | "REVIEW_KEPT"
+      | "RAID_BOSS_DEFEATED";
     NotificationActor: {
       /** Format: int64 */
       id: number;
@@ -970,9 +1008,12 @@ export interface components {
        */
       seq: number;
       type: components["schemas"]["NotificationType"];
-      /** Format: int64 */
-      postId: number;
-      /** @description 글이 지워졌으면 null. 화면은 "삭제된 글"로 보인다(US2-AC5) */
+      /**
+       * Format: int64
+       * @description RAID_BOSS_DEFEATED는 글이 없어 null
+       */
+      postId: number | null;
+      /** @description 글이 지워졌으면 null. 화면은 "삭제된 글"로 보인다(US2-AC5). RAID_BOSS_DEFEATED도 null이다 */
       post: components["schemas"]["NotificationPost"] | null;
       /**
        * Format: int64
@@ -1080,6 +1121,8 @@ export interface components {
       defeatedMonsters: number;
       /** @description 내가 HP를 줄인 다른 사람의 몬스터 가운데 처치된 수(US4-AC5) */
       defeatedTogether: number;
+      /** @description 내가 공격에 참여한 레이드 보스 가운데 처치된 수(006 US4-AC5) */
+      raidBossesDefeated: number;
       distribution: components["schemas"]["EmotionShare"][];
       /** @description 가장 많이 나타난 감정. 같으면 가장 최근 몬스터의 감정. 몬스터가 없으면 null */
       topEmotion: components["schemas"]["EmotionType"] | null;
@@ -1250,6 +1293,74 @@ export interface components {
       kind: components["schemas"]["TermKind"];
       /** @description 2~20글자. 저장할 때 정규화한다 */
       term: string;
+    };
+    /**
+     * @description ALIVE 살아 있음, DEFEATED 처치됨, RETREATED 7일 동안 처치되지 않아 물러남
+     * @enum {string}
+     */
+    RaidBossStatus: "ALIVE" | "DEFEATED" | "RETREATED";
+    RaidBoss: {
+      /** Format: int64 */
+      bossId: number;
+      emotion: components["schemas"]["EmotionType"];
+      maxHp: number;
+      hp: number;
+      status: components["schemas"]["RaidBossStatus"];
+      /** @description 한 번이라도 공격한 회원 수 */
+      participantCount: number;
+      /** Format: date-time */
+      spawnedAt: string;
+      /** Format: date-time */
+      endedAt: string | null;
+    };
+    /**
+     * @description 레이드 화면이 그리는 전부. boss는 살아 있는 보스이거나, 없으면 가장 최근에 끝난 보스다.
+     *     보스가 한 번도 없었으면 null이다.
+     */
+    RaidState: {
+      boss: components["schemas"]["RaidBoss"] | null;
+      /** @description 이 보스에게 내가 준 피해. 공격한 적 없으면 0 */
+      myDamage: number;
+      /**
+       * Format: date-time
+       * @description 살아 있는 보스가 없을 때 다음 보스가 나오는 때. 살아 있으면 null
+       */
+      nextBossAt: string | null;
+      /** @description false면 지금 공격을 받을 수 없다. 값은 마지막으로 기록된 것이다(research R4) */
+      available: boolean;
+      /** @description 값이 기록에서 다시 채워질 때마다 오른다. 커지면 화면의 HP를 받은 값으로 바꾼다(research R8) */
+      epoch: number;
+    };
+    /** @description 실시간 `raid` 이벤트의 data. 모든 연결에 같은 내용이 가므로 내 기여는 없다 */
+    RaidLive: {
+      /** Format: int64 */
+      bossId: number | null;
+      hp: number;
+      maxHp: number;
+      status: components["schemas"]["RaidBossStatus"];
+      participantCount: number;
+      available: boolean;
+      epoch: number;
+    };
+    RaidAttackRequest: {
+      /**
+       * Format: int64
+       * @description 화면이 보고 있는 보스. 그 사이 보스가 바뀌었으면 409다
+       */
+      bossId: number;
+    };
+    RaidAttackResult: {
+      /** Format: int64 */
+      bossId: number;
+      hp: number;
+      maxHp: number;
+      status: components["schemas"]["RaidBossStatus"];
+      participantCount: number;
+      myDamage: number;
+      /** @description 이 공격으로 처치됐다 */
+      defeated: boolean;
+      /** @description 다음 공격까지 기다릴 시간 */
+      cooldownMs: number;
     };
   };
   responses: {
@@ -2239,6 +2350,8 @@ export interface operations {
         ticket: string;
         /** @description 마지막으로 받은 이벤트 id(seq). 새 EventSource는 헤더를 붙일 수 없어 쿼리로 넘긴다 */
         lastEventId?: number;
+        /** @description 쉼표로 나눈 주제. 지금은 raid 하나다. 모르는 주제는 무시한다(006) */
+        topics?: string;
       };
       header?: {
         /** @description 표준 재연결 헤더. 쿼리와 함께 오면 헤더를 쓴다 */
@@ -2839,6 +2952,102 @@ export interface operations {
       401: components["responses"]["Unauthorized"];
       403: components["responses"]["Forbidden"];
       404: components["responses"]["OperatorOnly"];
+    };
+  };
+  getRaid: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 레이드 상태. HP를 들고 있는 장치가 내려가 있으면 available이 false이고 값은 마지막 기록이다 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["RaidState"];
+            error: null;
+          };
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+    };
+  };
+  attackRaidBoss: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["RaidAttackRequest"];
+      };
+    };
+    responses: {
+      /** @description 받아들임 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["RaidAttackResult"];
+            error: null;
+          };
+        };
+      };
+      /** @description 입력 검증 실패 (INVALID_REQUEST) */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      /** @description 보스가 처치됐거나 물러났거나, 요청의 보스가 지금 보스가 아님 (RAID_BOSS_ENDED) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description 쿨다운 안 (RAID_COOLDOWN). HP와 기여는 그대로다 */
+      429: {
+        headers: {
+          /** @description 다시 시도할 수 있을 때까지의 초(올림) */
+          "Retry-After"?: number;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description HP를 들고 있는 장치가 내려가 있어 공격을 받을 수 없음 (RAID_UNAVAILABLE). 공격은 반영되지 않았다 */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
     };
   };
 }

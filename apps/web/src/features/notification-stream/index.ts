@@ -20,6 +20,7 @@ export {
   stopNotificationStream,
   useNotificationStreamLastEventId,
   useNotificationStreamStatus,
+  useStreamTopic,
 } from "./model/store";
 export type { StreamDeps, StreamState, StreamStatus } from "./model/store";
 export { useNotificationStream } from "./model/use-notification-stream";

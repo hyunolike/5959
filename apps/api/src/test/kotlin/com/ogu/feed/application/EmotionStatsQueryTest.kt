@@ -12,6 +12,7 @@ import com.ogu.monster.MonsterStatRow
 import com.ogu.monster.MonsterStatus
 import com.ogu.post.PostActivityApi
 import com.ogu.post.PostRef
+import com.ogu.raid.RaidApi
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
@@ -29,7 +30,8 @@ import java.time.ZoneOffset
 class EmotionStatsQueryTest {
     private val postApi = mock(PostActivityApi::class.java)
     private val monsterApi = mock(MonsterApi::class.java)
-    private val query = EmotionStatsQuery(postApi, monsterApi, Clock.fixed(NOW, ZoneOffset.UTC))
+    private val raidApi = mock(RaidApi::class.java)
+    private val query = EmotionStatsQuery(postApi, monsterApi, raidApi, Clock.fixed(NOW, ZoneOffset.UTC))
     private var nextPostId = 1L
     private val refs = mutableListOf<PostRef>()
     private val rows = mutableListOf<MonsterStatRow>()

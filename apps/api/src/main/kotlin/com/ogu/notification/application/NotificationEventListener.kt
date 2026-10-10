@@ -9,6 +9,8 @@ import com.ogu.post.CommentSummary
 import com.ogu.post.ContentType
 import com.ogu.post.PostApi
 import com.ogu.post.PostLiked
+import com.ogu.raid.RaidApi
+import com.ogu.raid.RaidBossDefeated
 import com.ogu.safety.ContentRestored
 import com.ogu.safety.ReviewResolved
 import com.ogu.safety.RiskDetected
@@ -28,6 +30,7 @@ class NotificationEventListener(
     private val postApi: PostApi,
     private val monsterApi: MonsterApi,
     private val writer: NotificationWriter,
+    private val raidApi: RaidApi,
 ) {
     /** 원 댓글은 글쓴이에게, 답글은 글쓴이와 원 댓글 주인에게 한 번씩. 받는 사람은 [PostApi.findComment]로 정한다. */
     @ApplicationModuleListener
@@ -108,6 +111,16 @@ class NotificationEventListener(
         val type = NotificationType.REVIEW_KEPT
         val dedupKey = "REVIEW:${event.requestId}"
         writer.writeAll(listOf(NotificationDraft.toAuthor(type, event.requesterId, event.postId, commentId, dedupKey)))
+    }
+
+    /**
+     * 보스가 처치되면 한 번이라도 공격한 회원 모두에게 알린다(006 US4-AC1, research R11). 공격한 적 없는 회원에게는 가지
+     * 않는다. 이벤트가 다시 와도 보스마다 회원에게 하나다. 문구에 다른 회원의 이름이나 수를 싣지 않는다.
+     */
+    @ApplicationModuleListener
+    fun on(event: RaidBossDefeated) {
+        val drafts = raidApi.participantIds(event.bossId).map { NotificationDraft.raidDefeated(it, event.bossId) }
+        writer.writeAll(drafts)
     }
 
     private fun commentIdOf(

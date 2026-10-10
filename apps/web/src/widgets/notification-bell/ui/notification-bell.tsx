@@ -6,6 +6,7 @@ import { useEffect, useRef } from "react";
 
 import {
   badgeLabel,
+  notificationHref,
   notificationMessage,
   useUnreadCountQuery,
   type Notification,
@@ -41,6 +42,7 @@ export function NotificationBell() {
     if (notification.read || pathnameRef.current === NOTIFICATIONS_PATH) {
       return;
     }
+    const href = notificationHref(notification);
     show({
       message: notificationMessage(notification),
       // 도움 안내는 놓치면 안 되므로 다른 알림보다 오래 둔다(005 research R16).
@@ -50,12 +52,12 @@ export function NotificationBell() {
           : undefined,
       // 그 사이 글이 지워졌으면 갈 곳이 없다. 누르면 닫히기만 한다(US2-AC5의 "삭제된 글" 안내는 목록이 맡는다).
       onClick:
-        notification.post === null
+        href === null
           ? undefined
           : () => {
-              // 토스트를 누르는 것도 그 알림을 누르는 것이다. 읽음으로 바꾸고 글로 간다(US2-AC3).
+              // 토스트를 누르는 것도 그 알림을 누르는 것이다. 읽음으로 바꾸고 글이나 레이드 화면으로 간다(US2-AC3).
               markRead(notification.notificationId);
-              router.push(`/post/${notification.postId}`);
+              router.push(href);
             },
     });
   });
