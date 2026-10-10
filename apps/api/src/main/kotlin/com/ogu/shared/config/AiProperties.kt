@@ -20,8 +20,17 @@ data class AiProperties(
      * 추론만 하다 끝나 답이 비어 온다.
      */
     val maxTokens: Int = 600,
+    /**
+     * 위험 분류에 쓰는 모델(005 SC-005). 감정 분석보다 큰 모델을 따로 쓴다. 죽음을 직접 말하지 않는 위기 표현을 작은
+     * 모델은 절반쯤 놓쳤다(quickstart "AI까지 합친 성적"). 분류는 글 저장 뒤에 따로 돌아 느려도 글쓰기를 막지 않는다.
+     */
+    val riskModel: String = "nvidia/nemotron-3-super-120b-a12b",
     /** 위험 분류 응답의 토큰 상한. 답은 `{"level":"NONE"}` 한 줄이지만 추론 토큰이 함께 든다. */
-    val riskMaxTokens: Int = 300,
+    val riskMaxTokens: Int = 600,
+    /** 위험 분류 모델에 보낼 추론 정도. 비우면 보내지 않는다. 기본 위험 분류 모델은 이 값을 받지 않는다. */
+    val riskReasoningEffort: String = "",
+    /** 위험 분류 호출의 타임아웃. 첫 재시도 간격(30초)보다 짧아야 한다. 맡은 호출이 끝나기 전에 다시 맡지 않게 한다. */
+    val riskTimeout: Duration = Duration.ofSeconds(20),
     /** 주간 리포트 편지(008)의 토큰 상한. 답은 300자 이하지만 추론 토큰이 함께 든다. */
     val letterMaxTokens: Int = 900,
     /**
