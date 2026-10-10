@@ -24,6 +24,7 @@ function notificationEvent(notificationId: number, seq: number) {
       commentId: 7,
       actor: { id: 2, nickname: "오구" },
       actorCount: 1,
+      reportWeekStart: null,
       read: false,
       createdAt: "2026-10-06T00:00:00Z",
       updatedAt: "2026-10-06T00:00:00Z",

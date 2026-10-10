@@ -28,6 +28,7 @@ function notification(
     commentId: null,
     actor: { id: 2, nickname: "오구" },
     actorCount: 1,
+    reportWeekStart: null,
     read,
     createdAt: "2026-10-06T00:00:00Z",
     updatedAt: "2026-10-06T00:00:00Z",

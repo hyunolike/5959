@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { parseMyActivityTab, toMyActivitySearch } from "./tab";
 
 describe("parseMyActivityTab", () => {
-  it.each(["posts", "comments", "likes"] as const)(
+  it.each(["posts", "comments", "likes", "reports"] as const)(
     "?tab=%s면 그 탭이다",
     (tab) => {
       expect(parseMyActivityTab(tab)).toBe(tab);

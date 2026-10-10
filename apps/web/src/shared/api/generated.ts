@@ -502,6 +502,43 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/members/me/weekly-reports": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 내 주간 리포트 목록, 최신 주부터 (008 US4-AC1, US4-AC3) */
+    get: operations["getMyWeeklyReports"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/members/me/weekly-reports/{weekStart}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description 그 주의 월요일(한국 시간). 예 2026-10-05 */
+        weekStart: string;
+      };
+      cookie?: never;
+    };
+    /** 한 주의 내 리포트 (008 US1-AC3, US1-AC9) */
+    get: operations["getMyWeeklyReport"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/safety/support-resources": {
     parameters: {
       query?: never;
@@ -991,7 +1028,8 @@ export interface components {
      *     POST_LIKE 내 글 공감(묶음), MONSTER_SPAWNED 몬스터 생성, MONSTER_DEFEATED 내 몬스터 처치,
      *     MONSTER_DEFEATED_TOGETHER 함께 공격한 몬스터 처치,
      *     SUPPORT_NOTICE 도움 안내(005), CONTENT_RESTORED 가려졌던 글이 다시 보임(005), REVIEW_KEPT 재검토 결과 숨김 유지(005),
-     *     RAID_BOSS_DEFEATED 내가 공격한 보스 처치(006). 글이 없고 누르면 레이드 화면으로 간다
+     *     RAID_BOSS_DEFEATED 내가 공격한 보스 처치(006). 글이 없고 누르면 레이드 화면으로 간다,
+     *     WEEKLY_REPORT 주간 리포트 발행(008). 글이 없고 누르면 그 주의 리포트 화면으로 간다
      * @enum {string}
      */
     NotificationType:
@@ -1005,7 +1043,8 @@ export interface components {
       | "SUPPORT_NOTICE"
       | "CONTENT_RESTORED"
       | "REVIEW_KEPT"
-      | "RAID_BOSS_DEFEATED";
+      | "RAID_BOSS_DEFEATED"
+      | "WEEKLY_REPORT";
     NotificationActor: {
       /** Format: int64 */
       id: number;
@@ -1029,7 +1068,7 @@ export interface components {
       type: components["schemas"]["NotificationType"];
       /**
        * Format: int64
-       * @description RAID_BOSS_DEFEATED는 글이 없어 null
+       * @description RAID_BOSS_DEFEATED와 WEEKLY_REPORT는 글이 없어 null
        */
       postId: number | null;
       /** @description 글이 지워졌으면 null. 화면은 "삭제된 글"로 보인다(US2-AC5). RAID_BOSS_DEFEATED도 null이다 */
@@ -1043,6 +1082,11 @@ export interface components {
       actor: components["schemas"]["NotificationActor"] | null;
       /** @description 공감 묶음의 인원 수. 다른 종류는 1 */
       actorCount: number;
+      /**
+       * Format: date
+       * @description WEEKLY_REPORT일 때만 있다. 그 주의 월요일(한국 시간)
+       */
+      reportWeekStart: string | null;
       read: boolean;
       /** Format: date-time */
       createdAt: string;
@@ -1133,6 +1177,68 @@ export interface components {
         emotion: components["schemas"]["EmotionType"];
         count: number;
       }[];
+    };
+    /**
+     * @description PENDING 편지를 쓰는 중(다시 받으면 채워질 수 있다), DONE 편지가 있다,
+     *     GIVEN_UP 편지 없이 닫았다, SUPPORT 정해 둔 문구와 도움받을 곳을 보인다(편지는 없다, 008 FR-011)
+     * @enum {string}
+     */
+    WeeklyLetterStatus: "PENDING" | "DONE" | "GIVEN_UP" | "SUPPORT";
+    WeeklyReportSummary: {
+      /**
+       * Format: date
+       * @description 한국 시간 월요일 날짜
+       */
+      weekStart: string;
+      /**
+       * Format: date
+       * @description 그 주의 일요일
+       */
+      weekEnd: string;
+      postCount: number;
+      /** @description 분석된 글이 없으면 null */
+      topEmotion: components["schemas"]["EmotionType"] | null;
+    };
+    WeeklyReportPage: {
+      items: components["schemas"]["WeeklyReportSummary"][];
+      nextCursor: string | null;
+    };
+    WeeklyReportPrevious: {
+      postCount: number;
+      topEmotion: components["schemas"]["EmotionType"] | null;
+    };
+    WeeklyReport: {
+      /**
+       * Format: date
+       * @description 한국 시간 월요일 날짜
+       */
+      weekStart: string;
+      /**
+       * Format: date
+       * @description 그 주의 일요일
+       */
+      weekEnd: string;
+      /** @description 그 주에 쓴 글 수(발행할 때 지우지 않은 글) */
+      postCount: number;
+      /** @description 감정 5종을 EmotionType 순서대로 모두 담는다 */
+      emotionCounts: {
+        emotion: components["schemas"]["EmotionType"];
+        count: number;
+      }[];
+      /** @description 감정 분석이 끝나지 않은 글 수 */
+      unanalyzedCount: number;
+      topEmotion: components["schemas"]["EmotionType"] | null;
+      /** @description 그 주에 처치된 내 몬스터 수 */
+      defeatedCount: number;
+      receivedLikes: number;
+      receivedComments: number;
+      letterStatus: components["schemas"]["WeeklyLetterStatus"];
+      /** @description DONE일 때만 있다 */
+      letter: string | null;
+      /** @description 바로 앞 주의 리포트가 있을 때만 있다(US4-AC4) */
+      previous: components["schemas"]["WeeklyReportPrevious"] | null;
+      /** Format: date-time */
+      publishedAt: string;
     };
     EmotionStats: {
       /** @description 지우지 않은 내 글의 몬스터 수 */
@@ -2538,6 +2644,76 @@ export interface operations {
       };
       401: components["responses"]["Unauthorized"];
       403: components["responses"]["Forbidden"];
+    };
+  };
+  getMyWeeklyReports: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        size?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 받은 리포트가 없으면 빈 목록이다 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["WeeklyReportPage"];
+            error: null;
+          };
+        };
+      };
+      400: components["responses"]["BadRequest"];
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+    };
+  };
+  getMyWeeklyReport: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description 그 주의 월요일(한국 시간). 예 2026-10-05 */
+        weekStart: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 리포트 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["WeeklyReport"];
+            error: null;
+          };
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      /** @description 그 주의 내 리포트가 없다. 날짜 형식이 틀렸거나 월요일이 아닌 때도 같다 (WEEKLY_REPORT_NOT_FOUND) */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
     };
   };
   getSupportResources: {

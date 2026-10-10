@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { notificationMessage } from "./message";
+import { notificationHref, notificationMessage } from "./message";
 import type { Notification, NotificationType } from "./types";
 
 function notification(
@@ -16,6 +16,7 @@ function notification(
     commentId: null,
     actor: { id: 2, nickname: "오구" },
     actorCount: 1,
+    reportWeekStart: null,
     read: false,
     createdAt: "2026-10-06T00:00:00Z",
     updatedAt: "2026-10-06T00:00:00Z",
@@ -110,4 +111,25 @@ describe("notificationMessage", () => {
       expect(message).not.toMatch(/위기|우려|CRISIS|CONCERN|본문/);
     },
   );
+});
+
+describe("주간 리포트 알림(008)", () => {
+  const weekly = notification("WEEKLY_REPORT", {
+    postId: null,
+    post: null,
+    actor: null,
+    reportWeekStart: "2026-10-05",
+  });
+
+  it("US1-AC1 리포트가 도착했다고 알린다", () => {
+    expect(notificationMessage(weekly)).toBe("지난주 리포트가 도착했어요");
+  });
+
+  it("US1-AC2 누르면 그 주의 리포트 화면으로 간다", () => {
+    expect(notificationHref(weekly)).toBe("/report/2026-10-05");
+  });
+
+  it("주가 없으면 갈 곳이 없다", () => {
+    expect(notificationHref({ ...weekly, reportWeekStart: null })).toBeNull();
+  });
 });

@@ -41,6 +41,7 @@ function notification(
     commentId: 1,
     actor: { id: 2, nickname: `회원${notificationId}` },
     actorCount: 1,
+    reportWeekStart: null,
     read: false,
     createdAt: "2026-10-06T00:00:00Z",
     updatedAt: "2026-10-06T00:00:00Z",

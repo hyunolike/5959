@@ -1,8 +1,10 @@
-/** 마이페이지 활동 탭(004 US3). 주소의 `?tab=` 값이자 표시 순서다. */
+/** 마이페이지 활동 탭(004 US3, 008 US4). 주소의 `?tab=` 값이자 표시 순서다. */
 export const MY_ACTIVITY_TABS = [
   { id: "posts", label: "내가 쓴 글" },
   { id: "comments", label: "내 댓글" },
   { id: "likes", label: "공감한 글" },
+  // 008 US4: 그동안 받은 주간 리포트
+  { id: "reports", label: "주간 리포트" },
 ] as const;
 
 export type MyActivityTab = (typeof MY_ACTIVITY_TABS)[number]["id"];

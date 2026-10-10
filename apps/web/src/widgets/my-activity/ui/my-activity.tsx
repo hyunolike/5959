@@ -4,13 +4,17 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { MyCommentItem, useMyCommentsQuery } from "@/entities/comment";
 import { CAREER_YEAR_LABELS, JOB_ROLE_LABELS } from "@/entities/member";
-import { MonsterDisplay } from "@/entities/monster";
+import { EMOTION_LABELS, MonsterDisplay } from "@/entities/monster";
 import {
   PostCard,
   useLikedPostsQuery,
   useMyPostsQuery,
   type FeedItem,
 } from "@/entities/post";
+import {
+  useWeeklyReportsQuery,
+  WeeklyReportItem,
+} from "@/entities/weekly-report";
 import { cn } from "@/shared/lib";
 
 import {
@@ -79,6 +83,7 @@ export function MyActivity() {
         {active === "posts" ? <MyPostsTab /> : null}
         {active === "comments" ? <MyCommentsTab /> : null}
         {active === "likes" ? <LikedPostsTab /> : null}
+        {active === "reports" ? <WeeklyReportsTab /> : null}
       </div>
     </section>
   );
@@ -129,6 +134,26 @@ function LikedPostsTab() {
       emptyMessage="아직 공감한 글이 없어요."
       keyOf={(item) => item.postId}
       renderItem={renderPost}
+    />
+  );
+}
+
+/** 그동안 받은 주간 리포트(008 US4). 최신 주부터 보이고, 누르면 그 주의 리포트로 간다. */
+function WeeklyReportsTab() {
+  return (
+    <ActivityList
+      query={useWeeklyReportsQuery()}
+      label="주간 리포트"
+      emptyMessage="아직 받은 리포트가 없어요. 글을 쓰면 다음 월요일에 지난주 리포트가 와요."
+      keyOf={(report) => Date.parse(report.weekStart)}
+      renderItem={(report) => (
+        <WeeklyReportItem
+          report={report}
+          topEmotionLabel={
+            report.topEmotion ? EMOTION_LABELS[report.topEmotion] : null
+          }
+        />
+      )}
     />
   );
 }

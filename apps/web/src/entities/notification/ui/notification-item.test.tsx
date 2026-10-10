@@ -15,6 +15,7 @@ function notification(overrides: Partial<Notification> = {}): Notification {
     commentId: 3,
     actor: { id: 2, nickname: "오구" },
     actorCount: 1,
+    reportWeekStart: null,
     read: false,
     createdAt: "2026-10-05T01:00:00Z",
     updatedAt: "2026-10-06T03:04:00Z",
