@@ -58,6 +58,7 @@ class PostEmbeddingRepository(
 
     /**
      * 시도할 차례인 행 하나를 잠근다. [postId]를 주면 그 글만 본다. 다른 실행기가 잡고 있으면 건너뛴다.
+     * 나중에 요청된 글부터 잡는다. 이미 있는 글 1만 건이 밀려 있어도 방금 쓴 글의 재시도가 그 뒤에 서지 않는다(US4-AC2).
      */
     fun lockDue(
         now: Instant,
@@ -71,7 +72,7 @@ class PostEmbeddingRepository(
                     select post_id, requested_seq, attempts, requested_at
                     from post_embedding
                     where status = 'PENDING' and next_attempt_at <= :now $onlyPost
-                    order by next_attempt_at
+                    order by requested_at desc
                     limit 1
                     for update skip locked
                     """.trimIndent(),

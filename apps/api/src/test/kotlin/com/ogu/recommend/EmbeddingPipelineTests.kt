@@ -257,6 +257,23 @@ class EmbeddingPipelineTests {
     }
 
     @Test
+    fun `US4-AC2 밀린 글이 있어도 새로 쓴 글의 재시도가 먼저다`() {
+        // 다른 테스트가 남긴 기다리는 행이 순서에 끼지 않게 한다
+        jdbcTemplate.update("update post_embedding set status = 'GIVEN_UP' where status = 'PENDING'")
+        val author = members.onboarded()
+        (1..30).forEach { safety.insertPost(author, "밀린 글 $it") }
+        backfill.run()
+        clock.advance(Duration.ofSeconds(1))
+        val fresh = coreLoop.createPost(members.onboarded(), "[실패] [임베딩실패:1] ${recommend.topic()} 한 번 실패할 글")
+        recommend.awaitAttempts(fresh, 1)
+
+        clock.advance(Duration.ofSeconds(30))
+        val outcome = store.claim()
+
+        assertThat((outcome as ClaimOutcome.Claimed).attempt.claim.postId).isEqualTo(fresh)
+    }
+
+    @Test
     fun `모델이 바뀌면 옛 모델로 만든 값을 다시 만들게 한다`() {
         val postId = coreLoop.createPost(members.onboarded(), "[실패] ${recommend.topic()} 옛 모델의 글")
         recommend.awaitEmbedded(postId)

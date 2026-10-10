@@ -38,5 +38,5 @@ CREATE TABLE post_embedding
 
 -- 가까운 글 찾기(코사인 거리)
 CREATE INDEX post_embedding_hnsw_idx ON post_embedding USING hnsw (embedding halfvec_cosine_ops);
--- 재시도 스케줄러가 차례가 된 PENDING만 훑는다
-CREATE INDEX post_embedding_pending_idx ON post_embedding (next_attempt_at) WHERE status = 'PENDING';
+-- 재시도 스케줄러가 PENDING만, 나중에 요청된 글부터 훑는다. 밀린 글이 많아도 새 글의 재시도가 먼저다
+CREATE INDEX post_embedding_pending_idx ON post_embedding (requested_at DESC) WHERE status = 'PENDING';

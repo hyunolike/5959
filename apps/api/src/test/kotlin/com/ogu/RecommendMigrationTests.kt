@@ -26,7 +26,7 @@ class RecommendMigrationTests {
             )
         assertThat(type).isEqualTo("halfvec(2048)")
         assertThat(indexDef("post_embedding_hnsw_idx")).contains("hnsw").contains("halfvec_cosine_ops")
-        assertThat(indexDef("post_embedding_pending_idx")).contains("(next_attempt_at)").contains("'PENDING'")
+        assertThat(indexDef("post_embedding_pending_idx")).contains("(requested_at DESC)").contains("'PENDING'")
         assertThat(indexDef("emotion_analysis_emotion_idx")).contains("(emotion, post_id DESC)")
     }
 

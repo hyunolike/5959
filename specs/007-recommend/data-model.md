@@ -25,7 +25,7 @@ Flyway `V7__recommend.sql`로 만든다. 결정 근거는 [research.md](research
 
 - CHECK: `status IN ('PENDING', 'DONE', 'GIVEN_UP')`, `status <> 'DONE' OR (embedding IS NOT NULL AND model IS NOT NULL)`, `(embedding IS NULL) = (model IS NULL)`, `attempts >= 0`.
 - `CREATE INDEX post_embedding_hnsw_idx ON post_embedding USING hnsw (embedding halfvec_cosine_ops)`.
-- `CREATE INDEX post_embedding_pending_idx ON post_embedding (next_attempt_at) WHERE status = 'PENDING'`.
+- `CREATE INDEX post_embedding_pending_idx ON post_embedding (requested_at DESC) WHERE status = 'PENDING'`. 차례가 된 행 가운데 나중에 요청된 글부터 잡는다. 이미 있는 글이 밀려 있어도 새 글의 재시도가 그 뒤에 서지 않는다(quickstart 7번을 밀린 글 1만 건과 함께 돌리다 찾았다).
 - FK를 걸지 않는다. `posts`는 다른 모듈의 테이블이다.
 
 **상태 규칙**
