@@ -3,6 +3,7 @@ package com.ogu.notification.presentation.dto
 import com.ogu.notification.application.NotificationView
 import com.ogu.notification.domain.NotificationType
 import java.time.Instant
+import java.time.LocalDate
 
 /** 계약의 `Notification`. 목록 API와 실시간 스트림이 같은 모양을 쓴다. */
 data class NotificationResponse(
@@ -14,6 +15,7 @@ data class NotificationResponse(
     val commentId: Long?,
     val actor: NotificationActorResponse?,
     val actorCount: Int,
+    val reportWeekStart: LocalDate?,
     val read: Boolean,
     val createdAt: Instant,
     val updatedAt: Instant,
@@ -30,6 +32,7 @@ data class NotificationResponse(
                 commentId = n.commentId,
                 actor = view.actor?.let { NotificationActorResponse(it.id, it.nickname) },
                 actorCount = n.actorCount,
+                reportWeekStart = n.reportWeekStart,
                 read = n.readAt != null,
                 createdAt = n.createdAt,
                 updatedAt = n.updatedAt,

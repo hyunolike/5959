@@ -7,6 +7,7 @@ import com.ogu.monster.domain.MonsterHpLogRepository
 import com.ogu.monster.domain.MonsterRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Instant
 
 @Service
 @Transactional(readOnly = true)
@@ -34,4 +35,17 @@ class MonsterQueryService(
     }
 
     override fun defeatedPostIdsDamagedBy(memberId: Long): Set<Long> = hpLogRepository.defeatedPostIds(memberId)
+
+    override fun defeatedCountBetween(
+        postIds: Collection<Long>,
+        from: Instant,
+        until: Instant,
+    ): Int {
+        if (postIds.isEmpty()) return 0
+        return monsterRepository.countByPostIdInAndDefeatedAtGreaterThanEqualAndDefeatedAtLessThan(
+            postIds.toSet(),
+            from,
+            until,
+        )
+    }
 }

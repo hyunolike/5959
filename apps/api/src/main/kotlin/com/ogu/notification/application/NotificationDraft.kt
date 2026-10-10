@@ -1,6 +1,7 @@
 package com.ogu.notification.application
 
 import com.ogu.notification.domain.NotificationType
+import java.time.LocalDate
 
 /**
  * 쓸 알림 하나(번호를 받기 전). 멱등 키 형식은 research R6, data-model.md "종류" 표 그대로다. 공감 묶음은 키가 없어
@@ -9,13 +10,14 @@ import com.ogu.notification.domain.NotificationType
 data class NotificationDraft(
     val receiverId: Long,
     val type: NotificationType,
-    /** 보스 처치 알림(006)만 글이 없다. */
+    /** 보스 처치 알림(006)과 주간 리포트 알림(008)은 글이 없다. */
     val postId: Long?,
     val commentId: Long? = null,
     val monsterId: Long? = null,
     val actorId: Long? = null,
     val dedupKey: String,
     val raidBossId: Long? = null,
+    val reportWeekStart: LocalDate? = null,
 ) {
     companion object {
         /** 댓글과 답글 알림. 글쓴이와 원 댓글 주인이 같은 키를 써서 한 답글로 한 회원에게 두 개가 생기지 않는다. */
@@ -87,6 +89,19 @@ data class NotificationDraft(
                 postId = null,
                 dedupKey = "RAID:$bossId",
                 raidBossId = bossId,
+            )
+
+        /** 주간 리포트가 발행됐다(008 research R4). 주마다 회원에게 한 번이다. 글이 없다. */
+        fun weeklyReport(
+            receiverId: Long,
+            weekStart: LocalDate,
+        ): NotificationDraft =
+            NotificationDraft(
+                receiverId,
+                NotificationType.WEEKLY_REPORT,
+                postId = null,
+                dedupKey = "WEEKLY_REPORT:$weekStart",
+                reportWeekStart = weekStart,
             )
 
         private val COMMENT_TYPES =

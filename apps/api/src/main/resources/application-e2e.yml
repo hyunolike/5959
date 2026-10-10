@@ -29,3 +29,9 @@ ogu:
       google:
         client-id: e2e-unused
         client-secret: e2e-unused
+  # 008 주간 리포트: 발행 시각을 기다리지 않고 5초마다 지난주 리포트를 채운다. 테스트가 글의 때를 한 주 앞으로 옮긴다
+  report:
+    publish-at: "00:00"
+    poll-interval: 5s
+    letter:
+      poll-interval: 5s

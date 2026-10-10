@@ -27,9 +27,9 @@ class NotificationRepository(
             .sql(
                 """
                 insert into notification (receiver_id, type, post_id, comment_id, monster_id, latest_actor_id,
-                                          raid_boss_id, dedup_key, seq, created_at, updated_at)
+                                          raid_boss_id, report_week_start, dedup_key, seq, created_at, updated_at)
                 values (:receiverId, :type, :postId, :commentId, :monsterId, :actorId,
-                        :raidBossId, :dedupKey, :seq, :createdAt, :createdAt)
+                        :raidBossId, :reportWeekStart, :dedupKey, :seq, :createdAt, :createdAt)
                 on conflict on constraint notification_receiver_dedup_key do nothing
                 returning id
                 """.trimIndent(),
@@ -40,6 +40,7 @@ class NotificationRepository(
             .param("monsterId", notification.monsterId)
             .param("actorId", notification.actorId)
             .param("raidBossId", notification.raidBossId)
+            .param("reportWeekStart", notification.reportWeekStart?.let(java.sql.Date::valueOf))
             .param("dedupKey", notification.dedupKey)
             .param("seq", notification.seq)
             .param("createdAt", Timestamp.from(notification.createdAt))
@@ -292,6 +293,7 @@ class NotificationRepository(
                     readAt = rs.getTimestamp("read_at")?.toInstant(),
                     createdAt = rs.getTimestamp("created_at").toInstant(),
                     updatedAt = rs.getTimestamp("updated_at").toInstant(),
+                    reportWeekStart = rs.getDate("report_week_start")?.toLocalDate(),
                 )
             }
 

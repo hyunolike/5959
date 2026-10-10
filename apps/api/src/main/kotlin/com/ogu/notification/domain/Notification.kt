@@ -1,6 +1,7 @@
 package com.ogu.notification.domain
 
 import java.time.Instant
+import java.time.LocalDate
 
 /**
  * 저장된 알림 한 행(data-model.md `notification`). [readAt]이 null이면 안 읽음이다. 공감 묶음(`POST_LIKE`)만
@@ -21,6 +22,8 @@ data class Notification(
     val readAt: Instant?,
     val createdAt: Instant,
     val updatedAt: Instant,
+    /** 주간 리포트 알림(008)일 때만 있다. 그 주의 월요일이다. */
+    val reportWeekStart: LocalDate? = null,
 )
 
 /** 멱등 키로 한 번만 넣는 알림(댓글, 답글, 몬스터 알림, research R6). 공감 묶음은 [NotificationRepository.upsertLikeGroup]을 쓴다. */
@@ -35,6 +38,7 @@ data class NewNotification(
     val seq: Long,
     val createdAt: Instant,
     val raidBossId: Long? = null,
+    val reportWeekStart: LocalDate? = null,
 ) {
     init {
         require(type != NotificationType.POST_LIKE) { "공감 알림은 묶음으로만 만든다" }

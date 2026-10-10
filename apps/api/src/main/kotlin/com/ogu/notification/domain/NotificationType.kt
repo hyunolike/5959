@@ -21,4 +21,7 @@ enum class NotificationType {
 
     /** 006: 내가 공격한 레이드 보스가 처치됐다. 글이 없고 누르면 레이드 화면으로 간다. */
     RAID_BOSS_DEFEATED,
+
+    /** 008: 주간 리포트가 발행됐다. 글이 없고 누르면 그 주의 리포트 화면으로 간다. */
+    WEEKLY_REPORT,
 }
