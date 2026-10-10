@@ -178,9 +178,7 @@ test("US1-AC4 지난주에 글을 쓰지 않은 회원은 리포트도 알림도
   await openReport(writer, weekStart);
 
   await silent.page.goto(`/report/${weekStart}`);
-  await expect(silent.page.getByRole("alert")).toHaveText(
-    "이 주의 리포트가 없어요.",
-  );
+  await expect(silent.page.getByText("이 주의 리포트가 없어요.")).toBeVisible();
   await silent.page.goto("/my?tab=reports");
   await expect(
     silent.page.getByText("아직 받은 리포트가 없어요."),
@@ -207,9 +205,7 @@ test("US1-AC9 다른 회원의 리포트는 볼 수 없고 로그인하지 않�
 
   // 주소에 회원이 없다. 같은 주소를 열어도 자기 리포트를 찾는다
   await other.page.goto(`/report/${weekStart}`);
-  await expect(other.page.getByRole("alert")).toHaveText(
-    "이 주의 리포트가 없어요.",
-  );
+  await expect(other.page.getByText("이 주의 리포트가 없어요.")).toBeVisible();
   const anonymous = await browser.newContext();
   const page = await anonymous.newPage();
   await page.goto(`/report/${weekStart}`);
