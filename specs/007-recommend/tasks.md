@@ -56,4 +56,4 @@ description: "Task list for 007-recommend (비슷한 고민 추천)"
 - [x] T017 [P] 인수 조건 23개가 모두 테스트 이름에 있는지 확인한다
 - [x] T018 [P] 문서: apps/api/AGENTS.md, apps/web/docs/ARCHITECTURE.md, overview 5.1과 5.5, README
 - [x] T019 quickstart의 수동 시나리오 13개를 로컬에서 실행한다 **구현 메모**: 밀린 글 1만 건이 있는 상태에서 7번이 실패해, 차례를 나중에 요청된 글부터 잡게 고쳤다.
-- [ ] T020 PR을 연다
+- [x] T020 PR을 연다 (#26)
