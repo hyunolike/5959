@@ -82,7 +82,6 @@ function Battle({ state, boss }: { state: RaidState; boss: RaidBoss }) {
           status: "ALIVE",
         }}
         variant="boss"
-        resetKey={boss.bossId}
         className="w-full"
       />
       <Figures
@@ -120,7 +119,6 @@ function Result({ state, boss }: { state: RaidState; boss: RaidBoss }) {
           status: defeated ? "DEFEATED" : "ALIVE",
         }}
         variant="boss"
-        resetKey={boss.bossId}
         className="w-full"
       />
       <Figures

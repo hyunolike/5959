@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, type RefObject } from "react";
 
-/** 맞는 반응의 길이. T053의 3D 몬스터도 같은 0.4초다. */
+/** 맞는 반응의 길이. */
 export const HIT_REACTION_MS = 400;
 
 const SHAKE: Keyframe[] = [
