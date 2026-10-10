@@ -9,7 +9,6 @@ import com.ogu.emotion.EmotionType
 import com.ogu.report.WeeklyReportPublished
 import com.ogu.report.domain.WeeklyLetterRepository
 import com.ogu.report.domain.WeeklyReport
-import com.ogu.report.domain.WeeklyReportRepository
 import com.ogu.shared.config.AiProperties
 import com.ogu.shared.text.ContentMask
 import org.slf4j.LoggerFactory
@@ -39,7 +38,6 @@ data class LetterAttempt(
 @Component
 class WeeklyLetterStore(
     private val letters: WeeklyLetterRepository,
-    private val reports: WeeklyReportRepository,
     private val properties: ReportProperties,
     private val clock: Clock,
     aiProperties: AiProperties,
@@ -76,9 +74,8 @@ class WeeklyLetterStore(
         return LetterClaim.Claimed(LetterAttempt(report.id, report.letterAttempts, inputOf(report)))
     }
 
-    /** 공급자에 보낼 것은 이 리포트의 수치와, 있으면 앞 주의 글 수와 가장 많은 감정뿐이다(FR-010). */
+    /** 공급자에 보낼 것은 이 리포트의 수치뿐이다(FR-010). */
     private fun inputOf(report: WeeklyReport): WeeklyLetterInput {
-        val previous = reports.find(report.memberId, WeekRange(report.weekStart).previous().start)
         val stats = report.stats
         return WeeklyLetterInput(
             postCount = stats.postCount,
@@ -88,8 +85,6 @@ class WeeklyLetterStore(
             defeatedCount = stats.defeatedCount,
             receivedLikes = stats.receivedLikes,
             receivedComments = stats.receivedComments,
-            previousPostCount = previous?.stats?.postCount,
-            previousTopEmotion = previous?.stats?.topEmotion?.let(::classified),
         )
     }
 

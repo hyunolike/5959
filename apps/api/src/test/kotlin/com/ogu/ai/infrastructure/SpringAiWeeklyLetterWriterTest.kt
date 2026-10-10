@@ -54,8 +54,6 @@ class SpringAiWeeklyLetterWriterTest {
             defeatedCount = 1,
             receivedLikes = 12,
             receivedComments = 4,
-            previousPostCount = 5,
-            previousTopEmotion = ClassifiedEmotion.LETHARGY,
         )
 
     @BeforeEach
@@ -92,7 +90,7 @@ class SpringAiWeeklyLetterWriterTest {
         assertThat(messages).hasSize(2)
         assertThat(messages.get(0).get("role").asString()).isEqualTo("system")
         assertThat(messages.get(0).get("content").asString()).contains("존댓말", "진단하지 않습니다")
-        // 사용자 메시지는 이 여덟 줄이 전부다. 본문, 닉네임, 직군, 경력, 회원 번호가 들어갈 자리가 없다
+        // 사용자 메시지는 이 여섯 줄이 전부다. 본문, 닉네임, 직군, 경력, 회원 번호가 들어갈 자리가 없다
         assertThat(messages.get(1).get("content").asString()).isEqualTo(
             """
             쓴 글 수: 3
@@ -101,8 +99,6 @@ class SpringAiWeeklyLetterWriterTest {
             처치된 몬스터 수: 1
             받은 공감 수: 12
             받은 댓글 수: 4
-            앞 주의 글 수: 5
-            앞 주의 가장 많은 감정: 무기력
             """.trimIndent(),
         )
         // 요청 어디에도 리포트나 회원을 가리키는 값이 없다
@@ -110,7 +106,7 @@ class SpringAiWeeklyLetterWriterTest {
     }
 
     @Test
-    fun `앞 주의 리포트와 분석된 글이 없으면 그 줄을 보내지 않는다`() {
+    fun `0인 수치와 없는 감정은 줄째로 보내지 않는다`() {
         val bare =
             WeeklyLetterInput(
                 postCount = 1,
@@ -132,7 +128,8 @@ class SpringAiWeeklyLetterWriterTest {
                 .get(1)
                 .get("content")
                 .asString()
-        assertThat(content).contains("감정별 글 수: 분류된 글 없음", "가장 많은 감정: 없음").doesNotContain("앞 주")
+        // 모르는 것은 말하지 못한다. "공감이 없었다"는 편지를 막는다
+        assertThat(content).isEqualTo("쓴 글 수: 1")
     }
 
     @Test

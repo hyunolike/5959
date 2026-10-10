@@ -14,6 +14,9 @@ interface WeeklyLetterWriter {
 /**
  * 편지를 쓸 때 공급자에 보내는 것의 전부다(008 FR-010). 집계한 수치만 있다. 글의 본문, 닉네임, 직군, 경력, 회원 번호가
  * 들어갈 자리를 두지 않는다. 자리를 더하려면 스펙의 FR-010부터 고친다.
+ *
+ * 앞 주의 수치도 보내지 않는다. 실제 모델은 두 주를 견주다 틀리거나(줄었는데 늘었다고) 근거 없이 평가했다
+ * (research R7). 앞 주와의 차이는 화면이 저장된 수치로 정확히 보인다.
  */
 data class WeeklyLetterInput(
     val postCount: Int,
@@ -23,9 +26,6 @@ data class WeeklyLetterInput(
     val defeatedCount: Int,
     val receivedLikes: Int,
     val receivedComments: Int,
-    /** 바로 앞 주의 리포트가 있을 때만. */
-    val previousPostCount: Int? = null,
-    val previousTopEmotion: ClassifiedEmotion? = null,
 ) {
     /** 편지에 나와도 되는 숫자. 여기에 없는 숫자가 편지에 있으면 모델이 지어낸 것이다. */
     fun numbers(): Set<Int> =
@@ -36,7 +36,6 @@ data class WeeklyLetterInput(
             add(defeatedCount)
             add(receivedLikes)
             add(receivedComments)
-            previousPostCount?.let(::add)
         }
 }
 

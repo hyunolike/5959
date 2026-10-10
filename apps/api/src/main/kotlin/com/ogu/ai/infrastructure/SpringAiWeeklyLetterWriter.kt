@@ -119,7 +119,10 @@ class SpringAiWeeklyLetterWriter(
                 ClassifiedEmotion.IRRITATION to "짜증",
             )
 
-        /** 공급자에 보내는 사용자 메시지. 수치와 감정 이름뿐이다. */
+        /**
+         * 공급자에 보내는 사용자 메시지. 수치와 감정 이름뿐이다. 0인 수치와 없는 감정은 줄째로 뺀다. 실제 모델은 하지
+         * 말라고 해도 "공감이 없었다", "감정이 구분되지 않았다"고 쓰곤 했다(research R7). 모르는 것은 말하지 못한다.
+         */
         fun userMessage(input: WeeklyLetterInput): String =
             buildList {
                 add("쓴 글 수: ${input.postCount}")
@@ -127,13 +130,11 @@ class SpringAiWeeklyLetterWriter(
                     ClassifiedEmotion.entries
                         .filter { (input.emotionCounts[it] ?: 0) > 0 }
                         .joinToString(", ") { "${LABELS.getValue(it)} ${input.emotionCounts.getValue(it)}" }
-                add("감정별 글 수: ${emotions.ifEmpty { "분류된 글 없음" }}")
-                add("가장 많은 감정: ${input.topEmotion?.let(LABELS::getValue) ?: "없음"}")
-                add("처치된 몬스터 수: ${input.defeatedCount}")
-                add("받은 공감 수: ${input.receivedLikes}")
-                add("받은 댓글 수: ${input.receivedComments}")
-                input.previousPostCount?.let { add("앞 주의 글 수: $it") }
-                input.previousTopEmotion?.let { add("앞 주의 가장 많은 감정: ${LABELS.getValue(it)}") }
+                if (emotions.isNotEmpty()) add("감정별 글 수: $emotions")
+                input.topEmotion?.let { add("가장 많은 감정: ${LABELS.getValue(it)}") }
+                if (input.defeatedCount > 0) add("처치된 몬스터 수: ${input.defeatedCount}")
+                if (input.receivedLikes > 0) add("받은 공감 수: ${input.receivedLikes}")
+                if (input.receivedComments > 0) add("받은 댓글 수: ${input.receivedComments}")
             }.joinToString("\n")
 
         fun create(

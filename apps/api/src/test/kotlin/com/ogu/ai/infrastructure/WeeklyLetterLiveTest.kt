@@ -58,7 +58,6 @@ class WeeklyLetterLiveTest {
             posts: Int,
             emotions: Map<ClassifiedEmotion, Int>,
             received: Triple<Int, Int, Int>,
-            previous: Pair<Int, ClassifiedEmotion>? = null,
         ) = WeeklyLetterInput(
             postCount = posts,
             emotionCounts = ClassifiedEmotion.entries.associateWith { emotions[it] ?: 0 },
@@ -67,8 +66,6 @@ class WeeklyLetterLiveTest {
             defeatedCount = received.first,
             receivedLikes = received.second,
             receivedComments = received.third,
-            previousPostCount = previous?.first,
-            previousTopEmotion = previous?.second,
         )
 
         // 검증용으로 지어낸 수치다
@@ -80,10 +77,9 @@ class WeeklyLetterLiveTest {
                     6,
                     mapOf(ClassifiedEmotion.LETHARGY to 4, ClassifiedEmotion.SELF_DEPRECATION to 2),
                     Triple(3, 25, 11),
-                    2 to ClassifiedEmotion.ANXIETY,
                 ),
                 input(2, emptyMap(), Triple(0, 3, 1)),
-                input(4, mapOf(ClassifiedEmotion.IRRITATION to 4), Triple(2, 8, 6), 5 to ClassifiedEmotion.IRRITATION),
+                input(4, mapOf(ClassifiedEmotion.IRRITATION to 4), Triple(2, 8, 6)),
             )
     }
 }

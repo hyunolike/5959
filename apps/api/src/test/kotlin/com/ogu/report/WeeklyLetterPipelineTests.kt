@@ -110,8 +110,9 @@ class WeeklyLetterPipelineTests {
     }
 
     @Test
-    fun `US2-AC5 편지 쓰기가 받는 것은 수치뿐이고 앞 주의 리포트가 있으면 그 글 수와 감정이 더해진다`() {
+    fun `US2-AC5 편지 쓰기가 받는 것은 이 주의 수치뿐이다`() {
         val author = authorWith(posts = 2, comments = 1)
+        // 앞 주의 리포트가 있어도 그 수치는 보내지 않는다. 견주는 일은 화면이 한다
         val before = week.previous()
         report.post(author, before.from.plusSeconds(3600), "LETHARGY")
         publisher.publish(author.id, before)
@@ -124,8 +125,7 @@ class WeeklyLetterPipelineTests {
         assertThat(input.emotionCounts).containsEntry(ClassifiedEmotion.ANXIETY, 2).hasSize(5)
         assertThat(input.topEmotion).isEqualTo(ClassifiedEmotion.ANXIETY)
         assertThat(input.receivedComments).isEqualTo(1)
-        assertThat(input.previousPostCount).isEqualTo(1)
-        assertThat(input.previousTopEmotion).isEqualTo(ClassifiedEmotion.LETHARGY)
+        assertThat(input.numbers()).containsExactlyInAnyOrder(2, 0, 1)
     }
 
     @Test

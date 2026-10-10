@@ -19,14 +19,13 @@ class WeeklyLetterValidatorTest {
             defeatedCount = 1,
             receivedLikes = 12,
             receivedComments = 4,
-            previousPostCount = 5,
         )
 
     @Test
     fun `규칙에 맞는 편지는 앞뒤 공백을 떼고 그대로 쓴다`() {
-        val letter = WeeklyLetterValidator.validated("  글 3개에 공감 12개와 댓글 4개가 닿았어요. 앞 주에는 5개였죠.\n", input, 300)
+        val letter = WeeklyLetterValidator.validated("  글 3개에 공감 12개와 댓글 4개가 닿았어요.\n", input, 300)
 
-        assertThat(letter).isEqualTo("글 3개에 공감 12개와 댓글 4개가 닿았어요. 앞 주에는 5개였죠.")
+        assertThat(letter).isEqualTo("글 3개에 공감 12개와 댓글 4개가 닿았어요.")
     }
 
     @Test
@@ -51,12 +50,18 @@ class WeeklyLetterValidatorTest {
     }
 
     @Test
+    fun `US2-AC7 이모지가 든 답은 실패다`() {
+        assertThatThrownBy { WeeklyLetterValidator.validated("곁에 있었어요. 🙏", input, 300) }
+            .isInstanceOf(WeeklyLetterFailed::class.java)
+    }
+
+    @Test
     fun `한 주를 가리키는 1과 7은 수치에 없어도 된다`() {
         assertThat(WeeklyLetterValidator.validated("지난 1주일, 7일 동안 애쓰셨어요.", input, 300)).isNotBlank()
     }
 
     @Test
     fun `보낼 수 있는 숫자는 수치뿐이다`() {
-        assertThat(input.numbers()).containsExactlyInAnyOrder(3, 2, 1, 0, 12, 4, 5)
+        assertThat(input.numbers()).containsExactlyInAnyOrder(3, 2, 1, 0, 12, 4)
     }
 }

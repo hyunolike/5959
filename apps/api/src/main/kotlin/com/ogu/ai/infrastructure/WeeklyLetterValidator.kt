@@ -12,10 +12,12 @@ import com.ogu.shared.text.Grapheme
  * - 비어 있지 않다.
  * - [maxLength]자(그래핌) 이하다.
  * - 보낸 수치에 없는 숫자가 없다. 모델이 수치를 지어내는 것을 막는 가장 싼 방법이다. 한 주를 가리키는 1과 7은 둔다.
+ * - 이모지가 없다. 프롬프트로 막아도 가끔 붙여 온다.
  */
 object WeeklyLetterValidator {
     private val NUMBER = Regex("\\d+")
     private val ALWAYS_ALLOWED = setOf(1, 7)
+    private val EMOJI = Regex("\\p{IsExtended_Pictographic}")
 
     fun validated(
         raw: String?,
@@ -26,7 +28,8 @@ object WeeklyLetterValidator {
         val allowed = input.numbers() + ALWAYS_ALLOWED
         val invented = NUMBER.findAll(letter).any { it.value.toIntOrNull() !in allowed }
         val tooLong = Grapheme.count(letter) > maxLength
-        if (letter.isEmpty() || tooLong || invented) throw WeeklyLetterFailed(INVALID_RESPONSE)
+        val broken = letter.isEmpty() || tooLong || invented || EMOJI.containsMatchIn(letter)
+        if (broken) throw WeeklyLetterFailed(INVALID_RESPONSE)
         return letter
     }
 }
