@@ -290,6 +290,11 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
 - **한 번 도는 작업과 정리.** `SafetyBackfill`이 기동 뒤 따로 도는 스레드에서 안전 기능 전에 쓰인 글과 댓글을
   키워드 규칙으로 훑는다(`safety_backfill` 표지로 이어서 하고 끝나면 다시 돌지 않는다. `ogu.safety.backfill.enabled`).
   `SafetyPurgeJob`이 매일 04:30(한국 시간)에 1년 지난 기록을 지운다. 열린 신고와 재검토 요청은 남긴다.
+- **모델.** 기본 모델은 `openai/gpt-oss-20b`(NVIDIA)다. 답보다 추론 과정을 먼저 내므로 응답 토큰 상한
+  (`ogu.ai.max-tokens` 600, `risk-max-tokens` 300)을 넉넉히 두고 `reasoning-effort`를 `low`로 보낸다. 상한이 작으면
+  답이 비어 온다. 모델이나 프롬프트를 바꾸면 `OGU_RUN_AI_EVAL=true`로 `RiskEvalWithAiTest`와
+  `EmotionAnalyzerLiveTest`를 돌려 본다. 가짜 분석기를 쓰는 테스트는 공급자가 모델을 내려도 알아채지 못한다
+  (2026-07에 앞선 기본 모델이 그렇게 내려갔다). 위기 재현율은 목표에 못 미친다(005 quickstart).
 - **민감 정보.** 이벤트, 로그, `risk_assessment`에 본문과 걸린 표현을 싣지 않는다(`SensitiveLogTests`).
   운영자 조회 응답만 원문을 싣는다. 알림 문구에는 단계와 글 내용이 없다.
 - **테스트 표지.** 가짜 분류기(`FakeRiskClassifier`)는 본문의 `[위기]`, `[우려]`, `[위험분류실패]`,

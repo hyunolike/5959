@@ -73,6 +73,8 @@ class SpringAiEmotionAnalyzerTest {
         assertThat(body.get("model").asString()).isEqualTo(MODEL)
         assertThat(body.get("temperature").asDouble()).isEqualTo(0.1)
         assertThat(body.get("max_tokens").asInt()).isEqualTo(200)
+        // 기본 모델은 추론 과정을 먼저 낸다. 낮게 두어 빠르게 답하게 한다
+        assertThat(body.get("reasoning_effort").asString()).isEqualTo("low")
         val messages = body.get("messages")
         assertThat(messages.get(0).get("role").asString()).isEqualTo("system")
         val systemPrompt = messages.get(0).get("content").asString()

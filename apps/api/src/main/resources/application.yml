@@ -115,9 +115,14 @@ ogu:
   ai:
     base-url: ${AI_BASE_URL:https://integrate.api.nvidia.com/v1}
     api-key: ${AI_API_KEY:}
-    model: ${AI_MODEL:qwen/qwen3-next-80b-a3b-instruct}
+    # 2026-10-10: 앞서 쓰던 qwen/qwen3-next-80b-a3b-instruct는 공급자가 2026-07-27에 서비스를 끝냈다(410)
+    model: ${AI_MODEL:openai/gpt-oss-20b}
     temperature: 0.1
-    max-tokens: 200
+    # 기본 모델은 추론 과정을 먼저 내고 그 토큰도 상한에 들어간다. 작으면 답이 비어 온다
+    max-tokens: 600
+    risk-max-tokens: 300
+    # low, medium, high. 비우면 보내지 않는다
+    reasoning-effort: ${AI_REASONING_EFFORT:low}
     timeout: 20s
     prompt-version: v1
   emotion:

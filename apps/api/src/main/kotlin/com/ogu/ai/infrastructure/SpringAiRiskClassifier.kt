@@ -107,9 +107,6 @@ class SpringAiRiskClassifier(
         private const val MAX_CAUSE_DEPTH = 10
         private const val PROMPT = "prompts/risk-classification-v1.st"
 
-        /** 응답은 `{"level":"CONCERN"}` 한 줄이라 토큰이 적게 든다. */
-        private const val MAX_TOKENS = 30
-
         fun create(
             properties: AiProperties,
             circuitBreaker: CircuitBreaker,
@@ -123,9 +120,10 @@ class SpringAiRiskClassifier(
                     .apiKey(properties.apiKey)
                     .model(properties.model)
                     .temperature(0.0)
-                    .maxTokens(MAX_TOKENS)
+                    .maxTokens(properties.riskMaxTokens)
                     .timeout(properties.timeout)
                     .maxRetries(0)
+                    .withReasoningEffort(properties.reasoningEffort)
                     .build()
             val chatModel = OpenAiChatModel.builder().options(options).build()
             return SpringAiRiskClassifier(
