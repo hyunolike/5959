@@ -53,7 +53,7 @@ class RiskEvalWithAiTest {
         val used = properties()
         val lines =
             listOf(
-                "model ${used.model}, max tokens ${used.riskMaxTokens}, effort ${used.reasoningEffort}",
+                "model ${used.riskModel}, max tokens ${used.riskMaxTokens}, effort ${used.riskReasoningEffort}",
                 "set ${env("AI_EVAL_SET") ?: "eval-set"}, sentences ${rows.size}, AI unanswered $unanswered",
                 "crisis judged CRISIS ${percent(crisis.size - missed.size, crisis.size)}",
                 "crisis judged NONE ${percent(crisis.count { it.final == RiskLevel.NONE }, crisis.size)}",
@@ -117,10 +117,10 @@ class RiskEvalWithAiTest {
         val defaults = AiProperties()
         return defaults.copy(
             apiKey = System.getenv("AI_API_KEY").orEmpty(),
-            model = env("AI_MODEL") ?: defaults.model,
+            riskModel = env("AI_RISK_MODEL") ?: defaults.riskModel,
             riskMaxTokens = env("AI_RISK_MAX_TOKENS")?.toIntOrNull() ?: defaults.riskMaxTokens,
-            reasoningEffort = System.getenv("AI_REASONING_EFFORT") ?: defaults.reasoningEffort,
-            timeout = Duration.ofSeconds(60),
+            riskReasoningEffort = System.getenv("AI_RISK_REASONING_EFFORT") ?: defaults.riskReasoningEffort,
+            riskTimeout = Duration.ofSeconds(60),
         )
     }
 
