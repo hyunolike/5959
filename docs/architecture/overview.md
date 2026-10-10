@@ -334,16 +334,15 @@ src/
 
 import는 아래 방향으로만 한다. 같은 레이어의 슬라이스끼리는 import하지 않고 한 레이어 위에서 조립한다. 슬라이스는 `index.ts`로만 공개한다.
 
-### 6.2 3D 몬스터 (entities/monster)
+### 6.2 몬스터 캐릭터 (entities/monster)
 
-React Three Fiber로 몬스터를 코드로 만든다. 원본 그림은 쓰지 않고, 감정 5종(불안, 무기력, 외로움, 자기비하, 짜증)이라는 개념만 이어받는다.
+몬스터는 그린 캐릭터 그림이다([ADR-0006](../adr/0006-illustrated-monsters.md)). 처음에는 React Three Fiber로 코드로 만들었지만(ADR-0003) 캐릭터로 보이지 않아 바꿨다. 원본 서비스의 그림은 쓰지 않고, 감정 5종(불안, 무기력, 외로움, 자기비하, 짜증)이라는 개념만 이어받는다.
 
-- `model/appearance.ts`: `(감정, HP 비율, 상태) → 외형 파라미터`를 계산하는 순수 함수다. 색, 크기, 흔들림, 금 간 정도와 HP 단계(멀쩡함, 상처 입음, 약해짐, 쓰러짐)를 돌려준다. 렌더링과 분리해서 Vitest로 테스트한다.
-- `ui/monster-3d.tsx`: R3F 장면이다. `next/dynamic`으로 글 상세에서만 불러와 첫 로딩 번들에 Three.js가 들어가지 않게 한다. 화면에 보이고 움직이는 동안만 매 프레임 그리고, 쓰러졌거나 화면 밖이면 필요할 때만 그린다.
-- `ui/monster-sprite.tsx`: 정지 이미지다. `pnpm --filter web render:monsters`(`scripts/render-monsters.ts`)가 Vite 하네스로 3D 장면을 띄우고 Playwright로 찍어 감정 5종과 HP 단계 4개, 모두 20장의 PNG를 `public/monsters/`에 만든다. Node 22.18 이상이 필요하다.
-- 피드 카드는 언제나 정지 이미지다. 글 상세는 WebGL을 쓸 수 없거나 `prefers-reduced-motion`이 켜져 있으면 정지 이미지로 대신한다.
-- 3D 장면이 실패하면 `MonsterDisplay`의 오류 경계가 받아 정지 이미지로 바꾼다. 글 상세 전체는 오류 화면으로 넘어가지 않고, 실패는 글마다 기억해 다른 글로 가면 3D를 다시 시도한다.
-- 감정마다 색, 형태, 움직임으로 구분한다. 불안은 떨리는 뾰족한 형태, 무기력은 축 처진 형태로 표현한다. 레이드 보스(M5)는 같은 모델을 키우고 파티클을 더한다.
+- `public/monsters/`: 감정 5종 × HP 단계 4개(멀쩡함, 상처 입음, 약해짐, 쓰러짐) 20장과 보스 10장. 투명 배경 512×512 WebP다. Codex CLI의 이미지 생성으로 만들었고, 먼저 그린 그림을 참고로 넘겨 화풍과 캐릭터를 맞췄다.
+- `model/hp-stage.ts`: HP 비율을 단계로 바꾼다. `model/sprite.ts`: 감정과 단계로 그림의 경로와 이름, 감정별 대기 움직임을 정한다.
+- `ui/monster-sprite.tsx`: 그림 한 장. `ui/monster-view.tsx`(`MonsterDisplay`): 그림, 감정 이름, HP 바, 처치됨 표시.
+- 피드, 글 상세, 레이드가 같은 그림을 쓴다. 상세와 레이드에서는 감정마다 다른 CSS 대기 움직임을 준다(불안은 떨림, 무기력은 축 처짐). `prefers-reduced-motion`이 켜져 있으면 움직이지 않는다.
+- 레이드 보스는 감정마다 따로 그린 큰 모습이다. 살아 있는 동안은 한 장을 쓰고 HP가 줄면 색을 뺀다.
 
 ### 6.3 인증: BFF
 
@@ -446,12 +445,12 @@ Spring Modulith `Documenter`가 만든 모듈 다이어그램은 CI 산출물로
 | Oracle 무료 VM 회수나 가용 용량 부족 | `infra/`에 compose와 프로비저닝 스크립트를 두어 다른 VM(EC2 등)으로 1시간 안에 옮길 수 있게 한다 |
 | OpenAI 비용 급증 | 월 한도, 요청 제한, 결과 저장 |
 | 위험 감지 오탐으로 멀쩡한 글이 숨겨짐 | `CRISIS`만 숨기고, 작성자에게 이유를 알리며, 재검토 API를 둔다 |
-| 3D 렌더링이 저사양 기기에서 느림 | 목록은 정지 이미지, 상세만 3D, 폴백 제공 |
+| 몬스터 그림이 캐릭터로 보이지 않음 | 코드 생성 3D를 걷어 내고 그린 캐릭터 그림으로 바꿨다(ADR-0006) |
 | 범위가 커서 끝나지 않음 | 마일스톤마다 배포한다. M4까지 끝나면 포트폴리오로 쓸 수 있게 순서를 잡았다 |
 
 ## 13. 결정 기록
 
 - [ADR-0001 모듈러 모놀리스](../adr/0001-modular-monolith.md)
 - [ADR-0002 BFF 인증](../adr/0002-bff-auth.md)
-- [ADR-0003 R3F 코드 생성 3D 몬스터](../adr/0003-r3f-monsters.md)
+- [ADR-0003 R3F 코드 생성 3D 몬스터](../adr/0003-r3f-monsters.md) (ADR-0006으로 대체)
 - [ADR-0004 VM 내 PostgreSQL](../adr/0004-self-hosted-postgres.md)

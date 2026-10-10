@@ -153,7 +153,7 @@ to where they started after login (US4-AC5).
 
 - `entities/post`: 글 상세와 피드 조회(`usePostDetailQuery`, `useFeedQuery`), 피드 카드.
 - `entities/comment`: 댓글 목록 조회와 댓글 한 줄.
-- `entities/monster`: 외형 계산(`model/appearance.ts`), 정지 이미지 경로, 3D 장면과 몬스터 자리(`MonsterDisplay`).
+- `entities/monster`: HP 단계, 그림의 경로와 대기 움직임(`model/sprite.ts`), 몬스터 자리(`MonsterDisplay`).
 - `features/write-post`, `features/manage-post`: 글 쓰기, 수정, 삭제.
 - `features/like`, `features/comment`: 글 공감, 댓글 공감, 댓글 쓰기와 수정, 삭제. 낙관적 HP 계산이 여기 있다.
 - `widgets/feed-list`, `widgets/post-detail`, `widgets/post-editor`: 위 슬라이스를 화면 단위로 조립한다.
@@ -186,23 +186,23 @@ to where they started after login (US4-AC5).
 `isMutating`으로 세어 마지막 공격이 끝날 때만 다시 불러온다. 실패하면 그 사이 서버 값이
 들어오지 않았을 때만 되돌린다.
 
-### 3D 몬스터와 정지 이미지
+### 몬스터 그림
 
-피드 카드는 언제나 정지 이미지(`public/monsters/{emotion}-{stage}.png`, 감정 5종에 HP
-단계 4개로 20장)를 쓴다. 상세는 WebGL을 쓸 수 있고 움직임 줄이기가 꺼져 있을 때만 3D
-장면을 그린다. three와 R3F는 `next/dynamic`으로만 불러와 첫 번들에 들어가지 않고(ADR-0003),
-불러오는 동안에는 그 자리에 정지 이미지를 둔다. 장면은 몬스터가 화면에 보이고 움직이는
-동안만 매 프레임 그린다. 쓰러졌거나 화면 밖에 있으면 HP가 바뀔 때처럼 필요할 때만 그린다.
+몬스터는 그린 캐릭터 그림이다(ADR-0006). `public/monsters/{emotion}-{stage}.webp`가 감정 5종에
+HP 단계 4개로 20장, `boss-{emotion}.webp`와 `boss-{emotion}-defeated.webp`가 10장이다. 피드,
+글 상세, 레이드가 같은 그림을 쓴다.
 
-3D 장면이 실패하면(렌더러를 만들지 못했거나 청크를 받지 못했을 때) `MonsterDisplay`의
-오류 경계가 받아 정지 이미지로 바꾸고, 글 상세 전체는 오류 화면으로 넘어가지 않는다.
-실패는 글마다 기억한다. 같은 글에서는 정지 이미지로 남고, App Router가 트리를 유지한 채
-다른 글로 가면(`resetKey`가 바뀌면) 3D를 다시 시도한다.
+- 글 상세와 레이드의 큰 그림은 감정마다 다른 대기 움직임을 한다. `model/sprite.ts`의
+  `EMOTION_MOTION`이 감정을 움직임에 잇고, `core/styles/globals.css`의 `monster-idle-*`가 그린다.
+  쓰러진 몬스터와 피드 카드는 움직이지 않는다.
+- 움직임 줄이기가 켜져 있으면 대기 움직임도 맞는 반응도 없다. 대기 움직임은 CSS의
+  `prefers-reduced-motion`이, 맞는 반응은 `useHitReaction`이 본다.
+- 보스는 살아 있는 동안 한 장을 쓴다. HP 단계는 `saturate`로 색을 빼서 보인다.
+- 그림을 바꾸려면 같은 이름의 512×512 투명 WebP로 덮어쓴다. 그림은 이미지 생성 도구로 만든
+  것이라 같은 그림을 다시 얻을 수 없다. 다시 그릴 때는 남아 있는 그림을 참고로 넘겨 화풍을 맞춘다.
 
-정지 이미지는 `pnpm --filter web render:monsters`로 만든다. Vite로
-`scripts/monster-capture` 하네스를 띄우고 Playwright Chromium이 3D 장면을 투명 배경
-512×512로 찍는다. 이 스크립트는 Node의 타입 지우기에 기대므로 Node 22.18 이상이
-필요하다. 외형이나 장면을 바꾸면 다시 돌려서 이미지를 커밋한다.
+처음에는 React Three Fiber로 그린 3D였다(ADR-0003). 3D 장면, 외형 계산, 캡처 스크립트와
+three 의존성은 지웠다.
 
 ## 알림 (004-notification-mypage)
 

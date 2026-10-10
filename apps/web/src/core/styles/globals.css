@@ -24,3 +24,91 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/*
+ * 몬스터의 대기 움직임(ADR-0006). 감정마다 다르다. 글 상세와 레이드의 큰 그림에만 쓴다.
+ * 움직임 줄이기가 켜져 있으면 움직이지 않는다.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .monster-idle-tremble {
+    animation: monster-tremble 0.18s linear infinite;
+  }
+  .monster-idle-sag {
+    animation: monster-sag 3.2s ease-in-out infinite;
+    transform-origin: 50% 100%;
+  }
+  .monster-idle-sway {
+    animation: monster-sway 2.6s ease-in-out infinite;
+    transform-origin: 50% 90%;
+  }
+  .monster-idle-nod {
+    animation: monster-nod 2.2s ease-in-out infinite;
+    transform-origin: 50% 100%;
+  }
+  .monster-idle-twitch {
+    animation: monster-twitch 1.8s ease-in-out infinite;
+  }
+}
+
+@keyframes monster-tremble {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-1.5px, 0.5px);
+  }
+  50% {
+    transform: translate(1px, -0.5px);
+  }
+  75% {
+    transform: translate(-0.5px, 1px);
+  }
+}
+
+@keyframes monster-sag {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  50% {
+    transform: scale(1.03, 0.95);
+  }
+}
+
+@keyframes monster-sway {
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+
+@keyframes monster-nod {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+  50% {
+    transform: translateY(4px) rotate(2deg);
+  }
+}
+
+@keyframes monster-twitch {
+  0%,
+  70%,
+  100% {
+    transform: translate(0, 0) rotate(0);
+  }
+  76% {
+    transform: translate(-3px, 0) rotate(-2deg);
+  }
+  82% {
+    transform: translate(3px, 0) rotate(2deg);
+  }
+  88% {
+    transform: translate(-2px, 0) rotate(-1deg);
+  }
+}

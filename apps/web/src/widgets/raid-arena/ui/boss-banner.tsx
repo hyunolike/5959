@@ -22,7 +22,7 @@ export function BossBanner() {
       className="flex items-center gap-3 rounded-lg border border-neutral-200 bg-white px-4 py-3 transition-colors hover:border-neutral-300 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none"
     >
       <span className="size-12 shrink-0">
-        <MonsterSprite emotion={boss.emotion} stage="full" sizes="48px" />
+        <MonsterSprite emotion={boss.emotion} stage="full" boss sizes="48px" />
       </span>
       <span className="flex min-w-0 flex-col">
         <span className="text-sm font-semibold text-neutral-900">

@@ -41,7 +41,7 @@ function isNotFound(error: unknown): boolean {
 }
 
 /**
- * 글 상세(FR-012): 작성자, 본문, 댓글 말투, 몬스터(3D 또는 정지 이미지, US5), 공감과 댓글.
+ * 글 상세(FR-012): 작성자, 본문, 댓글 말투, 몬스터(US5), 공감과 댓글.
  * 몬스터가 생기기 전에는 "분석 중"을 보여 주고, `usePostDetailQuery`가 몬스터가
  * 생길 때까지 다시 불러와 새로고침 없이 바꿔 그린다(FR-015, US1-AC3).
  * 공감과 댓글은 응답 전에 HP를 줄여 보여 주고 몬스터 자리가 맞는 반응을 한다(US3-AC10).
@@ -103,11 +103,7 @@ function PostDetailContent({ detail }: { detail: PostDetailData }) {
         />
         <Card aria-label="몬스터" className="flex flex-col gap-2">
           {monster ? (
-            <MonsterDisplay
-              monster={monster}
-              variant="detail"
-              resetKey={detail.postId}
-            />
+            <MonsterDisplay monster={monster} variant="detail" />
           ) : (
             <p
               aria-live="polite"
