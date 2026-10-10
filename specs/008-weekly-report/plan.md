@@ -49,7 +49,7 @@ API에는 `report` 모듈을 추가한다. 한 번 도는 배치가 아니라 1�
 
 | 원칙 | 이 계획에서 | 판정 |
 |---|---|---|
-| I. 경계는 테스트로 강제한다 | 새 모듈 `report`는 `shared`, `post`, `monster`, `emotion`, `ai`에 의존하고 `notification → report`가 더해진다. overview 5.1의 표에 있던 모듈이다. 다른 모듈의 데이터는 파사드로만 읽는다(R1, R5). `ModularityTests`가 확인한다 | 통과 |
+| I. 경계는 테스트로 강제한다 | 새 모듈 `report`는 `shared`, `post`, `monster`, `emotion`, `ai`, `member`에 의존하고 `notification → report`가 더해진다. overview 5.1의 표에 있던 모듈이다. 다른 모듈의 데이터는 파사드로만 읽는다(R1, R5). `ModularityTests`가 확인한다 | 통과 |
 | II. 계약이 코드보다 먼저다 | [contracts/weekly-report.openapi.yaml](contracts/weekly-report.openapi.yaml)에 연산 2개와 알림 종류를 먼저 적었다 | 통과 |
 | III. 인수 조건은 곧 테스트다 | 인수 조건 25개에 ID를 붙였다. 편지의 품질은 수치로 재지 않고 규칙만 검증한다(스펙 Assumptions) | 통과 |
 | IV. 사용자 안전이 기능보다 먼저다 | 위기 글이 있던 주에는 AI에게 맡기지 않고 정해 둔 문구와 도움받을 곳을 보인다(R8). 편지는 길이, 숫자, 욕설을 검증한 뒤에만 보인다(R7). 리포트는 본문을 담지 않는다 | 통과 |

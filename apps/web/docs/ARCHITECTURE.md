@@ -389,6 +389,25 @@ id, 연달아 실패한 횟수만 둔다. 알림과 안 읽은 수는 TanStack Q
 - 응답의 `pending`이 true면 3초마다, 처음 불러온 때부터 30초까지 다시 부른다. 방금 쓴 글의 추천이 새로고침 없이 나타난다.
 - 추천 구역은 글의 `article`("고민 글") 밖에 있다. 카드에도 몬스터와 HP가 있어, e2e에서 글의 것을 볼 때는 `e2e-full/support/detail.ts`의 `postArticle` 안에서 찾는다.
 
+## 주간 리포트 (008-weekly-report)
+
+월요일에 알림이 오고, 눌러서 지난주의 수치와 편지를 본다. 마이페이지에서 지난 리포트를 다시 본다.
+
+- `entities/weekly-report`: 타입, 조회(`useWeeklyReportQuery`, `useWeeklyReportsQuery`), 편지 폴링 간격(`letterPollInterval`), 기간 쓰기(`formatWeek`), 목록의 한 줄(`WeeklyReportItem`).
+- `widgets/weekly-report`: 리포트 본문. 편지 자리는 상태마다 다르다: 쓰는 중이면 안내, 써졌으면 편지, 닫혔으면 그리지 않고, `SUPPORT`면 정해 둔 문구와 도움받을 곳이다.
+- `widgets/my-activity`: "주간 리포트" 탭.
+- `app/report/[weekStart]/page.tsx`: 조립만. `/report`는 라우트 가드의 보호 경로다.
+- `entities/support-resource`: 도움받을 곳 목록과 그 조회. 글 상세의 도움 안내와 리포트가 함께 써서 위젯에서 엔티티로 옮겼다.
+- 감정의 색(`EMOTION_COLORS`)은 `entities/monster`에 있다. 마이페이지 통계와 리포트가 같은 색을 쓴다.
+
+규칙:
+
+- 편지를 쓰는 중(`PENDING`)이면 처음 30초는 3초마다, 그 뒤에는 15초마다 다시 받고 10분 뒤 멈춘다. 서버의 재시도가 30초 뒤부터라, 30초에서 멈추면 늦게 써진 편지가 열어 둔 화면에 나타나지 않는다.
+- 위기 글이 있던 주의 문구(`SUPPORT_LETTER`)는 판정이나 글의 내용을 말하지 않는다. 도움받을 곳을 알리는 자리다.
+- 날짜는 서버가 한국 시간으로 자른 문자열(`2026-10-05`)을 그대로 읽는다. `Date`로 바꾸지 않는다. 브라우저의 시간대가 달라도 날짜가 밀리지 않는다.
+- 엔티티끼리는 가져올 수 없다. 리포트 목록의 감정 이름은 위젯이 넘기고, 알림의 리포트 주소는 `entities/notification`에 따로 적혀 있다.
+- 막대는 장식이고 값은 이름과 숫자가 전한다. 마이페이지 분포와 같은 원칙이다.
+
 ## Recent-practice choices worth calling out
 
 - **Next.js 16 / React 19**, App Router, Turbopack builds.

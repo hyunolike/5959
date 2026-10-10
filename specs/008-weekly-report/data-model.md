@@ -66,7 +66,7 @@ Flyway `V8__weekly_report.sql`. 모든 제약에 이름을 붙인다. 다른 모
 | 키 | 기본값 | 설명 |
 |---|---|---|
 | `ogu.report.scheduler-enabled` | true | 리포트 만들기와 편지 재시도의 주기 작업 |
-| `ogu.report.poll-interval` | 1m | 주기 |
+| `ogu.report.poll-interval` | 1m | 주기. e2e는 5s |
 | `ogu.report.publish-at` | 05:00 | 월요일 이 시각(한국 시간)부터 만든다. e2e는 00:00 |
 | `ogu.report.batch-size` | 200 | 대상 회원을 한 번에 읽는 수 |
 | `ogu.report.max-per-tick` | 500 | 한 차례에 만드는 리포트 수의 한도 |
@@ -75,7 +75,7 @@ Flyway `V8__weekly_report.sql`. 모든 제약에 이름을 붙인다. 다른 모
 | `ogu.report.letter.deadline` | 24h | |
 | `ogu.report.letter.max-length` | 300 | 그래핌 기준 |
 | `ogu.report.retention` | 365d | |
-| `ogu.ai.letter-max-tokens` | 600 | 추론 모델이라 넉넉히 둔다 |
+| `ogu.ai.letter-max-tokens` | 900 | 추론 모델이라 넉넉히 둔다 |
 
 ## 이벤트
 
