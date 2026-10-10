@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: 오구오구 API
-  version: 0.6.0
+  version: 0.7.0
   description: |
     apps/api가 이 계약을 구현하고, apps/web은 이 계약에서 타입을 생성한다.
     이 API는 BFF(apps/web의 라우트 핸들러)만 호출한다. 브라우저는 직접 호출하지 않는다.
@@ -9,6 +9,7 @@ info:
     002-auth에서 추가한 인증과 회원 API는 모두 온보딩 전에도 쓸 수 있다.
     003-core-loop에서 추가한 고민 글, 공감, 댓글, 피드 API는 모두 인증이 필요하고,
     온보딩 전 회원에게는 403 ONBOARDING_REQUIRED를 돌려준다.
+    007-recommend에서 추가한 비슷한 고민 조회도 인증이 필요하고 온보딩 전 회원에게는 403을 돌려준다.
     006-raid에서 추가한 레이드 API도 인증이 필요하고 온보딩 전 회원에게는 403을 돌려준다.
     004-notification-mypage에서 추가한 알림과 마이페이지, 프로필 수정 API도 모두 인증이 필요하고,
     온보딩 전 회원에게는 403 ONBOARDING_REQUIRED를 돌려준다. 실시간 알림 스트림
@@ -798,6 +799,24 @@ components:
         myDamage: { type: integer }
         defeated: { type: boolean, description: 이 공격으로 처치됐다 }
         cooldownMs: { type: integer, description: 다음 공격까지 기다릴 시간 }
+    RecommendationBasis:
+      type: string
+      description: |
+        SIMILAR 뜻이 가까운 글, SAME_EMOTION 같은 감정의 최근 글(임베딩이 없거나 가까운 글이 없을 때),
+        NONE 보여 줄 글이 없음(화면은 구역을 숨긴다)
+      enum: [SIMILAR, SAME_EMOTION, NONE]
+    SimilarPosts:
+      type: object
+      required: [basis, items, pending]
+      properties:
+        basis: { $ref: '#/components/schemas/RecommendationBasis' }
+        items:
+          type: array
+          maxItems: 5
+          items: { $ref: '#/components/schemas/FeedItem' }
+        pending:
+          type: boolean
+          description: 이 글의 임베딩을 아직 만들고 있다. true면 화면이 잠시 뒤 다시 받는다
   responses:
     BadRequest:
       description: 입력 검증 실패 (INVALID_REQUEST). 댓글 작성에서는 INVALID_PARENT_COMMENT도 쓴다
@@ -2072,6 +2091,49 @@ paths:
               schema: { $ref: '#/components/schemas/ErrorEnvelope' }
         '503':
           description: HP를 들고 있는 장치가 내려가 있어 공격을 받을 수 없음 (RAID_UNAVAILABLE). 공격은 반영되지 않았다
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /api/v1/posts/{postId}/similar:
+    parameters:
+      - name: postId
+        in: path
+        required: true
+        schema: { type: integer, format: int64 }
+    get:
+      tags: [feed]
+      operationId: getSimilarPosts
+      summary: 이 글과 비슷한 고민 (US1-AC1, US2-AC2). 가까운 순서로 최대 5개. 지금 글, 내 글, 숨긴 글, 지운 글은 없다
+      responses:
+        '200':
+          description: 추천
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, error]
+                properties:
+                  success: { type: boolean, const: true }
+                  data: { $ref: '#/components/schemas/SimilarPosts' }
+                  error: { type: 'null' }
+        '400':
+          description: 글 ID 형식이 틀림 (INVALID_REQUEST)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '401':
+          description: 인증 없음 또는 세션 만료
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '403':
+          description: 온보딩 전 (ONBOARDING_REQUIRED)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '404':
+          description: 없거나, 지웠거나, 다른 회원에게 숨긴 글 (POST_NOT_FOUND)
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorEnvelope' }

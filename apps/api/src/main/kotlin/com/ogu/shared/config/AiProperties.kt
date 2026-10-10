@@ -27,6 +27,10 @@ data class AiProperties(
      * 낮을수록 빠르고 토큰이 덜 든다.
      */
     val reasoningEffort: String = "low",
+    /** 임베딩 모델(007 research R2). 채팅 모델과 같은 공급자를 쓴다. 바꾸면 값을 차례로 다시 만든다. */
+    val embeddingModel: String = "nvidia/nemotron-3-embed-1b",
+    /** 임베딩의 차원. 저장하는 열(`post_embedding.embedding`)의 차원과 같아야 한다. */
+    val embeddingDimensions: Int = 2048,
     val timeout: Duration = Duration.ofSeconds(20),
     val promptVersion: String = "v1",
 )

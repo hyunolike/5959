@@ -2,6 +2,8 @@ package com.ogu.feed.presentation
 
 import com.ogu.feed.application.FeedQuery
 import com.ogu.feed.application.PostDetailQuery
+import com.ogu.feed.application.SimilarPostsQuery
+import com.ogu.feed.application.SimilarPostsResponse
 import com.ogu.feed.presentation.dto.FeedPageResponse
 import com.ogu.feed.presentation.dto.PostDetailResponse
 import com.ogu.member.AuthenticatedMember
@@ -29,6 +31,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse as DocResponse
 class FeedController(
     private val postDetailQuery: PostDetailQuery,
     private val feedQuery: FeedQuery,
+    private val similarPostsQuery: SimilarPostsQuery,
 ) {
     @Operation(
         operationId = "getFeed",
@@ -84,6 +87,23 @@ class FeedController(
         member: AuthenticatedMember,
         @PathVariable postId: Long,
     ): ApiResponse<PostDetailResponse> = ApiResponse.success(postDetailQuery.get(postId, member.memberId))
+
+    @Operation(
+        operationId = "getSimilarPosts",
+        summary = "이 글과 비슷한 고민 (007 US1-AC1, US2-AC2). 가까운 순서로 최대 5개",
+        responses = [
+            DocResponse(responseCode = "200", description = "추천. 보여 줄 글이 없으면 basis가 NONE이다"),
+            DocResponse(responseCode = "400", description = "글 ID 형식이 틀림 (INVALID_REQUEST)"),
+            DocResponse(responseCode = "401", description = "인증 없음 또는 세션 만료"),
+            DocResponse(responseCode = "403", description = "온보딩 전 (ONBOARDING_REQUIRED)"),
+            DocResponse(responseCode = "404", description = "없거나, 지웠거나, 숨긴 글 (POST_NOT_FOUND)"),
+        ],
+    )
+    @GetMapping("/api/v1/posts/{postId}/similar")
+    fun getSimilarPosts(
+        member: AuthenticatedMember,
+        @PathVariable postId: Long,
+    ): ApiResponse<SimilarPostsResponse> = ApiResponse.success(similarPostsQuery.get(postId, member.memberId))
 }
 
 /**

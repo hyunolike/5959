@@ -1,10 +1,12 @@
 package com.ogu.support
 
 import com.ogu.ai.ClassifiedRisk
+import com.ogu.ai.Embedder
 import com.ogu.ai.EmotionAnalyzer
 import com.ogu.ai.EmotionClassification
 import com.ogu.ai.RiskClassifier
 import com.ogu.ai.infrastructure.EmotionResponseParser
+import com.ogu.ai.infrastructure.FakeEmbedder
 import com.ogu.ai.infrastructure.FakeEmotionAnalyzer
 import com.ogu.ai.infrastructure.FakeRiskClassifier
 import org.springframework.boot.test.context.TestConfiguration
@@ -26,6 +28,11 @@ class TestAiConfiguration {
     @Bean
     @Primary
     fun scriptedRiskClassifier(): ScriptedRiskClassifier = ScriptedRiskClassifier(FakeRiskClassifier())
+
+    /** 임베딩도 가짜를 쓴다(007 research R10). 본문의 `[주제:이름]`, `[임베딩실패:N]` 표지로 결과를 정한다. */
+    @Bean
+    @Primary
+    fun fakeEmbedder(): Embedder = FakeEmbedder()
 }
 
 /**
