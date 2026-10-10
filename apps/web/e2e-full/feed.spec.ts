@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { postArticle } from "./support/detail";
 import { waitForHomeLoaded } from "./support/home";
 
 // infra/compose.e2e.yaml로 띄운 실제 API + DB를 상대로 확인한다. 다른 스펙이 동시에 글을
@@ -74,7 +75,9 @@ test("US2-AC1 최신 글부터 작성자, 직군과 경력, 본문 앞부분, �
 
   // 감정 분석이 끝나 몬스터가 생길 때까지 기다린 뒤 피드를 연다
   await page.goto(`/post/${postId}`);
-  await expect(page.getByText("HP 10/10")).toBeVisible({ timeout: 30_000 });
+  await expect(postArticle(page).getByText("HP 10/10")).toBeVisible({
+    timeout: 30_000,
+  });
 
   // 다른 스펙이 동시에 글을 많이 쓰면(US2-AC2는 24개) 첫 쪽 20개 밖으로 밀린다.
   // 이 테스트만 쓰는 직군과 경력 조합으로 거른 최신순 피드에서 본다.

@@ -16,6 +16,11 @@ export const QUERY_KEYS = {
   allPosts: ["posts"] as const,
   postDetail: (postId: number) => ["posts", postId] as const,
   comments: (postId: number) => ["posts", postId, "comments"] as const,
+  /**
+   * 글 상세 아래 비슷한 고민(007). 상세 아래에 두지 않는다. 공감과 댓글이 상세를 무효화할 때마다
+   * 추천까지 다시 부를 까닭이 없다.
+   */
+  similarPosts: (postId: number) => ["similar-posts", postId] as const,
   /** 정렬과 필터가 다르면 다른 목록이다. 무효화는 `["feed"]` 하나로 모든 피드를 지운다. */
   feed: (filter: object) => ["feed", filter] as const,
   /** 모든 피드. 공감과 댓글로 공감 수, 댓글 수, HP가 바뀌면 이 키로 피드를 낡은 것으로 표시한다. */

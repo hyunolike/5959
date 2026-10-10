@@ -1,5 +1,7 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
+import { postArticle } from "./support/detail";
+
 // infra/compose.e2e.yaml로 띄운 실제 API + DB를 상대로 확인한다. 글은 바로 분석되는
 // 머리말(`[불안:낮음]`: 불안, 최대 HP 10)로 쓴다. `[실패]` 글은 24시간 동안 재시도
 // 대기열에 남아 다른 스펙의 재시도를 늦추므로 쓰지 않는다.
@@ -80,7 +82,7 @@ async function createComment(
 }
 
 function monster(page: Page) {
-  return page.locator('[aria-label="몬스터"]');
+  return postArticle(page).locator('[aria-label="몬스터"]');
 }
 
 /** 글 아래의 공감 수와 댓글 수 줄. 댓글 공감 버튼의 "공감 N"과 섞이지 않게 범위를 좁힌다. */

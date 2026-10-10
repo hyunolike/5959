@@ -43,8 +43,8 @@ description: "Task list for 007-recommend (비슷한 고민 추천)"
 
 ## Phase 7: 웹 (묶음 7)
 
-- [ ] T013 [P] `entities/post/api/use-similar-posts-query.ts`(`pending`이면 3초마다, 최대 30초), `widgets/post-detail/ui/similar-posts.tsx`(제목이 basis에 따라 다르다, NONE이면 그리지 않는다, 실패해도 그리지 않는다). 단위 테스트: `US1-AC1`, `US1-AC2`, `US1-AC7`, `US2-AC2`, `US2-AC3`, `US2-AC7`
-- [ ] T014 `e2e-full/recommend.spec.ts`: `US1-AC1`과 `US1-AC4`, `US1-AC2`, `US2-AC2`, `US3-AC1`
+- [x] T013 [P] `entities/post/api/use-similar-posts-query.ts`(`pending`이면 3초마다, 최대 30초), `widgets/post-detail/ui/similar-posts.tsx`(제목이 basis에 따라 다르다, NONE이면 그리지 않는다, 실패해도 그리지 않는다). 단위 테스트: `US1-AC1`, `US1-AC2`, `US1-AC7`, `US2-AC2`, `US2-AC3`, `US2-AC7` **구현 메모**: 추천 구역은 글의 `article` 밖에 둔다. 카드에도 몬스터와 HP가 있어 기존 e2e 선택자가 여러 요소에 걸렸고, `support/detail.ts`의 `postArticle`로 글 안에서만 찾게 했다.
+- [x] T014 `e2e-full/recommend.spec.ts`: `US1-AC1`과 `US1-AC4`, `US1-AC2`, `US2-AC2`, `US3-AC1` **구현 메모**: 지금 스펙의 번호로 `US1-AC1`(AC3, AC4 포함), `US1-AC2`, `US1-AC7`, `US2-AC2`, `US2-AC3`, `US3-AC1`, `US3-AC2` 일곱 개다.
 
 ## Phase 8: 평가와 성능 (묶음 8)
 

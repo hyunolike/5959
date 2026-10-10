@@ -21,6 +21,7 @@ import { Button, Card, Spinner } from "@/shared/ui";
 
 import { PostComments } from "./post-comments";
 import { SafetyNotice } from "./safety-notice";
+import { SimilarPosts } from "./similar-posts";
 
 /** 없거나 지운 글(404), 숫자가 아닌 글 ID(400). */
 export function PostNotFound() {
@@ -79,91 +80,96 @@ function PostDetailContent({ detail }: { detail: PostDetailData }) {
   const queryClient = useQueryClient();
 
   return (
-    <article className="flex w-full max-w-xl flex-col gap-4">
-      {/* 내 글이 우려나 위기로 판정됐거나 숨겨졌을 때만 보인다(005 US1). 화면 맨 위에 둔다. */}
-      <SafetyNotice
-        safety={detail.safety}
-        target="post"
-        action={
-          // 숨겨진 내 글은 다시 살펴봐 달라고 한 번 요청할 수 있다(005 US4-AC8).
-          <RequestReviewButton
-            targetType="POST"
-            targetId={detail.postId}
-            requested={detail.safety?.reviewRequested ?? false}
-            onRequested={() => {
-              void queryClient.invalidateQueries({
-                queryKey: QUERY_KEYS.postDetail(detail.postId),
-                exact: true,
-              });
-            }}
-          />
-        }
-      />
-      <Card aria-label="몬스터" className="flex flex-col gap-2">
-        {monster ? (
-          <MonsterDisplay
-            monster={monster}
-            variant="detail"
-            resetKey={detail.postId}
-          />
-        ) : (
-          <p
-            aria-live="polite"
-            className="py-4 text-center text-sm text-neutral-500"
-          >
-            분석 중
-          </p>
-        )}
-      </Card>
+    <div className="flex w-full max-w-xl flex-col gap-4">
+      <article aria-label="고민 글" className="flex flex-col gap-4">
+        {/* 내 글이 우려나 위기로 판정됐거나 숨겨졌을 때만 보인다(005 US1). 화면 맨 위에 둔다. */}
+        <SafetyNotice
+          safety={detail.safety}
+          target="post"
+          action={
+            // 숨겨진 내 글은 다시 살펴봐 달라고 한 번 요청할 수 있다(005 US4-AC8).
+            <RequestReviewButton
+              targetType="POST"
+              targetId={detail.postId}
+              requested={detail.safety?.reviewRequested ?? false}
+              onRequested={() => {
+                void queryClient.invalidateQueries({
+                  queryKey: QUERY_KEYS.postDetail(detail.postId),
+                  exact: true,
+                });
+              }}
+            />
+          }
+        />
+        <Card aria-label="몬스터" className="flex flex-col gap-2">
+          {monster ? (
+            <MonsterDisplay
+              monster={monster}
+              variant="detail"
+              resetKey={detail.postId}
+            />
+          ) : (
+            <p
+              aria-live="polite"
+              className="py-4 text-center text-sm text-neutral-500"
+            >
+              분석 중
+            </p>
+          )}
+        </Card>
 
-      <Card className="flex flex-col gap-4">
-        <header className="flex items-start justify-between gap-2">
-          <div className="flex flex-col gap-0.5">
-            <p className="text-sm font-semibold text-neutral-900">
-              {author.nickname}
-            </p>
-            <p className="text-xs text-neutral-500">
-              {`${JOB_ROLE_LABELS[author.jobRole]} · ${CAREER_YEAR_LABELS[author.careerYear]}`}
-            </p>
-          </div>
-          {detail.mine ? (
-            <div className="flex shrink-0 items-center gap-1">
-              <Button asChild variant="ghost" size="sm">
-                <Link href={`/post/${detail.postId}/edit`}>수정</Link>
-              </Button>
-              <DeletePostButton postId={detail.postId} />
+        <Card className="flex flex-col gap-4">
+          <header className="flex items-start justify-between gap-2">
+            <div className="flex flex-col gap-0.5">
+              <p className="text-sm font-semibold text-neutral-900">
+                {author.nickname}
+              </p>
+              <p className="text-xs text-neutral-500">
+                {`${JOB_ROLE_LABELS[author.jobRole]} · ${CAREER_YEAR_LABELS[author.careerYear]}`}
+              </p>
             </div>
-          ) : (
-            // 다른 회원의 글에만 신고를 둔다(005 US3-AC3).
-            <ReportButton targetType="POST" targetId={detail.postId} />
-          )}
-        </header>
-        <p className="text-base whitespace-pre-wrap text-neutral-900">
-          {detail.content}
-        </p>
-        <dl className="flex items-center gap-2 text-xs">
-          <dt className="text-neutral-500">댓글 말투</dt>
-          <dd className="rounded-full bg-neutral-100 px-2 py-0.5 text-neutral-700">
-            {COMMENT_TONE_LABELS[detail.commentTone]}
-          </dd>
-        </dl>
-        <div
-          role="group"
-          aria-label="공감과 댓글 수"
-          className="flex items-center gap-3 text-xs text-neutral-600 tabular-nums"
-        >
-          {detail.mine ? (
-            <span>공감 {detail.likeCount}</span>
-          ) : (
-            <PostLikeButton detail={detail} />
-          )}
-          <span>댓글 {detail.commentCount}</span>
-        </div>
-      </Card>
+            {detail.mine ? (
+              <div className="flex shrink-0 items-center gap-1">
+                <Button asChild variant="ghost" size="sm">
+                  <Link href={`/post/${detail.postId}/edit`}>수정</Link>
+                </Button>
+                <DeletePostButton postId={detail.postId} />
+              </div>
+            ) : (
+              // 다른 회원의 글에만 신고를 둔다(005 US3-AC3).
+              <ReportButton targetType="POST" targetId={detail.postId} />
+            )}
+          </header>
+          <p className="text-base whitespace-pre-wrap text-neutral-900">
+            {detail.content}
+          </p>
+          <dl className="flex items-center gap-2 text-xs">
+            <dt className="text-neutral-500">댓글 말투</dt>
+            <dd className="rounded-full bg-neutral-100 px-2 py-0.5 text-neutral-700">
+              {COMMENT_TONE_LABELS[detail.commentTone]}
+            </dd>
+          </dl>
+          <div
+            role="group"
+            aria-label="공감과 댓글 수"
+            className="flex items-center gap-3 text-xs text-neutral-600 tabular-nums"
+          >
+            {detail.mine ? (
+              <span>공감 {detail.likeCount}</span>
+            ) : (
+              <PostLikeButton detail={detail} />
+            )}
+            <span>댓글 {detail.commentCount}</span>
+          </div>
+        </Card>
 
-      <Card>
-        <PostComments postId={detail.postId} />
-      </Card>
-    </article>
+        <Card>
+          <PostComments postId={detail.postId} />
+        </Card>
+      </article>
+
+      {/* 추천은 이 글의 일부가 아니라 article 밖에 둔다(007). */}
+      <SimilarPosts postId={detail.postId} />
+    </div>
   );
 }
