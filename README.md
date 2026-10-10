@@ -1,51 +1,145 @@
 <div align="center">
 
-<img src="docs/assets/intro/brag.jpg" alt="오구오구" width="100%" />
+<a href="docs/assets/intro/brag.mp4"><img src="docs/assets/intro/brag.jpg" alt="오구오구 소개 영상" width="100%" /></a>
 
 # 🐾 오구오구 (5959)
 
 ### 감정을 나누고 함께 이겨내는 서비스
 
 혼자 삼키기 어려운 고민을 익명으로 남기면<br>
-AI가 감정을 분석해 몬스터로 만들고, 함께 반응하며 그 몬스터를 물리쳐요.
+AI가 감정을 읽어 몬스터로 만들고, 함께 응원하며 그 몬스터를 물리쳐요.
 
-[<img src="https://img.shields.io/badge/Backend-DDD--13--WEBBB__BE-6DB33F?style=flat&logo=springboot&logoColor=white" />](https://github.com/DDD-Community/DDD-13-WEBBB_BE)
-[<img src="https://img.shields.io/badge/Frontend-DDD--13--WEBBB--FE-000000?style=flat&logo=nextdotjs&logoColor=white" />](https://github.com/DDD-Community/DDD-13-WEBBB-FE)
+[<img src="https://img.shields.io/badge/원본_Backend-DDD--13--WEBBB__BE-6DB33F?style=flat&logo=springboot&logoColor=white" />](https://github.com/DDD-Community/DDD-13-WEBBB_BE)
+[<img src="https://img.shields.io/badge/원본_Frontend-DDD--13--WEBBB--FE-000000?style=flat&logo=nextdotjs&logoColor=white" />](https://github.com/DDD-Community/DDD-13-WEBBB-FE)
 
 </div>
 
 <br>
 
-## 🎬 서비스 소개 영상
+## 🎬 소개 영상
 
-https://github.com/user-attachments/assets/ce60a420-c1f4-43d1-8262-8f18a82cb71b
-
-고민을 쓰면 AI가 감정 몬스터를 만들고, 공감과 댓글이 모여 그 몬스터를 쓰러뜨리는 과정을 20초에 담았습니다.
+위 그림을 누르면 21초짜리 소개 영상([`docs/assets/intro/brag.mp4`](docs/assets/intro/brag.mp4))이 열립니다. 고민 한 줄이 불안 몬스터가 되고, 공감과 댓글이 HP를 깎고, 모두가 보스를 함께 물리치고, 월요일에 편지가 오기까지를 담았습니다.
 
 <br>
 
-## 🐾 소개
+## 🐾 이 저장소는
 
-오구오구는 DDD 13기 WEBBB 팀이 만든 감정 공유 커뮤니티입니다.
-저는 이 팀의 백엔드 개발자로 참여해 [DDD-13-WEBBB_BE](https://github.com/DDD-Community/DDD-13-WEBBB_BE)를 함께 개발했습니다.
-이 저장소는 원본 백엔드와 프론트엔드 저장소를 한곳에 모아 참고하면서 서비스를 다시 만들어 가는 공간입니다.
+오구오구는 DDD 13기 WEBBB 팀이 만든 감정 공유 커뮤니티입니다. 저는 그 팀의 백엔드 개발자였고, 이 저장소에서 서비스를 처음부터 다시 만들었습니다. 원본의 기획만 이어받고 구조와 코드는 새로 썼습니다.
 
-> 👤 **[장현호](https://github.com/hyunolike)** · DDD 13기 WEBBB 팀 백엔드
+> 👤 **[장현호](https://github.com/hyunolike)** (DDD 13기 WEBBB 팀 백엔드)
 
-### 고민을 남기면
+- 다시 만든 코드는 [`apps/`](apps)에 있습니다. 여덟 개 마일스톤(M0~M7)을 스펙부터 쓰고 구현했습니다.
+- 원본 서비스의 소개와 기술 스택, 구조, 팀원은 [원본 서비스 문서](docs/original-service.md)로 옮겼습니다. 원본 코드는 [`webbb-be/`](webbb-be)와 [`webbb-fe/`](webbb-fe)에 참고용으로 들어 있습니다.
 
-오늘의 고민을 글로 남기면 AI가 글 속 감정을 분석해 대표 감정과 몬스터를 만들어요.
-불안이나 무기력, 외로움처럼 말로 정리하기 어려운 마음도 한눈에 볼 수 있습니다.
+<br>
 
-### 함께 반응하며
+## 👾 몬스터
 
-댓글과 공감으로 서로를 응원할 수 있어요.
-반응이 쌓일수록 감정 몬스터의 HP가 줄어들고, 결국 함께 고민을 이겨내게 됩니다.
+고민마다 감정에 맞는 몬스터가 생깁니다. 응원을 받아 HP가 줄면 네 단계로 지쳐 가다 쓰러집니다. 감정 5종에 단계 4개, 모두 20장입니다.
 
-### 나의 감정을 돌아보며
+<img src="docs/assets/intro/monsters.jpg" alt="감정 5종의 몬스터와 HP 단계 4개" width="100%" />
 
-마이페이지에서 내가 쓴 글과 공감한 글, 댓글, 감정 통계를 확인할 수 있어요.
-댓글이 달리거나 몬스터를 처치하면 실시간 알림으로 알려 줍니다.
+레이드 보스는 감정마다 따로 그렸습니다.
+
+<img src="docs/assets/intro/bosses.jpg" alt="레이드 보스 5종과 쓰러진 모습" width="100%" />
+
+그림은 이미지 생성 도구로 만들었습니다. 한 장을 먼저 그려 화풍을 정하고, 그 그림을 참고로 넘겨 나머지를 그려 캐릭터를 맞췄습니다. 처음에는 코드로 그린 3D였다가 바꾼 까닭은 [ADR-0006](docs/adr/0006-illustrated-monsters.md)에 있습니다.
+
+<br>
+
+## ✨ 할 수 있는 것
+
+| 기능 | 무엇을 하나 | 스펙 |
+| --- | --- | --- |
+| 고민 쓰기와 몬스터 | 글을 쓰면 AI가 감정을 읽어 몬스터를 만듭니다. 공감은 HP 1, 첫 댓글은 HP 3을 깎습니다 | [003](specs/003-core-loop/spec.md) |
+| 알림과 마이페이지 | 댓글, 공감, 처치를 새로고침 없이 알려 줍니다. 내 글과 감정 통계를 다시 봅니다 | [004](specs/004-notification-mypage/spec.md) |
+| 위험 감지와 안전장치 | 위기 신호가 있는 글은 숨기고 작성자에게 도움받을 곳을 안내합니다. 신고와 욕설 가리기가 있습니다 | [005](specs/005-safety/spec.md) |
+| 보스 레이드 | 모든 회원이 보스 한 마리를 함께 공격합니다. 다른 회원의 공격이 바로 HP에 보입니다 | [006](specs/006-raid/spec.md) |
+| 비슷한 고민 추천 | 글 아래에 비슷한 다른 회원의 고민을 보여 줍니다 | [007](specs/007-recommend/spec.md) |
+| 주간 리포트 | 월요일에 지난주의 감정과 받은 응원을 돌아보고, AI가 쓴 짧은 편지를 받습니다 | [008](specs/008-weekly-report/spec.md) |
+| 가입과 로그인 | 이메일과 카카오, 구글 로그인. 토큰은 브라우저 스크립트가 읽지 못하는 쿠키에만 둡니다 | [002](specs/002-auth/spec.md) |
+
+기능마다 어떻게 만들었고 무엇을 쟀는지는 [기능별 설명](docs/features.md)에 풀어 썼습니다.
+
+<br>
+
+## 🏛 어떻게 만들었나
+
+```mermaid
+flowchart LR
+    U([브라우저])
+
+    subgraph Web["apps/web · Next.js 16"]
+        Pages["화면<br/>Feature-Sliced Design"]
+        BFF["BFF 라우트 /api/*<br/>쿠키를 Bearer로"]
+    end
+
+    subgraph Api["apps/api · Spring Boot 4 · Spring Modulith"]
+        direction TB
+        Core["post · emotion · monster<br/>feed · member"]
+        More["notification · safety · raid<br/>recommend · report"]
+        AI["ai<br/>감정 분석 · 위험 분류<br/>임베딩 · 편지"]
+    end
+
+    PG[("PostgreSQL 17<br/>+ pgvector")]
+    Redis[("Redis")]
+    LLM["LLM 공급자<br/>(OpenAI 호환)"]
+
+    U --> Pages --> BFF --> Api
+    U -. "SSE 알림과 레이드<br/>(일회용 표)" .-> Api
+    Api --> PG
+    Api --> Redis
+    AI --> LLM
+```
+
+설계에서 지키려 한 것은 네 가지입니다.
+
+- **AI가 내려가도 핵심 흐름은 돕니다.** 감정 분석, 위험 분류, 임베딩, 편지는 모두 글 저장이 끝난 뒤에 따로 돌고, 실패하면 간격을 늘려 다시 시도합니다. AI 없이도 글쓰기, 키워드 위험 감지, 리포트 발행은 그대로 됩니다.
+- **위기 글은 한 번도 공개되지 않습니다.** 목록에 있는 위기 표현은 글 저장과 같은 트랜잭션에서 걸러 숨깁니다. 숨김 규칙은 피드, 추천, 알림이 모두 한곳의 조건을 씁니다.
+- **모듈의 경계를 테스트가 지킵니다.** 모듈 12개가 정해진 방향으로만 의존하고, 다른 모듈의 테이블을 직접 읽지 않습니다. 어기면 `ModularityTests`가 실패합니다.
+- **"한 번만"은 잠금이 아니라 제약이 지킵니다.** 살아 있는 보스 하나, 회원과 주마다 리포트 하나, 알림 하나를 유일 제약과 멱등 키로 보장합니다.
+
+전체 설계는 [아키텍처 문서](docs/architecture/overview.md)에, 결정과 그 까닭은 [ADR](docs/adr)에 있습니다.
+
+<br>
+
+## 📏 재 본 것
+
+| 무엇을 | 결과 |
+| --- | --- |
+| 레이드: 가상 사용자 500명이 동시에 공격 | HP 갱신 유실 0건, 처치 기록 1건, 공격 응답 p95 233ms ([기록](docs/benchmarks/raid-attack.md)) |
+| 추천: 글 1만 건에서 조회 | p95 62ms |
+| 주간 리포트: 1천 명 가운데 100명을 실패하게 함 | 첫 실행에 900명, 다음 실행에 100명. 겹친 리포트와 알림 0건 |
+| 위기 글 100개를 쓰는 동안 다른 회원이 피드를 계속 조회 | 20번 되풀이해 한 번도 보이지 않음 |
+| 글 쓰기(키워드 위험 판정 포함) | p95 21ms |
+| 자동 테스트 | API 1,055개, 웹 단위 993개, 브라우저 e2e 94개 |
+
+성능 수치는 모두 로컬 한 기기에서 쟀습니다. 운영 환경의 수치가 아닙니다.
+
+### 아직 목표에 못 미친 것
+
+숨기지 않고 적어 둡니다. 측정과 해 본 것은 각 스펙의 `research.md`에 있습니다.
+
+- **위기 감지**: 직접 쓴 평가 문장의 92%를 잡지만, 에두른 표현만 모은 묶음에서는 40~45%입니다. 목표는 놓치는 비율 5% 이하입니다.
+- **추천 품질**: 추천에 같은 주제가 든 비율이 35%입니다(목표 80%). 지금 쓰는 임베딩 모델이 한국어 고민의 주제를 잘 가르지 못합니다. 아주 가까운 글만 "비슷한 고민"으로 보이게 기준을 좁혀 두었습니다.
+- **리포트를 만드는 동안의 글 쓰기**: p95가 26ms에서 46ms로 늘어납니다.
+
+<br>
+
+## 🛠 기술 스택
+
+| 구분 | 사용 기술 |
+| --- | --- |
+| API | Kotlin 2.2, JDK 21, Spring Boot 4.1, Spring Modulith 2.1 |
+| 데이터 | PostgreSQL 17 + pgvector, Redis(Lua 스크립트, pub/sub), Flyway |
+| AI | Spring AI(OpenAI 호환 공급자), Resilience4j 서킷 브레이커 |
+| 웹 | Next.js 16(App Router), React 19, TypeScript, Tailwind CSS v4 |
+| 웹 상태 | TanStack Query v5, Zustand v5, react-hook-form, Zod |
+| 실시간 | Server-Sent Events(알림, 레이드) |
+| 테스트 | JUnit 5, Testcontainers, Vitest, Playwright, k6 |
+| 품질 | ktlint, detekt, ESLint, Prettier, steiger(FSD 규칙) |
+| 진행 방식 | GitHub Spec Kit(스펙 → 설계 → 작업 → 구현), OpenAPI 계약 우선 |
+| CI | GitHub Actions(API, 웹, 실제 API를 띄운 e2e), release-please |
 
 <br>
 
@@ -54,232 +148,48 @@ https://github.com/user-attachments/assets/ce60a420-c1f4-43d1-8262-8f18a82cb71b
 ```
 .
 ├── apps/
-│   ├── api/        Kotlin · Spring Boot 4 · Spring Modulith
-│   └── web/        Next.js 16 · Feature-Sliced Design
-├── infra/          운영 compose, 배포와 백업 스크립트
-├── specs/          GitHub Spec Kit 기능 스펙
-├── docs/           아키텍처 설계와 ADR
-├── webbb-be/       원본 백엔드 (DDD-13-WEBBB_BE, 참고용 subtree)
-└── webbb-fe/       원본 프론트엔드 (DDD-13-WEBBB-FE, 참고용 subtree)
+│   ├── api/        Kotlin, Spring Boot 4, Spring Modulith
+│   └── web/        Next.js 16, Feature-Sliced Design
+├── contracts/      OpenAPI 계약 (웹의 타입을 여기서 만든다)
+├── specs/          기능별 스펙, 설계, 작업 목록 (001~008)
+├── docs/           아키텍처, ADR, 측정 기록
+├── infra/          운영 compose, Caddy, 백업과 부하 테스트 스크립트
+├── webbb-be/       원본 백엔드 (참고용)
+└── webbb-fe/       원본 프론트엔드 (참고용)
 ```
 
-새로 만드는 코드는 `apps/`에 있습니다. 설계는 [`docs/architecture/overview.md`](docs/architecture/overview.md)에서, 개발 원칙은 [`.specify/memory/constitution.md`](.specify/memory/constitution.md)에서 볼 수 있습니다.
+<br>
 
-### 핵심 루프
-
-지금 `apps/`에는 서비스의 핵심 루프가 들어 있습니다. 고민 글을 쓰면 API가 글을 먼저 저장하고, 감정 분석은 뒤에서 따로 돌아 끝나는 대로 감정과 강도에 맞는 몬스터를 만듭니다. 분석이 실패하면 30초부터 최대 5분 간격으로 다시 시도하고, 24시간이 지나도 결과가 없으면 기본 몬스터를 붙입니다. 다른 사람이 남긴 공감은 HP 1을, 첫 댓글은 3을 깎고, 몬스터가 생기기 전에 받은 반응도 나중에 빠짐없이 반영됩니다. 몬스터는 감정 5종과 HP 단계 4개마다 따로 그린 캐릭터이고, 글 상세와 레이드에서는 감정에 맞는 작은 움직임을 합니다. 그림은 이미지 생성 도구로 만들었습니다([ADR-0006](docs/adr/0006-illustrated-monsters.md)). 자세한 요구사항과 설계는 [`specs/003-core-loop`](specs/003-core-loop/spec.md)에 있습니다.
-
-### 알림과 마이페이지
-
-내 글에 댓글이나 공감이 달리거나 몬스터가 나타나고 처치되면 새로고침 없이 알림이 옵니다. 브라우저는 일회용 연결 표를 받아 API에 SSE로 바로 붙고, 알림마다 회원별 번호를 매겨 연결이 끊겼다 돌아와도 놓친 알림을 빠짐없이 한 번씩 받습니다. 서버가 여러 대여도 Redis 신호로 모든 연결에 전달하고, Redis가 내려가면 주기적인 확인으로 대신합니다. 마이페이지에서는 내가 쓴 글과 댓글, 공감한 글을 다시 보고, 감정 분포와 최근 8주 추이, 함께 물리친 몬스터 수를 확인하며, 닉네임과 직군, 경력을 고칠 수 있습니다. 자세한 요구사항과 설계는 [`specs/004-notification-mypage`](specs/004-notification-mypage/spec.md)에 있습니다.
-
-### 위험 감지와 안전장치
-
-글과 댓글에 위기 신호가 있으면 다른 회원에게서 숨기고, 작성자에게는 자살예방상담전화 같은 도움받을 곳을 글 상세와 알림으로 안내합니다. 목록에 있는 위기 표현은 저장과 같은 트랜잭션에서 걸러 한 번도 공개되지 않고, 목록에 없는 표현은 저장 뒤에 AI가 분류합니다. AI가 내려가 있어도 글쓰기와 키워드 감지는 그대로 돕니다. 잘못 숨겨진 글의 작성자는 재검토를 요청할 수 있고, 회원은 다른 회원의 글과 댓글을 신고할 수 있습니다. 운영자는 판정과 신고, 재검토 요청을 API로 보고 처리합니다. 욕설은 원문을 바꾸지 않고 읽을 때 가리며 작성자에게는 그대로 보입니다. 자세한 요구사항과 설계는 [`specs/005-safety`](specs/005-safety/spec.md)에 있습니다.
-
-### 보스 레이드
-
-모든 회원이 보스 한 마리를 함께 공격합니다. 보스는 요즘 가장 많이 나타난 감정으로 만들어지고, 레이드 화면의 버튼으로 공격하면 다른 회원의 공격까지 새로고침 없이 HP에 반영됩니다. 처치되면 함께한 회원 모두가 알림을 받고, 다음 날 새 보스가 나옵니다. 순위는 없고 참여자 수와 내 기여만 보입니다. HP와 기여는 Redis의 Lua 스크립트 하나로 바꾸고 Postgres에는 뒤따라 적습니다. 가상 사용자 500명이 동시에 공격하는 부하 테스트에서 HP 갱신은 하나도 빠지지 않았고 처치는 한 번만 기록됐으며 공격 응답의 95%가 233ms 안에 끝났습니다(로컬 한 기기, [기록](docs/benchmarks/raid-attack.md)). 자세한 요구사항과 설계는 [`specs/006-raid`](specs/006-raid/spec.md)에 있습니다.
-
-### 비슷한 고민 추천
-
-글 상세 아래에 이 글과 비슷한 다른 회원의 고민이 최대 5개 보입니다. 글이 저장되면 뒤에서 임베딩을 만들어 pgvector에 저장하고, 가까운 글을 HNSW 인덱스로 찾습니다. 내 글, 숨긴 글, 지운 글은 나오지 않고 욕설은 피드와 같이 가려집니다. 임베딩을 만드는 AI가 내려가 있어도 글쓰기는 그대로 되고, 추천 구역은 같은 감정의 최근 글로 이어집니다. 글 1만 건에서 추천 조회의 95%가 62ms 안에 끝났습니다(로컬 한 기기). 지금 쓰는 임베딩 모델은 한국어 고민의 주제를 잘 가르지 못해 품질 목표에 미치지 못했고, 아주 가까운 글만 "비슷한 고민"으로 보이게 기준을 좁혀 두었습니다. 측정과 남은 일은 [`specs/007-recommend`](specs/007-recommend/research.md)에 있습니다.
-
-### 주간 리포트
-
-지난주에 글을 쓴 회원은 월요일에 알림을 받고, 한 주의 감정별 글 수와 처치된 몬스터 수, 받은 공감과 댓글 수를 돌아봅니다. AI가 그 수치로 짧은 편지를 쓰고, 마이페이지에서 지난 리포트를 다시 볼 수 있습니다. 리포트 만들기는 한 번 도는 배치가 아니라 "없는 리포트를 채우는" 주기 작업이라, 일부 회원의 처리가 실패하거나 서버가 내려가 있었어도 다음 차례에 이어집니다. 회원 1천 명 가운데 100명을 실패하게 만든 테스트에서 나머지 900명은 모두 받았고 실패한 100명은 다음 실행에 받았으며 겹친 리포트와 알림은 없었습니다. AI가 내려가 있어도 리포트는 제때 나가고 편지만 나중에 채워집니다. AI에는 수치만 보내고 글의 본문은 보내지 않으며, 위기로 판정된 글이 있던 주에는 AI 편지 대신 도움받을 곳을 안내합니다. 자세한 요구사항과 설계는 [`specs/008-weekly-report`](specs/008-weekly-report/spec.md)에 있습니다.
-
-### 로컬 실행
+## 🚀 로컬 실행
 
 ```bash
-cd apps/api && ./gradlew bootRun        # PostgreSQL은 compose로 자동 기동
+cd apps/api && ./gradlew bootRun        # PostgreSQL과 Redis는 compose로 자동 기동
 pnpm install && pnpm --filter web dev   # http://localhost:3000
 ```
 
-감정 분석 키(`AI_API_KEY`)가 없으면 글이 계속 "분석 중"에 머물고 몬스터가 생기지 않습니다. 실제 분석을 보려면 키를 환경 변수로 넣고, 키 없이 시연만 하려면 API를 `SPRING_PROFILES_ACTIVE=local,e2e ./gradlew bootRun`으로 띄워 본문 길이나 `[불안:높음]` 같은 머리말로 감정을 정하는 가짜 분석기를 씁니다.
-
-원본 저장소에 올라온 변경을 다시 받아오려면 아래 명령을 실행합니다.
+AI 키(`AI_API_KEY`)가 없으면 글이 "분석 중"에 머물고 몬스터가 생기지 않습니다. 키 없이 둘러보려면 API를 가짜 분석기로 띄웁니다. 본문 앞의 `[불안:높음]` 같은 머리말로 감정을 정합니다.
 
 ```bash
-git remote add webbb-be https://github.com/DDD-Community/DDD-13-WEBBB_BE.git   # 처음 한 번만
-git remote add webbb-fe https://github.com/DDD-Community/DDD-13-WEBBB-FE.git   # 처음 한 번만
-
-git subtree pull --prefix=webbb-be webbb-be main --squash
-git subtree pull --prefix=webbb-fe webbb-fe main --squash
+cd apps/api && SPRING_PROFILES_ACTIVE=local,e2e ./gradlew bootRun
 ```
 
 <br>
 
-## 🛠 기술 스택
+## 📚 문서
 
-### Frontend
-
-| 구분 | 사용 기술 |
+| 문서 | 내용 |
 | --- | --- |
-| Framework | Next.js 16 (App Router), React 19 |
-| Language | TypeScript |
-| Styling | Tailwind CSS v4, class-variance-authority |
-| Server State | TanStack Query v5 |
-| Client State | Zustand v5 |
-| Form | react-hook-form, Zod |
-| Lint / Format | ESLint, Prettier, Husky, lint-staged |
-| Package Manager | pnpm |
-
-### Backend
-
-| 구분 | 사용 기술 |
-| --- | --- |
-| Language | Java 21 |
-| Framework | Spring Boot 3.4.5 |
-| Persistence | Spring Data JPA, QueryDSL, Flyway |
-| Database | MySQL, H2(Test) |
-| Cache / Event | Redis, Server-Sent Events(SSE) |
-| Auth | Spring Security, OAuth2 Client(Google, Kakao, Naver), JWT |
-| AI | Spring AI, OpenAI, Resilience4j(Retry, Circuit Breaker) |
-| API Docs | Springdoc OpenAPI, Swagger UI |
-| Monitoring | Spring Boot Actuator, Micrometer, Prometheus |
-| Build / Format | Gradle, Spotless(Google Java Format AOSP) |
-
-### Infrastructure
-
-| 구분 | 사용 기술 |
-| --- | --- |
-| Runtime | Docker, Docker Compose |
-| Server | AWS EC2 |
-| Database | AWS RDS MySQL |
-| Image Registry | GitHub Container Registry(GHCR) |
-| CI/CD | GitHub Actions, release-please |
+| [기능별 설명](docs/features.md) | 기능마다 무엇을 하고 어떻게 만들었는지 |
+| [아키텍처](docs/architecture/overview.md) | 로드맵, 시스템 구조, 모듈, 측정 목표 |
+| [결정 기록(ADR)](docs/adr) | 모듈러 모놀리스, BFF 인증, 몬스터 그림 등 여섯 가지 결정 |
+| [스펙](specs) | 마일스톤마다의 요구사항, 설계, 검증 절차 |
+| [개발 원칙](.specify/memory/constitution.md) | 여섯 가지 원칙 |
+| [API 가이드](apps/api/AGENTS.md), [웹 구조](apps/web/docs/ARCHITECTURE.md) | 모듈과 슬라이스마다의 규칙 |
+| [레이드 부하 테스트](docs/benchmarks/raid-attack.md) | 가상 사용자 500명 측정 기록 |
+| [원본 서비스](docs/original-service.md) | DDD 13기 WEBBB 팀의 원본 소개, 기술 스택, 구조, 팀원 |
 
 <br>
 
-## 🏛 시스템 구조
+## 👥 원본 프로젝트
 
-```mermaid
-flowchart LR
-    User([사용자 브라우저])
-
-    subgraph FE["Frontend · Next.js"]
-        Guard["proxy.ts<br/>라우트 가드"]
-        Pages["App Router 페이지<br/>TanStack Query, Zustand"]
-        Proxy["/api/[...path]<br/>범용 API 프록시"]
-        AuthRoute["/api/auth/*<br/>로그인, OAuth 교환, 로그아웃"]
-    end
-
-    subgraph EC2["AWS EC2 · Docker Compose"]
-        App["Spring Boot API<br/>webbb-prod-app"]
-        Redis[("Redis")]
-    end
-
-    RDS[("AWS RDS<br/>MySQL")]
-    OpenAI["OpenAI API"]
-    OAuth["Google / Kakao / Naver<br/>OAuth"]
-
-    User --> Guard --> Pages
-    Pages -- "same-origin /api 요청" --> Proxy
-    Pages --> AuthRoute
-    Proxy -- "httpOnly 쿠키 → Bearer 토큰" --> App
-    AuthRoute -- "토큰 발급 후 쿠키 저장" --> App
-
-    App --> RDS
-    App --> Redis
-    App -- "감정 분석" --> OpenAI
-    App --> OAuth
-```
-
-- 브라우저는 백엔드를 직접 호출하지 않습니다. 모든 요청은 같은 출처의 `/api/*`로 보내고, Next.js 서버 라우트가 백엔드로 전달합니다.
-- 액세스 토큰과 리프레시 토큰은 httpOnly 쿠키에만 저장해서 브라우저 스크립트가 읽을 수 없게 했습니다. 프록시가 쿠키를 `Authorization: Bearer` 헤더로 바꿔 백엔드에 넘깁니다.
-- 보호 경로(`/write`, `/onboarding`, `/my`, `/settings`)는 `proxy.ts`가 렌더링 전에 세션 쿠키를 확인하고, 없으면 `/login`으로 보냅니다.
-- 백엔드 컨테이너는 80번 포트로 요청을 받고, Redis는 Docker 내부 네트워크에서만 통신합니다.
-
-### 인증 요청 흐름
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant B as 브라우저
-    participant N as Next.js /api 프록시
-    participant S as Spring Boot API
-
-    B->>N: GET /api/posts (쿠키 자동 첨부)
-    N->>S: GET /api/posts<br/>Authorization: Bearer {access}
-    S-->>N: 401 Unauthorized
-    N->>S: 리프레시 토큰으로 재발급 요청
-    S-->>N: 새 토큰
-    N->>S: 새 access 토큰으로 한 번 더 요청
-    S-->>N: 200 OK
-    N-->>B: 200 OK + 갱신된 httpOnly 쿠키
-```
-
-액세스 토큰이 만료되면 프록시가 리프레시를 한 번 시도한 뒤 원래 요청을 다시 보냅니다.
-리프레시도 실패하면 인증 쿠키를 지우고 401을 그대로 돌려줍니다.
-
-### 백엔드 레이어
-
-```mermaid
-flowchart LR
-    I["interfaces<br/>Controller, DTO"] --> A["application<br/>Service, 유스케이스"]
-    A --> D["domain<br/>Entity, Repository 인터페이스"]
-    Inf["infrastructure<br/>QueryDSL, 외부 연동"] --> D
-```
-
-도메인마다 패키지(`post`, `comment`, `emotion`, `monster`, `notification`, `ai`, `auth`, `user`, `mypage` 등)를 두고, 그 안을 네 개 레이어로 나눕니다.
-`domain`은 다른 레이어를 모르는 순수 Java 코드로 두고, `infrastructure`가 `domain`의 인터페이스를 구현합니다.
-자세한 규칙은 [`webbb-be/docs/architecture.md`](webbb-be/docs/architecture.md)에 있습니다.
-
-<br>
-
-## 🔄 CI/CD
-
-```mermaid
-flowchart LR
-    subgraph BE["Backend"]
-        direction LR
-        BPR["Pull Request"] --> BCI["Spotless, Test,<br/>Docker Build"]
-        BCI --> BMain["main 머지"]
-        BMain --> RP["release-please<br/>릴리즈 PR, 태그"]
-        RP --> GHCR["GHCR 이미지 push"]
-        GHCR --> Deploy["EC2 배포"]
-        Deploy --> Health["/actuator/health<br/>헬스 체크"]
-    end
-
-    subgraph FEP["Frontend"]
-        direction LR
-        FPR["Pull Request"] --> FCI["ESLint, Prettier"]
-    end
-```
-
-- 백엔드는 PR마다 포맷 검사와 테스트, Docker 빌드를 돌립니다. `main`에 머지되면 release-please가 릴리즈를 만들고, 그 이미지를 EC2에 배포합니다.
-- 수동 배포 워크플로로 `latest`나 특정 릴리즈 태그를 다시 배포할 수 있습니다.
-- 프론트엔드는 PR마다 ESLint와 Prettier 검사를 실행합니다.
-- 원본 CI 설정은 `webbb-be/.github`, `webbb-fe/.github`에 그대로 남아 있습니다. 이 저장소의 루트 `.github`가 아니라서 여기서는 실행되지 않습니다.
-
-<br>
-
-## 🚀 원본 로컬 실행
-
-### Backend
-
-```bash
-cd webbb-be
-cp .env.example .env        # DB, OAuth, JWT, OpenAI 키 입력
-docker compose up -d        # MySQL, Redis 실행
-./gradlew bootRun
-```
-
-### Frontend
-
-```bash
-cd webbb-fe
-cp .env.example .env.local  # API_ORIGIN=http://localhost:8080
-pnpm install
-pnpm dev                    # http://localhost:3000
-```
-
-<br>
-
-## 👥 원본 프로젝트 멤버
-
-|                        Backend                        |                        Backend                        |                        Frontend                        |                       Frontend                       |
-| :---------------------------------------------------: | :---------------------------------------------------: | :----------------------------------------------------: | :--------------------------------------------------: |
-| <img src="https://github.com/al1kite.png" width="120" /> | <img src="https://github.com/hyunolike.png" width="120" /> | <img src="https://github.com/Seohyun-Roh.png" width="120" /> | <img src="https://github.com/prkhaeun.png" width="120" /> |
-|         [정다연](https://github.com/al1kite)          |     **[장현호](https://github.com/hyunolike) (나)**     |       [Seohyun-Roh](https://github.com/Seohyun-Roh)       |      [prkhaeun](https://github.com/prkhaeun)       |
+오구오구의 기획과 원본 서비스는 DDD 13기 WEBBB 팀이 함께 만들었습니다. 팀원과 원본의 구조는 [원본 서비스 문서](docs/original-service.md#-원본-프로젝트-멤버)에 있습니다.

@@ -6,3 +6,6 @@ apps/api/build/
 apps/api/.gradle/
 .env
 .env.local
+
+# /brag-slim 스킬의 작업 폴더 (완성본은 docs/assets/intro/에 둔다)
+brag-output*/
