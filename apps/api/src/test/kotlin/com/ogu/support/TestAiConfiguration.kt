@@ -5,10 +5,13 @@ import com.ogu.ai.Embedder
 import com.ogu.ai.EmotionAnalyzer
 import com.ogu.ai.EmotionClassification
 import com.ogu.ai.RiskClassifier
+import com.ogu.ai.WeeklyLetterInput
+import com.ogu.ai.WeeklyLetterWriter
 import com.ogu.ai.infrastructure.EmotionResponseParser
 import com.ogu.ai.infrastructure.FakeEmbedder
 import com.ogu.ai.infrastructure.FakeEmotionAnalyzer
 import com.ogu.ai.infrastructure.FakeRiskClassifier
+import com.ogu.ai.infrastructure.FakeWeeklyLetterWriter
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Primary
@@ -33,6 +36,36 @@ class TestAiConfiguration {
     @Bean
     @Primary
     fun fakeEmbedder(): Embedder = FakeEmbedder()
+
+    /** 편지도 가짜가 쓴다(008 research R7). 수치로 결과가 정해진다. */
+    @Bean
+    @Primary
+    fun scriptedWeeklyLetterWriter(): ScriptedWeeklyLetterWriter = ScriptedWeeklyLetterWriter(FakeWeeklyLetterWriter())
+}
+
+/**
+ * [FakeWeeklyLetterWriter]에 테스트용 손잡이를 단 것. 리포트마다 받은 수치와 호출 횟수를 기억하고, [answers]에 쓴 글 수로
+ * 답을 정해 두면 그 답을 그대로 돌려준다(규칙에 맞지 않는 답을 흉내 낼 때 쓴다).
+ */
+class ScriptedWeeklyLetterWriter(
+    private val delegate: WeeklyLetterWriter,
+) : WeeklyLetterWriter {
+    val inputs = ConcurrentHashMap<String, WeeklyLetterInput>()
+    val answers = ConcurrentHashMap<Int, String>()
+    private val calls = ConcurrentHashMap<String, AtomicInteger>()
+
+    override fun write(
+        key: String,
+        input: WeeklyLetterInput,
+    ): String {
+        inputs[key] = input
+        calls.computeIfAbsent(key) { AtomicInteger() }.incrementAndGet()
+        return answers[input.postCount] ?: delegate.write(key, input)
+    }
+
+    fun callsOf(reportId: Long): Int = calls["REPORT:$reportId"]?.get() ?: 0
+
+    fun inputOf(reportId: Long): WeeklyLetterInput? = inputs["REPORT:$reportId"]
 }
 
 /**

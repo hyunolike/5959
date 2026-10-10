@@ -46,6 +46,10 @@ export const QUERY_KEYS = {
   raid: ["raid"] as const,
   /** 도움 리소스(005). 바뀌는 일이 드물어 오래 둔다. */
   supportResources: ["safety", "support-resources"] as const,
+  /** 주간 리포트(008). 목록은 마이페이지 탭이, 한 주의 리포트는 리포트 화면이 쓴다. */
+  weeklyReports: ["my", "weekly-reports"] as const,
+  weeklyReport: (weekStart: string) =>
+    ["my", "weekly-reports", weekStart] as const,
 };
 
 /**

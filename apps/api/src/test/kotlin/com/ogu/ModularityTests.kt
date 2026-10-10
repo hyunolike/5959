@@ -81,7 +81,9 @@ class ModularityTests {
                 // 004: 행동한 회원 닉네임과 연결 표 때문에 member를 더한다. 몬스터 생성은 MonsterSpawned로 받아 emotion을 모른다
                 // 005: 위험 감지 결과를 safety의 이벤트로 받는다
                 // 006: 보스 처치를 raid의 이벤트로 받는다
-                "notification" to setOf("post", "monster", "member", "safety", "raid"),
+                // 008: 주간 리포트가 발행되면 알린다
+                "notification" to setOf("post", "monster", "member", "safety", "raid", "report"),
+                "report" to setOf("post", "monster", "emotion", "ai", "member"),
                 // 005: post의 이벤트를 받아 판정하고 PostModerationApi로 숨긴다. post는 safety를 모른다
                 "safety" to setOf("post", "ai", "member"),
                 // 006: 보스의 감정을 post와 emotion으로 정한다. member는 컨트롤러가 받는 인증된 회원 타입 때문이다.

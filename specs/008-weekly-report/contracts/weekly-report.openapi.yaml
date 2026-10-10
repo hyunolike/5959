@@ -1,0 +1,131 @@
+# 008-weekly-report가 루트 계약(contracts/openapi.yaml)에 더하는 것. 구현 전에 루트에 합친다(0.8.0).
+openapi: 3.1.0
+info:
+  title: 오구오구 API - 주간 리포트
+  version: 0.8.0
+paths:
+  /api/v1/members/me/weekly-reports:
+    get:
+      operationId: getMyWeeklyReports
+      summary: 내 주간 리포트 목록(최신 주부터)
+      tags: [report]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+          description: 앞 쪽의 nextCursor
+        - name: size
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        '200':
+          description: 받은 리포트가 없으면 빈 목록이다
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, error]
+                properties:
+                  success: { type: boolean }
+                  data: { $ref: '#/components/schemas/WeeklyReportPage' }
+                  error: { type: 'null' }
+        '400': { description: 커서나 크기가 올바르지 않다 }
+        '401': { description: 로그인하지 않았다 }
+        '403': { description: 온보딩을 마치지 않았다 }
+  /api/v1/members/me/weekly-reports/{weekStart}:
+    get:
+      operationId: getMyWeeklyReport
+      summary: 한 주의 내 리포트
+      tags: [report]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: weekStart
+          in: path
+          required: true
+          schema: { type: string, format: date }
+          description: 그 주의 월요일(한국 시간). 예 2026-10-05
+      responses:
+        '200':
+          description: 리포트
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, error]
+                properties:
+                  success: { type: boolean }
+                  data: { $ref: '#/components/schemas/WeeklyReport' }
+                  error: { type: 'null' }
+        '401': { description: 로그인하지 않았다 }
+        '403': { description: 온보딩을 마치지 않았다 }
+        '404': { description: 그 주의 내 리포트가 없다. 날짜 형식이 틀렸거나 월요일이 아닌 때도 같다(WEEKLY_REPORT_NOT_FOUND) }
+components:
+  schemas:
+    WeeklyLetterStatus:
+      type: string
+      description: |
+        PENDING 편지를 쓰는 중(다시 받으면 채워질 수 있다), DONE 편지가 있다,
+        GIVEN_UP 편지 없이 닫았다, SUPPORT 정해 둔 문구와 도움받을 곳을 보인다(편지는 없다)
+      enum: [PENDING, DONE, GIVEN_UP, SUPPORT]
+    WeeklyReportSummary:
+      type: object
+      required: [weekStart, weekEnd, postCount, topEmotion]
+      properties:
+        weekStart: { type: string, format: date }
+        weekEnd: { type: string, format: date, description: 그 주의 일요일 }
+        postCount: { type: integer, minimum: 1 }
+        topEmotion:
+          oneOf: [{ $ref: '#/components/schemas/EmotionType' }, { type: 'null' }]
+    WeeklyReportPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/WeeklyReportSummary' }
+        nextCursor: { type: [string, 'null'] }
+    WeeklyReport:
+      type: object
+      required:
+        [weekStart, weekEnd, postCount, emotionCounts, unanalyzedCount, topEmotion, defeatedCount,
+         receivedLikes, receivedComments, letterStatus, letter, previous, publishedAt]
+      properties:
+        weekStart: { type: string, format: date }
+        weekEnd: { type: string, format: date }
+        postCount: { type: integer, minimum: 1 }
+        emotionCounts:
+          type: array
+          description: 모든 감정이 정해진 순서로 들어 있다. 없는 감정은 0이다
+          items: { $ref: '#/components/schemas/EmotionCount' }
+        unanalyzedCount: { type: integer, minimum: 0 }
+        topEmotion:
+          oneOf: [{ $ref: '#/components/schemas/EmotionType' }, { type: 'null' }]
+        defeatedCount: { type: integer, minimum: 0 }
+        receivedLikes: { type: integer, minimum: 0 }
+        receivedComments: { type: integer, minimum: 0 }
+        letterStatus: { $ref: '#/components/schemas/WeeklyLetterStatus' }
+        letter: { type: [string, 'null'], maxLength: 300, description: DONE일 때만 있다 }
+        previous:
+          description: 바로 앞 주의 리포트가 있을 때만 있다
+          oneOf:
+            - type: object
+              required: [postCount, topEmotion]
+              properties:
+                postCount: { type: integer, minimum: 1 }
+                topEmotion:
+                  oneOf: [{ $ref: '#/components/schemas/EmotionType' }, { type: 'null' }]
+            - type: 'null'
+        publishedAt: { type: string, format: date-time }
+    # 기존 스키마에 더하는 것
+    NotificationType:
+      description: WEEKLY_REPORT 주간 리포트 발행(008). 글이 없고 누르면 그 주의 리포트 화면으로 간다
+      enum: [WEEKLY_REPORT]
+    Notification:
+      properties:
+        reportWeekStart:
+          type: [string, 'null']
+          format: date
+          description: WEEKLY_REPORT일 때만 있다

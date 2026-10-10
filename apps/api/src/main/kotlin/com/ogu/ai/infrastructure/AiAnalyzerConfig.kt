@@ -3,10 +3,12 @@ package com.ogu.ai.infrastructure
 import com.ogu.ai.Embedder
 import com.ogu.ai.EmotionAnalyzer
 import com.ogu.ai.RiskClassifier
+import com.ogu.ai.WeeklyLetterWriter
 import com.ogu.shared.config.AiProperties
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry
 import io.github.resilience4j.timelimiter.TimeLimiterRegistry
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
@@ -85,6 +87,35 @@ class EmbedderConfig {
     }
 }
 
+/**
+ * 실제 편지 쓰기(008 research R7). `e2e` 프로필이 아니면 쓴다. 키가 비어 있으면 외부로 보내지 않고 바로 실패한다.
+ * 그때 리포트는 수치만으로 나가고 편지 없이 닫힌다.
+ */
+@Configuration(proxyBeanMethods = false)
+@Profile("!e2e")
+class WeeklyLetterWriterConfig {
+    @Bean
+    fun springAiWeeklyLetterWriter(
+        properties: AiProperties,
+        circuitBreakerRegistry: CircuitBreakerRegistry,
+        timeLimiterRegistry: TimeLimiterRegistry,
+        @Value("\${ogu.report.letter.max-length:300}") maxLength: Int,
+    ): WeeklyLetterWriter {
+        if (properties.apiKey.isBlank()) {
+            LoggerFactory
+                .getLogger(javaClass)
+                .warn("ogu.ai.api-key(AI_API_KEY)가 비어 있어 주간 리포트의 편지를 끕니다. 리포트는 수치만으로 나갑니다.")
+            return FakeWeeklyLetterWriter.Disabled()
+        }
+        return SpringAiWeeklyLetterWriter.create(
+            properties,
+            circuitBreakerRegistry.circuitBreaker(SpringAiWeeklyLetterWriter.RESILIENCE_NAME),
+            timeLimiterRegistry.timeLimiter(SpringAiWeeklyLetterWriter.RESILIENCE_NAME),
+            maxLength,
+        )
+    }
+}
+
 /** e2e 프로필은 결정적인 가짜 분석기를 쓴다(research R3). 테스트는 테스트 설정에서 따로 등록한다. */
 @Configuration(proxyBeanMethods = false)
 @Profile("e2e")
@@ -97,4 +128,7 @@ class FakeEmotionAnalyzerConfig {
 
     @Bean
     fun fakeEmbedder(): Embedder = FakeEmbedder()
+
+    @Bean
+    fun fakeWeeklyLetterWriter(): WeeklyLetterWriter = FakeWeeklyLetterWriter()
 }

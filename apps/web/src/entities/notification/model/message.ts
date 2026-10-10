@@ -42,6 +42,8 @@ export function notificationMessage(
       return "요청하신 글을 다시 살펴봤어요";
     case "RAID_BOSS_DEFEATED":
       return "함께 보스를 물리쳤어요";
+    case "WEEKLY_REPORT":
+      return "지난주 리포트가 도착했어요";
   }
 }
 
@@ -51,12 +53,22 @@ const RAID_PATH = "/raid";
 /**
  * 알림을 눌렀을 때 갈 곳. 글이 지워졌으면 갈 곳이 없어 null이다(US2-AC5).
  * 보스 처치 알림은 글이 없고 레이드 화면으로 간다(006 US4-AC6).
+ * 주간 리포트 알림은 그 주의 리포트 화면으로 간다(008 US1-AC2).
  */
 export function notificationHref(
-  notification: Pick<Notification, "type" | "post" | "postId">,
+  notification: Pick<
+    Notification,
+    "type" | "post" | "postId" | "reportWeekStart"
+  >,
 ): string | null {
   if (notification.type === "RAID_BOSS_DEFEATED") {
     return RAID_PATH;
+  }
+  if (notification.type === "WEEKLY_REPORT") {
+    // 엔티티끼리는 가져올 수 없어 주소를 여기에 적는다. entities/weekly-report의 weeklyReportHref와 같다
+    return notification.reportWeekStart
+      ? `/report/${notification.reportWeekStart}`
+      : null;
   }
   return notification.post === null ? null : `/post/${notification.postId}`;
 }

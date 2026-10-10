@@ -126,7 +126,7 @@ Redis는 M3(004)에서 들어왔다. 실시간 알림의 인스턴스 간 pub/su
 | `safety` | 위험 감지(키워드 규칙과 AI 분류), 신고, 재검토 요청, 운영자 처리, 욕설 가리기. 위기 글은 `PostModerationApi.hide`로 숨긴다 | - (HTTP API와 `shared`의 `ContentMask` 구현) | `RiskDetected`, `ContentRestored`, `ReviewResolved` | `PostWritten`, `CommentWritten`, `PostRemoved`, `CommentRemoved`(post 트랜잭션 안에서 동기) |
 | `raid` | 보스 한 마리를 모든 회원이 버튼으로 함께 공격, 보스의 생애, 실시간으로 내보낼 레이드 상태 | `RaidApi`(끝난 보스의 참여자, 회원이 함께 물리친 보스 수) | `RaidBossDefeated` | - |
 | `recommend` | 글의 임베딩과 처리 일정, 비슷한 글 고르기(글 ID만), 같은 감정의 글로 대신하기 | `RecommendApi` | - | `PostWritten`, `PostRemoved`(커밋 뒤) |
-| `report` | 주간 리포트 배치 | `ReportApi` | `WeeklyReportPublished` | - |
+| `report` | 주간 리포트: 지난주 수치 세기와 저장, 없는 리포트를 채우는 주기 작업, AI 편지와 재시도 | - (HTTP API만) | `WeeklyReportPublished` | 자기 이벤트(편지 첫 시도) |
 | `notification` | SSE 알림, 알림 이력, 읽음 | - (HTTP API만) | - | `PostLiked`, `CommentCreated`, `MonsterSpawned`, `MonsterDefeated`(M3), `RiskDetected`, `ContentRestored`, `ReviewResolved`(M4). `WeeklyReportPublished`는 뒤 마일스톤 |
 | `feed` | 피드, 글 상세, 마이페이지 목록과 감정 통계 조합 | - (HTTP API만) | - | - |
 
@@ -151,6 +151,8 @@ flowchart BT
     report --> emotion
     report --> monster
     report --> ai
+    report --> post
+    report --> member
     notification --> post
     notification --> member
     notification --> monster
@@ -265,9 +267,15 @@ M2 스펙(specs/003-core-loop)에서 정한 값이다.
 
 ### 5.7 주간 리포트 (M7)
 
-- 매주 월요일 새벽에 스케줄러가 지난주 감정 분포, 처치한 몬스터 수, 받은 공감 수를 사용자별로 집계한다.
-- AI가 집계를 바탕으로 짧은 편지를 쓴다. 한 사용자의 실패가 전체 배치를 멈추지 않도록 사용자 단위로 처리하고, 실패한 사용자만 재시도한다.
-- 여러 인스턴스로 늘어날 때를 대비해 스케줄 중복 실행은 ShedLock으로 막는다.
+설계는 [specs/008-weekly-report](../../specs/008-weekly-report/plan.md)에 있다.
+
+- 지난주(한국 시간 월요일 0시부터)에 글을 쓴 회원마다 감정별 글 수, 처치된 몬스터 수, 받은 공감과 댓글 수를 세어 저장하고 알림을 보낸다. 발행한 뒤에는 글이 바뀌어도 수치를 고치지 않는다.
+- **한 번 도는 배치가 아니다.** 월요일 5시부터 1분마다 "지난주 대상 회원 가운데 리포트가 없는 회원"을 채운다. 일부가 실패해도 나머지는 나가고, 실패한 회원과 서버가 내려가 있던 동안의 몫은 다음 차례에 이어진다. 재시도와 이어 하기를 따로 두지 않는다.
+- **겹치지 않게 하는 것은 `(회원, 주)` 유일 제약이다.** ShedLock은 쓰지 않는다. 잠금은 "한 번에 하나만 돈다"를 주지만 "한 번만 만들어진다"를 주지 않는다. 넣은 쪽만 이벤트를 내고, 알림은 멱등 키로 한 번 더 지킨다.
+- AI가 수치로 짧은 편지를 쓴다. 리포트와 알림은 편지를 기다리지 않는다. 편지는 실패하면 간격을 늘려 다시 시도하고 24시간 뒤 편지 없이 닫는다.
+- 공급자에는 그 주의 수치만 보낸다. 본문, 닉네임, 회원 번호가 들어갈 자리가 타입에 없다. 0인 수치와 앞 주의 수치도 보내지 않는다. 실제 모델이 그것을 받으면 "공감이 없었다"고 쓰거나 두 주를 틀리게 견주었다.
+- 위기로 판정된 글이 있던 주에는 AI에게 편지를 맡기지 않고 정해 둔 문구와 도움받을 곳을 보인다.
+- 회원 1천 명의 리포트와 알림에 32초가 걸렸다(5초 주기로 돌린 로컬 한 기기). 100명을 실패하게 해도 나머지 900명은 받고 실패한 100명은 다음 실행에 받는다.
 
 ### 5.8 공통
 
@@ -429,7 +437,7 @@ Spring Modulith `Documenter`가 만든 모듈 다이어그램은 CI 산출물로
 | M4 | AI 장애 중 위험 감지 | 키워드 규칙으로 계속 동작 |
 | M5 | k6 가상 사용자 500명 동시 공격 | HP 갱신 유실 0건, p95 응답 시간 기록. 결과: 유실 0건, p95 233ms([기록](../benchmarks/raid-attack.md)) |
 | M6 | 추천 쿼리 | p95 응답 시간 기록 (글 1만 건 기준) |
-| M7 | 주간 배치 | 일부 사용자가 실패해도 나머지는 완료 |
+| M7 | 주간 배치 | 일부 사용자가 실패해도 나머지는 완료. 결과: 1천 명 가운데 100명 실패 주입에서 900명 발행, 다음 실행에 100명 발행, 겹침 0건 |
 
 ## 12. 위험과 대응
 

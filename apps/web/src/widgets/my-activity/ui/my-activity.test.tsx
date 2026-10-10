@@ -109,6 +109,13 @@ describe("MyActivity", () => {
       "/api/members/me/liked-posts",
       "아직 공감한 글이 없어요.",
     ],
+    [
+      // 008 US4-AC3
+      "tab=reports",
+      "주간 리포트",
+      "/api/members/me/weekly-reports",
+      "아직 받은 리포트가 없어요. 글을 쓰면 다음 월요일에 지난주 리포트가 와요.",
+    ],
   ])(
     'US3-AC4 탭(%s)이 비면 안내와 "글쓰기", "피드 보기" 버튼이 보인다',
     async (search, label, path, message) => {
@@ -272,5 +279,39 @@ describe("MyActivity", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "목록을 불러오지 못했습니다.",
     );
+  });
+
+  it("008 US4-AC1, US4-AC2 주간 리포트 탭은 최신 주부터 기간과 가장 많았던 감정, 글 수를 보이고 그 주로 이어진다", async () => {
+    navigation.search = "tab=reports";
+    stubLists({
+      "/api/members/me/weekly-reports": {
+        items: [
+          {
+            weekStart: "2026-10-05",
+            weekEnd: "2026-10-11",
+            postCount: 3,
+            topEmotion: "ANXIETY",
+          },
+          {
+            weekStart: "2026-09-28",
+            weekEnd: "2026-10-04",
+            postCount: 1,
+            topEmotion: null,
+          },
+        ],
+        nextCursor: null,
+      },
+    });
+
+    renderActivity();
+
+    const links = await screen.findAllByRole("link");
+    expect(links[0]).toHaveAttribute("href", "/report/2026-10-05");
+    expect(links[0]).toHaveTextContent("10월 5일 ~ 10월 11일");
+    expect(links[0]).toHaveTextContent("가장 많았던 감정 불안");
+    expect(links[0]).toHaveTextContent("글 3개");
+    expect(links[1]).toHaveAttribute("href", "/report/2026-09-28");
+    expect(links[1]).toHaveTextContent("9월 28일 ~ 10월 4일");
+    expect(links[1]).toHaveTextContent("감정 분석이 끝난 글이 없어요");
   });
 });

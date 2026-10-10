@@ -373,6 +373,46 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   읽는다. 주제 이름은 `RecommendFixture.topic()`으로 테스트마다 새로 짓는다. 시계를 움직이는 테스트는
   `ogu.recommend.retry.scheduler-enabled=false`와 `ogu.recommend.backfill.enabled=false`로 주기 작업을 끈다.
 
+## Weekly report (`report` module)
+
+008-weekly-report에서 생겼다. 허용 의존은 `shared`, `post`, `monster`, `emotion`, `ai`, `member`다. `notification`이
+`report`의 이벤트를 받는다. `member`는 조회 API가 로그인한 회원을 받는 데만 쓴다.
+
+| 모듈 | 공개 타입 | 발행 이벤트 | 받는 이벤트 |
+|---|---|---|---|
+| `report` | - (HTTP API만) | `WeeklyReportPublished`(리포트를 넣은 트랜잭션에서. `notification`과 자기 모듈이 받는다) | - |
+| `ai`(더한 것) | `WeeklyLetterWriter`, `WeeklyLetterInput`, `WeeklyLetterFailed` | - | - |
+| `post`(더한 것) | `PostReportApi`(`authorIdsBetween`, `postsBetween`, `receivedBetween`) | - | - |
+| `monster`(더한 것) | `MonsterApi.defeatedCountBetween` | - | - |
+
+- **한 주는 한국 시간 월요일 0시부터다.** `WeekRange` 하나로 자른다. 서버의 시간대와 상관없다. 마이페이지의 주별
+  추이와 같은 기준이다.
+- **리포트 만들기는 "없는 것을 채우는" 주기 작업이다.** `WeeklyReportJob.tick`이 지난주 대상 회원 가운데 리포트가
+  없는 회원을 만든다. 한 번 도는 배치로 바꾸지 않는다. 채우는 방식이라 일부 실패, 이어 하기, 늦게 뜬 서버가 같은 길로
+  풀린다. 대상은 지난주뿐이고, 다 훑으면 `weekly_report_run`에 적고 다시 훑지 않는다.
+- **"한 번만"은 유일 제약이 지킨다.** `weekly_report_member_week_key`에 기대어 `ON CONFLICT DO NOTHING`으로 넣고,
+  넣은 쪽만 `WeeklyReportPublished`를 낸다. ShedLock을 넣지 않는다. 주기 작업은 여러 인스턴스가 함께 돌아도 된다.
+- **수치는 발행할 때 한 번 세어 저장한다.** 조회는 저장된 값을 그대로 준다. 뒤에 글을 지워도 고치지 않는다.
+  리포트에는 본문, 닉네임, 글 번호가 없다.
+- **다른 모듈의 데이터는 파사드로 읽어 메모리에서 센다.** `posts`, `emotion_analysis`, `monsters`를 조인하지 않는다.
+  감정은 분석이 끝난(`ANALYZED`) 글만 센다. 기본값을 받은 글(`DEFAULTED`)은 회원의 마음이 아니라 분석되지 않은 글로 센다.
+- **편지는 리포트와 따로다.** 리포트와 알림은 AI를 부르기 전에 나간다. `WeeklyLetterListener`가 커밋 뒤에 한 번
+  시도하고, 실패하면 `WeeklyLetterRetryScheduler`가 30초부터 최대 5분 간격으로 다시 한다. 발행한 지 24시간이 지나면
+  `GIVEN_UP`이다. 편지가 채워져도 알림은 다시 보내지 않는다.
+- **공급자에 보내는 것은 `WeeklyLetterInput`이 전부다.** 그 주의 수치뿐이고 본문, 닉네임, 회원 번호의 자리가 없다.
+  자리를 더하려면 스펙 008의 FR-010부터 고친다. 0인 수치와 없는 감정은 요청에서 줄째로 빠지고 앞 주의 수치는 보내지
+  않는다. 실제 모델이 그것을 받으면 "공감이 없었다"고 쓰거나 두 주를 틀리게 견주었다(research R7). 하지 말라고 적는
+  것보다 모르게 하는 쪽이 확실했다.
+- **AI가 쓴 글은 확인한 뒤에만 보인다.** `WeeklyLetterValidator`(빈 답, 300자, 보낸 수치에 없는 숫자, 이모지)와
+  `ContentMask`(가려질 낱말)를 통과해야 편지가 된다. 걸리면 실패로 적고 다시 시도한다.
+- **위기 글이 있던 주는 AI에게 맡기지 않는다.** 그 주에 쓴 글 가운데 `risk_level = CRISIS`가 있으면 편지의 상태를
+  처음부터 `SUPPORT`로 넣는다. 화면이 정해 둔 문구와 도움받을 곳을 보인다. 문구와 전화번호는 리포트에 저장하지 않는다.
+- **테스트.** 가짜 편지 쓰기는 본문을 받지 않아 수치로 결과가 정해진다(받은 댓글 13이면 계속 실패, 쓴 글 7이면 두 번
+  실패). 리포트 테스트는 `ReportTestConfiguration`으로 시계를 움직이고 `ogu.report.scheduler-enabled=false`로 주기
+  작업을 끈 채 직접 부른다. 테스트마다 `ReportFixture.newWeek()`로 아직 쓰지 않은 주를 받는다. 같은 주를 쓰면 앞
+  테스트가 끝냈다고 적은 기록 때문에 아무것도 만들어지지 않는다. e2e는 글의 때를 한 주 앞으로 옮기고
+  `weekly_report_run`을 지운다.
+
 ## Gotchas
 
 - Kotlin can't express package-level annotations: module metadata such as

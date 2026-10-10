@@ -3,11 +3,10 @@
 import { useState, type ReactNode } from "react";
 
 import { HIDDEN_FROM_OTHERS_LABEL } from "@/entities/post";
+import { SupportResourceList } from "@/entities/support-resource";
 import type { components } from "@/shared/api";
 import { cn } from "@/shared/lib";
 import { Card } from "@/shared/ui";
-
-import { useSupportResourcesQuery } from "../api/use-support-resources-query";
 
 export type ContentSafety = components["schemas"]["ContentSafety"];
 
@@ -38,9 +37,6 @@ export function SafetyNotice({
   const shown = needsSafetyNotice(safety);
   const urgent = safety?.level === "CRISIS" || safety?.hidden === true;
   const [open, setOpen] = useState(true);
-  const { data: resources, isError } = useSupportResourcesQuery({
-    enabled: shown,
-  });
 
   if (!shown || safety === undefined) {
     return null;
@@ -86,40 +82,7 @@ export function SafetyNotice({
             지금 이야기를 들어 줄 수 있는 곳이에요. 전화번호를 누르면 바로
             연결돼요.
           </p>
-          {resources ? (
-            <ul
-              aria-label="도움받을 수 있는 곳"
-              className="flex flex-col gap-2"
-            >
-              {resources.map((resource) => (
-                <li
-                  key={resource.phone}
-                  className="flex flex-wrap items-baseline gap-x-2 text-sm"
-                >
-                  <span className="font-medium text-neutral-900">
-                    {resource.name}
-                  </span>
-                  <a
-                    href={`tel:${resource.phone.replaceAll("-", "")}`}
-                    className="font-semibold text-neutral-900 underline underline-offset-2 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none"
-                  >
-                    {resource.phone}
-                  </a>
-                  <span className="text-xs text-neutral-600">
-                    {resource.hours} · {resource.description}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : isError ? (
-            // 목록을 못 받아도 가장 중요한 번호 하나는 보인다.
-            <p className="text-sm text-neutral-900">
-              자살예방상담전화{" "}
-              <a href="tel:109" className="font-semibold underline">
-                109
-              </a>
-            </p>
-          ) : null}
+          <SupportResourceList />
         </>
       ) : null}
       {safety.hidden && action ? <div>{action}</div> : null}

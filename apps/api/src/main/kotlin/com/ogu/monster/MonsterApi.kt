@@ -1,5 +1,7 @@
 package com.ogu.monster
 
+import java.time.Instant
+
 /** monster 모듈 파사드. 다른 모듈은 monsters, monster_hp_log 테이블을 직접 읽지 않는다. */
 interface MonsterApi {
     /** 글 ID별 몬스터. 아직 몬스터가 없는 글은 결과에 없다. */
@@ -28,4 +30,11 @@ interface MonsterApi {
      * 한 몬스터에 기록이 여럿이어도 한 번이고, 처치 뒤 응원만 한 몬스터는 빠진다. 지운 글도 들어 있으니 부르는 쪽이 뺀다.
      */
     fun defeatedPostIdsDamagedBy(memberId: Long): Set<Long>
+
+    /** [postIds]의 글에 있는 몬스터 가운데 [from]부터(포함) [until] 전까지(제외) 처치된 수(008 research R5). */
+    fun defeatedCountBetween(
+        postIds: Collection<Long>,
+        from: Instant,
+        until: Instant,
+    ): Int
 }

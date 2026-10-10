@@ -82,6 +82,7 @@ class NotificationWriter(
                 seq = seq,
                 createdAt = now(),
                 raidBossId = draft.raidBossId,
+                reportWeekStart = draft.reportWeekStart,
             )
         notifications.insertIfAbsent(notification) ?: return
         signals.publish(NotificationSignal.New(draft.receiverId, seq))

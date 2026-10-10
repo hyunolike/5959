@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: 오구오구 API
-  version: 0.7.0
+  version: 0.8.0
   description: |
     apps/api가 이 계약을 구현하고, apps/web은 이 계약에서 타입을 생성한다.
     이 API는 BFF(apps/web의 라우트 핸들러)만 호출한다. 브라우저는 직접 호출하지 않는다.
@@ -357,7 +357,8 @@ components:
         POST_LIKE 내 글 공감(묶음), MONSTER_SPAWNED 몬스터 생성, MONSTER_DEFEATED 내 몬스터 처치,
         MONSTER_DEFEATED_TOGETHER 함께 공격한 몬스터 처치,
         SUPPORT_NOTICE 도움 안내(005), CONTENT_RESTORED 가려졌던 글이 다시 보임(005), REVIEW_KEPT 재검토 결과 숨김 유지(005),
-        RAID_BOSS_DEFEATED 내가 공격한 보스 처치(006). 글이 없고 누르면 레이드 화면으로 간다
+        RAID_BOSS_DEFEATED 내가 공격한 보스 처치(006). 글이 없고 누르면 레이드 화면으로 간다,
+        WEEKLY_REPORT 주간 리포트 발행(008). 글이 없고 누르면 그 주의 리포트 화면으로 간다
       enum:
         - POST_COMMENT
         - POST_REPLY
@@ -370,6 +371,7 @@ components:
         - CONTENT_RESTORED
         - REVIEW_KEPT
         - RAID_BOSS_DEFEATED
+        - WEEKLY_REPORT
     NotificationActor:
       type: object
       required: [id, nickname]
@@ -384,7 +386,7 @@ components:
         contentPreview: { type: string, description: 앞 50글자 }
     Notification:
       type: object
-      required: [notificationId, seq, type, postId, post, actor, actorCount, read, createdAt, updatedAt]
+      required: [notificationId, seq, type, postId, post, actor, actorCount, reportWeekStart, read, createdAt, updatedAt]
       properties:
         notificationId: { type: integer, format: int64 }
         seq:
@@ -392,7 +394,7 @@ components:
           format: int64
           description: 회원별 전달 순서 번호. SSE 이벤트 id와 같고, 모두 읽음의 upToSeq로 쓴다
         type: { $ref: '#/components/schemas/NotificationType' }
-        postId: { type: [integer, 'null'], format: int64, description: RAID_BOSS_DEFEATED는 글이 없어 null }
+        postId: { type: [integer, 'null'], format: int64, description: RAID_BOSS_DEFEATED와 WEEKLY_REPORT는 글이 없어 null }
         post:
           oneOf: [{ $ref: '#/components/schemas/NotificationPost' }, { type: 'null' }]
           description: 글이 지워졌으면 null. 화면은 "삭제된 글"로 보인다(US2-AC5). RAID_BOSS_DEFEATED도 null이다
@@ -407,6 +409,10 @@ components:
           type: integer
           minimum: 1
           description: 공감 묶음의 인원 수. 다른 종류는 1
+        reportWeekStart:
+          type: [string, 'null']
+          format: date
+          description: WEEKLY_REPORT일 때만 있다. 그 주의 월요일(한국 시간)
         read: { type: boolean }
         createdAt: { type: string, format: date-time }
         updatedAt:
@@ -525,6 +531,83 @@ components:
             properties:
               emotion: { $ref: '#/components/schemas/EmotionType' }
               count: { type: integer, minimum: 0 }
+    WeeklyLetterStatus:
+      type: string
+      description: |
+        PENDING 편지를 쓰는 중(다시 받으면 채워질 수 있다), DONE 편지가 있다,
+        GIVEN_UP 편지 없이 닫았다, SUPPORT 정해 둔 문구와 도움받을 곳을 보인다(편지는 없다, 008 FR-011)
+      enum: [PENDING, DONE, GIVEN_UP, SUPPORT]
+    WeeklyReportSummary:
+      type: object
+      required: [weekStart, weekEnd, postCount, topEmotion]
+      properties:
+        weekStart: { type: string, format: date, description: 한국 시간 월요일 날짜 }
+        weekEnd: { type: string, format: date, description: 그 주의 일요일 }
+        postCount: { type: integer, minimum: 1 }
+        topEmotion:
+          oneOf: [{ $ref: '#/components/schemas/EmotionType' }, { type: 'null' }]
+          description: 분석된 글이 없으면 null
+    WeeklyReportPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/WeeklyReportSummary' }
+        nextCursor: { type: [string, 'null'] }
+    WeeklyReportPrevious:
+      type: object
+      required: [postCount, topEmotion]
+      properties:
+        postCount: { type: integer, minimum: 1 }
+        topEmotion:
+          oneOf: [{ $ref: '#/components/schemas/EmotionType' }, { type: 'null' }]
+    WeeklyReport:
+      type: object
+      required:
+        - weekStart
+        - weekEnd
+        - postCount
+        - emotionCounts
+        - unanalyzedCount
+        - topEmotion
+        - defeatedCount
+        - receivedLikes
+        - receivedComments
+        - letterStatus
+        - letter
+        - previous
+        - publishedAt
+      properties:
+        weekStart: { type: string, format: date, description: 한국 시간 월요일 날짜 }
+        weekEnd: { type: string, format: date, description: 그 주의 일요일 }
+        postCount: { type: integer, minimum: 1, description: 그 주에 쓴 글 수(발행할 때 지우지 않은 글) }
+        emotionCounts:
+          type: array
+          description: 감정 5종을 EmotionType 순서대로 모두 담는다
+          minItems: 5
+          maxItems: 5
+          items:
+            type: object
+            required: [emotion, count]
+            properties:
+              emotion: { $ref: '#/components/schemas/EmotionType' }
+              count: { type: integer, minimum: 0 }
+        unanalyzedCount: { type: integer, minimum: 0, description: 감정 분석이 끝나지 않은 글 수 }
+        topEmotion:
+          oneOf: [{ $ref: '#/components/schemas/EmotionType' }, { type: 'null' }]
+        defeatedCount: { type: integer, minimum: 0, description: 그 주에 처치된 내 몬스터 수 }
+        receivedLikes: { type: integer, minimum: 0 }
+        receivedComments: { type: integer, minimum: 0 }
+        letterStatus: { $ref: '#/components/schemas/WeeklyLetterStatus' }
+        letter:
+          type: [string, 'null']
+          maxLength: 300
+          description: DONE일 때만 있다
+        previous:
+          oneOf: [{ $ref: '#/components/schemas/WeeklyReportPrevious' }, { type: 'null' }]
+          description: 바로 앞 주의 리포트가 있을 때만 있다(US4-AC4)
+        publishedAt: { type: string, format: date-time }
     EmotionStats:
       type: object
       required: [totalMonsters, defeatedMonsters, defeatedTogether, raidBossesDefeated, distribution, topEmotion, weekly]
@@ -1685,6 +1768,67 @@ paths:
                   error: { type: 'null' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/members/me/weekly-reports:
+    get:
+      tags: [mypage]
+      operationId: getMyWeeklyReports
+      summary: 내 주간 리포트 목록, 최신 주부터 (008 US4-AC1, US4-AC3)
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+        - name: size
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        '200':
+          description: 받은 리포트가 없으면 빈 목록이다
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, error]
+                properties:
+                  success: { type: boolean, const: true }
+                  data: { $ref: '#/components/schemas/WeeklyReportPage' }
+                  error: { type: 'null' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/members/me/weekly-reports/{weekStart}:
+    parameters:
+      - name: weekStart
+        in: path
+        required: true
+        description: 그 주의 월요일(한국 시간). 예 2026-10-05
+        schema: { type: string, format: date }
+    get:
+      tags: [mypage]
+      operationId: getMyWeeklyReport
+      summary: 한 주의 내 리포트 (008 US1-AC3, US1-AC9)
+      responses:
+        '200':
+          description: 리포트
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, error]
+                properties:
+                  success: { type: boolean, const: true }
+                  data: { $ref: '#/components/schemas/WeeklyReport' }
+                  error: { type: 'null' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: 그 주의 내 리포트가 없다. 날짜 형식이 틀렸거나 월요일이 아닌 때도 같다 (WEEKLY_REPORT_NOT_FOUND)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
 
   /api/v1/safety/support-resources:
     get:

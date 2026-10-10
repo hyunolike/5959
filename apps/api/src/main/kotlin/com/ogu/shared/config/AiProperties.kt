@@ -22,6 +22,8 @@ data class AiProperties(
     val maxTokens: Int = 600,
     /** 위험 분류 응답의 토큰 상한. 답은 `{"level":"NONE"}` 한 줄이지만 추론 토큰이 함께 든다. */
     val riskMaxTokens: Int = 300,
+    /** 주간 리포트 편지(008)의 토큰 상한. 답은 300자 이하지만 추론 토큰이 함께 든다. */
+    val letterMaxTokens: Int = 900,
     /**
      * 모델이 추론에 들이는 정도(`low`, `medium`, `high`). 비우면 보내지 않는다. 분류는 짧은 판단이라 낮게 둬도 되고,
      * 낮을수록 빠르고 토큰이 덜 든다.

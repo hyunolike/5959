@@ -80,8 +80,20 @@ resilience4j:
         wait-duration-in-open-state: 60s
         permitted-number-of-calls-in-half-open-state: 2
         automatic-transition-from-open-to-half-open-enabled: true
+      # 008: 주간 리포트의 편지도 따로 연다
+      weeklyLetter:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 60s
+        permitted-number-of-calls-in-half-open-state: 2
+        automatic-transition-from-open-to-half-open-enabled: true
   timelimiter:
     instances:
+      weeklyLetter:
+        timeout-duration: ${ogu.ai.timeout}
+        cancel-running-future: true
       emotionAnalyzer:
         timeout-duration: ${ogu.ai.timeout}
         cancel-running-future: true
@@ -130,6 +142,8 @@ ogu:
     # 기본 모델은 추론 과정을 먼저 내고 그 토큰도 상한에 들어간다. 작으면 답이 비어 온다
     max-tokens: 600
     risk-max-tokens: 300
+    # 008 주간 리포트의 편지. 답은 300자 이하지만 추론 토큰이 함께 든다
+    letter-max-tokens: 900
     # low, medium, high. 비우면 보내지 않는다
     reasoning-effort: ${AI_REASONING_EFFORT:low}
     # 007 추천의 임베딩. 차원은 post_embedding.embedding 열과 같아야 한다
@@ -186,6 +200,22 @@ ogu:
     backfill:
       enabled: true
       batch-size: 1000
+  # 008 주간 리포트(data-model.md "설정")
+  report:
+    # 월요일 이 시각(한국 시간)부터 지난주 리포트를 만든다
+    publish-at: "05:00"
+    poll-interval: 1m
+    batch-size: 200
+    max-per-tick: 500
+    letter:
+      initial-interval: 30s
+      max-interval: 5m
+      deadline: 24h
+      poll-interval: 10s
+      batch-size: 20
+      max-length: 300
+    retention: 365d
+    purge-cron: "0 40 4 * * *" # 매일 04:40 한국 시간
   # 006 레이드(data-model.md "설정"). 바꾸면 다음에 나오는 보스부터 적용된다
   raid:
     cooldown: 1s

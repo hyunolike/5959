@@ -4,5 +4,5 @@
  * {@code member}의 파사드로만 읽는다. {@code emotion}을 모른다(몬스터 생성은 {@link com.ogu.monster.MonsterSpawned}로 받는다).
  * 파사드를 노출하지 않는다(HTTP API만). 인스턴스 간 신호는 Redis 채널로 보내고 내용은 DB에서 다시 읽는다(research R5).
  */
-@org.springframework.modulith.ApplicationModule(allowedDependencies = {"shared", "post", "monster", "member", "safety", "raid"})
+@org.springframework.modulith.ApplicationModule(allowedDependencies = {"shared", "post", "monster", "member", "safety", "raid", "report"})
 package com.ogu.notification;
