@@ -146,7 +146,7 @@ const COMMENT = {
   ],
 };
 
-/** 경로마다 다른 응답을 돌려준다(상세, 댓글 목록). */
+/** 경로마다 다른 응답을 돌려준다(상세, 댓글 목록, 비슷한 고민). */
 function renderDetailWithComments(
   postDetail: Record<string, unknown>,
   comments: unknown[] = [COMMENT],
@@ -161,7 +161,13 @@ function renderDetailWithComments(
               data: { items: comments, nextCursor: null },
               error: null,
             })
-          : jsonResponse({ success: true, data: postDetail, error: null }),
+          : url.endsWith("/similar")
+            ? jsonResponse({
+                success: true,
+                data: { basis: "NONE", items: [], pending: false },
+                error: null,
+              })
+            : jsonResponse({ success: true, data: postDetail, error: null }),
       ),
     ),
   );

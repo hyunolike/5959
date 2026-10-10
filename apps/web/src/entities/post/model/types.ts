@@ -3,6 +3,7 @@ import type { components, operations } from "@/shared/api";
 export type PostDetail = components["schemas"]["PostDetail"];
 export type FeedItem = components["schemas"]["FeedItem"];
 export type FeedPage = components["schemas"]["FeedPage"];
+export type SimilarPosts = components["schemas"]["SimilarPosts"];
 export type CommentTone = components["schemas"]["CommentTone"];
 
 type FeedQueryParams = NonNullable<

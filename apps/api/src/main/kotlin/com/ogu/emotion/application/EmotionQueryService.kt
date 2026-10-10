@@ -1,6 +1,7 @@
 package com.ogu.emotion.application
 
 import com.ogu.emotion.EmotionApi
+import com.ogu.emotion.EmotionType
 import com.ogu.emotion.EmotionView
 import com.ogu.emotion.domain.EmotionAnalysisRepository
 import org.springframework.stereotype.Service
@@ -17,4 +18,9 @@ class EmotionQueryService(
             .findAllById(postIds.toSet())
             .associate { it.postId to EmotionView(it.status, it.emotion, it.intensity) }
     }
+
+    override fun recentPostIds(
+        emotion: EmotionType,
+        limit: Int,
+    ): List<Long> = repository.findRecentPostIdsByEmotion(emotion.name, limit)
 }

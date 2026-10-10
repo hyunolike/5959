@@ -753,6 +753,25 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/posts/{postId}/similar": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        postId: number;
+      };
+      cookie?: never;
+    };
+    /** 이 글과 비슷한 고민 (US1-AC1, US2-AC2). 가까운 순서로 최대 5개. 지금 글, 내 글, 숨긴 글, 지운 글은 없다 */
+    get: operations["getSimilarPosts"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1361,6 +1380,18 @@ export interface components {
       defeated: boolean;
       /** @description 다음 공격까지 기다릴 시간 */
       cooldownMs: number;
+    };
+    /**
+     * @description SIMILAR 뜻이 가까운 글, SAME_EMOTION 같은 감정의 최근 글(임베딩이 없거나 가까운 글이 없을 때),
+     *     NONE 보여 줄 글이 없음(화면은 구역을 숨긴다)
+     * @enum {string}
+     */
+    RecommendationBasis: "SIMILAR" | "SAME_EMOTION" | "NONE";
+    SimilarPosts: {
+      basis: components["schemas"]["RecommendationBasis"];
+      items: components["schemas"]["FeedItem"][];
+      /** @description 이 글의 임베딩을 아직 만들고 있다. true면 화면이 잠시 뒤 다시 받는다 */
+      pending: boolean;
     };
   };
   responses: {
@@ -3041,6 +3072,69 @@ export interface operations {
       };
       /** @description HP를 들고 있는 장치가 내려가 있어 공격을 받을 수 없음 (RAID_UNAVAILABLE). 공격은 반영되지 않았다 */
       503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  getSimilarPosts: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        postId: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 추천 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["SimilarPosts"];
+            error: null;
+          };
+        };
+      };
+      /** @description 글 ID 형식이 틀림 (INVALID_REQUEST) */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description 인증 없음 또는 세션 만료 */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description 온보딩 전 (ONBOARDING_REQUIRED) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description 없거나, 지웠거나, 다른 회원에게 숨긴 글 (POST_NOT_FOUND) */
+      404: {
         headers: {
           [name: string]: unknown;
         };

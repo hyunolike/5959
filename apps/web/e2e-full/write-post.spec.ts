@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { postArticle } from "./support/detail";
 import { waitForHomeLoaded } from "./support/home";
 
 // infra/compose.e2e.yaml로 띄운 실제 API + DB를 상대로 확인한다. API는 e2e 프로필의
@@ -59,10 +60,12 @@ test("US1-AC1 본문과 말투를 골라 올리면 그 글의 상세 화면으�
   ).toBeVisible();
   await expect(page.getByText("무조건 위로해주기")).toBeVisible();
   // US1-AC4: 분석이 끝나면 불안 몬스터가 HP 가득 찬 상태(10/10)로 나타난다.
-  await expect(page.getByText("불안", { exact: true })).toBeVisible({
+  await expect(
+    postArticle(page).getByText("불안", { exact: true }),
+  ).toBeVisible({
     timeout: 30_000,
   });
-  await expect(page.getByText("HP 10/10")).toBeVisible();
+  await expect(postArticle(page).getByText("HP 10/10")).toBeVisible();
 });
 
 test("US1-AC3 분석이 끝나지 않았으면 분석 중을 보여 주고, 끝나면 새로고침 없이 몬스터가 나타난다", async ({
@@ -76,18 +79,20 @@ test("US1-AC3 분석이 끝나지 않았으면 분석 중을 보여 주고, 끝�
   await writePost(page, "[실패:1] 오늘은 아무것도 하기 싫다", "웃겨주기");
   await page.waitForURL(/\/post\/\d+$/);
 
-  await expect(page.getByText("분석 중")).toBeVisible();
+  await expect(postArticle(page).getByText("분석 중")).toBeVisible();
 
   let reloaded = false;
   page.on("load", () => {
     reloaded = true;
   });
 
-  await expect(page.getByText("짜증", { exact: true })).toBeVisible({
+  await expect(
+    postArticle(page).getByText("짜증", { exact: true }),
+  ).toBeVisible({
     timeout: 90_000,
   });
-  await expect(page.getByText("HP 10/10")).toBeVisible();
-  await expect(page.getByText("분석 중")).toHaveCount(0);
+  await expect(postArticle(page).getByText("HP 10/10")).toBeVisible();
+  await expect(postArticle(page).getByText("분석 중")).toHaveCount(0);
   expect(reloaded).toBe(false);
 });
 

@@ -1,5 +1,6 @@
 package com.ogu.ai.infrastructure
 
+import com.ogu.ai.Embedder
 import com.ogu.ai.EmotionAnalyzer
 import com.ogu.ai.RiskClassifier
 import com.ogu.shared.config.AiProperties
@@ -62,6 +63,28 @@ class SpringAiAnalyzerConfig {
     }
 }
 
+/**
+ * 실제 임베더(007 research R2). `e2e` 프로필이 아니면 쓴다. 키가 비어 있으면 외부로 보내지 않고 바로 실패한다.
+ * 그때 추천은 같은 감정의 글로 대신한다.
+ */
+@Configuration(proxyBeanMethods = false)
+@Profile("!e2e")
+class EmbedderConfig {
+    @Bean
+    fun httpEmbedder(
+        properties: AiProperties,
+        circuitBreakerRegistry: CircuitBreakerRegistry,
+    ): Embedder {
+        if (properties.apiKey.isBlank()) {
+            LoggerFactory
+                .getLogger(javaClass)
+                .warn("ogu.ai.api-key(AI_API_KEY)가 비어 있어 임베딩을 끕니다. 추천은 같은 감정의 글로 대신합니다.")
+            return FakeEmbedder.Disabled()
+        }
+        return HttpEmbedder(properties, circuitBreakerRegistry.circuitBreaker(HttpEmbedder.RESILIENCE_NAME))
+    }
+}
+
 /** e2e 프로필은 결정적인 가짜 분석기를 쓴다(research R3). 테스트는 테스트 설정에서 따로 등록한다. */
 @Configuration(proxyBeanMethods = false)
 @Profile("e2e")
@@ -71,4 +94,7 @@ class FakeEmotionAnalyzerConfig {
 
     @Bean
     fun fakeRiskClassifier(): RiskClassifier = FakeRiskClassifier()
+
+    @Bean
+    fun fakeEmbedder(): Embedder = FakeEmbedder()
 }

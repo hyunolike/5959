@@ -71,6 +71,15 @@ resilience4j:
         wait-duration-in-open-state: 60s
         permitted-number-of-calls-in-half-open-state: 2
         automatic-transition-from-open-to-half-open-enabled: true
+      # 007: 임베딩도 따로 연다
+      embedder:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 60s
+        permitted-number-of-calls-in-half-open-state: 2
+        automatic-transition-from-open-to-half-open-enabled: true
   timelimiter:
     instances:
       emotionAnalyzer:
@@ -123,6 +132,9 @@ ogu:
     risk-max-tokens: 300
     # low, medium, high. 비우면 보내지 않는다
     reasoning-effort: ${AI_REASONING_EFFORT:low}
+    # 007 추천의 임베딩. 차원은 post_embedding.embedding 열과 같아야 한다
+    embedding-model: ${AI_EMBEDDING_MODEL:nvidia/nemotron-3-embed-1b}
+    embedding-dimensions: 2048
     timeout: 20s
     prompt-version: v1
   emotion:
@@ -156,6 +168,21 @@ ogu:
     retention: 365d
     purge-cron: "0 30 4 * * *" # 매일 04:30 한국 시간
     purge-batch-size: 1000
+    backfill:
+      enabled: true
+      batch-size: 1000
+  # 007 추천(data-model.md "설정")
+  recommend:
+    # 코사인 거리가 이보다 가까운 글만 비슷한 고민으로 보인다. 평가 묶음으로 정한 값이다(research R9)
+    # 평가(research R9)에서 지금 모델은 주제를 잘 가르지 못했다. 아주 가까운 글만 비슷한 고민으로 보이게 좁게 둔다
+    max-distance: 0.25
+    candidates: 30
+    retry:
+      initial: 30s
+      max-interval: 5m
+      deadline: 24h
+      poll-interval: 10s
+      batch-size: 20
     backfill:
       enabled: true
       batch-size: 1000

@@ -64,4 +64,14 @@ interface EmotionAnalysisRepository : JpaRepository<EmotionAnalysis, Long> {
         @Param("postCreatedAt") postCreatedAt: Instant,
         @Param("now") now: Instant,
     ): Int
+
+    /** 감정이 정해진 글의 ID를 최근 글부터(007 research R6). emotion_analysis_emotion_idx를 탄다. */
+    @Query(
+        value = "select post_id from emotion_analysis where emotion = :emotion order by post_id desc limit :limit",
+        nativeQuery = true,
+    )
+    fun findRecentPostIdsByEmotion(
+        @Param("emotion") emotion: String,
+        @Param("limit") limit: Int,
+    ): List<Long>
 }

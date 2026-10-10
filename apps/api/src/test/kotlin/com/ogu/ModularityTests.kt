@@ -76,7 +76,8 @@ class ModularityTests {
                 "emotion" to setOf("post", "ai"),
                 "monster" to setOf("post", "emotion"),
                 // 006: 마이페이지 통계에 함께 물리친 보스 수를 더한다
-                "feed" to setOf("post", "monster", "emotion", "member", "raid"),
+                // 007: 글 상세의 추천을 recommend가 고른 ID로 조립한다
+                "feed" to setOf("post", "monster", "emotion", "member", "raid", "recommend"),
                 // 004: 행동한 회원 닉네임과 연결 표 때문에 member를 더한다. 몬스터 생성은 MonsterSpawned로 받아 emotion을 모른다
                 // 005: 위험 감지 결과를 safety의 이벤트로 받는다
                 // 006: 보스 처치를 raid의 이벤트로 받는다
@@ -86,6 +87,8 @@ class ModularityTests {
                 // 006: 보스의 감정을 post와 emotion으로 정한다. member는 컨트롤러가 받는 인증된 회원 타입 때문이다.
                 // monster와는 서로 모른다(글의 몬스터와 보스는 다른 것이다)
                 "raid" to setOf("post", "emotion", "member"),
+                // 007: 글의 임베딩으로 가까운 글을 찾는다. 임베딩이 없으면 emotion의 결과로 대신한다. feed가 카드로 조립한다
+                "recommend" to setOf("post", "ai", "emotion"),
             )
     }
 }

@@ -378,6 +378,17 @@ id, 연달아 실패한 횟수만 둔다. 알림과 안 읽은 수는 TanStack Q
 
 순위, 다른 회원의 닉네임과 기여는 응답에도 화면에도 없다. 보이는 것은 참여자 수와 내 기여뿐이다.
 
+## 비슷한 고민 추천 (007-recommend)
+
+글 상세 아래에 이 글과 비슷한 다른 회원의 글을 최대 5개 보여 준다.
+
+- `entities/post`: 조회(`useSimilarPostsQuery`)와 폴링 간격(`similarPollInterval`). 카드는 피드의 `PostCard`를 그대로 쓴다.
+- `widgets/post-detail/ui/similar-posts.tsx`: 추천 구역. 근거(`basis`)가 `SIMILAR`면 "비슷한 고민", `SAME_EMOTION`이면 "같은 감정의 고민"이라 부른다. 같은 감정으로 고른 글을 비슷한 고민이라 부르지 않는다.
+- 보여 줄 글이 없거나(`NONE`) 조회가 실패하면 구역을 그리지 않는다. 오류도 보이지 않는다. 추천은 덤이라 글 읽기를 방해하지 않는다.
+- 글 상세와 따로 조회하고 캐시 키도 따로 둔다(`["similar-posts", id]`). 공감과 댓글이 상세를 무효화할 때 추천까지 다시 부르지 않는다.
+- 응답의 `pending`이 true면 3초마다, 처음 불러온 때부터 30초까지 다시 부른다. 방금 쓴 글의 추천이 새로고침 없이 나타난다.
+- 추천 구역은 글의 `article`("고민 글") 밖에 있다. 카드에도 몬스터와 HP가 있어, e2e에서 글의 것을 볼 때는 `e2e-full/support/detail.ts`의 `postArticle` 안에서 찾는다.
+
 ## Recent-practice choices worth calling out
 
 - **Next.js 16 / React 19**, App Router, Turbopack builds.

@@ -1,5 +1,7 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
+import { postArticle } from "./support/detail";
+
 // infra/compose.e2e.yaml로 띄운 실제 API + DB를 상대로 글과 댓글 수정, 삭제(US4)를 확인한다.
 // 글은 바로 분석되는 머리말(`[불안:낮음]`: 불안, 최대 HP 10)로 쓴다. `[실패]` 글은 재시도
 // 대기열에 남아 다른 스펙을 늦추므로 쓰지 않는다. 작성자와 댓글 단 회원은 서로 다른 브라우저
@@ -53,7 +55,7 @@ async function call(
 }
 
 function monster(page: Page) {
-  return page.locator('[aria-label="몬스터"]');
+  return postArticle(page).locator('[aria-label="몬스터"]');
 }
 
 function hpText(page: Page) {
