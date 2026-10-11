@@ -67,8 +67,9 @@ class SseHub(
         emitter.onTimeout { close(connection) }
         emitter.onError { connections.discard(connection) }
         connections.register(connection).forEach(::close)
-        // 등록한 뒤에 재전송한다. 이어서 하트비트를 한 번 보내 응답 헤더를 바로 내보낸다(보낼 알림이 없어도 연결이 열린다)
-        writer.request(connection, StreamTask.DRAIN, StreamTask.HEARTBEAT)
+        // 첫 하트비트는 이 요청 스레드에서 응답 헤더와 함께 나간다(보낼 알림이 없어도 연결이 열린다). 등록한 뒤에 재전송한다
+        writer.greet(connection)
+        writer.request(connection, StreamTask.DRAIN)
         return emitter
     }
 
