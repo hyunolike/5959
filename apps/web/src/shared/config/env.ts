@@ -68,12 +68,12 @@ export const env = createEnv({
             "Vercel 배포(VERCEL_ENV가 있을 때)와 운영에서는 OAUTH_STATE_SECRET을 설정해야 한다",
         });
       }
-      // Vercel에 올라간 배포는 API_ORIGIN, BFF_API_KEY, APP_ORIGIN을 명시적으로
+      // 공개 배포는 API_ORIGIN, BFF_API_KEY, APP_ORIGIN을 명시적으로
       // 넣어야 한다. 셋 다 기본값이 있어서, 빠뜨려도 조용히 로컬 값(localhost,
       // local-bff-key)으로 기동해 실제 API 대신 아무 데도 없는 주소를 부른다.
       // 여기서는 `values`(defaults 적용 뒤)가 아니라 `process.env`(원본)를 봐서
       // "정말로 안 넣었는지"를 구분한다.
-      if (values.VERCEL_ENV !== undefined) {
+      if (values.VERCEL_ENV !== undefined || values.APP_ENV === "production") {
         for (const key of [
           "API_ORIGIN",
           "BFF_API_KEY",
@@ -83,7 +83,7 @@ export const env = createEnv({
             ctx.addIssue({
               code: "custom",
               path: [key],
-              message: `Vercel 배포(VERCEL_ENV가 있을 때)에서는 ${key}를 기본값 없이 명시적으로 설정해야 한다`,
+              message: `공개 배포에서는 ${key}를 기본값 없이 명시적으로 설정해야 한다`,
             });
           }
         }
@@ -92,7 +92,7 @@ export const env = createEnv({
             code: "custom",
             path: ["BFF_API_KEY"],
             message:
-              "Vercel 배포(VERCEL_ENV가 있을 때)에서는 BFF_API_KEY에 로컬 개발용 값(local-bff-key)을 쓸 수 없다",
+              "공개 배포에서는 BFF_API_KEY에 로컬 개발용 값(local-bff-key)을 쓸 수 없다",
           });
         }
       }

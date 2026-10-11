@@ -113,6 +113,27 @@ describe("env 검증", () => {
 
   describe("Vercel 배포는 기본값으로 조용히 넘어가면 안 된다", () => {
     it.each(["API_ORIGIN", "BFF_API_KEY", "APP_ORIGIN"] as const)(
+      "Cloud Run 운영에서도 %s를 명시하지 않으면 검증에 실패한다",
+      async (missing) => {
+        vi.stubEnv("APP_ENV", "production");
+        vi.stubEnv("OAUTH_STATE_SECRET", PRODUCTION_SECRET);
+        stubExplicitVercelValues();
+        vi.stubEnv(missing, undefined);
+
+        await expect(loadEnv()).rejects.toThrow();
+      },
+    );
+
+    it("Cloud Run 운영에서도 로컬 개발 BFF 키를 거부한다", async () => {
+      vi.stubEnv("APP_ENV", "production");
+      vi.stubEnv("OAUTH_STATE_SECRET", PRODUCTION_SECRET);
+      stubExplicitVercelValues();
+      vi.stubEnv("BFF_API_KEY", "local-bff-key");
+
+      await expect(loadEnv()).rejects.toThrow();
+    });
+
+    it.each(["API_ORIGIN", "BFF_API_KEY", "APP_ORIGIN"] as const)(
       "VERCEL_ENV가 있는데 %s를 안 주면(기본값을 쓰게 되면) 검증에 실패한다",
       async (missing) => {
         vi.stubEnv("VERCEL_ENV", "production");
