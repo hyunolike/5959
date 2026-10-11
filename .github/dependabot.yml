@@ -10,9 +10,24 @@ updates:
       kotlin:
         patterns:
           - "org.jetbrains.kotlin*"
+          # Kotlin 플러그인 셋은 버전이 같아야 한다. 따로 올라오면 하나씩은 빌드가 깨진다
+          - "jvm"
+          - "plugin.spring"
+          - "plugin.jpa"
       spring:
         patterns:
           - "org.springframework*"
+    ignore:
+      # Kotlin 2.4는 ktlint(1.8.0까지)가 뜨지 않는다("Extensions storage is not registered").
+      # ktlint가 2.4를 받으면 이 항목을 지우고 build.gradle.kts의 ktlint 버전 고정도 함께 올린다
+      - dependency-name: "jvm"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+      - dependency-name: "plugin.spring"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+      - dependency-name: "plugin.jpa"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+      - dependency-name: "org.jetbrains.kotlin*"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
 
   - package-ecosystem: npm
     directory: /
@@ -26,6 +41,14 @@ updates:
           - "react"
           - "react-dom"
           - "eslint-config-next"
+    ignore:
+      # ESLint 10은 eslint-config-next가 끌어오는 eslint-plugin-react가 받지 못한다
+      # ("contextOrFilename.getFilename is not a function"). 플러그인이 받으면 지운다
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      # 타입은 실제로 돌리는 Node(22)를 따라간다. Node를 올릴 때 함께 올린다
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
