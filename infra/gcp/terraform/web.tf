@@ -27,13 +27,14 @@ resource "google_cloud_run_v2_service" "web" {
       }
       dynamic "env" {
         for_each = {
-          NODE_ENV          = "production"
-          APP_ENV           = "production"
-          API_ORIGIN        = "https://${local.api_domain}"
-          SSE_PUBLIC_ORIGIN = "https://${local.api_domain}"
-          APP_ORIGIN        = local.web_origin
-          KAKAO_CLIENT_ID   = var.kakao_client_id
-          GOOGLE_CLIENT_ID  = var.google_client_id
+          NODE_ENV            = "production"
+          APP_ENV             = "production"
+          API_ORIGIN          = "https://${local.api_domain}"
+          SSE_PUBLIC_ORIGIN   = "https://${local.api_domain}"
+          APP_ORIGIN          = local.web_origin
+          KAKAO_CLIENT_ID     = var.kakao_client_id
+          KAKAO_LOGIN_ENABLED = tostring(var.kakao_login_enabled)
+          GOOGLE_CLIENT_ID    = var.google_client_id
         }
         content {
           name  = env.key

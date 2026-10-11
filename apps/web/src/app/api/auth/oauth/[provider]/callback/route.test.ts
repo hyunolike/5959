@@ -7,6 +7,7 @@ const mockEnv = vi.hoisted(() => ({
   BFF_API_KEY: "test-bff-key",
   APP_ORIGIN: "https://ogu.example",
   APP_ENV: "development",
+  KAKAO_LOGIN_ENABLED: true,
   OAUTH_STATE_SECRET: "test-oauth-state-secret-0123456789abcdef",
 }));
 
@@ -100,6 +101,7 @@ function expectStateCookieCleared(response: {
 let fetchMock: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
+  mockEnv.KAKAO_LOGIN_ENABLED = true;
   fetchMock = vi.fn();
   vi.stubGlobal("fetch", fetchMock);
   vi.spyOn(console, "error").mockImplementation(() => {});
@@ -111,6 +113,19 @@ afterEach(() => {
 });
 
 describe("GET /api/auth/oauth/{provider}/callback", () => {
+  it("카카오가 비활성화되면 유효한 state가 있어도 API를 호출하지 않는다", async () => {
+    mockEnv.KAKAO_LOGIN_ENABLED = false;
+    fetchMock.mockResolvedValue(
+      jsonResponse({ success: true, data: authResult(false), error: null }),
+    );
+    const response = await callback(
+      "kakao",
+      "?code=provider-code&state=good-state",
+    );
+    expectRedirect(response, "/login?error=oauth_failed");
+    expectStateCookieCleared(response);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
   it("US3-AC1 처음 쓰는 계정이면 세션 쿠키를 심고 ogu_ob를 지운 뒤 /onboarding으로 보낸다", async () => {
     fetchMock.mockResolvedValue(
       jsonResponse({ success: true, data: authResult(false), error: null }),

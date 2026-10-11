@@ -30,6 +30,37 @@ class ProdAuthSettingsCheckTest {
             )
 
     @Test
+    fun `US3-AC1 카카오를 비활성화하면 구글 설정만으로 prod에서 기동한다`() {
+        runner
+            .withInitializer { it.environment.setActiveProfiles("prod") }
+            .withPropertyValues(
+                "ogu.auth.jwt.secret=$PROD_SECRET",
+                "ogu.auth.bff-key=prod-bff-key",
+                "ogu.auth.oauth.kakao.enabled=false",
+                "ogu.auth.oauth.kakao.client-id=",
+                "ogu.auth.oauth.kakao.client-secret=",
+                "ogu.auth.oauth.allowed-redirect-uris=$GOOGLE_CALLBACK",
+            ).run { context -> assertThat(context).hasNotFailed() }
+    }
+
+    @Test
+    fun `US3-AC1 카카오가 꺼져 있어도 구글 secret이 없으면 prod 기동을 거절한다`() {
+        runner
+            .withInitializer { it.environment.setActiveProfiles("prod") }
+            .withPropertyValues(
+                "ogu.auth.jwt.secret=$PROD_SECRET",
+                "ogu.auth.bff-key=prod-bff-key",
+                "ogu.auth.oauth.kakao.enabled=false",
+                "ogu.auth.oauth.kakao.client-id=",
+                "ogu.auth.oauth.kakao.client-secret=",
+                "ogu.auth.oauth.google.client-secret=",
+            ).run { context ->
+                assertThat(context).hasFailed()
+                assertThat(context.startupFailure).rootCause().hasMessageContaining("google.client-secret")
+            }
+    }
+
+    @Test
     fun `prod 프로필에서 JWT 비밀키가 커밋된 로컬 개발용 값이면 기동하지 않는다`() {
         runner
             .withInitializer { it.environment.setActiveProfiles("prod") }

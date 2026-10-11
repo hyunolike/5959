@@ -42,9 +42,17 @@ run "infrastructure_only" {
 }
 
 run "web_scales_to_zero" {
-  command = plan
+  command = apply
   variables {
-    web_image = "us-central1-docker.pkg.dev/ogu-test-project/ogu/web@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    web_image           = "us-central1-docker.pkg.dev/ogu-test-project/ogu/web@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    kakao_login_enabled = false
+  }
+  assert {
+    condition = !jsondecode(google_compute_instance.api.metadata["deployment-config"]).kakao_login_enabled && one([
+      for item in google_cloud_run_v2_service.web[0].template[0].containers[0].env : item.value
+      if item.name == "KAKAO_LOGIN_ENABLED"
+    ]) == "false"
+    error_message = "Google-only login must disable Kakao consistently in API and web."
   }
   assert {
     condition     = google_cloud_run_v2_service.web[0].template[0].scaling[0].min_instance_count == 0 && google_cloud_run_v2_service.web[0].template[0].scaling[0].max_instance_count == 1

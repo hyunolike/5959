@@ -24,6 +24,7 @@ export const env = createEnv({
     // 이 웹 서비스의 출처(Origin 검사, OAuth redirect_uri 구성에 쓴다).
     APP_ORIGIN: z.string().url().default("http://localhost:3000"),
     KAKAO_CLIENT_ID: z.string().min(1).optional(),
+    KAKAO_LOGIN_ENABLED: z.stringbool().default(true),
     GOOGLE_CLIENT_ID: z.string().min(1).optional(),
     // 개발/스테이징에서 에러 프로브(테스트용 강제 에러 라우트)를 켤지 여부.
     ENABLE_ERROR_PROBE: z.stringbool().optional(),

@@ -12,6 +12,18 @@ spec.loader.exec_module(runtime)
 
 
 class RuntimeTests(unittest.TestCase):
+    def test_disabled_kakao_does_not_require_its_credentials(self):
+        values = {key: "x" * 64 for key in runtime.REQUIRED if not key.startswith("KAKAO_")}
+        values["KAKAO_LOGIN_ENABLED"] = "false"
+        runtime.validate_secrets(values)
+
+    def test_disabled_kakao_still_requires_google_credentials(self):
+        values = {key: "x" * 64 for key in runtime.REQUIRED if not key.startswith("KAKAO_")}
+        values["KAKAO_LOGIN_ENABLED"] = "false"
+        values.pop("GOOGLE_CLIENT_SECRET")
+        with self.assertRaisesRegex(ValueError, "GOOGLE_CLIENT_SECRET"):
+            runtime.validate_secrets(values)
+
     def test_wrong_data_disk_is_rejected_before_docker_can_start(self):
         with mock.patch.object(runtime.os.path, "ismount", return_value=True):
             with mock.patch.object(runtime.subprocess, "check_output", side_effect=["expected\n", "other\n"]):

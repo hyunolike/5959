@@ -38,7 +38,12 @@ def secret(project, name, token):
 
 
 def validate_secrets(values):
+    kakao_enabled = values.get("KAKAO_LOGIN_ENABLED", "true")
+    if kakao_enabled not in ["true", "false"]:
+        raise ValueError("KAKAO_LOGIN_ENABLED must be true or false")
     for key in REQUIRED:
+        if key.startswith("KAKAO_") and kakao_enabled == "false":
+            continue
         if not isinstance(values.get(key), str) or not values[key].strip():
             raise ValueError(f"Required secret field missing: {key}")
     for key in ["JWT_SECRET", "REDIS_PASSWORD"]:
@@ -144,6 +149,7 @@ def configuration():
 
 def environment(config, token):
     values = json.loads(secret(config["project_id"], config["api_secret"], token))
+    values["KAKAO_LOGIN_ENABLED"] = "true" if config.get("kakao_login_enabled", True) else "false"
     validate_secrets(values)
     bff = secret(config["project_id"], config["bff_secret"], token)
     if len(bff) < 32:
@@ -158,7 +164,8 @@ def environment(config, token):
         "REDIS_URL": "redis://:" + urllib.parse.quote(values["REDIS_PASSWORD"], safe="") + "@redis:6379",
         "OGU_SSE_ALLOWED_ORIGINS": origin,
         "OAUTH_ALLOWED_REDIRECT_URIS": ",".join(
-            f"{origin}/api/auth/oauth/{provider}/callback" for provider in ["kakao", "google"]
+            f"{origin}/api/auth/oauth/{provider}/callback"
+            for provider in (["kakao", "google"] if values["KAKAO_LOGIN_ENABLED"] == "true" else ["google"])
         ),
     }
 

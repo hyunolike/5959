@@ -53,12 +53,14 @@ class ProdAuthSettingsCheck(
 
     private fun checkOAuth(oauth: AuthProperties.OAuth) {
         val credentials =
-            mapOf(
-                "ogu.auth.oauth.kakao.client-id" to oauth.kakao.clientId,
-                "ogu.auth.oauth.kakao.client-secret" to oauth.kakao.clientSecret,
+            mutableMapOf(
                 "ogu.auth.oauth.google.client-id" to oauth.google.clientId,
                 "ogu.auth.oauth.google.client-secret" to oauth.google.clientSecret,
             )
+        if (oauth.kakao.enabled) {
+            credentials["ogu.auth.oauth.kakao.client-id"] = oauth.kakao.clientId
+            credentials["ogu.auth.oauth.kakao.client-secret"] = oauth.kakao.clientSecret
+        }
         credentials.forEach { (name, value) ->
             check(value.isNotBlank()) { "prod 프로필에서는 $name 을 설정해야 합니다." }
         }

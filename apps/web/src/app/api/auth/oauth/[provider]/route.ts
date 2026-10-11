@@ -84,6 +84,12 @@ export async function GET(
     return redirect(new URL(withNextPath("/login", next), env.APP_ORIGIN));
   }
 
+  if (provider === "kakao" && env.KAKAO_LOGIN_ENABLED === false) {
+    return redirect(
+      new URL(withNextPath("/login?error=oauth_failed", next), env.APP_ORIGIN),
+    );
+  }
+
   const payload = createOAuthState(provider, next);
 
   let target: string | URL;

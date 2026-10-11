@@ -1,6 +1,7 @@
 import { SignupForm } from "@/features/auth/email-signup";
 import { OAuthButtons } from "@/features/auth/oauth-buttons";
 import { Card } from "@/shared/ui";
+import { env } from "@/shared/config";
 
 function firstValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
@@ -23,7 +24,7 @@ export default async function SignupPage({
         오구오구에서 감정을 나누고 함께 이겨내 보세요.
       </p>
       <div className="mt-6">
-        <OAuthButtons next={next} />
+        <OAuthButtons next={next} kakaoEnabled={env.KAKAO_LOGIN_ENABLED} />
       </div>
       <div className="mt-6">
         <SignupForm next={next} />

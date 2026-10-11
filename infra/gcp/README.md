@@ -80,7 +80,10 @@ VM은 Docker, 데이터 디스크와 swap, systemd, 백업 실행 환경만 준�
 
 JSON 파일을 `infra/gcp/secrets/credentials.json`에 준비한다(이 디렉터리는 업로드/커밋에서 제외).
 필드는 AI_API_KEY, KAKAO_CLIENT_ID, KAKAO_CLIENT_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET이다.
-운영 값이 비면 API가 기동하지 않는다. 비밀 값을 채팅이나 PR에 붙이지 않는다.
+필수 운영 값이 비면 API가 기동하지 않는다. 비밀 값을 채팅이나 PR에 붙이지 않는다.
+구글만 사용할 때는 `terraform.tfvars`에 `kakao_login_enabled = false`를 지정하고
+아래 prepare-secrets 명령에 `--without-kakao`를 붙인다. 이때 카카오 ID와 시크릿은 없어도 된다.
+웹의 카카오 버튼과 웹/API의 카카오 인증 요청이 함께 비활성화된다.
 
 ```bash
 python3 infra/gcp/scripts/prepare-secrets.py infra/gcp/secrets/credentials.json

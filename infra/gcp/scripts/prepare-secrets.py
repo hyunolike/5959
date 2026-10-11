@@ -10,11 +10,16 @@ import secrets
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("credentials", type=pathlib.Path, help="JSON with real AI and OAuth credentials")
+    parser.add_argument("--without-kakao", action="store_true", help="Enable only Google OAuth")
     args = parser.parse_args()
     values = json.loads(args.credentials.read_text())
-    for key in ["AI_API_KEY", "KAKAO_CLIENT_ID", "KAKAO_CLIENT_SECRET", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"]:
+    required = ["AI_API_KEY", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"]
+    if not args.without_kakao:
+        required += ["KAKAO_CLIENT_ID", "KAKAO_CLIENT_SECRET"]
+    for key in required:
         if not isinstance(values.get(key), str) or not values[key].strip():
             parser.error(f"Required credential missing: {key}")
+    values["KAKAO_LOGIN_ENABLED"] = "false" if args.without_kakao else "true"
     for key in ["POSTGRES_PASSWORD", "JWT_SECRET", "REDIS_PASSWORD"]:
         values.setdefault(key, secrets.token_hex(32))
     os.umask(0o077)

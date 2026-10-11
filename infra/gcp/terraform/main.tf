@@ -14,15 +14,16 @@ locals {
   api_domain = "api.${replace(google_compute_address.api.address, ".", "-")}.sslip.io"
   registry   = "${var.region}-docker.pkg.dev/${var.project_id}/ogu"
   deployment_config = {
-    project_id    = var.project_id
-    region        = var.region
-    api_image     = var.api_image
-    api_domain    = local.api_domain
-    web_origin    = local.web_origin
-    registry      = "${var.region}-docker.pkg.dev"
-    backup_bucket = google_storage_bucket.backups.name
-    api_secret    = local.secret_ids.api_env
-    bff_secret    = local.secret_ids.bff_key
+    kakao_login_enabled = var.kakao_login_enabled
+    project_id          = var.project_id
+    region              = var.region
+    api_image           = var.api_image
+    api_domain          = local.api_domain
+    web_origin          = local.web_origin
+    registry            = "${var.region}-docker.pkg.dev"
+    backup_bucket       = google_storage_bucket.backups.name
+    api_secret          = local.secret_ids.api_env
+    bff_secret          = local.secret_ids.bff_key
   }
 }
 

@@ -12,4 +12,6 @@ web_image = ""
 
 # OAuth client ID는 공개 식별자. client secret은 Secret Manager에 넣는다.
 kakao_client_id  = ""
+# Set false to deploy with Google login only.
+kakao_login_enabled = true
 google_client_id = ""

@@ -51,6 +51,9 @@ class OAuthLoginService(
         redirectUri: String,
     ): OAuthProvider {
         val provider = OAuthProvider.fromPath(providerPath) ?: invalid("지원하지 않는 외부 계정 제공자입니다.")
+        if (provider == OAuthProvider.KAKAO && !properties.oauth.kakao.enabled) {
+            invalid("카카오 로그인이 비활성화되어 있습니다.")
+        }
         if (code.isBlank()) invalid("인가 코드가 없습니다.")
         if (!isAllowedRedirect(provider, redirectUri)) invalid("허용되지 않은 redirectUri입니다.")
         return provider

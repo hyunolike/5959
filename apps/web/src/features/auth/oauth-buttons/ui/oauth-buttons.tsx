@@ -8,6 +8,7 @@ const PROVIDERS = [
 interface OAuthButtonsProps {
   /** 로그인 뒤 돌아갈 경로. 검증은 서버(시작 라우트)가 한다. */
   next?: string;
+  kakaoEnabled?: boolean;
 }
 
 /**
@@ -15,15 +16,20 @@ interface OAuthButtonsProps {
  * OAuth 시작 라우트(`/api/auth/oauth/{provider}`)로 이동한다. 시작 라우트가
  * state 쿠키를 심고 제공자로 보낸다.
  */
-export function OAuthButtons({ next = "/home" }: OAuthButtonsProps) {
+export function OAuthButtons({
+  next = "/home",
+  kakaoEnabled = true,
+}: OAuthButtonsProps) {
   const query = `next=${encodeURIComponent(next)}`;
   return (
     <div className="flex flex-col gap-2">
-      {PROVIDERS.map(({ id, label }) => (
-        <Button key={id} asChild variant="outline">
-          <a href={`/api/auth/oauth/${id}?${query}`}>{label}</a>
-        </Button>
-      ))}
+      {PROVIDERS.filter(({ id }) => id !== "kakao" || kakaoEnabled).map(
+        ({ id, label }) => (
+          <Button key={id} asChild variant="outline">
+            <a href={`/api/auth/oauth/${id}?${query}`}>{label}</a>
+          </Button>
+        ),
+      )}
     </div>
   );
 }

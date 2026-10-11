@@ -48,6 +48,12 @@ variable "web_image" {
   }
 }
 
+variable "kakao_login_enabled" {
+  type        = bool
+  description = "Enable Kakao login; false permits a Google-only deployment."
+  default     = true
+}
+
 variable "kakao_client_id" {
   type    = string
   default = ""

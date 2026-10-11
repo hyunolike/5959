@@ -128,8 +128,9 @@ ogu:
     oauth:
       allowed-redirect-uris: ${OAUTH_ALLOWED_REDIRECT_URIS:http://localhost:3000/api/auth/oauth/kakao/callback,http://localhost:3000/api/auth/oauth/google/callback}
       kakao:
-        client-id: ${KAKAO_CLIENT_ID}
-        client-secret: ${KAKAO_CLIENT_SECRET}
+        enabled: ${KAKAO_LOGIN_ENABLED:true}
+        client-id: ${KAKAO_CLIENT_ID:}
+        client-secret: ${KAKAO_CLIENT_SECRET:}
       google:
         client-id: ${GOOGLE_CLIENT_ID}
         client-secret: ${GOOGLE_CLIENT_SECRET}
