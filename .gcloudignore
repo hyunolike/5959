@@ -1,0 +1,13 @@
+.gcloudignore
+.git
+.gitignore
+#!include:.gitignore
+webbb-be/
+webbb-fe/
+docs/
+specs/
+**/.env*
+**/__pycache__/
+.codex/
+.claude/
+.agents/

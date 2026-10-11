@@ -8,6 +8,7 @@ const mockEnv = vi.hoisted(() => ({
   APP_ORIGIN: "https://ogu.example",
   APP_ENV: "development" as "development" | "e2e" | "production",
   KAKAO_CLIENT_ID: "kakao-client" as string | undefined,
+  KAKAO_LOGIN_ENABLED: true,
   GOOGLE_CLIENT_ID: "google-client" as string | undefined,
   OAUTH_STATE_SECRET: "test-oauth-state-secret-0123456789abcdef",
 }));
@@ -45,12 +46,21 @@ function storedState(
 }
 
 beforeEach(() => {
+  mockEnv.KAKAO_LOGIN_ENABLED = true;
   mockEnv.APP_ENV = "development";
   mockEnv.KAKAO_CLIENT_ID = "kakao-client";
   mockEnv.GOOGLE_CLIENT_ID = "google-client";
 });
 
 describe("GET /api/auth/oauth/{provider}", () => {
+  it("US3-AC1 카카오가 꺼져 있으면 client id가 있어도 인가를 시작하지 않는다", async () => {
+    mockEnv.KAKAO_LOGIN_ENABLED = false;
+    const response = await start("kakao");
+    expect(response.headers.get("location")).toBe(
+      "https://ogu.example/login?error=oauth_failed",
+    );
+    expect(response.cookies.get(OAUTH_STATE_COOKIE)).toBeUndefined();
+  });
   it("지원하지 않는 제공자면 302 /login이고 상태 쿠키를 심지 않는다", async () => {
     const response = await start("naver");
 

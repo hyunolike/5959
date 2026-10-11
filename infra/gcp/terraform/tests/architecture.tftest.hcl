@@ -1,0 +1,65 @@
+mock_provider "google" {}
+
+variables {
+  project_id = "ogu-test-project"
+}
+
+run "infrastructure_only" {
+  command = plan
+
+  assert {
+    condition     = google_compute_instance.api.allow_stopping_for_update && google_compute_instance.api.boot_disk[0].initialize_params[0].size == 20
+    error_message = "VM must support resizing and have room for swap/container images."
+  }
+  assert {
+    condition     = google_compute_instance.api.machine_type == "e2-small"
+    error_message = "Minimum-cost default must be e2-small."
+  }
+  assert {
+    condition     = google_compute_disk.data.size == 20 && google_compute_instance.api.attached_disk[0].mode == "READ_WRITE"
+    error_message = "DB requires a separate persistent data disk."
+  }
+  assert {
+    condition     = google_compute_instance.api.deletion_protection
+    error_message = "VM deletion must be explicitly enabled by the operator."
+  }
+  assert {
+    condition     = toset(one(google_compute_firewall.web.allow).ports) == toset(["80", "443"])
+    error_message = "Only HTTPS/HTTP may be public."
+  }
+  assert {
+    condition     = google_compute_firewall.ssh.source_ranges == toset(["35.235.240.0/20"])
+    error_message = "SSH must be reachable only through IAP."
+  }
+  assert {
+    condition     = length(google_cloud_run_v2_service.web) == 0
+    error_message = "No placeholder web should deploy before a real image exists."
+  }
+  assert {
+    condition     = length(google_secret_manager_secret.config) == 3
+    error_message = "Create only secret containers; never manage secret values in Terraform."
+  }
+}
+
+run "web_scales_to_zero" {
+  command = apply
+  variables {
+    web_image           = "us-central1-docker.pkg.dev/ogu-test-project/ogu/web@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    kakao_login_enabled = false
+  }
+  assert {
+    condition = !jsondecode(google_compute_instance.api.metadata["deployment-config"]).kakao_login_enabled && one([
+      for item in google_cloud_run_v2_service.web[0].template[0].containers[0].env : item.value
+      if item.name == "KAKAO_LOGIN_ENABLED"
+    ]) == "false"
+    error_message = "Google-only login must disable Kakao consistently in API and web."
+  }
+  assert {
+    condition     = google_cloud_run_v2_service.web[0].template[0].scaling[0].min_instance_count == 0 && google_cloud_run_v2_service.web[0].template[0].scaling[0].max_instance_count == 1
+    error_message = "Web must scale to zero and have a maximum of one instance."
+  }
+  assert {
+    condition     = google_cloud_run_v2_service.web[0].template[0].containers[0].resources[0].cpu_idle
+    error_message = "Web must use request-based CPU allocation."
+  }
+}

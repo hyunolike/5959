@@ -4,6 +4,7 @@ import {
   OAuthLoginErrorNotice,
 } from "@/features/auth/oauth-buttons";
 import { Card } from "@/shared/ui";
+import { env } from "@/shared/config";
 
 function firstValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
@@ -25,7 +26,7 @@ export default async function LoginPage({
         <OAuthLoginErrorNotice error={error} />
       </div>
       <div className="mt-6">
-        <OAuthButtons next={next} />
+        <OAuthButtons next={next} kakaoEnabled={env.KAKAO_LOGIN_ENABLED} />
       </div>
       <div className="mt-6">
         <LoginForm next={next} />

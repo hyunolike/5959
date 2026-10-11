@@ -99,7 +99,8 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   닉네임이 없어 토큰도 새로 주지 않는다.
 - 운영(`prod` 프로필) 기동 조건은 `ProdAuthSettingsCheck`가 강제한다: JWT
   비밀키가 로컬 개발용 고정 값이면 안 되고, `OGU_BFF_KEY`가 비어 있으면 안 되고,
-  카카오·구글 client id/secret이 모두 있어야 하고, 허용 redirect URI는 전부
+  구글 client id/secret이 있어야 하고, 카카오가 활성화된 경우 카카오 값도 필수다.
+  `KAKAO_LOGIN_ENABLED=false`로 카카오를 보류할 수 있다. 허용 redirect URI는 전부
   `https`여야 하고, `prod`와 `e2e` 프로필을 동시에 켤 수 없다(e2e의 비밀 값은
   `infra/compose.e2e.yaml`에 커밋된 고정 값이라 prod에 같이 켜면 토큰을 위조할 수 있다).
   004부터는 `spring.data.redis.url`(`REDIS_URL`)이 없거나 localhost이면, `ogu.sse.allowed-origins`

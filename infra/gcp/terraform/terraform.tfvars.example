@@ -1,0 +1,17 @@
+# 승인한 기존 프로젝트 ID로 바꾼다. gcloud 기본 프로젝트는 사용하지 않는다.
+project_id = "your-ogu-project"
+region     = "us-central1"
+zone       = "us-central1-a"
+
+# 서울이면 region = "asia-northeast3", zone = "asia-northeast3-a"
+machine_type = "e2-small"
+
+# 첫 apply는 기반 리소스만 생성. 이미지 빌드 뒤 digest로 채운다.
+api_image = ""
+web_image = ""
+
+# OAuth client ID는 공개 식별자. client secret은 Secret Manager에 넣는다.
+kakao_client_id  = ""
+# Set false to deploy with Google login only.
+kakao_login_enabled = true
+google_client_id = ""

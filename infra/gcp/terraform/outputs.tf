@@ -1,0 +1,12 @@
+output "project_id" { value = var.project_id }
+output "region" { value = var.region }
+output "zone" { value = var.zone }
+output "vm_name" { value = google_compute_instance.api.name }
+output "api_ip" { value = google_compute_address.api.address }
+output "api_origin" { value = "https://${local.api_domain}" }
+output "web_origin" { value = local.web_origin }
+output "registry" { value = local.registry }
+output "build_account" { value = google_service_account.build.email }
+output "build_bucket" { value = google_storage_bucket.builds.name }
+output "backup_bucket" { value = google_storage_bucket.backups.name }
+output "secret_ids" { value = local.secret_ids }

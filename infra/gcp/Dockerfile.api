@@ -1,0 +1,14 @@
+# syntax=docker/dockerfile:1
+# Build on Cloud Build rather than on the small runtime VM.
+FROM eclipse-temurin:21-jdk AS builder
+WORKDIR /src
+COPY apps/api/ ./
+RUN chmod +x gradlew && ./gradlew --no-daemon bootJar
+
+FROM eclipse-temurin:21-jre
+WORKDIR /app
+RUN groupadd --system app && useradd --system --gid app app
+COPY --from=builder /src/build/libs/api.jar /app/app.jar
+USER app
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

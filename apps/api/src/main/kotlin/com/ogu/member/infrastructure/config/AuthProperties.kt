@@ -37,6 +37,7 @@ data class AuthProperties(
     )
 
     data class Kakao(
+        val enabled: Boolean = true,
         val clientId: String = "",
         val clientSecret: String = "",
         val tokenUri: URI = URI.create("https://kauth.kakao.com/oauth/token"),

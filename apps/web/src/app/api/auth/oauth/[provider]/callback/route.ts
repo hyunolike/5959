@@ -62,6 +62,9 @@ export async function GET(
   if (!isOAuthProvider(provider)) {
     return loginWithError("oauth_failed");
   }
+  if (provider === "kakao" && env.KAKAO_LOGIN_ENABLED === false) {
+    return loginWithError("oauth_failed");
+  }
 
   const query = request.nextUrl.searchParams;
   const stored = verifyOAuthCallback(

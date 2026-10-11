@@ -270,6 +270,15 @@ jobs:
       - uses: actions/checkout@v7
       - run: bash infra/tests/deploy_test.sh
       - run: shellcheck infra/scripts/*.sh infra/tests/*.sh
+      - run: python3 -m unittest discover -s infra/gcp/tests -v
+      - run: shellcheck infra/gcp/scripts/*.sh infra/gcp/vm/*.sh
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.15.7
+      - run: terraform -chdir=infra/gcp/terraform init -backend=false
+      - run: terraform -chdir=infra/gcp/terraform fmt -check -recursive
+      - run: terraform -chdir=infra/gcp/terraform validate
+      - run: terraform -chdir=infra/gcp/terraform test
 
   pr-title:
     if: github.event_name == 'pull_request'

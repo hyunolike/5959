@@ -1,0 +1,14 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    id: api
+    args: [build, -f, infra/gcp/Dockerfile.api, -t, '${_REGISTRY}/api:${_RELEASE}', .]
+  - name: gcr.io/cloud-builders/docker
+    id: web
+    waitFor: ['-']
+    args: [build, -f, apps/web/Dockerfile, -t, '${_REGISTRY}/web:${_RELEASE}', .]
+images:
+  - '${_REGISTRY}/api:${_RELEASE}'
+  - '${_REGISTRY}/web:${_RELEASE}'
+options:
+  logging: CLOUD_LOGGING_ONLY
+timeout: 1800s
