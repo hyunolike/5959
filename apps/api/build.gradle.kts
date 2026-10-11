@@ -31,7 +31,7 @@ dependencies {
     implementation("org.springframework.modulith:spring-modulith-starter-jdbc")
     implementation("org.springframework.boot:spring-boot-starter-flyway")
     implementation("org.flywaydb:flyway-database-postgresql")
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.1")
     // 003-core-loop 감정 분석(research): Batch 4가 ogu.ai.*에서 직접 OpenAiApi를 만들어 쓴다.
     // 스타터의 OpenAiChatAutoConfiguration은 spring.ai.openai.* 자동설정이라 여기서는 끈다(아래 application.yml 참고).
     implementation("org.springframework.ai:spring-ai-starter-model-openai")
