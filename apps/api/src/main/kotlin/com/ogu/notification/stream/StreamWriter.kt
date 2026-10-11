@@ -79,6 +79,22 @@ class StreamWriter(
             }
         }
 
+    /**
+     * 연결을 여는 요청 스레드가 돌아가기 전에 첫 하트비트를 맡긴다. 아직 응답에 붙지 않은 emitter는 보낼 것을 모아 두었다가
+     * 요청 스레드가 응답에 붙일 때 내보내므로, 응답 헤더는 요청 스레드에서 나간다. 전용 스레드가 첫 쓰기를 하면 필터를
+     * 되돌아 나가는 요청 스레드와 같은 응답 헤더를 동시에 고쳐 헤더가 깨지고, 그 연결은 비동기 타임아웃까지 멈춘다.
+     */
+    fun greet(connection: StreamConnection) {
+        connection.emitter.send(heartbeat())
+    }
+
+    private fun heartbeat() =
+        SseEmitter
+            .event()
+            .comment(HEARTBEAT_COMMENT)
+            .name(PING_EVENT)
+            .data(PING_DATA)
+
     private fun perform(
         connection: StreamConnection,
         task: StreamTask,
@@ -94,14 +110,7 @@ class StreamWriter(
             }
             // 주석 줄은 중간 장비용이고, 브라우저 EventSource는 주석을 스크립트에 알리지 않는다. 웹이 조용한(죽은) 연결을
             // 알아채도록 이름 있는 ping 이벤트를 같이 보낸다. id가 없어 웹의 마지막 이벤트 id를 바꾸지 않는다
-            StreamTask.HEARTBEAT ->
-                connection.emitter.send(
-                    SseEmitter
-                        .event()
-                        .comment(HEARTBEAT_COMMENT)
-                        .name(PING_EVENT)
-                        .data(PING_DATA),
-                )
+            StreamTask.HEARTBEAT -> connection.emitter.send(heartbeat())
             // 주제 소식은 id가 없어 알림의 마지막 번호를 바꾸지 않는다(006 research R6)
             StreamTask.BROADCAST ->
                 connection.takeMessages().forEach { message ->
