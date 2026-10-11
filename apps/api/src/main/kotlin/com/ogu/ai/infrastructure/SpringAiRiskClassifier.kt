@@ -24,8 +24,8 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeoutException
 
 /**
- * OpenAI 호환 엔드포인트로 위험 단계를 분류한다(005 research R3). 감정 분석과 같은 공급자와 설정(`ogu.ai.*`)을 쓰되,
- * 서킷 브레이커와 타임아웃 인스턴스(`riskClassifier`)는 따로 둔다. 한쪽 프롬프트의 실패가 다른 쪽을 열지 않게 한다.
+ * OpenAI 호환 엔드포인트로 위험 단계를 분류한다(005 research R3). 감정 분석과 같은 공급자와 키를 쓰되 모델은 더 큰
+ * 것을 따로 쓴다(`ogu.ai.risk-model`). 서킷 브레이커와 타임아웃 인스턴스(`riskClassifier`)도 따로 둔다. 한쪽 프롬프트의 실패가 다른 쪽을 열지 않게 한다.
  *
  * - 시스템 프롬프트는 `prompts/risk-classification-v1.st`, 본문은 사용자 메시지로 그대로 보낸다.
  * - 재시도는 safety 모듈의 일정(risk_assessment.next_attempt_at)에 맡기므로 SDK의 자체 재시도는 끈다.
@@ -118,12 +118,12 @@ class SpringAiRiskClassifier(
                     .builder()
                     .baseUrl(properties.baseUrl.toString())
                     .apiKey(properties.apiKey)
-                    .model(properties.model)
+                    .model(properties.riskModel)
                     .temperature(0.0)
                     .maxTokens(properties.riskMaxTokens)
-                    .timeout(properties.timeout)
+                    .timeout(properties.riskTimeout)
                     .maxRetries(0)
-                    .withReasoningEffort(properties.reasoningEffort)
+                    .withReasoningEffort(properties.riskReasoningEffort)
                     .build()
             val chatModel = OpenAiChatModel.builder().options(options).build()
             return SpringAiRiskClassifier(

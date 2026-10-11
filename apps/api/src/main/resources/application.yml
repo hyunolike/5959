@@ -98,7 +98,7 @@ resilience4j:
         timeout-duration: ${ogu.ai.timeout}
         cancel-running-future: true
       riskClassifier:
-        timeout-duration: ${ogu.ai.timeout}
+        timeout-duration: ${ogu.ai.risk-timeout}
         cancel-running-future: true
 
 management:
@@ -141,7 +141,11 @@ ogu:
     temperature: 0.1
     # 기본 모델은 추론 과정을 먼저 내고 그 토큰도 상한에 들어간다. 작으면 답이 비어 온다
     max-tokens: 600
-    risk-max-tokens: 300
+    # 위험 분류는 더 큰 모델을 따로 쓴다. 작은 모델은 에두른 위기 표현을 절반쯤 놓쳤다(005 quickstart)
+    risk-model: ${AI_RISK_MODEL:nvidia/nemotron-3-super-120b-a12b}
+    risk-max-tokens: 600
+    risk-reasoning-effort: ${AI_RISK_REASONING_EFFORT:}
+    risk-timeout: 20s # 첫 재시도 간격(30초)보다 짧게 둔다
     # 008 주간 리포트의 편지. 답은 300자 이하지만 추론 토큰이 함께 든다
     letter-max-tokens: 900
     # low, medium, high. 비우면 보내지 않는다
