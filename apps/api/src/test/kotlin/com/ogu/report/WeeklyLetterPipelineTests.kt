@@ -6,6 +6,7 @@ import com.ogu.report.application.WeekRange
 import com.ogu.report.application.WeeklyLetterRunner
 import com.ogu.report.application.WeeklyReportJob
 import com.ogu.report.application.WeeklyReportPublisher
+import com.ogu.support.FutureClockSchedulers
 import com.ogu.support.MemberFixture
 import com.ogu.support.MutableClock
 import com.ogu.support.ReportFixture
@@ -34,7 +35,17 @@ import java.time.LocalTime
  * 주간 리포트의 편지(008 US2, research R6~R8). 가짜 편지 쓰기는 수치로 결과가 정해진다: 받은 댓글 13이면 계속 실패,
  * 쓴 글 7이면 두 번 실패한 뒤 성공. 시계를 테스트가 움직이고 재시도는 실행기를 직접 부른다.
  */
-@SpringBootTest(properties = ["ogu.report.scheduler-enabled=false", "ogu.report.max-per-tick=4"])
+@SpringBootTest(
+    properties = [
+        FutureClockSchedulers.REPORT,
+        FutureClockSchedulers.RAID,
+        FutureClockSchedulers.EMOTION,
+        FutureClockSchedulers.SAFETY,
+        FutureClockSchedulers.RECOMMEND,
+        FutureClockSchedulers.RECOMMEND_BACKFILL,
+        "ogu.report.max-per-tick=4",
+    ],
+)
 @Import(TestcontainersConfiguration::class, ReportTestConfiguration::class)
 @ExtendWith(OutputCaptureExtension::class)
 class WeeklyLetterPipelineTests {

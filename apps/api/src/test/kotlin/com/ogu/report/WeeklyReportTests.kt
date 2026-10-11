@@ -4,6 +4,7 @@ import com.ogu.TestcontainersConfiguration
 import com.ogu.report.application.WeekRange
 import com.ogu.report.application.WeeklyReportJob
 import com.ogu.report.application.WeeklyReportPublisher
+import com.ogu.support.FutureClockSchedulers
 import com.ogu.support.MemberFixture
 import com.ogu.support.MutableClock
 import com.ogu.support.ReportFaults
@@ -37,7 +38,17 @@ import java.util.concurrent.CompletableFuture
  * 주간 리포트의 집계, 발행, 조회, 리포트 만들기(008 US1, US3, US4). 이 컨텍스트의 시계를 테스트가 움직이고 주기 작업을 끈
  * 채 직접 부른다. 테스트마다 아직 쓰지 않은 주를 써서 다른 테스트의 글과 섞이지 않는다. 한 차례의 한도는 4로 줄여 두었다.
  */
-@SpringBootTest(properties = ["ogu.report.scheduler-enabled=false", "ogu.report.max-per-tick=4"])
+@SpringBootTest(
+    properties = [
+        FutureClockSchedulers.REPORT,
+        FutureClockSchedulers.RAID,
+        FutureClockSchedulers.EMOTION,
+        FutureClockSchedulers.SAFETY,
+        FutureClockSchedulers.RECOMMEND,
+        FutureClockSchedulers.RECOMMEND_BACKFILL,
+        "ogu.report.max-per-tick=4",
+    ],
+)
 @Import(TestcontainersConfiguration::class, ReportTestConfiguration::class)
 class WeeklyReportTests {
     @Autowired

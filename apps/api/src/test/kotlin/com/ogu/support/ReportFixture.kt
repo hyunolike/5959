@@ -18,6 +18,20 @@ import java.time.temporal.ChronoUnit
 import java.util.concurrent.ConcurrentHashMap
 
 /**
+ * 시계를 앞으로 돌리는 컨텍스트가 꺼야 하는 주기 작업들. 테스트 컨텍스트들은 Postgres와 Redis를 함께 쓰고, 끝난 뒤에도
+ * 주기 작업이 계속 돈다. 시계가 앞서간 컨텍스트는 다른 테스트의 데이터를 오래된 것으로 보고 치운다: 보스를 물러나게 하고
+ * (7일), 기다리던 감정 분석, 위험 분류, 임베딩을 기한이 지났다며 닫는다(24시간). 그래서 시간으로 판단하는 주기 작업을 모두 끈다.
+ */
+object FutureClockSchedulers {
+    const val RAID = "ogu.raid.lifecycle-scheduler-enabled=false"
+    const val EMOTION = "ogu.emotion.retry.scheduler-enabled=false"
+    const val SAFETY = "ogu.safety.retry.scheduler-enabled=false"
+    const val RECOMMEND = "ogu.recommend.retry.scheduler-enabled=false"
+    const val RECOMMEND_BACKFILL = "ogu.recommend.backfill.enabled=false"
+    const val REPORT = "ogu.report.scheduler-enabled=false"
+}
+
+/**
  * 주간 리포트 테스트의 컨텍스트 설정(008 research R11). 시계를 테스트가 움직이고, 집계를 회원별로 실패하게 만들 수 있다.
  * 이 설정을 쓰는 테스트는 `ogu.report.scheduler-enabled=false`로 주기 작업을 끄고 직접 부른다.
  */

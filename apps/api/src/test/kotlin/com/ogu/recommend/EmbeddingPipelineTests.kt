@@ -8,6 +8,7 @@ import com.ogu.recommend.application.EmbeddingBackfill
 import com.ogu.recommend.application.EmbeddingRunner
 import com.ogu.recommend.application.EmbeddingStore
 import com.ogu.support.CoreLoopFixture
+import com.ogu.support.FutureClockSchedulers
 import com.ogu.support.MemberFixture
 import com.ogu.support.MutableClock
 import com.ogu.support.RecommendFixture
@@ -42,7 +43,15 @@ import java.time.temporal.ChronoUnit
  * 움직이고 주기 작업을 끈 채 실행기를 직접 부른다. 가짜 임베더는 `[임베딩실패:N]`이면 처음 N번만 실패한다.
  */
 @SpringBootTest(
-    properties = ["ogu.recommend.retry.scheduler-enabled=false", "ogu.recommend.backfill.enabled=false"],
+    properties = [
+        FutureClockSchedulers.RECOMMEND,
+        FutureClockSchedulers.RECOMMEND_BACKFILL,
+        // 시계를 하루 넘게 돌린다. 다른 테스트의 보스와 기다리던 분석을 치우지 않게 나머지도 끈다
+        FutureClockSchedulers.RAID,
+        FutureClockSchedulers.EMOTION,
+        FutureClockSchedulers.SAFETY,
+        FutureClockSchedulers.REPORT,
+    ],
 )
 @Import(TestcontainersConfiguration::class, EmbeddingPipelineTests.ClockOverride::class)
 @ExtendWith(OutputCaptureExtension::class)
