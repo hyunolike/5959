@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #faf9fc;
-  --foreground: #291c38;
+  --background: #ffffff;
+  --foreground: #29292e;
   color-scheme: light;
 }
 
@@ -16,17 +16,17 @@
   --color-brand-500: #8b69c6;
   --color-brand-600: #7655b4;
   --color-brand-700: #614095;
-  --color-neutral-50: #f6f4fa;
-  --color-neutral-100: #eeebf5;
-  --color-neutral-200: #e2dce9;
-  --color-neutral-300: #cec5db;
-  --color-neutral-400: #9d93ab;
-  --color-neutral-500: #796d89;
-  --color-neutral-600: #645572;
-  --color-neutral-700: #4c3d5c;
-  --color-neutral-800: #382946;
-  --color-neutral-900: #291c38;
-  --color-neutral-950: #1f122b;
+  --color-neutral-50: #f8f8fa;
+  --color-neutral-100: #f1f1f4;
+  --color-neutral-200: #e4e4e9;
+  --color-neutral-300: #ccccd4;
+  --color-neutral-400: #93939f;
+  --color-neutral-500: #6f6f7b;
+  --color-neutral-600: #5f5f6b;
+  --color-neutral-700: #484852;
+  --color-neutral-800: #35353e;
+  --color-neutral-900: #29292e;
+  --color-neutral-950: #202025;
 }
 
 body {
@@ -34,7 +34,7 @@ body {
   color: var(--foreground);
   font-family: var(--font-ogu-sans), sans-serif;
   line-height: 1.65;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.02em;
 }
 
 ::selection {

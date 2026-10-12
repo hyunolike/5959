@@ -35,8 +35,18 @@ for (const viewport of [
       font: getComputedStyle(document.body).fontFamily,
     }));
     expect(layout.overflow).toBe(false);
-    expect(layout.background).toBe("rgb(250, 249, 252)");
+    expect(layout.background).toBe("rgb(255, 255, 255)");
     expect(layout.font).toContain("oguSans");
+    if (viewport.width < 768) {
+      const google = await page
+        .getByRole("link", { name: "구글로 계속하기" })
+        .boundingBox();
+      const signup = await page
+        .getByRole("link", { name: "회원가입", exact: true })
+        .boundingBox();
+      expect(google!.y).toBeLessThan(360);
+      expect(signup!.y + signup!.height).toBeLessThan(viewport.height);
+    }
     await page.screenshot({
       path: testInfo.outputPath("login.png"),
       fullPage: viewport.width >= 768,
@@ -113,7 +123,7 @@ for (const viewport of [
     });
     await page.goto("/home");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-      "오구님, 반가워요",
+      "마음 이야기",
     );
     const nav = page.getByRole("navigation", {
       name: viewport.width < 768 ? "모바일 주요 메뉴" : "주요 메뉴",

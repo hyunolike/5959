@@ -41,9 +41,9 @@ test("US3-AC1 처음 쓰는 카카오 계정으로 로그인하면 새 회원이
   await completeOnboarding(page, nickname);
   await page.waitForURL("**/home");
   await waitForHomeLoaded(page);
-  await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    `${nickname}님`,
-  );
+  await expect(
+    page.getByText(`${nickname}님, 반가워요`, { exact: true }),
+  ).toBeVisible();
 });
 
 test("US3-AC2 온보딩까지 마친 구글 계정으로 다시 로그인하면 온보딩 없이 홈으로 이동한다", async ({
@@ -67,9 +67,9 @@ test("US3-AC2 온보딩까지 마친 구글 계정으로 다시 로그인하면 
   await page.goto(startUrl("google", query));
   await page.waitForURL("**/home");
   await waitForHomeLoaded(page);
-  await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    `${nickname}님`,
-  );
+  await expect(
+    page.getByText(`${nickname}님, 반가워요`, { exact: true }),
+  ).toBeVisible();
 });
 
 test("US3-AC3 이메일로 가입한 주소의 외부 계정으로 로그인하면 합치지 않고 이메일 로그인을 안내한다", async ({

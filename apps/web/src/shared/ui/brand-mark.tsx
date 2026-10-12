@@ -1,18 +1,28 @@
-import { HeartHandshake } from "lucide-react";
+import Image from "next/image";
 import { cn } from "@/shared/lib";
 
 export function BrandMark({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-2.5 text-2xl font-bold tracking-[-0.07em] text-neutral-900",
+        "inline-flex items-center gap-2 text-[26px] leading-none font-bold tracking-[-0.055em] text-neutral-900",
         className,
       )}
     >
-      <span className="bg-brand-600 flex size-10 items-center justify-center rounded-[14px] text-white">
-        <HeartHandshake aria-hidden size={24} strokeWidth={1.8} />
+      <span
+        aria-hidden
+        className="relative size-11 shrink-0 overflow-hidden rounded-full"
+      >
+        <Image
+          src="/brand/ogu-companion.png"
+          alt=""
+          width={72}
+          height={59}
+          sizes="72px"
+          className="absolute top-0 left-1/2 h-auto w-[72px] max-w-none -translate-x-1/2"
+        />
       </span>
-      오구오구
+      <span>5959</span>
     </span>
   );
 }

@@ -25,12 +25,15 @@ beforeEach(() => {
 });
 
 describe("HomePage", () => {
-  it("닉네임 인사와 글쓰기 버튼, 피드를 보여 준다", () => {
+  it("피드 제목과 닉네임 인사, 글쓰기 버튼을 보여 준다", () => {
     me.state = { data: { nickname: "오구" }, isError: false };
 
     render(<HomePage />);
 
-    expect(screen.getByRole("heading")).toHaveTextContent("오구님, 반가워요");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "마음 이야기",
+    );
+    expect(screen.getByText("오구님, 반가워요")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "고민 쓰기" })).toHaveAttribute(
       "href",
       "/write",

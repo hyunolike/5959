@@ -16,7 +16,7 @@ const BOSS_SIZES = "(min-width: 640px) 288px, 240px";
 /**
  * 몬스터 자리(US5). 감정 이름, 몬스터 그림, HP 바와 숫자, 처치됨 표시를 보여 준다.
  *
- * - `card`(피드): 그림만 보인다.
+ * - `card`(피드): 그림과 감정 이름, HP를 작게 보인다.
  * - `detail`(글 상세), `boss`(레이드): 같은 그림을 크게 보이고 감정마다 다른 대기 움직임을 준다(떨림, 축 처짐 등).
  *   쓰러진 몬스터는 움직이지 않는다. 움직임 줄이기가 켜져 있으면 CSS가 움직임을 끈다.
  *
@@ -63,7 +63,7 @@ export function MonsterDisplay({
             ? "size-60 sm:size-72"
             : detail
               ? "size-48 sm:size-56"
-              : "size-16",
+              : "size-10",
         )}
       >
         <MonsterSprite
@@ -72,7 +72,7 @@ export function MonsterDisplay({
           boss={variant === "boss"}
           sizes={
             variant === "card"
-              ? "64px"
+              ? "40px"
               : variant === "boss"
                 ? BOSS_SIZES
                 : DETAIL_SIZES
@@ -86,7 +86,13 @@ export function MonsterDisplay({
       </div>
       <div className="flex w-full min-w-0 flex-col gap-2">
         <div className="flex items-center gap-2">
-          <p className="text-lg font-semibold text-neutral-900">
+          <p
+            className={
+              detail
+                ? "text-lg font-semibold text-neutral-900"
+                : "text-xs font-medium text-neutral-600"
+            }
+          >
             {EMOTION_LABELS[monster.emotion]}
           </p>
           {monster.status === "DEFEATED" ? (
@@ -102,7 +108,10 @@ export function MonsterDisplay({
             aria-valuemin={0}
             aria-valuemax={monster.maxHp}
             aria-valuenow={monster.hp}
-            className="h-3 w-full overflow-hidden rounded-full bg-neutral-200"
+            className={cn(
+              "w-full overflow-hidden rounded-full bg-neutral-200",
+              detail ? "h-3" : "h-1.5",
+            )}
           >
             <div
               className="h-full rounded-full bg-red-500 transition-[width] motion-reduce:transition-none"

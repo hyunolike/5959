@@ -43,9 +43,9 @@ test("US1-AC1, US1-AC4 가입부터 온보딩 완료까지 마치면 홈으로 �
   await completeOnboarding(page, nickname);
   await page.waitForURL("**/home");
   await waitForHomeLoaded(page);
-  await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    `${nickname}님`,
-  );
+  await expect(
+    page.getByText(`${nickname}님, 반가워요`, { exact: true }),
+  ).toBeVisible();
 });
 
 test("US1-AC5 대소문자만 다른 닉네임도 완료 전(사전 확인 힌트)에 중복 안내를 받는다", async ({
@@ -145,8 +145,8 @@ test("US1 Independent Test 온보딩을 마친 뒤 브라우저를 닫았다 다
   await restartedPage.goto("/home");
 
   await expect(restartedPage).toHaveURL(/\/home$/);
-  await expect(restartedPage.getByRole("heading", { level: 1 })).toContainText(
-    `${nickname}님`,
-  );
+  await expect(
+    restartedPage.getByText(`${nickname}님, 반가워요`, { exact: true }),
+  ).toBeVisible();
   await restartedContext.close();
 });
