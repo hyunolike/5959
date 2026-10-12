@@ -19,6 +19,7 @@ vi.mock("@/widgets/raid-arena", () => ({
 vi.mock("@/widgets/feed-list", () => ({
   FeedList: () => <section aria-label="피드" />,
 }));
+vi.mock("@/features/install-app", () => ({ HomeInstall: () => null }));
 
 beforeEach(() => {
   me.state = { isError: false };

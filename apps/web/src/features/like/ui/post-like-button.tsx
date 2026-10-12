@@ -2,11 +2,12 @@
 
 import type { PostDetail } from "@/entities/post";
 import { Heart } from "lucide-react";
-import { Button } from "@/shared/ui";
+import { Button, ReactionIcon } from "@/shared/ui";
 
 import { usePostLikeMutation } from "../api/use-post-like-mutation";
 import { likeErrorMessage } from "../model/like-error";
 import { useEverLiked } from "../model/use-ever-liked";
+import { useLikeFeedback } from "../model/use-like-feedback";
 
 /**
  * 글 공감 버튼(US3-AC1, US3-AC6). 누를 때마다 공감과 취소가 바뀐다.
@@ -15,6 +16,7 @@ import { useEverLiked } from "../model/use-ever-liked";
 export function PostLikeButton({ detail }: { detail: PostDetail }) {
   const mutation = usePostLikeMutation(detail.postId);
   const everLiked = useEverLiked(detail.likedByMe);
+  const feedback = useLikeFeedback();
 
   if (detail.mine) {
     return null;
@@ -31,14 +33,31 @@ export function PostLikeButton({ detail }: { detail: PostDetail }) {
         variant={liked ? "primary" : "outline"}
         aria-pressed={liked}
         disabled={mutation.isPending}
-        className="tabular-nums"
-        onClick={() =>
-          mutation.mutate({ like: !liked, alreadyApplied: everLiked })
-        }
+        aria-busy={mutation.isPending}
+        className="min-h-11 tabular-nums"
+        onClick={() => {
+          if (mutation.isPending || !feedback.begin()) return;
+          mutation.mutate(
+            { like: !liked, alreadyApplied: everLiked },
+            {
+              onSuccess: (result) => feedback.success(result.likedByMe),
+              onSettled: feedback.settle,
+            },
+          );
+        }}
       >
-        <Heart size={16} aria-hidden className={liked ? "fill-current" : ""} />
+        <ReactionIcon confirmation={feedback.confirmation}>
+          <Heart
+            size={16}
+            aria-hidden
+            className={liked ? "fill-current" : ""}
+          />
+        </ReactionIcon>
         공감 {detail.likeCount}
       </Button>
+      <span role="status" className="sr-only">
+        {mutation.isPending ? "공감 처리 중" : feedback.message}
+      </span>
       {errorMessage ? (
         <p role="alert" className="text-xs text-red-600">
           {errorMessage}

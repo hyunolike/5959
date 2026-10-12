@@ -11,3 +11,4 @@ export type {
   ScrubbableQueryString,
   ScrubbableRequestData,
 } from "./scrub-event";
+export { useReducedMotionPreference } from "./use-reduced-motion-preference";

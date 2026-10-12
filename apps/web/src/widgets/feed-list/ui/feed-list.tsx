@@ -9,7 +9,7 @@ import { CAREER_YEAR_LABELS, JOB_ROLE_LABELS } from "@/entities/member";
 import { MonsterDisplay } from "@/entities/monster";
 import { PostCard, useFeedQuery, type FeedFilter } from "@/entities/post";
 import { useInfiniteScroll } from "@/shared/lib";
-import { Button, Spinner } from "@/shared/ui";
+import { Button, ListSkeleton, Spinner } from "@/shared/ui";
 
 import {
   parseFeedFilter,
@@ -52,22 +52,21 @@ function FeedItems({ filter }: { filter: FeedFilter }) {
     data,
     isPending,
     isError,
+    isFetchNextPageError,
     hasNextPage,
     isFetchingNextPage,
     fetchNextPage,
+    refetch,
+    isFetching,
   } = useFeedQuery(filter);
   const items = uniqueItems(data?.pages ?? []);
   const sentinel = useInfiniteScroll(
     () => void fetchNextPage({ cancelRefetch: false }),
-    hasNextPage && !isFetchingNextPage,
+    hasNextPage && !isFetchingNextPage && !isError,
   );
 
   if (isPending) {
-    return (
-      <div className="flex justify-center py-8">
-        <Spinner />
-      </div>
-    );
+    return <ListSkeleton label="피드" />;
   }
 
   if (isError && items.length === 0) {
@@ -76,6 +75,15 @@ function FeedItems({ filter }: { filter: FeedFilter }) {
         <p role="alert" className="text-sm text-red-600">
           피드를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
         </p>
+        <Button
+          variant="outline"
+          className="mt-4"
+          disabled={isFetching}
+          aria-busy={isFetching}
+          onClick={() => void refetch()}
+        >
+          다시 불러오기
+        </Button>
       </div>
     );
   }
@@ -128,7 +136,27 @@ function FeedItems({ filter }: { filter: FeedFilter }) {
         ))}
       </ul>
       <div ref={sentinel} aria-hidden className="h-px" />
-      {isFetchingNextPage ? (
+      {isError ? (
+        <div className="py-4">
+          <p role="alert" className="text-sm text-red-600">
+            {isFetchNextPageError
+              ? "다음 이야기를 불러오지 못했어요."
+              : "새 이야기를 확인하지 못했어요."}
+          </p>
+          <Button
+            variant="outline"
+            className="mt-3"
+            disabled={isFetching}
+            onClick={() =>
+              isFetchNextPageError
+                ? void fetchNextPage({ cancelRefetch: false })
+                : void refetch()
+            }
+          >
+            다시 불러오기
+          </Button>
+        </div>
+      ) : isFetchingNextPage ? (
         <div className="flex justify-center py-4">
           <Spinner />
         </div>

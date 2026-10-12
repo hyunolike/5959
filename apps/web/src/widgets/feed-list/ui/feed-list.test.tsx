@@ -1,5 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { FeedList } from "./feed-list";
@@ -60,6 +66,7 @@ function renderFeed() {
       <FeedList />
     </QueryClientProvider>,
   );
+  return queryClient;
 }
 
 beforeEach(() => {
@@ -74,6 +81,43 @@ afterEach(() => {
 });
 
 describe("FeedList", () => {
+  it("기존 목록의 백그라운드 갱신 실패는 다음 쪽 대신 현재 목록을 다시 요청한다", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(ok({ items: [feedItem(2)], nextCursor: null }))
+      .mockResolvedValueOnce(new Response("{}", { status: 500 }))
+      .mockResolvedValueOnce(ok({ items: [feedItem(3)], nextCursor: null }));
+    vi.stubGlobal("fetch", fetchMock);
+    const client = renderFeed();
+    await screen.findByText("고민 2");
+    await act(async () => {
+      await client.refetchQueries();
+    });
+    await screen.findByRole("alert");
+    fireEvent.click(screen.getByRole("button", { name: "다시 불러오기" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    expect(await screen.findByText("고민 3")).toBeInTheDocument();
+  });
+  it("처음 불러오기는 읽기 상태를 알리고 실패한 목록은 실제 요청으로 재시도한다", async () => {
+    let finish!: (response: Response) => void;
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<Response>((resolve) => {
+            finish = resolve;
+          }),
+      )
+      .mockResolvedValue(ok({ items: [feedItem(2)], nextCursor: null }));
+    vi.stubGlobal("fetch", fetchMock);
+    renderFeed();
+    expect(screen.getByRole("status")).toHaveTextContent("피드 불러오는 중");
+    finish(new Response("{}", { status: 500 }));
+    await screen.findByRole("alert");
+    fireEvent.click(screen.getByRole("button", { name: "다시 불러오기" }));
+    expect(await screen.findByText("고민 2")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
   it("US2-AC1 글 목록을 보여 주고, 직군과 경력은 한국어로 보여 준다", async () => {
     vi.stubGlobal(
       "fetch",

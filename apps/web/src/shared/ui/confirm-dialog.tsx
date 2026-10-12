@@ -7,11 +7,38 @@ import {
   useRef,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 
 import { Button } from "./button";
 
 const FOCUSABLE =
   'button:not([disabled]), [href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+let openingSequence = 0;
+let historyCleanup: Promise<void> | null = null;
+
+/** 닫기의 비동기 history 이동이 끝나기 전에는 새 안내창의 entry를 만들지 않는다. */
+function returnFromDialog(marker: string, openedUrl: string) {
+  let finish!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    finish = resolve;
+  });
+  historyCleanup = pending;
+  const complete = () => {
+    window.removeEventListener("popstate", complete);
+    if (historyCleanup === pending) historyCleanup = null;
+    finish();
+  };
+  window.addEventListener("popstate", complete, { once: true });
+  queueMicrotask(() => {
+    if (
+      window.location.href !== openedUrl ||
+      history.state?.__oguDialog !== marker
+    )
+      complete();
+    else history.back();
+  });
+}
 
 /**
  * 되돌릴 수 없는 동작 전에 묻는 화면 안 대화상자(`window.confirm` 대신).
@@ -29,6 +56,10 @@ export function ConfirmDialog({
   pending = false,
   error,
   finalFocus,
+  role = "alertdialog",
+  presentation = "dialog",
+  confirmVariant = "destructive",
+  dismissOnBack = false,
   children,
   onConfirm,
   onCancel,
@@ -43,6 +74,11 @@ export function ConfirmDialog({
   error?: string | null;
   /** 닫힐 때 초점을 옮길 요소. 없거나 null을 돌려주면 연 요소(아직 화면에 있으면)로 돌려준다. */
   finalFocus?: () => HTMLElement | null;
+  role?: "dialog" | "alertdialog";
+  presentation?: "dialog" | "sheet";
+  confirmVariant?: "primary" | "destructive";
+  /** 모바일 안내창에서 뒤로 가기는 페이지를 떠나기 전에 안내창을 닫는다. */
+  dismissOnBack?: boolean;
   /** 설명 아래에 둘 입력(고를 것, 적을 것). 대화상자 안의 초점 순환에 함께 든다. */
   children?: ReactNode;
   onConfirm: () => void;
@@ -52,6 +88,7 @@ export function ConfirmDialog({
   const descriptionId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
   // 부모가 다시 그릴 때마다 새 함수가 와도 아래 effect가 다시 돌지 않게(초점이 취소로 튀지 않게) ref로 읽는다.
   // layout effect라 같은 커밋에서 닫힐 때도 cleanup이 최신 값을 본다.
   const latest = useRef({ onCancel, pending, finalFocus });
@@ -67,6 +104,48 @@ export function ConfirmDialog({
       document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null;
+    const background = Array.from(document.body.children)
+      .filter(
+        (element): element is HTMLElement =>
+          element instanceof HTMLElement && element !== overlayRef.current,
+      )
+      .map((element) => ({ element, inert: element.inert }));
+    for (const { element } of background) element.inert = true;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const marker = `ogu-dialog-${titleId}-${++openingSequence}`;
+    const openedUrl = window.location.href;
+    let active = true;
+    let registered = false;
+    const register = () => {
+      if (!active) return;
+      if (window.location.href !== openedUrl) {
+        latest.current.onCancel();
+        return;
+      }
+      const state = { ...history.state, __oguDialog: marker };
+      // Forward로 돌아온 닫힌 안내창 entry는 다시 쌓지 않고 새 opening으로 교체한다.
+      if (
+        typeof history.state?.__oguDialog === "string" &&
+        history.state.__oguDialog.startsWith("ogu-dialog-")
+      )
+        history.replaceState(state, "");
+      else history.pushState(state, "");
+      registered = true;
+    };
+    if (dismissOnBack) {
+      if (historyCleanup) void historyCleanup.then(register);
+      else register();
+    }
+    const onPopState = () => {
+      if (
+        registered &&
+        history.state?.__oguDialog !== marker &&
+        !latest.current.pending
+      )
+        latest.current.onCancel();
+    };
+    if (dismissOnBack) window.addEventListener("popstate", onPopState);
     cancelRef.current?.focus();
 
     const onKeyDown = (event: KeyboardEvent) => {
@@ -106,20 +185,32 @@ export function ConfirmDialog({
     };
     document.addEventListener("keydown", onKeyDown);
     return () => {
+      active = false;
       document.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("popstate", onPopState);
+      if (
+        dismissOnBack &&
+        registered &&
+        window.location.href === openedUrl &&
+        history.state?.__oguDialog === marker
+      )
+        returnFromDialog(marker, openedUrl);
+      for (const { element, inert } of background) element.inert = inert;
+      document.body.style.overflow = previousOverflow;
       const target =
         latest.current.finalFocus?.() ?? (opener?.isConnected ? opener : null);
       target?.focus();
     };
-  }, [open]);
+  }, [open, dismissOnBack, titleId]);
 
   if (!open) {
     return null;
   }
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/40 p-4"
+      ref={overlayRef}
+      className={`fixed inset-0 z-50 flex justify-center bg-neutral-950/40 ${presentation === "sheet" ? "items-end sm:items-center sm:p-4" : "items-center p-4"}`}
       onClick={(event) => {
         if (event.target === event.currentTarget && !pending) {
           onCancel();
@@ -129,11 +220,11 @@ export function ConfirmDialog({
       <div
         ref={dialogRef}
         tabIndex={-1}
-        role="alertdialog"
+        role={role}
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
-        className="flex w-full max-w-sm flex-col gap-4 rounded-lg bg-white p-6 shadow-lg"
+        className={`flex max-h-[85dvh] w-full max-w-sm flex-col gap-4 overflow-y-auto bg-white p-6 shadow-lg ${presentation === "sheet" ? "rounded-t-2xl pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:rounded-lg" : "rounded-lg"}`}
       >
         <div className="flex flex-col gap-1">
           <h2 id={titleId} className="text-base font-semibold text-neutral-900">
@@ -164,7 +255,7 @@ export function ConfirmDialog({
           </Button>
           <Button
             type="button"
-            variant="destructive"
+            variant={confirmVariant}
             size="sm"
             disabled={pending}
             onClick={onConfirm}
@@ -173,6 +264,7 @@ export function ConfirmDialog({
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
