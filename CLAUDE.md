@@ -17,4 +17,4 @@
 
 - 커밋 메시지와 PR 제목은 Conventional Commits.
 - 테스트 이름에 스펙 인수 조건 ID(`US1-AC2`)를 넣는다.
-- PR은 `develop`으로 보낸다. 필수 체크는 `ci-ok`.
+- PR은 `main`으로 보낸다. 필수 체크는 `ci-ok`.
