@@ -153,4 +153,47 @@ describe("AppShell", () => {
       "/home",
     );
   });
+
+  it("DS-US3-AC7 선택된 메뉴는 채운 아이콘과 굵은 글씨, 나머지는 선 아이콘이다", () => {
+    route.pathname = "/raid";
+    render(<AppShell authenticated>{null}</AppShell>);
+    const nav = within(
+      screen.getByRole("navigation", { name: "모바일 주요 메뉴" }),
+    );
+    const selected = nav.getByRole("link", { name: "함께 이겨내기" });
+    const other = nav.getByRole("link", { name: "마음 이야기" });
+    expect(selected.querySelector("svg")).toHaveAttribute(
+      "data-icon-weight",
+      "fill",
+    );
+    expect(other.querySelector("svg")).toHaveAttribute(
+      "data-icon-weight",
+      "regular",
+    );
+    expect(selected).toHaveClass("text-fg");
+    expect(other).toHaveClass("text-fg-subtle");
+  });
+
+  it("GUEST-US1-AC2 잠긴 메뉴는 아이콘이 바뀐 뒤에도 설명으로 잠김을 알린다", () => {
+    render(<AppShell authenticated={false}>{null}</AppShell>);
+    const nav = within(
+      screen.getByRole("navigation", { name: "모바일 주요 메뉴" }),
+    );
+    expect(
+      nav.getByRole("link", { name: "고민 쓰기" }),
+    ).toHaveAccessibleDescription("로그인 후 이용할 수 있어요");
+    expect(
+      nav.getByRole("link", { name: "마음 이야기" }),
+    ).not.toHaveAccessibleDescription();
+  });
+
+  it("이동 대기 중에는 아이콘 자리에 돌아가는 표시와 이동 중 안내가 나온다", () => {
+    route.pending = true;
+    render(<AppShell authenticated>{null}</AppShell>);
+    const nav = screen.getByRole("navigation", { name: "모바일 주요 메뉴" });
+    expect(
+      nav.querySelectorAll('[data-navigation-pending="true"]').length,
+    ).toBeGreaterThan(0);
+    expect(within(nav).getAllByText("이동 중").length).toBeGreaterThan(0);
+  });
 });
