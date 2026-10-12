@@ -127,10 +127,11 @@ class WebReleaseTests(unittest.TestCase):
         jobs = [{"name": "ci-ok", "conclusion": "success", "status": "completed"}]
         self.assertEqual(m.eligible(run_fixture(), jobs, SHA, SHA), SHA)
         for key, value in [("event", "pull_request"), ("head_branch", "main"),
+                           ("head_branch", "codex/5959-web-deploy-reconcile"),
                            ("conclusion", "failure"), ("status", "in_progress"),
                            ("head_sha", "d" * 40), ("path", "other.yml")]:
             r = run_fixture(); r[key] = value
-            with self.subTest(key=key), self.assertRaises(ValueError):
+            with self.subTest(key=key, value=value), self.assertRaises(ValueError):
                 m.eligible(r, jobs, SHA, SHA)
         r = run_fixture(); r["head_repository"]["full_name"] = "fork/5959"
         with self.assertRaises(ValueError): m.eligible(r, jobs, SHA, SHA)
@@ -248,6 +249,112 @@ class WebReleaseTests(unittest.TestCase):
                          {"revisionName": OLD, "tag": "existing", "percent": 0}])
         self.assertNotIn("status", payload)
         self.assertEqual(original["metadata"]["resourceVersion"], "1")
+
+    def test_DEPLOY_AC5_cleanup_503_reconciles_or_retries_with_fresh_version(self):
+        for scenario in ["not-applied", "applied", "operator", "forbidden", "exhausted"]:
+            with self.subTest(scenario=scenario):
+                m = load(); c = m.GCloud(99, SHA); state = service()
+                state["metadata"].update(name="ogu-web", namespace="161374563129")
+                state["spec"]["template"]["metadata"]["name"] = NEW
+                state["status"].update(latestCreatedRevisionName=NEW, latestReadyRevisionName=NEW)
+                state["spec"]["traffic"] = [{"revisionName": NEW, "percent": 100},
+                    {"revisionName": NEW, "percent": 0, "tag": "verify"},
+                    {"revisionName": OLD, "percent": 0, "tag": "existing"}]
+                state["status"]["traffic"] = copy.deepcopy(state["spec"]["traffic"])
+                original = copy.deepcopy(state); requests = []
+                def http(request, timeout):
+                    import json
+                    payload = json.loads(request.data); requests.append(payload)
+                    if len(requests) == 1 or scenario == "exhausted":
+                        state["metadata"].update(resourceVersion="2", generation=2)
+                        state["status"]["observedGeneration"] = 2
+                        if scenario == "applied":
+                            state["spec"] = payload["spec"]
+                            state["status"]["traffic"] = copy.deepcopy(payload["spec"]["traffic"])
+                        elif scenario == "operator":
+                            state["spec"]["traffic"] = [{"revisionName": "operator", "percent": 100}]
+                            state["status"]["traffic"] = copy.deepcopy(state["spec"]["traffic"])
+                        raise m.urllib.error.HTTPError(request.full_url, 403 if scenario == "forbidden" else 503,
+                                                       "provider failure", {}, None)
+                    state["spec"] = payload["spec"]
+                    state["metadata"].update(resourceVersion="3", generation=3)
+                    state["status"].update(observedGeneration=3, traffic=copy.deepcopy(payload["spec"]["traffic"]))
+                    return mock.MagicMock()
+                with mock.patch.dict(m.os.environ, {"CLOUDSDK_AUTH_ACCESS_TOKEN": "test-only"}), \
+                        mock.patch.object(m.urllib.request, "urlopen", side_effect=http), \
+                        mock.patch.object(c, "describe", side_effect=lambda: copy.deepcopy(state)):
+                    if scenario in ("operator", "forbidden", "exhausted"):
+                        with self.assertRaises(RuntimeError): c.remove_tag("verify", original)
+                    else:
+                        c.remove_tag("verify", original)
+                if scenario in ("applied", "not-applied"):
+                    self.assertEqual(m.traffic_map(state), {NEW: 100})
+                    self.assertEqual(m.tags(state), {"existing": OLD})
+                    self.assertEqual(len(requests), 2 if scenario == "not-applied" else 1)
+                    if scenario == "not-applied":
+                        self.assertEqual(requests[1]["metadata"]["resourceVersion"], "2")
+                elif scenario == "operator":
+                    self.assertEqual(m.traffic_map(state), {"operator": 100})
+                    self.assertEqual(len(requests), 1)
+                elif scenario == "exhausted":
+                    self.assertEqual(len(requests), 3)
+                    self.assertEqual(m.tags(state), {"verify": NEW, "existing": OLD})
+                else:
+                    self.assertEqual(len(requests), 1)
+
+    def test_DEPLOY_AC5_cleanup_ambiguous_response_and_read_failures_reconcile(self):
+        for scenario in ["truncated-response", "temporary-read", "lost-read"]:
+            with self.subTest(scenario=scenario):
+                m = load(); c = m.GCloud(99, SHA); state = service(); calls = []
+                state["metadata"].update(name="ogu-web", namespace="161374563129")
+                state["spec"]["template"]["metadata"]["name"] = NEW
+                state["status"].update(latestCreatedRevisionName=NEW, latestReadyRevisionName=NEW)
+                state["spec"]["traffic"] = [{"revisionName": NEW, "percent": 100},
+                    {"revisionName": NEW, "percent": 0, "tag": "verify"}]
+                state["status"]["traffic"] = copy.deepcopy(state["spec"]["traffic"])
+                original = copy.deepcopy(state); reads = []
+                def http(request, timeout):
+                    import json, http.client
+                    calls.append(request)
+                    state["spec"] = json.loads(request.data)["spec"]
+                    state["metadata"].update(resourceVersion="2", generation=2)
+                    state["status"].update(observedGeneration=2, traffic=copy.deepcopy(state["spec"]["traffic"]))
+                    if scenario == "truncated-response":
+                        response = mock.MagicMock()
+                        response.__enter__.return_value.read.side_effect = http.client.IncompleteRead(b"partial")
+                        return response
+                    raise m.urllib.error.HTTPError(request.full_url, 503, "provider failure", {}, None)
+                def read():
+                    reads.append(True)
+                    if scenario == "lost-read" or (scenario == "temporary-read" and len(reads) == 1):
+                        raise RuntimeError("provider read unavailable")
+                    return copy.deepcopy(state)
+                with mock.patch.dict(m.os.environ, {"CLOUDSDK_AUTH_ACCESS_TOKEN": "test-only"}), \
+                        mock.patch.object(m.urllib.request, "urlopen", side_effect=http), \
+                        mock.patch.object(c, "describe", side_effect=read), \
+                        mock.patch.object(m.time, "sleep"), \
+                        mock.patch.object(m.time, "monotonic", side_effect=[0, 121] if scenario == "lost-read" else None,
+                                          return_value=0):
+                    if scenario == "lost-read":
+                        with self.assertRaises(m.CleanupConflict): c.remove_tag("verify", original)
+                    else:
+                        c.remove_tag("verify", original)
+                self.assertEqual(len(calls), 1)
+                self.assertEqual(m.traffic_map(state), {NEW: 100})
+                self.assertEqual(m.tags(state), {})
+                self.assertGreaterEqual(len(reads), 1)
+
+    def test_DEPLOY_AC5_cleanup_observation_loss_preserves_verified_promotion(self):
+        m = load(); c = Cloud(); records = []
+        def cleanup(tag, observed):
+            raise m.CleanupConflict("cannot observe cleanup outcome")
+        c.remove_tag = cleanup
+        with self.assertRaisesRegex(RuntimeError, "manual recovery"):
+            m.deploy(c, "registry/web@" + DIGEST, "git-aaaaaaaa-123-1", "verify-123-1",
+                     record=lambda value: records.append(copy.deepcopy(value)))
+        self.assertEqual(m.traffic_map(c.state), {NEW: 100})
+        self.assertEqual(records[-1]["phase"], "manual-recovery-required")
+        self.assertFalse(any(change == ("traffic", {OLD: 100}) for change in c.mutations))
 
     def test_DEPLOY_AC5_reports_rollback_failure(self):
         with self.assertRaisesRegex(RuntimeError, "rollback failed"):
