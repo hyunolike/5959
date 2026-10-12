@@ -1,4 +1,5 @@
 export { Button } from "./button";
+export { BrandMark } from "./brand-mark";
 export { Card } from "./card";
 export { ConfirmDialog } from "./confirm-dialog";
 export { Input } from "./input";

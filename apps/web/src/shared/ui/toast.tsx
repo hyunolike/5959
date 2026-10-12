@@ -25,15 +25,20 @@ export interface ToastItem {
 export function Toaster({
   toasts,
   onDismiss,
+  className,
 }: {
   toasts: readonly ToastItem[];
   onDismiss: (id: string) => void;
+  className?: string;
 }) {
   return (
     <section
       aria-label="새 알림"
       aria-live="polite"
-      className="pointer-events-none fixed right-4 bottom-4 z-50 flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-2"
+      className={cn(
+        "pointer-events-none fixed right-4 bottom-4 z-50 flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-2",
+        className,
+      )}
     >
       {toasts.map((toast) => (
         <Toast key={toast.id} toast={toast} onDismiss={onDismiss} />

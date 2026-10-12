@@ -75,6 +75,7 @@ export function LoginForm({ next }: LoginFormProps) {
           id="email"
           type="email"
           autoComplete="email"
+          placeholder="이메일 주소를 입력해주세요"
           {...register("email")}
         />
         {errors.email && (
@@ -90,6 +91,7 @@ export function LoginForm({ next }: LoginFormProps) {
           id="password"
           type="password"
           autoComplete="current-password"
+          placeholder="비밀번호를 입력해주세요"
           {...register("password")}
         />
         {errors.password && (

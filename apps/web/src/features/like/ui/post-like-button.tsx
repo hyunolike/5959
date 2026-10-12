@@ -1,7 +1,7 @@
 "use client";
 
 import type { PostDetail } from "@/entities/post";
-import { cn } from "@/shared/lib";
+import { Heart } from "lucide-react";
 import { Button } from "@/shared/ui";
 
 import { usePostLikeMutation } from "../api/use-post-like-mutation";
@@ -31,11 +31,12 @@ export function PostLikeButton({ detail }: { detail: PostDetail }) {
         variant={liked ? "primary" : "outline"}
         aria-pressed={liked}
         disabled={mutation.isPending}
-        className={cn("tabular-nums", liked && "bg-red-600 hover:bg-red-500")}
+        className="tabular-nums"
         onClick={() =>
           mutation.mutate({ like: !liked, alreadyApplied: everLiked })
         }
       >
+        <Heart size={16} aria-hidden className={liked ? "fill-current" : ""} />
         공감 {detail.likeCount}
       </Button>
       {errorMessage ? (

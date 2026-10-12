@@ -5,7 +5,9 @@ import { expect, type Page } from "@playwright/test";
  * 조회가 401을 받아 로그인 화면으로 튕기고, 다음 page.goto가 ERR_ABORTED로 끊긴다.
  */
 export async function waitForHomeLoaded(page: Page) {
-  await expect(page.getByRole("heading")).toContainText("님, 반가워요");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(
+    "님, 반가워요",
+  );
   const feed = page.getByRole("region", { name: "피드" });
   await expect(
     feed.getByRole("list").or(feed.getByText(/고민이 없어요/)),

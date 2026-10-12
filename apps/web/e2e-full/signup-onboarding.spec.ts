@@ -36,12 +36,16 @@ test("US1-AC1, US1-AC4 가입부터 온보딩 완료까지 마치면 홈으로 �
   const nickname = uniqueNickname("n");
 
   await signup(page, email);
-  await expect(page.getByRole("heading")).toContainText("프로필을 알려주세요");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(
+    "프로필을 알려주세요",
+  );
 
   await completeOnboarding(page, nickname);
   await page.waitForURL("**/home");
   await waitForHomeLoaded(page);
-  await expect(page.getByRole("heading")).toContainText(`${nickname}님`);
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(
+    `${nickname}님`,
+  );
 });
 
 test("US1-AC5 대소문자만 다른 닉네임도 완료 전(사전 확인 힌트)에 중복 안내를 받는다", async ({
@@ -105,7 +109,9 @@ test("US1-AC7 온보딩을 마치지 않고 /home에 가면 /onboarding으로 �
   await page.goto("/home");
 
   await page.waitForURL("**/onboarding");
-  await expect(page.getByRole("heading")).toContainText("프로필을 알려주세요");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(
+    "프로필을 알려주세요",
+  );
 });
 
 test("US1 Independent Test 온보딩을 마친 뒤 브라우저를 닫았다 다시 열어도 /home에 남는다(세션 쿠키만 사라지고 ogu_ob는 살아남는다)", async ({
@@ -139,7 +145,7 @@ test("US1 Independent Test 온보딩을 마친 뒤 브라우저를 닫았다 다
   await restartedPage.goto("/home");
 
   await expect(restartedPage).toHaveURL(/\/home$/);
-  await expect(restartedPage.getByRole("heading")).toContainText(
+  await expect(restartedPage.getByRole("heading", { level: 1 })).toContainText(
     `${nickname}님`,
   );
   await restartedContext.close();

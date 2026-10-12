@@ -56,9 +56,9 @@ test("US1-AC1 본문과 말투를 골라 올리면 그 글의 상세 화면으�
 
   await page.waitForURL(/\/post\/\d+$/);
   await expect(
-    page.getByText("[불안:낮음] 내일 발표가 걱정돼요"),
+    postArticle(page).getByText("[불안:낮음] 내일 발표가 걱정돼요"),
   ).toBeVisible();
-  await expect(page.getByText("무조건 위로해주기")).toBeVisible();
+  await expect(postArticle(page).getByText("무조건 위로해주기")).toBeVisible();
   // US1-AC4: 분석이 끝나면 불안 몬스터가 HP 가득 찬 상태(10/10)로 나타난다.
   await expect(
     postArticle(page).getByText("불안", { exact: true }),
@@ -123,7 +123,9 @@ test("US1-AC7 온보딩을 마치지 않고 /write에 가면 /onboarding으로 �
   await page.goto("/write");
 
   await page.waitForURL("**/onboarding");
-  await expect(page.getByRole("heading")).toContainText("프로필을 알려주세요");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(
+    "프로필을 알려주세요",
+  );
 });
 
 test("US1-AC7 로그인하지 않고 /write에 가면 로그인 화면으로 간다", async ({

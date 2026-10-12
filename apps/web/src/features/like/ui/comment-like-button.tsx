@@ -1,5 +1,7 @@
 "use client";
 
+import { Heart } from "lucide-react";
+
 import type { Comment } from "@/entities/comment";
 import { cn } from "@/shared/lib";
 
@@ -38,12 +40,17 @@ export function CommentLikeButton({
           })
         }
         className={cn(
-          "rounded-full px-2 py-0.5 tabular-nums transition-colors focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none disabled:opacity-50",
+          "focus-visible:ring-brand-600 inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 py-1 tabular-nums transition-colors focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50",
           liked
-            ? "bg-red-50 text-red-600"
+            ? "bg-brand-50 text-brand-700"
             : "text-neutral-600 hover:bg-neutral-100",
         )}
       >
+        <Heart
+          size={14}
+          aria-hidden
+          className={liked ? "fill-brand-100" : ""}
+        />
         공감 {comment.likeCount}
       </button>
       {errorMessage ? (

@@ -11,6 +11,12 @@ test("US1-AC1 첫 접속 시 로그인 화면에서 서비스를 시작할 수 �
   await expect(
     page.getByRole("link", { name: "구글로 계속하기" }),
   ).toBeVisible();
+  await expect(page.locator('link[rel="icon"][href^="/icon.svg"]')).toHaveCount(
+    1,
+  );
+  await expect(
+    page.locator('link[rel="icon"][href^="/favicon.ico"]'),
+  ).toHaveCount(0);
 });
 
 test("US1-AC2 로그인한 사용자는 첫 접속에서 홈으로 이동한다", async ({
