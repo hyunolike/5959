@@ -1,0 +1,112 @@
+name: Deploy web
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [develop]
+
+# A release must finish recovery rather than be cancelled by a newer commit.
+concurrency:
+  group: ogu-web-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  eligible:
+    if: >-
+      vars.GCP_WEB_DEPLOY_ENABLED == 'true' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'develop' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      sha: ${{ steps.gate.outputs.sha }}
+    steps:
+      # Read the gate from the trusted branch, never a PR/fork artifact.
+      - uses: actions/checkout@v7
+        with:
+          ref: develop
+          persist-credentials: false
+      - name: Verify exact CI SHA and current develop
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CI_RUN_ID: ${{ github.event.workflow_run.id }}
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: >-
+          python3 infra/gcp/scripts/web-release.py --gate-only
+          --ci-run-id "$CI_RUN_ID" --sha "$SOURCE_SHA"
+
+  deploy:
+    needs: eligible
+    if: >-
+      needs.eligible.outputs.sha != '' &&
+      vars.GCP_WEB_WORKLOAD_IDENTITY_PROVIDER != '' &&
+      vars.GCP_WEB_DEPLOY_SERVICE_ACCOUNT != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.eligible.outputs.sha }}
+          persist-credentials: false
+      # Activation and all GCP grants require a separate reviewed setup.
+      # Impersonation produces a 1h token; direct WIF expires during a build.
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        id: auth
+        with:
+          workload_identity_provider: ${{ vars.GCP_WEB_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_WEB_DEPLOY_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_lifetime: 3600s
+          create_credentials_file: false
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+      - name: Build immutable web image and prepare recovery baseline
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CLOUDSDK_AUTH_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          CLOUDSDK_CORE_PROJECT: ogu-5959-prod
+          CI_RUN_ID: ${{ github.event.workflow_run.id }}
+          SOURCE_SHA: ${{ needs.eligible.outputs.sha }}
+          RELEASE_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+        run: >-
+          python3 infra/gcp/scripts/web-release.py
+          --ci-run-id "$CI_RUN_ID" --sha "$SOURCE_SHA"
+          --release-id "$RELEASE_ID" --output web-release-result.json
+      # Fail closed if durable recovery metadata could not be saved.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: web-release-baseline-${{ github.run_id }}-${{ github.run_attempt }}
+          path: web-release-result.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Stage, verify and promote prepared image
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CLOUDSDK_AUTH_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          CLOUDSDK_CORE_PROJECT: ogu-5959-prod
+          CI_RUN_ID: ${{ github.event.workflow_run.id }}
+          SOURCE_SHA: ${{ needs.eligible.outputs.sha }}
+          RELEASE_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+        run: >-
+          python3 infra/gcp/scripts/web-release.py --deploy-prepared
+          --ci-run-id "$CI_RUN_ID" --sha "$SOURCE_SHA"
+          --release-id "$RELEASE_ID" --output web-release-result.json
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: web-release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: web-release-result.json
+          if-no-files-found: ignore
+          retention-days: 30

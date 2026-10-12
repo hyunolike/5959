@@ -62,6 +62,11 @@ resource "google_cloud_run_v2_service" "web" {
       }
     }
   }
+  # Releases own only this field; Terraform continues to own runtime and IAM.
+  # Initial creation still uses web_image. No infrastructure apply is in this PR.
+  lifecycle {
+    ignore_changes = [template[0].containers[0].image]
+  }
   depends_on = [google_secret_manager_secret_iam_member.web]
 }
 

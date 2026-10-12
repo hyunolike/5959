@@ -41,6 +41,7 @@ jobs:
               - '.github/workflows/ci.yml'
             infra:
               - 'infra/**'
+              - '.github/workflows/deploy-web.yml'
               - '.github/workflows/ci.yml'
 
   api:
@@ -271,6 +272,8 @@ jobs:
       - run: bash infra/tests/deploy_test.sh
       - run: shellcheck infra/scripts/*.sh infra/tests/*.sh
       - run: python3 -m unittest discover -s infra/gcp/tests -v
+      - name: Validate deployment workflow
+        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint@sha256:6f03470d0152251d7f07f7c4dc019dbe7024c72cd952f839544c7798843efa8f -shellcheck= .github/workflows/deploy-web.yml
       - run: shellcheck infra/gcp/scripts/*.sh infra/gcp/vm/*.sh
       - uses: hashicorp/setup-terraform@v3
         with:
