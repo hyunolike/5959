@@ -5,6 +5,7 @@ import { SlidersHorizontal } from "lucide-react";
 import { CAREER_YEAR_LABELS, JOB_ROLE_LABELS } from "@/entities/member";
 import type { FeedFilter, FeedOrder } from "@/entities/post";
 import { cn } from "@/shared/lib";
+import { SelectionIndicator } from "@/shared/ui";
 
 import {
   CAREER_YEARS,
@@ -33,7 +34,7 @@ export function FeedControls({
       <div
         role="group"
         aria-label="정렬"
-        className="flex gap-6 border-b border-neutral-200"
+        className="relative grid w-44 grid-cols-2 border-b border-neutral-200"
       >
         {(Object.keys(ORDER_LABELS) as FeedOrder[]).map((order) => (
           <button
@@ -41,16 +42,20 @@ export function FeedControls({
             type="button"
             aria-pressed={filter.order === order}
             className={cn(
-              "min-h-11 border-b-2 px-1 text-sm transition-colors",
+              "focus-visible:ring-brand-600 min-h-11 rounded-sm px-1 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none",
               filter.order === order
-                ? "border-brand-600 text-brand-700 font-bold"
-                : "border-transparent text-neutral-500 hover:text-neutral-900",
+                ? "text-brand-700 font-bold"
+                : "text-neutral-500 hover:text-neutral-900",
             )}
             onClick={() => onChange({ ...filter, order })}
           >
             {ORDER_LABELS[order]}
           </button>
         ))}
+        <SelectionIndicator
+          index={filter.order === "POPULAR" ? 1 : 0}
+          count={2}
+        />
       </div>
       <details
         open={filtered}
@@ -99,7 +104,7 @@ export function FeedControls({
           {filtered ? (
             <button
               type="button"
-              className="self-start text-xs text-neutral-500 underline"
+              className="focus-visible:ring-brand-600 min-h-11 self-start rounded-sm text-xs text-neutral-500 underline focus-visible:ring-2"
               onClick={() =>
                 onChange({ ...DEFAULT_FEED_FILTER, order: filter.order })
               }
@@ -143,7 +148,7 @@ function Chip({
       aria-pressed={pressed}
       onClick={onClick}
       className={cn(
-        "focus-visible:ring-brand-600 min-h-9 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
+        "focus-visible:ring-brand-600 min-h-11 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
         pressed
           ? "border-brand-200 bg-brand-50 text-brand-700"
           : "border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300 hover:bg-neutral-50",

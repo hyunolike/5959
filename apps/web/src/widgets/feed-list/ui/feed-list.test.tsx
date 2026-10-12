@@ -74,6 +74,26 @@ afterEach(() => {
 });
 
 describe("FeedList", () => {
+  it("처음 불러오기는 읽기 상태를 알리고 실패한 목록은 실제 요청으로 재시도한다", async () => {
+    let finish!: (response: Response) => void;
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<Response>((resolve) => {
+            finish = resolve;
+          }),
+      )
+      .mockResolvedValue(ok({ items: [feedItem(2)], nextCursor: null }));
+    vi.stubGlobal("fetch", fetchMock);
+    renderFeed();
+    expect(screen.getByRole("status")).toHaveTextContent("피드 불러오는 중");
+    finish(new Response("{}", { status: 500 }));
+    await screen.findByRole("alert");
+    fireEvent.click(screen.getByRole("button", { name: "다시 불러오기" }));
+    expect(await screen.findByText("고민 2")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
   it("US2-AC1 글 목록을 보여 주고, 직군과 경력은 한국어로 보여 준다", async () => {
     vi.stubGlobal(
       "fetch",

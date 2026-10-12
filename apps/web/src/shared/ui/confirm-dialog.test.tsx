@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -22,6 +22,40 @@ function renderDialog(open: boolean) {
 }
 
 describe("ConfirmDialog", () => {
+  it("안내 시트는 배경을 잠그고 브라우저 뒤로 가기로 닫혀 초점을 복구한다", async () => {
+    const user = userEvent.setup({ delay: null });
+    function Guide() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button onClick={() => setOpen(true)}>방법 보기</button>
+          <ConfirmDialog
+            open={open}
+            title="설치 방법"
+            confirmLabel="확인"
+            role="dialog"
+            presentation="sheet"
+            confirmVariant="primary"
+            dismissOnBack
+            onConfirm={() => setOpen(false)}
+            onCancel={() => setOpen(false)}
+          />
+        </>
+      );
+    }
+    const { container } = render(<Guide />);
+    await user.click(screen.getByRole("button", { name: "방법 보기" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(container.inert).toBe(true);
+    expect(document.body.style.overflow).toBe("hidden");
+    act(() => {
+      history.replaceState({}, "");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(document.body.style.overflow).not.toBe("hidden");
+    expect(screen.getByRole("button", { name: "방법 보기" })).toHaveFocus();
+  });
   it("닫혀 있으면 아무것도 그리지 않는다", () => {
     renderDialog(false);
 

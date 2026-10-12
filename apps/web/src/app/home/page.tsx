@@ -7,6 +7,7 @@ import { Suspense } from "react";
 import { useMeQuery } from "@/entities/member";
 import { LogoutButton } from "@/features/auth/logout";
 import { stopNotificationStream } from "@/features/notification-stream";
+import { HomeInstall } from "@/features/install-app";
 import { Button, Spinner } from "@/shared/ui";
 import { FeedList } from "@/widgets/feed-list";
 import { BossBanner } from "@/widgets/raid-arena";
@@ -20,7 +21,7 @@ export default function HomePage() {
 
   return (
     <div className="flex w-full max-w-[720px] flex-col gap-6">
-      <header className="flex items-center justify-between gap-4">
+      <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-neutral-900">마음 이야기</h1>
           {member?.nickname ? (
@@ -46,6 +47,7 @@ export default function HomePage() {
       </header>
       {/* 살아 있는 보스가 있으면 레이드로 가는 안내를 보인다(006 US5-AC7). */}
       <BossBanner />
+      <HomeInstall />
       {/* 정렬과 필터를 주소 검색어에서 읽는다(useSearchParams). */}
       <Suspense
         fallback={

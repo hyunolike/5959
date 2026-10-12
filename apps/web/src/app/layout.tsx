@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { cookies } from "next/headers";
 
@@ -28,6 +28,15 @@ const oguSans = localFont({
 export const metadata: Metadata = {
   title: "오구오구",
   description: "감정을 나누고 함께 이겨내는 서비스",
+  appleWebApp: { capable: true, title: "오구오구", statusBarStyle: "default" },
+  icons: { icon: "/icon.svg", apple: "/brand/ogu-companion.png" },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#ffffff",
 };
 
 export default async function RootLayout({

@@ -95,6 +95,27 @@ afterEach(() => {
 });
 
 describe("MyActivity", () => {
+  it("방향키는 포커스만 옮기고 Enter로 선택하며 Home/End를 지원한다", async () => {
+    const user = userEvent.setup({ delay: null });
+    stubLists();
+    renderActivity();
+    const first = screen.getByRole("tab", { name: "내가 쓴 글" });
+    const comments = screen.getByRole("tab", { name: "내 댓글" });
+    first.focus();
+    await user.keyboard("{ArrowRight}");
+    expect(comments).toHaveFocus();
+    expect(comments).toHaveAttribute("tabindex", "0");
+    expect(first).toHaveAttribute("tabindex", "-1");
+    expect(navigation.replace).not.toHaveBeenCalled();
+    await user.keyboard("{Enter}");
+    expect(navigation.replace).toHaveBeenCalledWith("/my?tab=comments", {
+      scroll: false,
+    });
+    await user.keyboard("{End}");
+    expect(screen.getByRole("tab", { name: "주간 리포트" })).toHaveFocus();
+    await user.keyboard("{Home}{ArrowLeft}");
+    expect(screen.getByRole("tab", { name: "주간 리포트" })).toHaveFocus();
+  });
   it.each([
     ["", "내가 쓴 글", "/api/members/me/posts", "아직 쓴 글이 없어요."],
     [

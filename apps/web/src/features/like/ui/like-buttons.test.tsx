@@ -3,7 +3,13 @@ import {
   QueryClientProvider,
   useQuery,
 } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -81,6 +87,49 @@ afterEach(() => {
 });
 
 describe("PostLikeButton", () => {
+  it("연속 입력은 한 요청만 보내고 실패하면 수와 HP를 복구한 뒤 다시 누를 수 있다", async () => {
+    let finish!: (response: Response) => void;
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<Response>((resolve) => {
+            finish = resolve;
+          }),
+      )
+      .mockResolvedValue(okLike());
+    vi.stubGlobal("fetch", fetchMock);
+    const client = renderWithClient(<CachedPostLikeButton />);
+    const button = screen.getByRole("button", { name: "공감 2" });
+    act(() => {
+      button.click();
+      button.click();
+    });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect(button).toHaveAttribute("aria-busy", "true");
+    expect(button).toBeDisabled();
+    expect(screen.getByRole("status")).toHaveTextContent("공감 처리 중");
+    finish(
+      jsonResponse(
+        {
+          success: false,
+          error: { code: "INTERNAL_ERROR", message: "failed" },
+        },
+        500,
+      ),
+    );
+    await screen.findByRole("alert");
+    expect(
+      client.getQueryData<PostDetail>(QUERY_KEYS.postDetail(7))?.monster?.hp,
+    ).toBe(10);
+    await waitFor(() => expect(button).toBeEnabled());
+    expect(button).toHaveTextContent("공감 2");
+    fireEvent.click(button);
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent("공감했어요"),
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
   it("US3-AC8 내 글이면 공감 버튼을 보여 주지 않는다", () => {
     renderWithClient(<PostLikeButton detail={detail({ mine: true })} />);
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
@@ -176,6 +225,14 @@ describe("PostLikeButton", () => {
     ).toBe(10);
   });
 });
+
+function okLike() {
+  return jsonResponse({
+    success: true,
+    data: { likeCount: 3, likedByMe: true },
+    error: null,
+  });
+}
 
 describe("PostLikeButton 409", () => {
   it("US3-AC1 이미 공감한 글(409 ALREADY_LIKED)이면 안내 없이 공감한 상태로 남는다", async () => {

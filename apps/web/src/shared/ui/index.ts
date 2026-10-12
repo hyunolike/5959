@@ -7,3 +7,7 @@ export { Label } from "./label";
 export { Spinner } from "./spinner";
 export { TOAST_DURATION_MS, Toaster, useToasts } from "./toast";
 export type { ToastItem } from "./toast";
+export { InteractionProvider } from "./interaction-provider";
+export { ReactionIcon } from "./reaction-icon";
+export { SelectionIndicator } from "./selection-indicator";
+export { ListSkeleton } from "./list-skeleton";

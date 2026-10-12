@@ -8,7 +8,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { useInfiniteScroll } from "@/shared/lib";
-import { Button, Card, Spinner } from "@/shared/ui";
+import { Button, Card, ListSkeleton, Spinner } from "@/shared/ui";
 
 interface ActivityPage<T> {
   items: T[];
@@ -39,20 +39,18 @@ export function ActivityList<T>({
     hasNextPage,
     isFetchingNextPage,
     fetchNextPage,
+    refetch,
+    isFetching,
   } = query;
   const items = data?.pages.flatMap((page) => page.items) ?? [];
   const loadNext = () => void fetchNextPage({ cancelRefetch: false });
   const sentinel = useInfiniteScroll(
     loadNext,
-    hasNextPage && !isFetchingNextPage,
+    hasNextPage && !isFetchingNextPage && !isError,
   );
 
   if (isPending) {
-    return (
-      <div className="flex justify-center py-8">
-        <Spinner />
-      </div>
-    );
+    return <ListSkeleton label={label} />;
   }
 
   if (isError && items.length === 0) {
@@ -61,6 +59,15 @@ export function ActivityList<T>({
         <p role="alert" className="text-sm text-red-600">
           목록을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
         </p>
+        <Button
+          variant="outline"
+          className="mt-4"
+          disabled={isFetching}
+          aria-busy={isFetching}
+          onClick={() => void refetch()}
+        >
+          다시 불러오기
+        </Button>
       </Card>
     );
   }
@@ -89,7 +96,21 @@ export function ActivityList<T>({
         ))}
       </ul>
       <div ref={sentinel} aria-hidden className="h-px" />
-      {isFetchingNextPage ? (
+      {isError ? (
+        <div>
+          <p role="alert" className="text-sm text-red-600">
+            다음 목록을 불러오지 못했어요.
+          </p>
+          <Button
+            variant="outline"
+            className="mt-3"
+            disabled={isFetching}
+            onClick={loadNext}
+          >
+            다시 불러오기
+          </Button>
+        </div>
+      ) : isFetchingNextPage ? (
         <div className="flex justify-center py-4">
           <Spinner />
         </div>

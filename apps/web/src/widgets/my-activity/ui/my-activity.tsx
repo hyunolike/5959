@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
 
 import { MyCommentItem, useMyCommentsQuery } from "@/entities/comment";
 import { CAREER_YEAR_LABELS, JOB_ROLE_LABELS } from "@/entities/member";
@@ -16,6 +17,7 @@ import {
   WeeklyReportItem,
 } from "@/entities/weekly-report";
 import { cn } from "@/shared/lib";
+import { SelectionIndicator } from "@/shared/ui";
 
 import {
   MY_ACTIVITY_TABS,
@@ -38,6 +40,8 @@ export function MyActivity() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const active = parseMyActivityTab(searchParams.get("tab"));
+  const [focus, setFocus] = useState({ active, tab: active });
+  const focusTab = focus.active === active ? focus.tab : active;
 
   const select = (tab: MyActivityTab) => {
     if (tab !== active) {
@@ -52,7 +56,7 @@ export function MyActivity() {
       <div
         role="tablist"
         aria-label="내 활동"
-        className="flex gap-1 border-b border-neutral-200"
+        className="relative grid grid-cols-4 border-b border-neutral-200"
       >
         {MY_ACTIVITY_TABS.map((tab) => (
           <button
@@ -62,22 +66,50 @@ export function MyActivity() {
             id={TAB_ID(tab.id)}
             aria-selected={tab.id === active}
             aria-controls={PANEL_ID}
+            tabIndex={tab.id === focusTab ? 0 : -1}
+            onFocus={() => setFocus({ active, tab: tab.id })}
+            onKeyDown={(event) => {
+              const index = MY_ACTIVITY_TABS.findIndex(
+                (item) => item.id === tab.id,
+              );
+              const next =
+                event.key === "ArrowRight"
+                  ? (index + 1) % MY_ACTIVITY_TABS.length
+                  : event.key === "ArrowLeft"
+                    ? (index + MY_ACTIVITY_TABS.length - 1) %
+                      MY_ACTIVITY_TABS.length
+                    : event.key === "Home"
+                      ? 0
+                      : event.key === "End"
+                        ? MY_ACTIVITY_TABS.length - 1
+                        : null;
+              if (next === null) return;
+              event.preventDefault();
+              document
+                .getElementById(TAB_ID(MY_ACTIVITY_TABS[next].id))
+                ?.focus();
+            }}
             className={cn(
-              "-mb-px border-b-2 px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none",
+              "focus-visible:ring-brand-600 min-h-11 rounded-sm px-1 py-2 text-xs leading-5 focus-visible:ring-2 focus-visible:outline-none sm:text-sm",
               tab.id === active
-                ? "border-neutral-900 font-semibold text-neutral-900"
-                : "border-transparent text-neutral-500 hover:text-neutral-800",
+                ? "text-brand-700 font-bold"
+                : "text-neutral-500 hover:text-neutral-800",
             )}
             onClick={() => select(tab.id)}
           >
             {tab.label}
           </button>
         ))}
+        <SelectionIndicator
+          index={MY_ACTIVITY_TABS.findIndex((tab) => tab.id === active)}
+          count={MY_ACTIVITY_TABS.length}
+        />
       </div>
       <div
         role="tabpanel"
         id={PANEL_ID}
         aria-labelledby={TAB_ID(active)}
+        tabIndex={0}
         className="flex flex-col gap-3"
       >
         {active === "posts" ? <MyPostsTab /> : null}

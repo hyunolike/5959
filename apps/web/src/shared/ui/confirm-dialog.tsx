@@ -7,6 +7,7 @@ import {
   useRef,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 
 import { Button } from "./button";
 
@@ -29,6 +30,10 @@ export function ConfirmDialog({
   pending = false,
   error,
   finalFocus,
+  role = "alertdialog",
+  presentation = "dialog",
+  confirmVariant = "destructive",
+  dismissOnBack = false,
   children,
   onConfirm,
   onCancel,
@@ -43,6 +48,11 @@ export function ConfirmDialog({
   error?: string | null;
   /** 닫힐 때 초점을 옮길 요소. 없거나 null을 돌려주면 연 요소(아직 화면에 있으면)로 돌려준다. */
   finalFocus?: () => HTMLElement | null;
+  role?: "dialog" | "alertdialog";
+  presentation?: "dialog" | "sheet";
+  confirmVariant?: "primary" | "destructive";
+  /** 모바일 안내창에서 뒤로 가기는 페이지를 떠나기 전에 안내창을 닫는다. */
+  dismissOnBack?: boolean;
   /** 설명 아래에 둘 입력(고를 것, 적을 것). 대화상자 안의 초점 순환에 함께 든다. */
   children?: ReactNode;
   onConfirm: () => void;
@@ -52,6 +62,7 @@ export function ConfirmDialog({
   const descriptionId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
   // 부모가 다시 그릴 때마다 새 함수가 와도 아래 effect가 다시 돌지 않게(초점이 취소로 튀지 않게) ref로 읽는다.
   // layout effect라 같은 커밋에서 닫힐 때도 cleanup이 최신 값을 본다.
   const latest = useRef({ onCancel, pending, finalFocus });
@@ -67,6 +78,24 @@ export function ConfirmDialog({
       document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null;
+    const background = Array.from(document.body.children)
+      .filter(
+        (element): element is HTMLElement =>
+          element instanceof HTMLElement && element !== overlayRef.current,
+      )
+      .map((element) => ({ element, inert: element.inert }));
+    for (const { element } of background) element.inert = true;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const marker = `ogu-dialog-${titleId}`;
+    const openedUrl = window.location.href;
+    if (dismissOnBack)
+      history.pushState({ ...history.state, __oguDialog: marker }, "");
+    const onPopState = () => {
+      if (history.state?.__oguDialog !== marker && !latest.current.pending)
+        latest.current.onCancel();
+    };
+    if (dismissOnBack) window.addEventListener("popstate", onPopState);
     cancelRef.current?.focus();
 
     const onKeyDown = (event: KeyboardEvent) => {
@@ -107,19 +136,29 @@ export function ConfirmDialog({
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("popstate", onPopState);
+      if (
+        dismissOnBack &&
+        window.location.href === openedUrl &&
+        history.state?.__oguDialog === marker
+      )
+        history.back();
+      for (const { element, inert } of background) element.inert = inert;
+      document.body.style.overflow = previousOverflow;
       const target =
         latest.current.finalFocus?.() ?? (opener?.isConnected ? opener : null);
       target?.focus();
     };
-  }, [open]);
+  }, [open, dismissOnBack, titleId]);
 
   if (!open) {
     return null;
   }
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/40 p-4"
+      ref={overlayRef}
+      className={`fixed inset-0 z-50 flex justify-center bg-neutral-950/40 ${presentation === "sheet" ? "items-end sm:items-center sm:p-4" : "items-center p-4"}`}
       onClick={(event) => {
         if (event.target === event.currentTarget && !pending) {
           onCancel();
@@ -129,11 +168,11 @@ export function ConfirmDialog({
       <div
         ref={dialogRef}
         tabIndex={-1}
-        role="alertdialog"
+        role={role}
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
-        className="flex w-full max-w-sm flex-col gap-4 rounded-lg bg-white p-6 shadow-lg"
+        className={`flex max-h-[85dvh] w-full max-w-sm flex-col gap-4 overflow-y-auto bg-white p-6 shadow-lg ${presentation === "sheet" ? "rounded-t-2xl pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:rounded-lg" : "rounded-lg"}`}
       >
         <div className="flex flex-col gap-1">
           <h2 id={titleId} className="text-base font-semibold text-neutral-900">
@@ -164,7 +203,7 @@ export function ConfirmDialog({
           </Button>
           <Button
             type="button"
-            variant="destructive"
+            variant={confirmVariant}
             size="sm"
             disabled={pending}
             onClick={onConfirm}
@@ -173,6 +212,7 @@ export function ConfirmDialog({
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
