@@ -126,7 +126,7 @@ test("US4-AC1 내 글의 본문과 말투를 고치면 반영되고 몬스터의
   await page.waitForURL(`**/post/${postId}/edit`);
 
   // 작성 폼이 지금 본문과 말투로 채워져 있다
-  const textarea = page.getByLabel("고민");
+  const textarea = page.getByRole("textbox", { name: "고민", exact: true });
   await expect(textarea).toHaveValue(original);
   await expect(
     page.getByRole("button", { name: "무조건 위로해주기" }),

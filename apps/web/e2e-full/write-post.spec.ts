@@ -38,7 +38,7 @@ async function signupAndOnboard(page: Page, prefix: string) {
 
 async function writePost(page: Page, content: string, tone: string) {
   await page.goto("/write");
-  await page.getByLabel("고민").fill(content);
+  await page.getByRole("textbox", { name: "고민", exact: true }).fill(content);
   await page.getByRole("button", { name: tone }).click();
   await page.getByRole("button", { name: "올리기" }).click();
 }
@@ -106,7 +106,9 @@ test("US1-AC2 500자를 넘거나 비어 있거나 말투를 고르지 않으면
   await expect(page.getByText("고민을 적어 주세요.")).toBeVisible();
   await expect(page.getByText("댓글 말투를 골라 주세요.")).toBeVisible();
 
-  await page.getByLabel("고민").fill("가".repeat(501));
+  await page
+    .getByRole("textbox", { name: "고민", exact: true })
+    .fill("가".repeat(501));
   await expect(page.getByText("501/500")).toBeVisible();
   await page.getByRole("button", { name: "대신 욕해주기" }).click();
   await page.getByRole("button", { name: "올리기" }).click();

@@ -70,14 +70,16 @@ export function PostForm({
         <Label htmlFor="content">고민</Label>
         <textarea
           id="content"
+          aria-invalid={!!errors.content || overLimit}
+          aria-describedby={errors.content ? "content-error" : undefined}
           rows={8}
           placeholder="요즘 마음을 무겁게 하는 일을 적어 주세요."
-          className="focus-visible:ring-brand-600 w-full resize-y rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-sm leading-7 text-neutral-900 transition-colors placeholder:text-neutral-500 focus:bg-white focus-visible:ring-2 focus-visible:outline-none"
+          className="rounded-control focus-visible:border-brand-600 focus-visible:ring-brand-600 w-full resize-y border border-neutral-300 bg-white p-4 text-base leading-7 text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-600 focus-visible:ring-2 focus-visible:outline-none aria-invalid:border-red-600 aria-invalid:bg-red-50/30"
           {...register("content")}
         />
         <div className="flex items-start justify-between gap-2">
           {errors.content ? (
-            <p role="alert" className="text-sm text-red-600">
+            <p id="content-error" role="alert" className="text-sm text-red-600">
               {errors.content.message}
             </p>
           ) : (

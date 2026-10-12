@@ -86,7 +86,7 @@ function Toast({
 
   return (
     <div
-      className="pointer-events-auto flex w-full items-start rounded-lg border border-neutral-200 bg-white shadow-lg"
+      className="rounded-surface pointer-events-auto flex w-full items-start border border-neutral-200 bg-white shadow-lg"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onFocus={() => setFocused(true)}
@@ -109,7 +109,7 @@ function Toast({
           onDismiss(toast.id);
         }}
         className={cn(
-          "min-w-0 flex-1 rounded-l-lg px-4 py-3 text-left text-sm text-neutral-900",
+          "ogu-pressable rounded-l-surface min-h-11 min-w-0 flex-1 px-4 py-3 text-left text-sm text-neutral-900",
           "hover:bg-neutral-50 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none",
         )}
       >
@@ -119,7 +119,7 @@ function Toast({
         type="button"
         aria-label="알림 닫기"
         onClick={() => onDismiss(toast.id)}
-        className="m-1 rounded-md px-2 py-2 text-sm text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none"
+        className="ogu-pressable rounded-control m-1 min-h-11 min-w-11 px-2 py-2 text-sm text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none"
       >
         <span aria-hidden="true">×</span>
       </button>

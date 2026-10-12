@@ -90,7 +90,7 @@ export function MyActivity() {
                 ?.focus();
             }}
             className={cn(
-              "focus-visible:ring-brand-600 min-h-11 rounded-sm px-1 py-2 text-xs leading-5 focus-visible:ring-2 focus-visible:outline-none sm:text-sm",
+              "focus-visible:ring-brand-600 ogu-pressable rounded-control active:bg-brand-100 min-h-11 px-1 py-2 text-xs leading-5 focus-visible:ring-2 focus-visible:outline-none sm:text-sm",
               tab.id === active
                 ? "text-brand-700 font-bold"
                 : "text-neutral-500 hover:text-neutral-800",

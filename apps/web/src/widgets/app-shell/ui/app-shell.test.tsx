@@ -3,14 +3,49 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AppShell } from "./app-shell";
 
-const route = vi.hoisted(() => ({ pathname: "/home" }));
+const route = vi.hoisted(() => ({ pathname: "/home", pending: false }));
 vi.mock("next/navigation", () => ({ usePathname: () => route.pathname }));
+vi.mock("next/link", async () => {
+  const actual = await vi.importActual<typeof import("next/link")>("next/link");
+  return { ...actual, useLinkStatus: () => ({ pending: route.pending }) };
+});
 
 beforeEach(() => {
   route.pathname = "/home";
+  route.pending = false;
 });
 
 describe("AppShell", () => {
+  it("이동 대기는 실제 현재 위치와 분리하고 주소가 확정된 뒤에만 선택을 바꾼다", () => {
+    route.pending = true;
+    const { rerender } = render(
+      <AppShell authenticated>
+        <h1>피드</h1>
+      </AppShell>,
+    );
+    const nav = within(
+      screen.getByRole("navigation", { name: "모바일 주요 메뉴" }),
+    );
+    const target = nav.getByRole("link", { name: "내 마음 기록" });
+    expect(nav.getByRole("link", { name: "마음 이야기" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(target).not.toHaveAttribute("aria-current");
+    expect(within(target).getByText("이동 중", { exact: true })).toBeVisible();
+    expect(target.querySelector('[aria-busy="true"]')).not.toBeNull();
+    route.pathname = "/my";
+    route.pending = false;
+    rerender(
+      <AppShell authenticated>
+        <h1>내 기록</h1>
+      </AppShell>,
+    );
+    expect(target).toHaveAttribute("aria-current", "page");
+    expect(
+      within(target).queryByText("이동 중", { exact: true }),
+    ).not.toBeInTheDocument();
+  });
   it("로그인 전에는 가입 화면에서 보호된 메뉴와 알림을 노출하지 않는다", () => {
     render(
       <AppShell
@@ -45,7 +80,7 @@ describe("AppShell", () => {
       const nav = within(screen.getByRole("navigation", { name }));
       expect(nav.getByRole("link", { name: "내 마음 기록" })).toHaveAttribute(
         "aria-current",
-        "page",
+        "location",
       );
       expect(nav.getByRole("link", { name: "함께 이겨내기" })).toHaveAttribute(
         "href",

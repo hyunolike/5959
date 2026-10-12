@@ -1,6 +1,6 @@
 "use client";
 
-import { SlidersHorizontal } from "lucide-react";
+import { Check, SlidersHorizontal } from "lucide-react";
 
 import { CAREER_YEAR_LABELS, JOB_ROLE_LABELS } from "@/entities/member";
 import type { FeedFilter, FeedOrder } from "@/entities/post";
@@ -42,7 +42,7 @@ export function FeedControls({
             type="button"
             aria-pressed={filter.order === order}
             className={cn(
-              "focus-visible:ring-brand-600 min-h-11 rounded-sm px-1 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none",
+              "focus-visible:ring-brand-600 ogu-pressable rounded-control active:bg-brand-100 min-h-11 px-1 text-sm focus-visible:ring-2 focus-visible:outline-none",
               filter.order === order
                 ? "text-brand-700 font-bold"
                 : "text-neutral-500 hover:text-neutral-900",
@@ -148,12 +148,13 @@ function Chip({
       aria-pressed={pressed}
       onClick={onClick}
       className={cn(
-        "focus-visible:ring-brand-600 min-h-11 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
+        "focus-visible:ring-brand-600 ogu-pressable rounded-control inline-flex min-h-11 items-center gap-1.5 border px-3 py-1.5 text-xs font-medium focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
         pressed
-          ? "border-brand-200 bg-brand-50 text-brand-700"
-          : "border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300 hover:bg-neutral-50",
+          ? "border-brand-600 bg-brand-100 text-brand-700 font-bold"
+          : "hover:bg-brand-50 active:bg-brand-100 border-neutral-300 bg-white text-neutral-600",
       )}
     >
+      {pressed ? <Check aria-hidden size={14} strokeWidth={2.5} /> : null}
       {children}
     </button>
   );
