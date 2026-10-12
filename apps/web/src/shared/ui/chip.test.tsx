@@ -25,7 +25,7 @@ describe("Chip", () => {
     render(<Chip pressed={false}>디자인</Chip>);
     expect(screen.getByRole("button", { name: "디자인" })).toHaveClass(
       "h-9",
-      "before:-inset-y-1",
+      "before:-inset-y-[5px]",
     );
   });
 });
