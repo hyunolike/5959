@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { UserRound } from "lucide-react";
 import { Suspense } from "react";
 
 import {
@@ -24,8 +23,8 @@ export default function MyPage() {
     <div className="flex w-full max-w-xl flex-col gap-6">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div className="min-w-40">
-          <p className="text-brand-700 mb-1 text-xs font-bold">
-            나를 조금 더 알아가는 시간
+          <p className="mb-1 text-xs font-bold text-neutral-600">
+            내 마음 기록
           </p>
           <h1 className="text-2xl font-bold text-neutral-900">마이페이지</h1>
         </div>
@@ -53,9 +52,9 @@ export default function MyPage() {
 }
 
 function Profile() {
-  const { data: member, isPending } = useMeQuery();
+  const { data: member, isPending, isError } = useMeQuery();
 
-  if (isPending || !member) {
+  if (isPending) {
     return (
       <Card className="flex w-full items-center justify-center">
         <Spinner />
@@ -63,37 +62,46 @@ function Profile() {
     );
   }
 
+  if (isError || !member) {
+    return (
+      <Card className="w-full">
+        <p role="alert" className="text-sm text-red-600">
+          프로필을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
+        </p>
+      </Card>
+    );
+  }
+
   return (
     <Card className="flex w-full flex-col gap-4">
-      <div className="flex items-center gap-3 border-b border-neutral-100 pb-4">
-        <span className="bg-brand-50 text-brand-700 flex h-12 w-12 items-center justify-center rounded-2xl">
-          <UserRound size={25} aria-hidden />
-        </span>
-        <p className="font-bold text-neutral-900">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-200 pb-4">
+        <p className="min-w-0 text-base font-bold break-words text-neutral-900">
           {member.nickname}님의 마음 기록
         </p>
+        <Button asChild variant="outline" size="sm" className="ml-auto">
+          <Link href="/my/edit">프로필 수정</Link>
+        </Button>
       </div>
-      <dl className="flex flex-col gap-4 text-sm">
-        <div className="flex items-center justify-between">
-          <dt className="text-neutral-500">닉네임</dt>
-          <dd className="font-medium text-neutral-900">{member.nickname}</dd>
+      <dl className="flex flex-col gap-3 text-sm">
+        <div className="flex items-center justify-between gap-4">
+          <dt className="shrink-0 text-neutral-600">닉네임</dt>
+          <dd className="min-w-0 font-medium break-words text-neutral-900">
+            {member.nickname}
+          </dd>
         </div>
-        <div className="flex items-center justify-between">
-          <dt className="text-neutral-500">직군</dt>
+        <div className="flex items-center justify-between gap-4">
+          <dt className="shrink-0 text-neutral-600">직군</dt>
           <dd className="font-medium text-neutral-900">
             {member.jobRole ? JOB_ROLE_LABELS[member.jobRole] : "-"}
           </dd>
         </div>
-        <div className="flex items-center justify-between">
-          <dt className="text-neutral-500">경력</dt>
+        <div className="flex items-center justify-between gap-4">
+          <dt className="shrink-0 text-neutral-600">경력</dt>
           <dd className="font-medium text-neutral-900">
             {member.careerYear ? CAREER_YEAR_LABELS[member.careerYear] : "-"}
           </dd>
         </div>
       </dl>
-      <Button asChild variant="outline" size="sm" className="self-end">
-        <Link href="/my/edit">프로필 수정</Link>
-      </Button>
     </Card>
   );
 }

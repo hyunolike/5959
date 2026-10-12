@@ -1,8 +1,9 @@
 "use client";
 
 import { m } from "framer-motion";
-import { LoaderCircle, type LucideIcon } from "lucide-react";
+import { LoaderCircle, Lock, type LucideIcon } from "lucide-react";
 import Link, { useLinkStatus } from "next/link";
+import { useId, type MouseEventHandler } from "react";
 import { cn, useReducedMotionPreference } from "@/shared/lib";
 
 export function NavigationItem({
@@ -12,6 +13,9 @@ export function NavigationItem({
   icon,
   current,
   mobile = false,
+  locked = false,
+  onClick,
+  prefetch,
 }: {
   href: string;
   label: string;
@@ -19,18 +23,26 @@ export function NavigationItem({
   icon: LucideIcon;
   current?: "page" | "location";
   mobile?: boolean;
+  /** 익명에게 로그인 안내를 먼저 여는 메뉴. 이름은 그대로 두고 설명으로만 알린다. */
+  locked?: boolean;
+  onClick?: MouseEventHandler<HTMLAnchorElement>;
+  prefetch?: boolean;
 }) {
+  const lockedId = useId();
   return (
     <Link
       href={href}
+      onClick={onClick}
+      prefetch={prefetch}
       aria-label={label}
       aria-current={current}
+      aria-describedby={locked ? lockedId : undefined}
       className={cn(
         "ogu-pressable group relative rounded-xl focus-visible:outline-offset-2",
         mobile ? "min-h-16 min-w-0 flex-1" : "min-h-12",
         current
           ? "text-brand-700"
-          : "hover:bg-brand-50 active:bg-brand-100 text-neutral-600",
+          : "text-neutral-600 hover:bg-neutral-100 active:bg-neutral-200",
       )}
     >
       <NavigationContents
@@ -39,7 +51,13 @@ export function NavigationItem({
         icon={icon}
         selected={!!current}
         mobile={mobile}
+        locked={locked}
       />
+      {locked ? (
+        <span id={lockedId} className="sr-only">
+          로그인 후 이용할 수 있어요
+        </span>
+      ) : null}
     </Link>
   );
 }
@@ -51,12 +69,14 @@ function NavigationContents({
   icon: Icon,
   selected,
   mobile,
+  locked,
 }: {
   label: string;
   shortLabel: string;
   icon: LucideIcon;
   selected: boolean;
   mobile: boolean;
+  locked: boolean;
 }) {
   const { pending } = useLinkStatus();
   const reduce = useReducedMotionPreference();
@@ -78,39 +98,41 @@ function NavigationContents({
         <span
           className={cn(
             "relative flex shrink-0 items-center justify-center rounded-2xl",
-            mobile ? "h-8 w-10" : "size-8",
-            pending && "bg-brand-100 text-brand-700",
+            mobile ? "h-8 w-12" : "size-8",
+            pending && "text-brand-700",
           )}
         >
+          {/* 선택은 채운 자리로, 이동 대기는 채움 없이 돌아가는 표시로 구분한다. */}
           <m.span
             aria-hidden
             initial={false}
             animate={{ opacity: selected ? 1 : 0, scale: selected ? 1 : 0.9 }}
             transition={{ duration: reduce ? 0 : 0.15 }}
-            className={cn(
-              "absolute inset-0 rounded-2xl",
-              mobile ? "bg-brand-600" : "bg-brand-100",
-            )}
+            className="bg-brand-100 absolute inset-0 rounded-2xl"
           />
           <Icon
             aria-hidden
             size={mobile ? 21 : 20}
             strokeWidth={selected ? 2.4 : 1.8}
-            className={cn(
-              "relative",
-              selected && mobile && "text-white",
-              pending && "opacity-0",
-            )}
+            className={cn("relative", pending && "opacity-0")}
           />
           {pending ? (
             <LoaderCircle
               size={18}
               aria-hidden
-              className={cn(
-                "absolute motion-safe:animate-spin",
-                selected && mobile ? "text-white" : "text-brand-700",
-              )}
+              className="text-brand-700 absolute motion-safe:animate-spin"
             />
+          ) : null}
+          {locked && !pending ? (
+            <span
+              aria-hidden
+              className={cn(
+                "absolute flex size-4 items-center justify-center rounded-full bg-white text-neutral-500",
+                mobile ? "-top-0.5 right-1.5" : "-top-1 -right-1",
+              )}
+            >
+              <Lock size={10} strokeWidth={2.4} />
+            </span>
           ) : null}
         </span>
         <span

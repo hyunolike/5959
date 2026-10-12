@@ -41,7 +41,18 @@ describe("resolveRouteGuardAction", () => {
   });
 
   describe("표 2행: 보호 경로 + ogu_rt 없음 → /login?next=<원래 경로>", () => {
-    it.each(PROTECTED_PATHS)(
+    it("GUEST-US1-AC1 정확한 홈만 익명으로 구경할 수 있고 회원 경로는 보호한다", () => {
+      expect(resolveRouteGuardAction("/home", SIGNED_OUT)).toBeNull();
+      expect(
+        resolveRouteGuardAction("/home", SIGNED_OUT, "?order=POPULAR"),
+      ).toBeNull();
+      expect(resolveRouteGuardAction("/home/private", SIGNED_OUT)).toEqual({
+        type: "redirect",
+        to: "/login?next=%2Fhome%2Fprivate",
+      });
+    });
+
+    it.each(PROTECTED_PATHS.filter((path) => path !== "/home"))(
       "US4-AC4 %s는 로그아웃 상태면 /login?next=로 보낸다",
       (pathname) => {
         expect(resolveRouteGuardAction(pathname, SIGNED_OUT)).toEqual({

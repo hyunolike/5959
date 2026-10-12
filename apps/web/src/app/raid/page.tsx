@@ -11,7 +11,12 @@ export default function RaidPage() {
   return (
     <div className="flex w-full max-w-xl flex-col gap-6">
       <header className="flex items-center justify-between gap-4">
-        <h1 className="text-xl font-semibold text-neutral-900">레이드</h1>
+        <div>
+          <p className="mb-1 text-xs font-bold text-neutral-600">
+            함께 이겨내기
+          </p>
+          <h1 className="text-2xl font-bold text-neutral-900">레이드</h1>
+        </div>
         <Button asChild variant="ghost" size="sm">
           <Link href="/home">피드로</Link>
         </Button>

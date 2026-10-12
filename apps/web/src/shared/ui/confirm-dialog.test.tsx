@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -22,6 +22,34 @@ function renderDialog(open: boolean) {
 }
 
 describe("ConfirmDialog", () => {
+  it("GUEST-US1-AC2 같은 새로고침 marker를 잡은 닫힌 안내 둘은 history를 한 번만 정리한다", async () => {
+    const back = vi.spyOn(history, "back").mockImplementation(() => {});
+    history.replaceState({ __oguDialog: "ogu-dialog-reloaded-guide" }, "");
+    try {
+      render(<>
+        <ConfirmDialog open={false} dismissOnBack title="로그인 안내" confirmLabel="로그인" onCancel={() => {}} onConfirm={() => {}} />
+        <ConfirmDialog open={false} dismissOnBack title="설치 안내" confirmLabel="확인" onCancel={() => {}} onConfirm={() => {}} />
+      </>);
+      await act(async () => {});
+      expect(back).toHaveBeenCalledTimes(1);
+    } finally {
+      act(() => {
+        history.replaceState({}, "");
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      });
+      back.mockRestore();
+    }
+  });
+
+  it("GUEST-US1-AC2 안내를 연 빠른 두 번째 클릭은 배경 닫기로 해석하지 않는다", async () => {
+    const user = userEvent.setup();
+    render(<DialogWithTrigger />);
+    await user.click(screen.getByRole("button", { name: "열기" }));
+    const dialog = screen.getByRole("alertdialog");
+    fireEvent.click(dialog.parentElement!, { detail: 2 });
+    expect(dialog).toBeInTheDocument();
+  });
+
   it("닫기 뒤 history 이동이 끝나기 전에 다시 열어도 이전 닫기가 새 안내창을 소비하지 않는다", async () => {
     const user = userEvent.setup({ delay: null });
     const back = vi.spyOn(history, "back").mockImplementation(() => {});

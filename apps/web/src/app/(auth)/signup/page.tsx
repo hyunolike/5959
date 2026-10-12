@@ -21,12 +21,12 @@ export default async function SignupPage({
 
   return (
     <AuthWelcome>
-      <Card className="w-full px-6 py-8 sm:p-9">
+      <Card className="mx-auto w-full max-w-sm px-5 py-7 sm:p-9">
         <h1 className="text-2xl font-bold text-neutral-900">
           이메일로 가입하기
         </h1>
-        <p className="mt-1 text-sm text-neutral-500">
-          오구오구에서 감정을 나누고 함께 이겨내 보세요.
+        <p className="mt-1 text-sm text-neutral-600">
+          가입하면 회원들의 고민을 읽고, 내 고민도 나눌 수 있어요.
         </p>
         <div className="mt-6">
           <OAuthButtons next={next} kakaoEnabled={env.KAKAO_LOGIN_ENABLED} />
@@ -39,15 +39,23 @@ export default async function SignupPage({
         <div>
           <SignupForm next={next} />
         </div>
-        <p className="mt-7 text-center text-sm text-neutral-500">
-          이미 계정이 있나요?{" "}
+        <div className="mt-6 flex flex-col items-center border-t border-neutral-200 pt-4">
+          <p className="text-center text-sm text-neutral-600">
+            이미 계정이 있나요?{" "}
+            <Link
+              className="text-brand-700 ml-1 inline-flex min-h-11 items-center font-bold hover:underline"
+              href={withNextPath("/login", next)}
+            >
+              로그인
+            </Link>
+          </p>
           <Link
-            className="text-brand-700 ml-1 font-bold hover:underline"
-            href={withNextPath("/login", next)}
+            href="/home"
+            className="inline-flex min-h-11 items-center text-sm font-medium text-neutral-600 underline underline-offset-4 hover:text-neutral-900"
           >
-            로그인
+            먼저 둘러보기
           </Link>
-        </p>
+        </div>
       </Card>
     </AuthWelcome>
   );

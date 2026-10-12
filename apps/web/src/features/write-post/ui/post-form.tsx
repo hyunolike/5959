@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Check, LoaderCircle } from "lucide-react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 
 import { COMMENT_TONE_LABELS, type CommentTone } from "@/entities/post";
@@ -65,13 +66,24 @@ export function PostForm({
   });
 
   return (
-    <form onSubmit={submit} noValidate className="flex w-full flex-col gap-5">
+    <form onSubmit={submit} noValidate className="flex w-full flex-col gap-7">
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="content">고민</Label>
+        <Label
+          htmlFor="content"
+          className="text-base font-bold text-neutral-900"
+        >
+          고민
+        </Label>
+        <p id="content-hint" className="text-sm leading-6 text-neutral-600">
+          형식 없이 편하게 적어 주세요. 닉네임, 직군, 경력과 함께 회원에게만
+          보여요.
+        </p>
         <textarea
           id="content"
           aria-invalid={!!errors.content || overLimit}
-          aria-describedby={errors.content ? "content-error" : undefined}
+          aria-describedby={
+            errors.content ? "content-error content-hint" : "content-hint"
+          }
           rows={8}
           placeholder="요즘 마음을 무겁게 하는 일을 적어 주세요."
           className="rounded-control focus-visible:border-brand-600 focus-visible:ring-brand-600 w-full resize-y border border-neutral-300 bg-white p-4 text-base leading-7 text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-600 focus-visible:ring-2 focus-visible:outline-none aria-invalid:border-red-600 aria-invalid:bg-red-50/30"
@@ -100,26 +112,52 @@ export function PostForm({
         </div>
       </div>
 
-      <fieldset className="flex flex-col gap-1.5">
-        <legend className="mb-1.5 text-sm font-medium text-neutral-700">
+      <fieldset
+        aria-describedby="comment-tone-hint"
+        className="flex flex-col gap-1.5"
+      >
+        <legend className="text-base font-bold text-neutral-900">
           댓글 말투
         </legend>
+        <p
+          id="comment-tone-hint"
+          className="mb-1.5 text-sm leading-6 text-neutral-600"
+        >
+          듣고 싶은 댓글의 말투를 하나 골라 주세요. 댓글을 쓰는 회원에게 함께
+          보여요.
+        </p>
         <Controller
           control={control}
           name="commentTone"
           render={({ field }) => (
             <div className="grid grid-cols-2 gap-2">
-              {COMMENT_TONES.map(([tone, label]) => (
-                <Button
-                  key={tone}
-                  type="button"
-                  variant={field.value === tone ? "primary" : "outline"}
-                  aria-pressed={field.value === tone}
-                  onClick={() => field.onChange(tone)}
-                >
-                  {label}
-                </Button>
-              ))}
+              {COMMENT_TONES.map(([tone, label]) => {
+                const selected = field.value === tone;
+                return (
+                  // 선택은 연한 면과 체크로 보인다. 채운 보라는 올리기 버튼에만 쓴다.
+                  <Button
+                    key={tone}
+                    type="button"
+                    variant={selected ? "secondary" : "outline"}
+                    aria-pressed={selected}
+                    className={cn(
+                      "h-auto gap-1 px-2 py-2 text-center break-keep whitespace-normal",
+                      selected && "border-brand-600",
+                    )}
+                    onClick={() => field.onChange(tone)}
+                  >
+                    {selected ? (
+                      <Check
+                        aria-hidden
+                        size={14}
+                        strokeWidth={2.5}
+                        className="shrink-0"
+                      />
+                    ) : null}
+                    {label}
+                  </Button>
+                );
+              })}
             </div>
           )}
         />
@@ -137,7 +175,19 @@ export function PostForm({
       )}
 
       {/* 성공 뒤 다음 화면으로 넘어가는 동안 다시 눌러 같은 요청을 또 보내지 않게 막는다. */}
-      <Button type="submit" disabled={isSubmitting || locked}>
+      <Button
+        type="submit"
+        size="lg"
+        disabled={isSubmitting || locked}
+        aria-busy={isSubmitting || locked}
+      >
+        {isSubmitting || locked ? (
+          <LoaderCircle
+            aria-hidden
+            size={16}
+            className="motion-safe:animate-spin"
+          />
+        ) : null}
         {submitLabel}
       </Button>
     </form>

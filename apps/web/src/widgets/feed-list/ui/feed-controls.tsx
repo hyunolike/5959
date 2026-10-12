@@ -57,10 +57,7 @@ export function FeedControls({
           count={2}
         />
       </div>
-      <details
-        open={filtered}
-        className="border-b border-neutral-200 bg-white pb-2"
-      >
+      <details open={filtered} className="border-b border-neutral-200 pb-2">
         <summary className="focus-visible:ring-brand-600 flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-sm text-sm font-medium text-neutral-600 focus-visible:ring-2 focus-visible:outline-none">
           <SlidersHorizontal size={16} aria-hidden />
           필터
@@ -104,7 +101,7 @@ export function FeedControls({
           {filtered ? (
             <button
               type="button"
-              className="focus-visible:ring-brand-600 min-h-11 self-start rounded-sm text-xs text-neutral-500 underline focus-visible:ring-2"
+              className="focus-visible:ring-brand-600 min-h-11 self-start rounded-sm text-xs text-neutral-600 underline underline-offset-4 hover:text-neutral-900 focus-visible:ring-2 focus-visible:outline-none"
               onClick={() =>
                 onChange({ ...DEFAULT_FEED_FILTER, order: filter.order })
               }
@@ -151,7 +148,7 @@ function Chip({
         "focus-visible:ring-brand-600 ogu-pressable rounded-control inline-flex min-h-11 items-center gap-1.5 border px-3 py-1.5 text-xs font-medium focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
         pressed
           ? "border-brand-600 bg-brand-100 text-brand-700 font-bold"
-          : "hover:bg-brand-50 active:bg-brand-100 border-neutral-300 bg-white text-neutral-600",
+          : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100 active:bg-neutral-200",
       )}
     >
       {pressed ? <Check aria-hidden size={14} strokeWidth={2.5} /> : null}

@@ -15,11 +15,11 @@ export default async function OnboardingPage({
 
   return (
     <AuthWelcome>
-      <Card className="w-full px-6 py-8 sm:p-9">
+      <Card className="mx-auto w-full max-w-sm px-5 py-7 sm:p-9">
         <h1 className="text-2xl font-bold text-neutral-900">
           프로필을 알려주세요
         </h1>
-        <p className="mt-1 text-sm text-neutral-500">
+        <p className="mt-1 text-sm text-neutral-600">
           닉네임과 직군, 경력을 입력하면 서비스를 쓸 준비가 끝나요.
         </p>
         <div className="mt-6">

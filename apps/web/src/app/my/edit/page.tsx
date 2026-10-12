@@ -12,11 +12,17 @@ export default function EditProfilePage() {
   const { data: member, isPending, isError } = useMeQuery();
 
   return (
-    <div className="flex w-full max-w-sm flex-col gap-6">
-      <h1 className="text-xl font-semibold text-neutral-900">프로필 수정</h1>
+    <div className="flex w-full max-w-md flex-col gap-5">
+      <header>
+        <p className="mb-1 text-xs font-bold text-neutral-600">내 마음 기록</p>
+        <h1 className="text-2xl font-bold text-neutral-900">프로필 수정</h1>
+        <p className="mt-1 text-sm leading-6 text-neutral-600">
+          닉네임, 직군, 경력은 내가 쓴 글에 함께 보여요.
+        </p>
+      </header>
       <Card className="w-full">
         {isPending ? (
-          <div className="flex justify-center py-4">
+          <div className="flex justify-center py-8">
             <Spinner />
           </div>
         ) : isError || !member ? (
