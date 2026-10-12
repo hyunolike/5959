@@ -1,6 +1,6 @@
 # 오구 인터랙션과 홈 추가 구현 계획
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 기존 커뮤니티 기능에 실제 요청 상태와 접근성 있는 반응을 연결하고, 설치 또는 수동 홈 추가 안내를 제공한다.
 
@@ -34,24 +34,24 @@
 
 **Interfaces:** platform classifier는 secure/standalone/userAgent/platform/maxTouchPoints를 받는다. provider는 canPrompt, pending, installed, environment, promotionVisible, message, dismissPromotion(), requestInstall()을 공급한다.
 
-- [ ] 환경 분류와 promotion 기간, 취소/수락/appinstalled/storage 차단 테스트를 먼저 작성하고 실패를 확인한다.
-- [ ] 프롬프트 이벤트를 루트에서 보관한다. promptRef는 실행 전에 소비하고 pendingRef로 중복 호출을 막는다.
-- [ ] 홈 안내 UI와 선택적 history-backed 안내 대화상자를 구현한다. 배너 닫기는 7일 보관하며 직접 여는 안내는 유지한다.
-- [ ] manifest id/scope/start_url/display와 공개 SVG/PNG 자산 응답을 검증한다. service worker 등록은 없다.
+- [x] 환경 분류와 promotion 기간, 취소/수락/appinstalled/storage 차단 테스트를 먼저 작성하고 실패를 확인한다.
+- [x] 프롬프트 이벤트를 루트에서 보관한다. promptRef는 실행 전에 소비하고 pendingRef로 중복 호출을 막는다.
+- [x] 홈 안내 UI와 선택적 history-backed 안내 대화상자를 구현한다. 배너 닫기는 7일 보관하며 직접 여는 안내는 유지한다.
+- [x] manifest id/scope/start_url/display와 공개 SVG/PNG 자산 응답을 검증한다. service worker 등록은 없다.
 
 ### Task 2: 공통 인터랙션과 기존 기능
 
 **Files:** shared/lib/use-reduced-motion-preference.ts; shared/ui/interaction-provider.tsx, confirm-dialog.tsx, toast.tsx; features/like/ui/*; widgets/feed-list/ui/*; widgets/my-activity/ui/my-activity.tsx; app/home/page.tsx.
 
-- [ ] 뒤로 가기 대화상자 닫기와 키보드 탭 이동, 공감 pending/성공/실패 피드백 테스트를 먼저 작성한다.
-- [ ] LazyMotion/domAnimation과 m을 사용한다. CSS transforms는 클릭과 선택 상태에만 짧게 적용한다. reduced-motion은 duration 0으로 한다.
-- [ ] 공감의 기존 optimistic-cache를 보존한다. 즉시 latch, aria-busy, 성공 알림과 성공 시 아이콘 반응을 추가한다.
-- [ ] 정렬/활동 탭의 이동 표시와 로빙 키보드 포커스, 정적 로딩 스켈레톤과 실제 refetch 버튼을 추가한다.
-- [ ] 모달은 portal로 표시하고 열기/닫기 중 배경과 포커스를 관리한다. 기존 pending 확인 동작을 보존한다.
+- [x] 뒤로 가기 대화상자 닫기와 키보드 탭 이동, 공감 pending/성공/실패 피드백 테스트를 먼저 작성한다.
+- [x] LazyMotion/domAnimation과 m을 사용한다. CSS transforms는 클릭과 선택 상태에만 짧게 적용한다. reduced-motion은 duration 0으로 한다.
+- [x] 공감의 기존 optimistic-cache를 보존한다. 즉시 latch, aria-busy, 성공 알림과 성공 시 아이콘 반응을 추가한다.
+- [x] 정렬/활동 탭의 이동 표시와 로빙 키보드 포커스, 정적 로딩 스켈레톤과 실제 refetch 버튼을 추가한다.
+- [x] 모달은 portal로 표시하고 열기/닫기 중 배경과 포커스를 관리한다. 기존 pending 확인 동작을 보존한다.
 
 ### Task 3: 검증과 로컬 커밋
 
-- [ ] 전체 단위 테스트, TypeScript, ESLint/FSD, Prettier, 생산 빌드를 실행한다.
-- [ ] 1440/390/320px 브라우저에서 설치 모의 이벤트, 취소/거절/중복/재방문/standalone/인앱, 공감 롤백과 재시도, 탭/모달 키보드와 뒤로 가기를 검증한다.
-- [ ] 공개 manifest와 아이콘, 서비스 워커 미등록, PNG 원본 해시, reduced-motion, JS 번들 크기를 확인한다.
-- [ ] 스크린샷은 로컬에 보존한다. 실제 폰 설치 미검증을 명시하고 로컬 커밋만 만든다.
+- [x] 전체 단위 테스트, TypeScript, ESLint/FSD, Prettier, 생산 빌드를 실행한다.
+- [x] 1440/390/320px 브라우저에서 설치 모의 이벤트, 취소/거절/중복/재방문/standalone/인앱, 공감 롤백과 재시도, 탭/모달 키보드와 뒤로 가기를 검증한다.
+- [x] 공개 manifest와 아이콘, 서비스 워커 미등록, PNG 원본 해시, reduced-motion, JS 번들 크기를 확인한다.
+- [x] 스크린샷은 로컬에 보존한다. 실제 폰 설치 미검증을 명시하고 로컬 커밋만 만든다.

@@ -337,6 +337,29 @@ test("공감은 중복 요청 없이 실패를 복구하고 실제 성공 후 �
   ).toBe(false);
 });
 
+test("안내창을 뒤로·앞으로 재방문한 뒤 다시 열어도 뒤로 가기로 닫힌다", async ({
+  page,
+}) => {
+  await mockApi(page);
+  await page.goto("/home");
+  const guide = page.getByRole("button", {
+    name: "홈 화면 추가 방법",
+    exact: true,
+  });
+  await guide.click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.goBack();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.goForward();
+  await guide.click();
+  await page.goBack();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  expect(await page.evaluate(() => document.body.style.overflow)).not.toBe(
+    "hidden",
+  );
+  await expect(guide).toBeFocused();
+});
+
 test("키보드 활동 탭과 실행 중 reduced-motion 변경", async ({ page }) => {
   await mockApi(page);
   await page.goto("/my");
@@ -359,16 +382,20 @@ test("키보드 활동 탭과 실행 중 reduced-motion 변경", async ({ page }
   await expect
     .poll(() => indicator.evaluate((node) => getComputedStyle(node).transform))
     .toMatch(/matrix\(1, 0, 0, 1,/);
-  expect(
-    await indicator.evaluate((node) => {
-      const parent = node.parentElement!.getBoundingClientRect();
-      return (
-        Math.abs(
-          node.getBoundingClientRect().left - parent.left - parent.width * 0.75,
-        ) < 1
-      );
-    }),
-  ).toBe(true);
+  await expect
+    .poll(() =>
+      indicator.evaluate((node) => {
+        const parent = node.parentElement!.getBoundingClientRect();
+        return (
+          Math.abs(
+            node.getBoundingClientRect().left -
+              parent.left -
+              parent.width * 0.75,
+          ) < 1
+        );
+      }),
+    )
+    .toBe(true);
 });
 
 test("피드 오류에서 실제 재시도로 복구한다", async ({ page }) => {

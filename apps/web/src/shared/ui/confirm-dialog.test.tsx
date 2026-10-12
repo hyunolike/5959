@@ -22,6 +22,29 @@ function renderDialog(open: boolean) {
 }
 
 describe("ConfirmDialog", () => {
+  it("닫기 뒤 history 이동이 끝나기 전에 다시 열어도 이전 닫기가 새 안내창을 소비하지 않는다", async () => {
+    const user = userEvent.setup({ delay: null });
+    const back = vi.spyOn(history, "back").mockImplementation(() => {});
+    render(<DialogWithTrigger dismissOnBack />);
+    const trigger = screen.getByRole("button", { name: "열기" });
+    await user.click(trigger);
+    await user.keyboard("{Escape}");
+    expect(back).toHaveBeenCalledTimes(1);
+    await user.click(trigger);
+    await act(async () => {
+      history.replaceState({}, "");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+    expect(document.body.style.overflow).toBe("hidden");
+    act(() => {
+      history.replaceState({}, "");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+    back.mockRestore();
+  });
   it("안내 시트는 배경을 잠그고 브라우저 뒤로 가기로 닫혀 초점을 복구한다", async () => {
     const user = userEvent.setup({ delay: null });
     function Guide() {
@@ -155,8 +178,10 @@ describe("ConfirmDialog", () => {
 /** 열기 버튼으로 여는 대화상자. [withFallback]이면 확인 뒤 "목록" 영역으로 초점을 옮긴다. */
 function DialogWithTrigger({
   withFallback = false,
+  dismissOnBack = false,
 }: {
   withFallback?: boolean;
+  dismissOnBack?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -166,6 +191,7 @@ function DialogWithTrigger({
         열기
       </button>
       <ConfirmDialog
+        dismissOnBack={dismissOnBack}
         open={open}
         title="지울까요?"
         confirmLabel="삭제"

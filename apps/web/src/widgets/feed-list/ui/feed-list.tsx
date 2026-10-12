@@ -52,6 +52,7 @@ function FeedItems({ filter }: { filter: FeedFilter }) {
     data,
     isPending,
     isError,
+    isFetchNextPageError,
     hasNextPage,
     isFetchingNextPage,
     fetchNextPage,
@@ -138,13 +139,19 @@ function FeedItems({ filter }: { filter: FeedFilter }) {
       {isError ? (
         <div className="py-4">
           <p role="alert" className="text-sm text-red-600">
-            다음 이야기를 불러오지 못했어요.
+            {isFetchNextPageError
+              ? "다음 이야기를 불러오지 못했어요."
+              : "새 이야기를 확인하지 못했어요."}
           </p>
           <Button
             variant="outline"
             className="mt-3"
             disabled={isFetching}
-            onClick={() => void fetchNextPage({ cancelRefetch: false })}
+            onClick={() =>
+              isFetchNextPageError
+                ? void fetchNextPage({ cancelRefetch: false })
+                : void refetch()
+            }
           >
             다시 불러오기
           </Button>

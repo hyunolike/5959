@@ -14,6 +14,32 @@ import { Button } from "./button";
 const FOCUSABLE =
   'button:not([disabled]), [href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+let openingSequence = 0;
+let historyCleanup: Promise<void> | null = null;
+
+/** 닫기의 비동기 history 이동이 끝나기 전에는 새 안내창의 entry를 만들지 않는다. */
+function returnFromDialog(marker: string, openedUrl: string) {
+  let finish!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    finish = resolve;
+  });
+  historyCleanup = pending;
+  const complete = () => {
+    window.removeEventListener("popstate", complete);
+    if (historyCleanup === pending) historyCleanup = null;
+    finish();
+  };
+  window.addEventListener("popstate", complete, { once: true });
+  queueMicrotask(() => {
+    if (
+      window.location.href !== openedUrl ||
+      history.state?.__oguDialog !== marker
+    )
+      complete();
+    else history.back();
+  });
+}
+
 /**
  * 되돌릴 수 없는 동작 전에 묻는 화면 안 대화상자(`window.confirm` 대신).
  * 열리면 취소 버튼에 초점을 두고, Tab과 Shift+Tab은 대화상자 안에서만 돈다(aria-modal).
@@ -87,12 +113,36 @@ export function ConfirmDialog({
     for (const { element } of background) element.inert = true;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const marker = `ogu-dialog-${titleId}`;
+    const marker = `ogu-dialog-${titleId}-${++openingSequence}`;
     const openedUrl = window.location.href;
-    if (dismissOnBack)
-      history.pushState({ ...history.state, __oguDialog: marker }, "");
+    let active = true;
+    let registered = false;
+    const register = () => {
+      if (!active) return;
+      if (window.location.href !== openedUrl) {
+        latest.current.onCancel();
+        return;
+      }
+      const state = { ...history.state, __oguDialog: marker };
+      // Forward로 돌아온 닫힌 안내창 entry는 다시 쌓지 않고 새 opening으로 교체한다.
+      if (
+        typeof history.state?.__oguDialog === "string" &&
+        history.state.__oguDialog.startsWith("ogu-dialog-")
+      )
+        history.replaceState(state, "");
+      else history.pushState(state, "");
+      registered = true;
+    };
+    if (dismissOnBack) {
+      if (historyCleanup) void historyCleanup.then(register);
+      else register();
+    }
     const onPopState = () => {
-      if (history.state?.__oguDialog !== marker && !latest.current.pending)
+      if (
+        registered &&
+        history.state?.__oguDialog !== marker &&
+        !latest.current.pending
+      )
         latest.current.onCancel();
     };
     if (dismissOnBack) window.addEventListener("popstate", onPopState);
@@ -135,14 +185,16 @@ export function ConfirmDialog({
     };
     document.addEventListener("keydown", onKeyDown);
     return () => {
+      active = false;
       document.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("popstate", onPopState);
       if (
         dismissOnBack &&
+        registered &&
         window.location.href === openedUrl &&
         history.state?.__oguDialog === marker
       )
-        history.back();
+        returnFromDialog(marker, openedUrl);
       for (const { element, inert } of background) element.inert = inert;
       document.body.style.overflow = previousOverflow;
       const target =

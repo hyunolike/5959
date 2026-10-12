@@ -1,5 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -79,6 +86,7 @@ function renderActivity() {
       <MyActivity />
     </QueryClientProvider>,
   );
+  return queryClient;
 }
 
 const selectedTab = () => screen.getByRole("tab", { selected: true });
@@ -95,6 +103,23 @@ afterEach(() => {
 });
 
 describe("MyActivity", () => {
+  it("남아 있는 활동 목록의 갱신 실패도 다시 불러오기에서 실제 재요청한다", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(ok({ items: [feedItem(2)], nextCursor: null }))
+      .mockResolvedValueOnce(new Response("{}", { status: 500 }))
+      .mockResolvedValueOnce(ok({ items: [feedItem(3)], nextCursor: null }));
+    vi.stubGlobal("fetch", fetchMock);
+    const client = renderActivity();
+    await screen.findByText("고민 2");
+    await act(async () => {
+      await client.refetchQueries();
+    });
+    await screen.findByRole("alert");
+    fireEvent.click(screen.getByRole("button", { name: "다시 불러오기" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    expect(await screen.findByText("고민 3")).toBeInTheDocument();
+  });
   it("방향키는 포커스만 옮기고 Enter로 선택하며 Home/End를 지원한다", async () => {
     const user = userEvent.setup({ delay: null });
     stubLists();

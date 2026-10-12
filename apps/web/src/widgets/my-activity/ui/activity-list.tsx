@@ -36,6 +36,7 @@ export function ActivityList<T>({
     data,
     isPending,
     isError,
+    isFetchNextPageError,
     hasNextPage,
     isFetchingNextPage,
     fetchNextPage,
@@ -99,13 +100,15 @@ export function ActivityList<T>({
       {isError ? (
         <div>
           <p role="alert" className="text-sm text-red-600">
-            다음 목록을 불러오지 못했어요.
+            {isFetchNextPageError
+              ? "다음 목록을 불러오지 못했어요."
+              : "목록을 새로 확인하지 못했어요."}
           </p>
           <Button
             variant="outline"
             className="mt-3"
             disabled={isFetching}
-            onClick={loadNext}
+            onClick={() => (isFetchNextPageError ? loadNext() : void refetch())}
           >
             다시 불러오기
           </Button>
