@@ -111,3 +111,18 @@ describe("색 토큰", () => {
     expect(css).not.toMatch(/--color-ink-\d+/);
   });
 });
+
+describe("DESIGN_SYSTEM.md", () => {
+  it("DS-US4-AC4 문서에 적힌 색 값은 모두 globals.css에 있다", () => {
+    const doc = readFileSync(
+      path.resolve(__dirname, "../../../docs/DESIGN_SYSTEM.md"),
+      "utf8",
+    );
+    const documented = [...new Set(doc.match(/#[0-9a-fA-F]{6}\b/g) ?? [])];
+    expect(documented.length).toBeGreaterThan(20);
+    const known = css.toLowerCase();
+    expect(
+      documented.filter((hex) => !known.includes(hex.toLowerCase())),
+    ).toEqual([]);
+  });
+});
