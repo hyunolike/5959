@@ -1,6 +1,7 @@
 """Deployment safety behavior; fake only the external cloud/GitHub boundary."""
 import copy
 import importlib.util
+import json
 import pathlib
 import subprocess
 import tempfile
@@ -26,7 +27,7 @@ def load():
 def run_fixture():
     return {"id": 99, "name": "CI", "path": ".github/workflows/ci.yml",
             "event": "push", "status": "completed", "conclusion": "success",
-            "head_branch": "develop", "head_sha": SHA,
+            "head_branch": "main", "head_sha": SHA,
             "repository": {"full_name": "hyunolike/5959"},
             "head_repository": {"full_name": "hyunolike/5959"}}
 
@@ -118,17 +119,22 @@ class Cloud:
             self.state["metadata"]["resourceVersion"] = "operator-pending"
             self.state["spec"]["traffic"] = [{"revisionName": "operator", "percent": 100}]
         if self.fail == "stale" and self.fresh_checks == 2:
-            raise RuntimeError("develop advanced")
+            raise RuntimeError("main advanced")
 
 
 class WebReleaseTests(unittest.TestCase):
     def test_DEPLOY_AC1_accepts_exact_successful_push_and_rejects_other_runs(self):
         m = load()
         jobs = [{"name": "ci-ok", "conclusion": "success", "status": "completed"}]
-        self.assertEqual(m.eligible(run_fixture(), jobs, SHA, SHA), SHA)
-        for key, value in [("event", "pull_request"), ("head_branch", "main"),
+        try:
+            accepted = m.eligible(run_fixture(), jobs, SHA, SHA)
+        except ValueError as error:
+            self.fail(f"US1-AC1 successful main push must be eligible: {error}")
+        self.assertEqual(accepted, SHA)
+        for key, value in [("event", "pull_request"), ("head_branch", "develop"),
                            ("head_branch", "codex/5959-web-deploy-reconcile"),
-                           ("conclusion", "failure"), ("status", "in_progress"),
+                           ("conclusion", "failure"), ("conclusion", "cancelled"),
+                           ("status", "in_progress"),
                            ("head_sha", "d" * 40), ("path", "other.yml")]:
             r = run_fixture(); r[key] = value
             with self.subTest(key=key, value=value), self.assertRaises(ValueError):
@@ -137,6 +143,32 @@ class WebReleaseTests(unittest.TestCase):
         with self.assertRaises(ValueError): m.eligible(r, jobs, SHA, SHA)
         with self.assertRaises(ValueError): m.eligible(run_fixture(), jobs, "d" * 40, SHA)
         with self.assertRaises(ValueError): m.eligible(run_fixture(), [], SHA, SHA)
+        for bad_job in [{"name": "ci-ok", "conclusion": "failure", "status": "completed"},
+                        {"name": "ci-ok", "conclusion": "success", "status": "in_progress"}]:
+            with self.subTest(job=bad_job), self.assertRaises(ValueError):
+                m.eligible(run_fixture(), [bad_job], SHA, SHA)
+
+    def test_US1_AC2_gate_reads_current_main_and_rejects_stale_sha(self):
+        m = load()
+        current_main = {"object": {"sha": SHA}}
+        responses = {
+            "repos/hyunolike/5959/actions/runs/99": run_fixture(),
+            "repos/hyunolike/5959/actions/runs/99/jobs?filter=latest&per_page=100":
+                [{"jobs": [{"name": "ci-ok", "conclusion": "success", "status": "completed"}]}],
+            "repos/hyunolike/5959/git/ref/heads/main": current_main,
+            "repos/hyunolike/5959/git/ref/heads/develop": {"object": {"sha": "d" * 40}},
+        }
+        def github(args, binary=False):
+            return json.dumps(responses[args[-1]])
+        with mock.patch.object(m, "command", side_effect=github):
+            try:
+                accepted = m.gate(99, SHA)
+            except ValueError as error:
+                self.fail(f"US1-AC2 current main gate must accept exact SHA: {error}")
+            self.assertEqual(accepted, SHA)
+            current_main["object"]["sha"] = "e" * 40
+            with self.assertRaises(ValueError):
+                m.gate(99, SHA)
 
     def test_DEPLOY_AC4_public_smoke_accepts_copy_changes_and_rejects_missing_or_remote_assets(self):
         m = load()

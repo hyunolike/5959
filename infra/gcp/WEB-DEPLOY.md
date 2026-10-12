@@ -1,15 +1,26 @@
 # ogu-web CI deployment and recovery
 
-Status: **implementation only; disabled until separately approved setup**. This
-PR neither creates credentials/IAM bindings nor deploys itself. The workflow must be merged into the default branch before workflow_run can
-trigger; the actual GitHub default branch was confirmed as develop. The existing
-manual release of 07fd5ab is independent of this automation.
+Status: **main transition separately approved on 2026-10-12**. Remote default
+`main` contains design merge `2b658cb`; remote `develop` is absent. This transition
+uses the existing active WIF provider and CI service account. The user approved
+only the provider's ref/workflow_ref branch change; no new roles, accounts, keys,
+APIs or Release permission settings are part of the transition.
+
+This code must be reviewed and merged by the user. The approved provider update
+is applied after local validation/review and before publishing the PR, only after confirming no release is in flight and current
+main still has the old develop-only workflow. Immediately before updating, compare fresh provider and SA policy with the approved
+baseline and stop on any drift. Verify only the two references changed afterward.
+The provider API has no atomic condition compare-and-set; these comparisons do not
+eliminate a concurrent same-field write, so do not automatically reset others’ changes.
+With both code and provider aligned,
+a new successful current-main push CI triggers automatic deployment. Do not
+manually deploy or rerun an obsolete SHA. See the [transition contract](../../docs/superpowers/specs/2026-10-12-web-deploy-main.md).
 
 ## Release contract
 
-`deploy-web.yml` listens for completed CI on develop. The read-only gate checks
-GitHub's run/jobs APIs: same repository, push event, develop, exact SHA, successful
-CI and ci-ok, and current develop still at that SHA. No PR or fork can enter the
+`deploy-web.yml` listens for completed CI on main. The read-only gate checks
+GitHub's run/jobs APIs: same repository, push event, main, exact SHA, successful
+CI and ci-ok, and current main still at that SHA. No PR or fork can enter the
 privileged job. Production releases share `ogu-web-production` concurrency and
 are not cancelled. Freshness is checked again before service update and promotion.
 A stale queued run fails closed; the newer successful push gets its own run.
@@ -26,7 +37,7 @@ of runtime/network/IAM configuration. No environment or secret values are saved.
 This prepared baseline is uploaded as a separate Actions artifact before any service
 mutation. A changed baseline aborts the deployment. The new revision starts with zero traffic and a unique verification tag. Checks
 cover Ready status, exact image digest, unchanged configuration and traffic,
-health UP, login HTML and icon. The current develop SHA is checked again, then
+health UP, login HTML and icon. The current main SHA is checked again, then
 100% traffic moves to the candidate; public health/assets are checked again.
 Only this release's verification tag is removed. Old revisions/images remain.
 
@@ -35,15 +46,21 @@ prevents a later infrastructure apply from reverting a released image. Terraform
 retains ownership of all runtime/IAM/network configuration. This PR does not
 apply Terraform or change those resources.
 
-## Separate setup approval required
+## Existing setup and separately approved changes
 
-Observed on 2026-10-12: no repo secrets/variables/environments and no GCP WIF pools.
-Before activation, request execution-time approval for the following specific
-resources and bindings in project `ogu-5959-prod` (number `161374563129`). No
+The existing provider `ogu-github/github-web` is ACTIVE; its repository-ID
+principal set already has workloadIdentityUser on the existing deployer.
+`GCP_WEB_DEPLOY_ENABLED` is already true and the provider/account variables are set.
+For this branch transition, update only the provider attributeCondition refs below;
+preserve issuer, mappings, audiences/state and existing service account bindings.
+Do not recreate the original setup or enable APIs again.
+
+The following original setup proposal is retained as historical scope. Any new
+resources or grants still need separate execution-time approval in project `ogu-5959-prod` (number `161374563129`). No
 existing personal credential or JSON service-account key is copied to GitHub.
 
 The official WIF prerequisites also require IAM, IAM Credentials, STS and Cloud
-Resource Manager APIs. Read-only inspection found `iam.googleapis.com` and
+Resource Manager APIs. At initial setup, read-only inspection found `iam.googleapis.com` and
 `iamcredentials.googleapis.com` already enabled; `sts.googleapis.com` and
 `cloudresourcemanager.googleapis.com` were absent from the enabled list. Include
 **enabling those two APIs in this project** in the separate setup approval. The
@@ -73,9 +90,9 @@ of the following (confirm exact claims before activation):
 ```text
 assertion.repository_owner_id == '61215550' &&
 assertion.repository_id == '1365536816' &&
-assertion.ref == 'refs/heads/develop' &&
+assertion.ref == 'refs/heads/main' &&
 assertion.event_name == 'workflow_run' &&
-assertion.workflow_ref == 'hyunolike/5959/.github/workflows/deploy-web.yml@refs/heads/develop'
+assertion.workflow_ref == 'hyunolike/5959/.github/workflows/deploy-web.yml@refs/heads/main'
 ```
 
 Map `google.subject=assertion.sub`, repository ID and owner ID attributes. Bind
@@ -86,11 +103,11 @@ serviceAccountTokenCreator unless a separately justified setup actually needs it
 The token is masked by the action, is passed through `CLOUDSDK_AUTH_ACCESS_TOKEN`,
 and is never included in source or release artifacts.
 
-After separate approval and reviewed setup, set:
+The already configured variables are:
 
 - `GCP_WEB_WORKLOAD_IDENTITY_PROVIDER`: the approved full provider resource name.
 - `GCP_WEB_DEPLOY_SERVICE_ACCOUNT`: the dedicated CI account email.
-- `GCP_WEB_DEPLOY_ENABLED`: `true` **last**, after the PR is reviewed and merged.
+- `GCP_WEB_DEPLOY_ENABLED`: `true`; main deployment remains gated by the approved provider condition, user merge and successful current-main push CI.
 
 Consider a protected production environment/required reviewer if the operator
 wants approval per release. That would require an explicit workflow and OIDC

@@ -1,5 +1,7 @@
 # Web deployment automation
 
+> Branch transition: the separately approved [main migration](2026-10-12-web-deploy-main.md) supersedes only the develop references below. This original contract is retained as history; all other release safeguards remain required.
+
 Approved scope: implement a Draft PR after the separately approved manual web release.
 No IAM, authentication, networking, database, or API changes are applied by this PR.
 
