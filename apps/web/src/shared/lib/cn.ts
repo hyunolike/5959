@@ -1,7 +1,7 @@
 import { type ClassValue, clsx } from "clsx";
 import { extendTailwindMerge } from "tailwind-merge";
 
-/** globals.css의 글자 단계와 모서리 이름. tailwind-merge가 글자 색이나 다른 유틸리티와 헷갈리지 않게 알려 준다. */
+/** globals.css의 글자 단계, 모서리, 그림자 이름. tailwind-merge가 글자 색이나 다른 유틸리티와 헷갈리지 않게 알려 준다. */
 const twMerge = extendTailwindMerge({
   extend: {
     classGroups: {
@@ -21,6 +21,7 @@ const twMerge = extendTailwindMerge({
         },
       ],
       rounded: [{ rounded: ["inline", "control", "surface"] }],
+      shadow: [{ shadow: ["game"] }],
     },
   },
 });

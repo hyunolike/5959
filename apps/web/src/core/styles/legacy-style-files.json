@@ -18,7 +18,6 @@
   "features/edit-profile/ui/profile-form.tsx": 16,
   "features/install-app/ui/home-install.tsx": 13,
   "features/onboarding/ui/onboarding-form.tsx": 14,
-  "features/raid-attack/ui/attack-button.tsx": 1,
   "features/write-post/ui/post-form.tsx": 18,
   "widgets/auth-welcome/ui/auth-welcome.tsx": 2,
   "widgets/emotion-stats-panel/ui/distribution-bar.tsx": 4,
