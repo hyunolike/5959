@@ -37,6 +37,17 @@ describe("hpPercent", () => {
   });
 });
 
+describe("hpPercent 살아 있는 동안", () => {
+  it("DS-US3-AC3 HP가 조금이라도 남으면 0%로 그리지 않는다", () => {
+    expect(hpPercent(40, 10000)).toBe(1);
+    expect(hpPercent(1, 10000)).toBe(1);
+  });
+
+  it("DS-US3-AC3 HP가 조금이라도 깎였으면 100%로 그리지 않는다", () => {
+    expect(hpPercent(9999, 10000)).toBe(99);
+  });
+});
+
 describe("HpBar", () => {
   it("DS-US3-AC1 작은 막대는 6px이고 진행 막대로 읽힌다", () => {
     render(<HpBar emotion="ANXIETY" hp={62} maxHp={100} />);

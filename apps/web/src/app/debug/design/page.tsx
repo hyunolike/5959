@@ -23,12 +23,17 @@ import { env } from "@/shared/config";
 import { formatRelativeTime } from "@/shared/lib";
 import {
   Button,
+  Card,
   Chip,
   GameButton,
   IconButton,
+  ListSkeleton,
+  Spinner,
   TextField,
   Textarea,
 } from "@/shared/ui";
+
+import { CatalogOverlays } from "./catalog-overlays";
 
 const EMOTIONS = Object.keys(EMOTION_LABELS) as EmotionType[];
 
@@ -123,6 +128,9 @@ export default function DesignCatalogPage() {
           <Button variant="ghost">글자만</Button>
           <Button variant="danger">삭제</Button>
           <Button disabled>잠김</Button>
+          <Button size="sm" variant="secondary">
+            작은 버튼
+          </Button>
         </div>
         <Button size="lg">
           로그인하고 다른 회원들의 마음 이야기를 처음부터 끝까지 읽어 보기
@@ -165,10 +173,25 @@ export default function DesignCatalogPage() {
           defaultValue="ogu@"
           error="이메일 형식이 아니에요"
         />
+        <TextField label="잠긴 입력" defaultValue="바꿀 수 없어요" disabled />
         <label className="flex flex-col gap-2">
           <span className="text-label text-fg-muted font-medium">고민</span>
           <Textarea placeholder="요즘 마음을 무겁게 하는 일을 적어 주세요" />
         </label>
+      </Section>
+
+      <Section title="면과 불러오는 중">
+        <Card data-testid="catalog-card">
+          <p className="text-body">테두리로 구분하는 면이에요.</p>
+        </Card>
+        <div data-testid="catalog-loading" className="flex flex-col gap-3">
+          <Spinner />
+          <ListSkeleton label="글" />
+        </div>
+      </Section>
+
+      <Section title="대화상자와 토스트">
+        <CatalogOverlays />
       </Section>
 
       <Section title="아이콘">
@@ -218,6 +241,22 @@ export default function DesignCatalogPage() {
         </ul>
         <div data-testid="emotion-fallback" className="bg-line h-1.5 w-full">
           <div className="bg-emotion h-full w-1/2" />
+        </div>
+        <div
+          data-emotion="UNKNOWN"
+          data-testid="emotion-unknown"
+          className="bg-line h-1.5 w-full"
+        >
+          <div className="bg-emotion h-full w-1/2" />
+        </div>
+      </Section>
+
+      <Section title="HP 막대의 끝">
+        <div data-testid="catalog-hp-edges" className="flex flex-col gap-3">
+          <HpBar emotion="IRRITATION" hp={0} maxHp={10000} size="lg" />
+          <HpBar emotion="IRRITATION" hp={40} maxHp={10000} size="lg" />
+          <HpBar emotion="LONELINESS" hp={9999} maxHp={10000} size="lg" />
+          <HpBar emotion="LETHARGY" hp={100} maxHp={100} size="lg" />
         </div>
       </Section>
 

@@ -41,16 +41,16 @@ test("DS-US2-AC2 버튼의 누르는 영역이 44px 이상이다", async ({ page
   expect(hitArea).toBeGreaterThanOrEqual(44);
 });
 
-test("DS-US1-AC3 감정마다 태그의 점과 HP 막대의 색이 같다", async ({
+test("DS-US1-AC3 감정마다 태그의 점과 HP 막대가 그 감정의 색이다", async ({
   page,
 }) => {
   await page.goto("/debug/design");
-  for (const emotion of [
-    "ANXIETY",
-    "LETHARGY",
-    "LONELINESS",
-    "SELF_DEPRECATION",
-    "IRRITATION",
+  for (const [emotion, expected] of [
+    ["ANXIETY", "rgb(139, 92, 246)"],
+    ["LETHARGY", "rgb(113, 135, 224)"],
+    ["LONELINESS", "rgb(53, 182, 211)"],
+    ["SELF_DEPRECATION", "rgb(138, 154, 60)"],
+    ["IRRITATION", "rgb(229, 72, 77)"],
   ]) {
     const row = page.getByTestId(`emotion-${emotion}`);
     const colors = await row.evaluate((element) => {
@@ -61,9 +61,56 @@ test("DS-US1-AC3 감정마다 태그의 점과 HP 막대의 색이 같다", asyn
         getComputedStyle(fill).backgroundColor,
       ];
     });
-    expect(colors[0]).toBe(colors[1]);
-    expect(colors[0]).not.toBe("rgba(0, 0, 0, 0)");
+    expect(colors).toEqual([expected, expected]);
   }
+});
+
+test("DS-US1-AC3 계약에 없는 감정 값은 회색으로 읽힌다", async ({ page }) => {
+  await page.goto("/debug/design");
+  const fill = await page
+    .getByTestId("emotion-unknown")
+    .evaluate(
+      (element) => getComputedStyle(element.firstElementChild!).backgroundColor,
+    );
+  expect(fill).toBe("rgb(107, 107, 118)");
+});
+
+test("DS-US2-AC4 대화상자와 토스트를 열어 볼 수 있다", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto("/debug/design");
+  await page.getByRole("button", { name: "대화상자 열기" }).click();
+  const dialog = page.getByRole("alertdialog", { name: "글을 지울까요?" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "취소" }).click();
+  await expect(dialog).toBeHidden();
+
+  await page.getByRole("button", { name: "토스트 띄우기" }).click();
+  const toast = page.getByText("새 댓글이 달렸어요");
+  await expect(toast).toBeVisible();
+  const border = await toast.evaluate(
+    (element) =>
+      getComputedStyle(element.closest("div.pointer-events-auto")!)
+        .borderTopColor,
+  );
+  expect(border).toBe("rgb(138, 138, 149)");
+});
+
+test("DS-US2-AC4 나머지 공용 컴포넌트와 상태가 카탈로그에 있다", async ({
+  page,
+}) => {
+  await page.goto("/debug/design");
+  await expect(page.getByRole("button", { name: "작은 버튼" })).toBeVisible();
+  await expect(page.getByLabel("잠긴 입력")).toBeDisabled();
+  await expect(page.getByTestId("catalog-card")).toBeVisible();
+  await expect(page.getByTestId("catalog-loading")).toBeVisible();
+  const widths = await page
+    .getByTestId("catalog-hp-edges")
+    .evaluate((element) =>
+      [...element.querySelectorAll('[role="progressbar"] > div')].map(
+        (fill) => (fill as HTMLElement).style.width,
+      ),
+    );
+  expect(widths).toEqual(["0%", "1%", "99%", "100%"]);
 });
 
 test("DS-US3-AC2 감정이 정해지지 않은 HP 막대도 색이 있다", async ({

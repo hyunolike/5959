@@ -2,10 +2,16 @@ import { cn } from "@/shared/lib";
 
 import type { EmotionType } from "../model/types";
 
-/** HP를 0~100의 정수 퍼센트로 바꾼다. 범위를 벗어나거나 읽을 수 없는 값은 0~100으로 자른다. */
+/**
+ * HP를 0~100의 정수 퍼센트로 바꾼다. 범위를 벗어나거나 읽을 수 없는 값은 0~100으로 자른다.
+ * 살아 있는 몬스터가 빈 막대로, 깎인 몬스터가 꽉 찬 막대로 보이지 않게 그 사이는 1~99로 둔다
+ * (보스는 최대 HP가 커서 반올림하면 마지막 몇십 HP가 0%가 된다).
+ */
 export function hpPercent(hp: number, maxHp: number): number {
   if (!Number.isFinite(hp) || !Number.isFinite(maxHp) || maxHp <= 0) return 0;
-  return Math.min(100, Math.max(0, Math.round((hp / maxHp) * 100)));
+  if (hp <= 0) return 0;
+  if (hp >= maxHp) return 100;
+  return Math.min(99, Math.max(1, Math.round((hp / maxHp) * 100)));
 }
 
 /**

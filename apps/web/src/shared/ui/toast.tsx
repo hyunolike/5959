@@ -86,7 +86,7 @@ function Toast({
 
   return (
     <div
-      className="rounded-surface border-line bg-surface pointer-events-auto flex w-full items-start border"
+      className="rounded-surface border-line-strong bg-surface pointer-events-auto flex w-full items-start border"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onFocus={() => setFocused(true)}
