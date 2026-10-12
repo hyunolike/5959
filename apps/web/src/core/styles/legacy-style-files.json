@@ -15,7 +15,6 @@
   "entities/comment/ui/my-comment-item.tsx": 9,
   "entities/monster/ui/monster-view.tsx": 8,
   "entities/notification/ui/notification-item.tsx": 13,
-  "entities/post/ui/post-card.tsx": 15,
   "entities/support-resource/ui/support-resource-list.tsx": 7,
   "entities/weekly-report/ui/weekly-report-item.tsx": 6,
   "features/auth/email-login/ui/login-form.tsx": 3,

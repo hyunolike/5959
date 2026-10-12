@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { MyCommentItem, useMyCommentsQuery } from "@/entities/comment";
 import { CAREER_YEAR_LABELS, JOB_ROLE_LABELS } from "@/entities/member";
-import { EMOTION_LABELS, MonsterDisplay } from "@/entities/monster";
+import { EMOTION_LABELS, EmotionTag, MonsterSummary } from "@/entities/monster";
 import {
   PostCard,
   useLikedPostsQuery,
@@ -127,9 +127,8 @@ function renderPost(item: FeedItem) {
       item={item}
       showCreatedAt
       authorMeta={`${JOB_ROLE_LABELS[item.author.jobRole]} · ${CAREER_YEAR_LABELS[item.author.careerYear]}`}
-      renderMonster={(monster) => (
-        <MonsterDisplay monster={monster} variant="card" />
-      )}
+      renderEmotion={(monster) => <EmotionTag emotion={monster.emotion} />}
+      renderMonster={(monster) => <MonsterSummary monster={monster} />}
     />
   );
 }

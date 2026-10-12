@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 
 import { CAREER_YEAR_LABELS, JOB_ROLE_LABELS } from "@/entities/member";
-import { MonsterDisplay } from "@/entities/monster";
+import { EmotionTag, MonsterSummary } from "@/entities/monster";
 import { PostCard, useFeedQuery, type FeedFilter } from "@/entities/post";
 import { useInfiniteScroll } from "@/shared/lib";
 import { Button, ListSkeleton, Spinner } from "@/shared/ui";
@@ -145,9 +145,10 @@ function FeedItems({ filter }: { filter: FeedFilter }) {
               item={item}
               authorMeta={`${JOB_ROLE_LABELS[item.author.jobRole]} · ${CAREER_YEAR_LABELS[item.author.careerYear]}`}
               showCreatedAt
-              renderMonster={(monster) => (
-                <MonsterDisplay monster={monster} variant="card" />
+              renderEmotion={(monster) => (
+                <EmotionTag emotion={monster.emotion} />
               )}
+              renderMonster={(monster) => <MonsterSummary monster={monster} />}
             />
           </li>
         ))}
