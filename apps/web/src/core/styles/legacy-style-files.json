@@ -36,7 +36,6 @@
   "widgets/my-activity/ui/my-activity.tsx": 6,
   "widgets/notification-list/ui/notification-list.tsx": 3,
   "widgets/post-detail/ui/post-comments.tsx": 6,
-  "widgets/post-detail/ui/post-detail.tsx": 17,
   "widgets/post-detail/ui/safety-notice.tsx": 10,
   "widgets/post-editor/ui/post-editor.tsx": 4,
   "widgets/raid-arena/ui/boss-banner.tsx": 8,

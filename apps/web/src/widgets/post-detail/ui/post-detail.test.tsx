@@ -294,4 +294,67 @@ describe("PostDetail 공감과 댓글", () => {
       within(myReply).getByRole("button", { name: "삭제" }),
     ).toBeInTheDocument();
   });
+
+  const ALIVE = {
+    analysisStatus: "ANALYZED",
+    monster: { emotion: "ANXIETY", hp: 20, maxHp: 20, status: "ALIVE" },
+  };
+
+  async function findStage() {
+    const monster = (
+      await screen.findByText(/^(HP \d+\/\d+|분석 중)$/)
+    ).closest('[aria-label="몬스터"]') as HTMLElement;
+    return monster.parentElement as HTMLElement;
+  }
+
+  it("DS-US3-AC2 무대가 글의 감정 색이고 몬스터와 공감 버튼을 담는다", async () => {
+    renderDetail(
+      jsonResponse({
+        success: true,
+        data: detail({ ...ALIVE, mine: false }),
+        error: null,
+      }),
+    );
+    const stage = await findStage();
+    expect(stage).toHaveAttribute("data-emotion", "ANXIETY");
+    expect(stage).toHaveClass("bg-emotion-tint");
+    expect(within(stage).getByRole("button", { name: "공감 0" })).toHaveClass(
+      "bg-game",
+    );
+    expect(within(stage).getByText("댓글 0")).toBeInTheDocument();
+  });
+
+  it("DS-US3-AC2 무대가 본문보다 먼저 온다", async () => {
+    renderDetail(
+      jsonResponse({ success: true, data: detail(ALIVE), error: null }),
+    );
+    const stage = await findStage();
+    const body = screen.getByText(/내일 발표가/);
+    expect(stage).not.toContainElement(body);
+    expect(
+      stage.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("US3-AC8 내 글의 무대에는 공감 버튼이 없고 공감 수만 있다", async () => {
+    renderDetail(
+      jsonResponse({
+        success: true,
+        data: detail({ ...ALIVE, mine: true, likeCount: 4 }),
+        error: null,
+      }),
+    );
+    const stage = await findStage();
+    expect(
+      within(stage).queryByRole("button", { name: /^공감/ }),
+    ).not.toBeInTheDocument();
+    expect(within(stage).getByText("공감 4")).toBeInTheDocument();
+  });
+
+  it("DS-US3-AC2 몬스터가 아직 없으면 무대는 감정 색 범위를 열지 않는다", async () => {
+    renderDetail(jsonResponse({ success: true, data: detail(), error: null }));
+    const stage = await findStage();
+    expect(stage).not.toHaveAttribute("data-emotion");
+    expect(within(stage).getByText("분석 중")).toBeInTheDocument();
+  });
 });
