@@ -11,7 +11,6 @@
   "app/report/[weekStart]/page.tsx": 1,
   "app/write/page.tsx": 2,
   "entities/comment/ui/comment-item.tsx": 8,
-  "entities/monster/ui/monster-view.tsx": 8,
   "entities/notification/ui/notification-item.tsx": 13,
   "entities/support-resource/ui/support-resource-list.tsx": 7,
   "entities/weekly-report/ui/weekly-report-item.tsx": 6,

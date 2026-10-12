@@ -5,23 +5,27 @@ import { useRef } from "react";
 import { cn } from "@/shared/lib";
 
 import { hpStageOfRatio, type HpStage } from "../model/hp-stage";
-import { EMOTION_MOTION } from "../model/sprite";
-import { EMOTION_LABELS, type MonsterView } from "../model/types";
+import { EMOTION_MOTION, STAGE_LABELS } from "../model/sprite";
+import type { MonsterView } from "../model/types";
+import { EmotionTag } from "./emotion-tag";
+import { HpBar } from "./hp-bar";
 import { MonsterSprite } from "./monster-sprite";
 import { useHitReaction } from "./use-hit-reaction";
 
-const DETAIL_SIZES = "(min-width: 640px) 224px, 192px";
-const BOSS_SIZES = "(min-width: 640px) 288px, 240px";
+const DETAIL_SIZES = "(min-width: 640px) 224px, 176px";
+const BOSS_SIZES = "(min-width: 640px) 288px, 248px";
 
 /**
- * 몬스터 자리(US5). 감정 이름, 몬스터 그림, HP 바와 숫자, 처치됨 표시를 보여 준다.
+ * 무대에 올리는 큰 몬스터(US5): 그림, 감정 태그와 단계 이름, 큰 HP 막대와 숫자.
  *
- * - `card`(피드): 그림과 감정 이름, HP를 작게 보인다.
- * - `detail`(글 상세), `boss`(레이드): 같은 그림을 크게 보이고 감정마다 다른 대기 움직임을 준다(떨림, 축 처짐 등).
- *   쓰러진 몬스터는 움직이지 않는다. 움직임 줄이기가 켜져 있으면 CSS가 움직임을 끈다.
+ * - `detail`(글 상세), `boss`(레이드): 같은 짜임이고 보스는 더 크게, 보스 그림으로 그린다(006 research R14).
+ *   감정마다 다른 대기 움직임을 준다(떨림, 축 처짐 등). 쓰러진 몬스터는 움직이지 않고 "처치됨"을 보인다.
+ *   움직임 줄이기가 켜져 있으면 CSS가 움직임을 끈다.
+ * - 목록의 작은 몬스터는 `MonsterSummary`를 쓴다.
  *
- * HP가 줄면 그림과 HP 바를 함께 흔든다(US3-AC10). 움직임 줄이기면 흔들지 않는다.
- * 그림은 ADR-0006의 캐릭터 그림이다. 앞서 쓰던 코드 생성 3D(ADR-0003)는 걷어 냈다.
+ * HP가 줄면 그림과 HP 막대를 함께 흔든다(US3-AC10). 움직임 줄이기면 흔들지 않는다.
+ * HP 글자("HP n/m")는 "처치됨"과 다른 요소에 둔다. e2e가 HP 글자만 골라 읽는다.
+ * 그림은 ADR-0006의 캐릭터 그림이다.
  */
 export function MonsterDisplay({
   monster,
@@ -33,95 +37,65 @@ export function MonsterDisplay({
     hp: number;
     maxHp: number;
   };
-  /** `boss`는 `detail`과 같되 더 크게, 보스 그림으로 그린다(006 research R14). */
-  variant: "detail" | "card" | "boss";
+  variant: "detail" | "boss";
   className?: string;
 }) {
-  const stage: HpStage =
-    monster.status === "DEFEATED"
-      ? "defeated"
-      : hpStageOfRatio(monster.hp / monster.maxHp);
-  const percent = Math.round((monster.hp / monster.maxHp) * 100);
+  const defeated = monster.status === "DEFEATED";
+  const stage: HpStage = defeated
+    ? "defeated"
+    : hpStageOfRatio(monster.hp / monster.maxHp);
+  const boss = variant === "boss";
 
   const rootRef = useRef<HTMLDivElement>(null);
   useHitReaction(monster.hp, rootRef);
 
-  const detail = variant !== "card";
-
   return (
     <div
       ref={rootRef}
-      className={cn(
-        detail ? "flex flex-col items-center gap-3" : "flex items-center gap-3",
-        className,
-      )}
+      data-emotion={monster.emotion}
+      className={cn("flex flex-col items-center gap-3", className)}
     >
       <div
         className={cn(
           "shrink-0",
-          variant === "boss"
-            ? "size-60 sm:size-72"
-            : detail
-              ? "size-48 sm:size-56"
-              : "size-10",
+          boss ? "size-62 sm:size-72" : "size-44 sm:size-56",
         )}
       >
         <MonsterSprite
           emotion={monster.emotion}
           stage={stage}
-          boss={variant === "boss"}
-          sizes={
-            variant === "card"
-              ? "40px"
-              : variant === "boss"
-                ? BOSS_SIZES
-                : DETAIL_SIZES
-          }
+          boss={boss}
+          sizes={boss ? BOSS_SIZES : DETAIL_SIZES}
           className={
-            detail && stage !== "defeated"
-              ? `monster-idle-${EMOTION_MOTION[monster.emotion]}`
-              : undefined
+            defeated
+              ? undefined
+              : `monster-idle-${EMOTION_MOTION[monster.emotion]}`
           }
         />
       </div>
-      <div className="flex w-full min-w-0 flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <p
-            className={
-              detail
-                ? "text-lg font-semibold text-neutral-900"
-                : "text-xs font-medium text-neutral-600"
-            }
-          >
-            {EMOTION_LABELS[monster.emotion]}
-          </p>
-          {monster.status === "DEFEATED" ? (
-            <span className="rounded-full bg-neutral-900 px-2 py-0.5 text-xs text-white">
-              처치됨
-            </span>
-          ) : null}
-        </div>
-        <div className="flex flex-col gap-2">
-          <div
-            role="progressbar"
-            aria-label="몬스터 HP"
-            aria-valuemin={0}
-            aria-valuemax={monster.maxHp}
-            aria-valuenow={monster.hp}
-            className={cn(
-              "w-full overflow-hidden rounded-full bg-neutral-200",
-              detail ? "h-3" : "h-1.5",
-            )}
-          >
-            <div
-              className="h-full rounded-full bg-red-500 transition-[width] motion-reduce:transition-none"
-              style={{ width: `${percent}%` }}
-            />
-          </div>
-          <p className="text-xs text-neutral-500 tabular-nums">
-            HP {monster.hp}/{monster.maxHp}
-          </p>
-        </div>
+      <div className="flex items-center gap-2">
+        <EmotionTag emotion={monster.emotion} />
+        {defeated ? (
+          <span className="bg-action text-caption text-on-action rounded-full px-2 py-0.5 font-medium">
+            처치됨
+          </span>
+        ) : (
+          <span className="text-label text-emotion-fg font-bold">
+            {STAGE_LABELS[stage]}
+          </span>
+        )}
+      </div>
+      <div className="flex w-full items-center gap-3">
+        <HpBar
+          emotion={monster.emotion}
+          hp={monster.hp}
+          maxHp={monster.maxHp}
+          size="lg"
+          className="flex-1"
+        />
+        <p className="text-body-sm text-fg font-extrabold whitespace-nowrap tabular-nums">
+          HP {monster.hp}/{monster.maxHp}
+        </p>
       </div>
     </div>
   );
