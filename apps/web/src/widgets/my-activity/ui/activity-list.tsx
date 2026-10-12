@@ -91,7 +91,10 @@ export function ActivityList<T>({
 
   return (
     <>
-      <ul aria-label={label} className="flex flex-col gap-3">
+      <ul
+        aria-label={label}
+        className="border-line divide-line flex flex-col divide-y border-y"
+      >
         {items.map((item) => (
           <li key={keyOf(item)}>{renderItem(item)}</li>
         ))}

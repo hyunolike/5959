@@ -12,23 +12,26 @@ export function MyCommentItem({ comment }: { comment: MyComment }) {
   return (
     <Link
       href={`/post/${comment.postId}`}
-      className="flex w-full flex-col gap-1 rounded-lg border border-neutral-200 bg-white px-4 py-3 transition-colors hover:border-neutral-300 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none"
+      className="hover:bg-surface-sunken flex w-full flex-col gap-1 px-5 py-4 transition-colors focus-visible:-outline-offset-2"
     >
       <span className="flex items-start gap-2">
         {comment.reply ? (
-          <span className="shrink-0 rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-700">
+          <span className="bg-surface-sunken text-caption text-fg-muted shrink-0 rounded-full px-2 py-0.5 font-medium">
             답글
           </span>
         ) : null}
-        <span className="text-sm break-words whitespace-pre-line text-neutral-900">
+        <span className="text-body-sm text-fg break-words whitespace-pre-line">
           {comment.content}
         </span>
       </span>
-      <span className="text-sm break-words text-neutral-500">
+      <span className="text-body-sm text-fg-subtle break-words">
         <span className="sr-only">댓글을 단 글: </span>
         {comment.postContentPreview}
       </span>
-      <time dateTime={comment.createdAt} className="text-xs text-neutral-500">
+      <time
+        dateTime={comment.createdAt}
+        className="text-caption text-fg-subtle"
+      >
         {formatDate(comment.createdAt, "YYYY.MM.DD HH:mm")}
       </time>
     </Link>

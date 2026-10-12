@@ -121,4 +121,17 @@ describe("PostCard", () => {
       "text-warning",
     );
   });
+
+  it("DS-US3-AC6 자리가 모자라면 몬스터가 눌리지 않고 공감과 댓글 수가 다음 줄 오른쪽으로 간다", () => {
+    render(
+      <PostCard
+        item={item()}
+        authorMeta="개발 · 1년차"
+        renderEmotion={() => null}
+        renderMonster={() => <p>몬스터</p>}
+      />,
+    );
+    expect(screen.getByText("몬스터").parentElement).toHaveClass("flex-auto");
+    expect(screen.getByText("댓글 2").parentElement).toHaveClass("ml-auto");
+  });
 });

@@ -61,14 +61,14 @@ export function PostCard({
         {item.contentPreview}
       </p>
       <div className="mt-3.5 flex flex-wrap items-center gap-x-3 gap-y-2">
-        <div aria-label="몬스터" className="min-w-0 flex-1">
+        <div aria-label="몬스터" className="min-w-0 flex-auto">
           {item.monster ? (
             renderMonster(item.monster)
           ) : (
             <p className="text-label text-fg-subtle">분석 중</p>
           )}
         </div>
-        <div className="text-label text-fg-muted flex shrink-0 items-center gap-3.5 font-medium tabular-nums">
+        <div className="text-label text-fg-muted ml-auto flex shrink-0 items-center gap-3.5 font-medium tabular-nums">
           <span className="inline-flex items-center gap-1">
             <Heart
               size={18}

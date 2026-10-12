@@ -26,12 +26,14 @@ export function MonsterSummary({
       <MonsterThumb emotion={monster.emotion} stage={stage} />
       <div
         data-emotion={monster.emotion}
-        className="flex w-28 min-w-0 flex-col gap-1.5"
+        className="flex w-28 shrink-0 flex-col gap-1.5"
       >
-        <p className="text-caption text-emotion-fg flex items-center gap-1.5 font-bold tabular-nums">
-          HP {monster.hp}/{monster.maxHp}
+        <p className="text-caption text-emotion-fg flex flex-wrap items-center gap-x-1.5 gap-y-0.5 font-bold tabular-nums">
+          <span className="whitespace-nowrap">
+            HP {monster.hp}/{monster.maxHp}
+          </span>
           {defeated ? (
-            <span className="bg-action text-on-action rounded-full px-1.5 font-medium">
+            <span className="bg-action text-on-action rounded-full px-1.5 font-medium whitespace-nowrap">
               처치됨
             </span>
           ) : null}
