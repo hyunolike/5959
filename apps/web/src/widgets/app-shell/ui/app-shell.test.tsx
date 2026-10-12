@@ -1,10 +1,18 @@
 import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import userEvent from "@testing-library/user-event";
 
 import { AppShell } from "./app-shell";
 
-const route = vi.hoisted(() => ({ pathname: "/home", pending: false }));
-vi.mock("next/navigation", () => ({ usePathname: () => route.pathname }));
+const route = vi.hoisted(() => ({
+  pathname: "/home",
+  pending: false,
+  replace: vi.fn(),
+}));
+vi.mock("next/navigation", () => ({
+  usePathname: () => route.pathname,
+  useRouter: () => ({ replace: route.replace }),
+}));
 vi.mock("next/link", async () => {
   const actual = await vi.importActual<typeof import("next/link")>("next/link");
   return { ...actual, useLinkStatus: () => ({ pending: route.pending }) };
@@ -13,9 +21,54 @@ vi.mock("next/link", async () => {
 beforeEach(() => {
   route.pathname = "/home";
   route.pending = false;
+  route.replace.mockReset();
 });
 
 describe("AppShell", () => {
+  it("GUEST-US1-AC2 익명 홈 메뉴는 같은 로그인 안내를 열고 취소하면 홈에 남는다", async () => {
+    const user = userEvent.setup();
+    render(
+      <AppShell authenticated={false}>
+        <h1>둘러보기</h1>
+      </AppShell>,
+    );
+    const nav = within(
+      screen.getByRole("navigation", { name: "모바일 주요 메뉴" }),
+    );
+    const trigger = nav.getByRole("link", { name: "고민 쓰기" });
+    await user.click(trigger);
+    const dialog = screen.getByRole("dialog", { name: "로그인이 필요해요" });
+    expect(dialog).toHaveAttribute("aria-modal", "true");
+    expect(
+      within(dialog).getByRole("button", { name: "계속 둘러보기" }),
+    ).toHaveFocus();
+    await user.click(
+      within(dialog).getByRole("button", { name: "계속 둘러보기" }),
+    );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+    expect(route.replace).not.toHaveBeenCalled();
+  });
+
+  it("GUEST-US1-AC3 로그인 확인은 선택한 내부 메뉴를 next로 보존하고 중복 이동하지 않는다", async () => {
+    const user = userEvent.setup();
+    render(
+      <AppShell authenticated={false}>
+        <h1>둘러보기</h1>
+      </AppShell>,
+    );
+    const nav = within(
+      screen.getByRole("navigation", { name: "모바일 주요 메뉴" }),
+    );
+    await user.click(nav.getByRole("link", { name: "내 마음 기록" }));
+    const confirm = within(screen.getByRole("dialog")).getByRole("button", {
+      name: "로그인하기",
+    });
+    await user.dblClick(confirm);
+    expect(route.replace).toHaveBeenCalledExactlyOnceWith("/login?next=%2Fmy");
+    expect(confirm).toBeDisabled();
+  });
+
   it("이동 대기는 실제 현재 위치와 분리하고 주소가 확정된 뒤에만 선택을 바꾼다", () => {
     route.pending = true;
     const { rerender } = render(
@@ -47,6 +100,7 @@ describe("AppShell", () => {
     ).not.toBeInTheDocument();
   });
   it("로그인 전에는 가입 화면에서 보호된 메뉴와 알림을 노출하지 않는다", () => {
+    route.pathname = "/signup";
     render(
       <AppShell
         authenticated={false}

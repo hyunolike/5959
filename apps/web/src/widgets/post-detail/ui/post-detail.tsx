@@ -1,6 +1,8 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
+import { ChevronLeft } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 import { CAREER_YEAR_LABELS, JOB_ROLE_LABELS } from "@/entities/member";
@@ -23,15 +25,55 @@ import { PostComments } from "./post-comments";
 import { SafetyNotice } from "./safety-notice";
 import { SimilarPosts } from "./similar-posts";
 
-/** 없거나 지운 글(404), 숫자가 아닌 글 ID(400). */
-export function PostNotFound() {
+const SURFACE_CLASS_NAME = "rounded-surface border border-neutral-200 bg-white";
+
+function BackToFeed() {
   return (
-    <Card className="w-full max-w-xl text-center">
-      <p role="alert" className="text-sm text-neutral-600">
-        {DELETED_POST_NOTICE}
+    <Link
+      href="/home"
+      className="-ml-1 inline-flex min-h-11 items-center gap-1 self-start rounded-sm text-sm font-medium text-neutral-600 hover:text-neutral-900"
+    >
+      <ChevronLeft size={18} aria-hidden />
+      마음 이야기
+    </Link>
+  );
+}
+
+/** 글을 보여 주지 못할 때의 안내. 오구와 함께 돌아갈 곳을 준다. */
+function Unavailable({
+  message,
+  tone,
+}: {
+  message: string;
+  tone: "neutral" | "error";
+}) {
+  return (
+    <Card className="w-full max-w-xl py-10 text-center sm:py-10">
+      <Image
+        src="/brand/ogu-companion.png"
+        alt=""
+        width={96}
+        height={79}
+        className="mx-auto mb-4 h-auto w-16 object-contain"
+      />
+      <p
+        role="alert"
+        className={
+          tone === "error" ? "text-sm text-red-600" : "text-sm text-neutral-600"
+        }
+      >
+        {message}
       </p>
+      <Button asChild variant="outline" className="mt-5">
+        <Link href="/home">마음 이야기로 돌아가기</Link>
+      </Button>
     </Card>
   );
+}
+
+/** 없거나 지운 글(404), 숫자가 아닌 글 ID(400). */
+export function PostNotFound() {
+  return <Unavailable message={DELETED_POST_NOTICE} tone="neutral" />;
 }
 
 function isNotFound(error: unknown): boolean {
@@ -52,7 +94,7 @@ export function PostDetail({ postId }: { postId: number }) {
 
   if (isPending) {
     return (
-      <Card className="flex w-full max-w-xl items-center justify-center">
+      <Card className="flex w-full max-w-xl items-center justify-center py-12 sm:py-12">
         <Spinner />
       </Card>
     );
@@ -64,11 +106,10 @@ export function PostDetail({ postId }: { postId: number }) {
 
   if (!data) {
     return (
-      <Card className="w-full max-w-xl text-center">
-        <p role="alert" className="text-sm text-red-600">
-          글을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
-        </p>
-      </Card>
+      <Unavailable
+        message="글을 불러오지 못했습니다. 잠시 후 다시 시도해주세요."
+        tone="error"
+      />
     );
   }
 
@@ -81,6 +122,7 @@ function PostDetailContent({ detail }: { detail: PostDetailData }) {
 
   return (
     <div className="flex w-full max-w-xl flex-col gap-4">
+      <BackToFeed />
       <article aria-label="고민 글" className="flex flex-col gap-4">
         {/* 내 글이 우려나 위기로 판정됐거나 숨겨졌을 때만 보인다(005 US1). 화면 맨 위에 둔다. */}
         <SafetyNotice
@@ -101,54 +143,56 @@ function PostDetailContent({ detail }: { detail: PostDetailData }) {
             />
           }
         />
-        <Card aria-label="몬스터" className="flex flex-col gap-2">
-          {monster ? (
-            <MonsterDisplay monster={monster} variant="detail" />
-          ) : (
-            <p
-              aria-live="polite"
-              className="py-4 text-center text-sm text-neutral-500"
-            >
-              분석 중
-            </p>
-          )}
-        </Card>
 
-        <Card className="flex flex-col gap-4">
-          <header className="flex items-start justify-between gap-2">
-            <div className="flex flex-col gap-0.5">
-              <p className="text-sm font-semibold text-neutral-900">
-                {author.nickname}
-              </p>
-              <p className="text-xs text-neutral-500">
-                {`${JOB_ROLE_LABELS[author.jobRole]} · ${CAREER_YEAR_LABELS[author.careerYear]}`}
-              </p>
-            </div>
-            {detail.mine ? (
-              <div className="flex shrink-0 items-center gap-1">
-                <Button asChild variant="ghost" size="sm">
-                  <Link href={`/post/${detail.postId}/edit`}>수정</Link>
-                </Button>
-                <DeletePostButton postId={detail.postId} />
+        {/* 읽는 순서: 본문 → 몬스터 → 공감. 몬스터는 공감 바로 위에 두어 반응이 함께 보인다. */}
+        <div className={SURFACE_CLASS_NAME}>
+          <div className="flex flex-col gap-4 p-5 sm:p-6">
+            <header className="flex items-start justify-between gap-2">
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <p className="text-sm font-bold break-words text-neutral-900">
+                  {author.nickname}
+                </p>
+                <p className="text-xs text-neutral-500">
+                  {`${JOB_ROLE_LABELS[author.jobRole]} · ${CAREER_YEAR_LABELS[author.careerYear]}`}
+                </p>
               </div>
+              {detail.mine ? (
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button asChild variant="ghost" size="sm">
+                    <Link href={`/post/${detail.postId}/edit`}>수정</Link>
+                  </Button>
+                  <DeletePostButton postId={detail.postId} />
+                </div>
+              ) : (
+                // 다른 회원의 글에만 신고를 둔다(005 US3-AC3).
+                <ReportButton targetType="POST" targetId={detail.postId} />
+              )}
+            </header>
+            <p className="text-base leading-8 break-words whitespace-pre-wrap text-neutral-900">
+              {detail.content}
+            </p>
+          </div>
+
+          <div
+            aria-label="몬스터"
+            className="flex flex-col gap-2 border-t border-neutral-200 px-5 py-4 sm:px-6"
+          >
+            {monster ? (
+              <MonsterDisplay monster={monster} variant="detail" />
             ) : (
-              // 다른 회원의 글에만 신고를 둔다(005 US3-AC3).
-              <ReportButton targetType="POST" targetId={detail.postId} />
+              <p
+                aria-live="polite"
+                className="py-4 text-center text-sm text-neutral-500"
+              >
+                분석 중
+              </p>
             )}
-          </header>
-          <p className="text-base whitespace-pre-wrap text-neutral-900">
-            {detail.content}
-          </p>
-          <dl className="flex items-center gap-2 text-xs">
-            <dt className="text-neutral-500">댓글 말투</dt>
-            <dd className="rounded-full bg-neutral-100 px-2 py-0.5 text-neutral-700">
-              {COMMENT_TONE_LABELS[detail.commentTone]}
-            </dd>
-          </dl>
+          </div>
+
           <div
             role="group"
             aria-label="공감과 댓글 수"
-            className="flex items-center gap-3 text-xs text-neutral-600 tabular-nums"
+            className="flex min-h-14 items-center gap-4 border-t border-neutral-200 px-5 py-2 text-sm text-neutral-700 tabular-nums sm:px-6"
           >
             {detail.mine ? (
               <span>공감 {detail.likeCount}</span>
@@ -157,11 +201,23 @@ function PostDetailContent({ detail }: { detail: PostDetailData }) {
             )}
             <span>댓글 {detail.commentCount}</span>
           </div>
-        </Card>
+        </div>
 
-        <Card>
+        <div className={`${SURFACE_CLASS_NAME} flex flex-col gap-4 p-5 sm:p-6`}>
+          <div className="flex flex-col gap-2">
+            <h2 className="text-base font-bold text-neutral-900">
+              이 고민에 달린 댓글
+            </h2>
+            {/* 댓글을 쓰는 자리에서 글쓴이가 듣고 싶은 말투를 먼저 본다. */}
+            <dl className="flex flex-wrap items-center gap-2 text-sm">
+              <dt className="text-neutral-600">댓글 말투</dt>
+              <dd className="bg-brand-50 text-brand-700 rounded-full px-2.5 py-0.5 font-bold">
+                {COMMENT_TONE_LABELS[detail.commentTone]}
+              </dd>
+            </dl>
+          </div>
           <PostComments postId={detail.postId} />
-        </Card>
+        </div>
       </article>
 
       {/* 추천은 이 글의 일부가 아니라 article 밖에 둔다(007). */}

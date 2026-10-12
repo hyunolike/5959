@@ -7,6 +7,10 @@ import type { ReactNode } from "react";
 
 import { cn } from "@/shared/lib";
 import { BrandMark } from "@/shared/ui";
+import {
+  GuestAccessProvider,
+  useGuestAccess,
+} from "@/features/auth/guest-access";
 import { NavigationItem } from "./navigation-item";
 
 const NAVIGATION = [
@@ -30,7 +34,37 @@ export function AppShell({
   authenticated: boolean;
   notification?: ReactNode;
 }) {
+  return (
+    <GuestAccessProvider authenticated={authenticated}>
+      <ShellContents authenticated={authenticated} notification={notification}>
+        {children}
+      </ShellContents>
+    </GuestAccessProvider>
+  );
+}
+
+function ShellContents({
+  children,
+  authenticated,
+  notification,
+}: {
+  children: ReactNode;
+  authenticated: boolean;
+  notification?: ReactNode;
+}) {
   const pathname = usePathname();
+  const { requestLogin } = useGuestAccess();
+  const showNavigation = authenticated || pathname === "/home";
+  const guestNavigation = (href: string) =>
+    !authenticated && href !== "/home"
+      ? {
+          prefetch: false,
+          onClick: (event: React.MouseEvent<HTMLAnchorElement>) => {
+            event.preventDefault();
+            requestLogin(href);
+          },
+        }
+      : {};
   const current = (href: string): "page" | "location" | undefined =>
     pathname === href
       ? "page"
@@ -49,7 +83,7 @@ export function AppShell({
         <div aria-hidden className="absolute inset-0 -z-10 bg-white/95" />
         <div className="mx-auto flex h-16 max-w-[1120px] items-center justify-between px-5 sm:h-18 sm:px-8">
           <Link
-            href={authenticated ? "/home" : "/login"}
+            href={showNavigation ? "/home" : "/login"}
             aria-label="오구오구 홈"
           >
             <BrandMark />
@@ -57,6 +91,13 @@ export function AppShell({
           <div className="flex items-center gap-3">
             {authenticated ? (
               notification
+            ) : showNavigation ? (
+              <Link
+                href="/login"
+                className="text-brand-700 inline-flex min-h-11 items-center text-sm font-bold"
+              >
+                로그인
+              </Link>
             ) : (
               <span className="hidden text-sm text-neutral-500 sm:block">
                 마음을 나누는 오구오구
@@ -68,12 +109,12 @@ export function AppShell({
       <div
         className={cn(
           "mx-auto flex w-full max-w-[1120px] flex-1 gap-12 px-5 sm:px-8",
-          authenticated
+          showNavigation
             ? "py-6 pb-[calc(104px+env(safe-area-inset-bottom))] md:py-10"
             : "py-8 sm:py-14",
         )}
       >
-        {authenticated ? (
+        {showNavigation ? (
           <aside className="sticky top-28 hidden h-fit w-44 shrink-0 md:block">
             <nav aria-label="주요 메뉴" className="flex flex-col gap-1">
               {NAVIGATION.map((item) => (
@@ -81,6 +122,8 @@ export function AppShell({
                   key={item.href}
                   {...item}
                   current={current(item.href)}
+                  locked={!authenticated && item.href !== "/home"}
+                  {...guestNavigation(item.href)}
                 />
               ))}
             </nav>
@@ -94,7 +137,7 @@ export function AppShell({
           {children}
         </main>
       </div>
-      {authenticated ? (
+      {showNavigation ? (
         <nav
           aria-label="모바일 주요 메뉴"
           className="fixed right-0 bottom-0 left-0 z-30 flex border-t border-neutral-200 bg-white px-3 pt-1 pb-[max(8px,env(safe-area-inset-bottom))] shadow-[0_-4px_24px_rgba(39,35,51,0.05)] md:hidden"
@@ -105,6 +148,8 @@ export function AppShell({
               {...item}
               current={current(item.href)}
               mobile
+              locked={!authenticated && item.href !== "/home"}
+              {...guestNavigation(item.href)}
             />
           ))}
         </nav>

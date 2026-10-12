@@ -16,17 +16,29 @@ const FOCUSABLE =
 
 let openingSequence = 0;
 let historyCleanup: Promise<void> | null = null;
+let cleanupTarget: { marker: string; openedUrl: string } | null = null;
 
 /** 닫기의 비동기 history 이동이 끝나기 전에는 새 안내창의 entry를 만들지 않는다. */
 function returnFromDialog(marker: string, openedUrl: string) {
+  // 같은 새로고침 entry를 여러 닫힌 안내가 발견해도 뒤로 가기는 한 번만 한다.
+  if (
+    historyCleanup &&
+    cleanupTarget?.marker === marker &&
+    cleanupTarget.openedUrl === openedUrl
+  )
+    return;
   let finish!: () => void;
   const pending = new Promise<void>((resolve) => {
     finish = resolve;
   });
   historyCleanup = pending;
+  cleanupTarget = { marker, openedUrl };
   const complete = () => {
     window.removeEventListener("popstate", complete);
-    if (historyCleanup === pending) historyCleanup = null;
+    if (historyCleanup === pending) {
+      historyCleanup = null;
+      cleanupTarget = null;
+    }
     finish();
   };
   window.addEventListener("popstate", complete, { once: true });
@@ -89,6 +101,14 @@ export function ConfirmDialog({
   const dialogRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
+  // 첫 렌더의 오래된 marker만 잡아 같은 렌더의 다른 열린 안내와 구분한다.
+  const staleHistoryMarker = useRef(
+    typeof window !== "undefined" &&
+      typeof history.state?.__oguDialog === "string" &&
+      history.state.__oguDialog.startsWith("ogu-dialog-")
+      ? (history.state.__oguDialog as string)
+      : null,
+  );
   // 부모가 다시 그릴 때마다 새 함수가 와도 아래 effect가 다시 돌지 않게(초점이 취소로 튀지 않게) ref로 읽는다.
   // layout effect라 같은 커밋에서 닫힐 때도 cleanup이 최신 값을 본다.
   const latest = useRef({ onCancel, pending, finalFocus });
@@ -98,8 +118,13 @@ export function ConfirmDialog({
 
   useEffect(() => {
     if (!open) {
+      const marker = staleHistoryMarker.current;
+      staleHistoryMarker.current = null;
+      if (dismissOnBack && marker)
+        returnFromDialog(marker, window.location.href);
       return;
     }
+    staleHistoryMarker.current = null;
     const opener =
       document.activeElement instanceof HTMLElement
         ? document.activeElement
@@ -212,7 +237,12 @@ export function ConfirmDialog({
       ref={overlayRef}
       className={`fixed inset-0 z-50 flex justify-center bg-neutral-950/40 ${presentation === "sheet" ? "items-end sm:items-center sm:p-4" : "items-center p-4"}`}
       onClick={(event) => {
-        if (event.target === event.currentTarget && !pending) {
+        // 안내를 연 더블클릭의 두 번째 클릭이 새 배경을 바로 닫지 않게 한다.
+        if (
+          event.target === event.currentTarget &&
+          event.detail <= 1 &&
+          !pending
+        ) {
           onCancel();
         }
       }}

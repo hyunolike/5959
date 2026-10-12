@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { LoaderCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
@@ -116,33 +117,37 @@ export function ProfileForm({ member }: { member: MemberProfile }) {
         : null;
 
   return (
-    <form onSubmit={onSubmit} noValidate className="flex w-full flex-col gap-4">
+    <form onSubmit={onSubmit} noValidate className="flex w-full flex-col gap-5">
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="nickname">닉네임</Label>
         <Input
           id="nickname"
           autoComplete="off"
           maxLength={10}
+          aria-invalid={!!errors.nickname}
+          aria-describedby="nickname-status"
           {...register("nickname")}
         />
-        {errors.nickname ? (
-          <p role="alert" className="text-sm text-red-600">
-            {errors.nickname.message}
-          </p>
-        ) : (
-          nicknameHint && (
+        <div id="nickname-status">
+          {errors.nickname ? (
+            <p role="alert" className="text-sm text-red-600">
+              {errors.nickname.message}
+            </p>
+          ) : nicknameHint ? (
             <p
               className={cn(
                 "text-sm",
                 settledNicknameResult?.available
                   ? "text-leaf-700"
-                  : "text-neutral-500",
+                  : "text-neutral-600",
               )}
             >
               {nicknameHint}
             </p>
-          )
-        )}
+          ) : (
+            <p className="text-xs text-neutral-500">최대 10자</p>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col gap-1.5">
@@ -184,13 +189,34 @@ export function ProfileForm({ member }: { member: MemberProfile }) {
         </p>
       )}
 
-      <div className="flex justify-end gap-2">
-        <Button asChild variant="outline">
-          <Link href={MY_PAGE}>취소</Link>
-        </Button>
-        <Button type="submit" disabled={!changed || isSubmitting}>
-          저장
-        </Button>
+      <div className="flex flex-col gap-2 border-t border-neutral-200 pt-4">
+        {/* 저장이 왜 잠겨 있는지 버튼 옆에서 말한다. */}
+        {!changed ? (
+          <p id="profile-save-hint" className="text-xs text-neutral-500">
+            바꾼 내용이 있으면 저장할 수 있어요.
+          </p>
+        ) : null}
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
+          <Button asChild variant="outline">
+            <Link href={MY_PAGE}>취소</Link>
+          </Button>
+          <Button
+            type="submit"
+            disabled={!changed || isSubmitting}
+            aria-busy={isSubmitting}
+            aria-describedby={!changed ? "profile-save-hint" : undefined}
+            className="sm:min-w-24"
+          >
+            {isSubmitting ? (
+              <LoaderCircle
+                aria-hidden
+                size={16}
+                className="motion-safe:animate-spin"
+              />
+            ) : null}
+            저장
+          </Button>
+        </div>
       </div>
     </form>
   );

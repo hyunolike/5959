@@ -7,6 +7,7 @@ import {
 } from "@/features/auth/oauth-buttons";
 import { env } from "@/shared/config";
 import { withNextPath } from "@/shared/lib";
+import { Card } from "@/shared/ui";
 import { AuthWelcome } from "@/widgets/auth-welcome";
 
 function firstValue(value: string | string[] | undefined): string | undefined {
@@ -23,9 +24,9 @@ export default async function LoginPage({
 
   return (
     <AuthWelcome>
-      <section className="mx-auto w-full max-w-sm">
+      <Card className="mx-auto w-full max-w-sm px-5 py-7 sm:p-9">
         <h1 className="text-2xl font-bold text-neutral-900">로그인</h1>
-        <p className="mt-2 text-sm text-neutral-500">
+        <p className="mt-1 text-sm text-neutral-600">
           오구오구에 다시 오신 걸 환영해요.
         </p>
         <div className="mt-4">
@@ -42,16 +43,24 @@ export default async function LoginPage({
         <div>
           <LoginForm next={next} />
         </div>
-        <p className="mt-7 text-center text-sm text-neutral-500">
-          아직 계정이 없나요?{" "}
+        <div className="mt-6 flex flex-col items-center border-t border-neutral-200 pt-4">
+          <p className="text-center text-sm text-neutral-600">
+            아직 계정이 없나요?{" "}
+            <Link
+              className="text-brand-700 ml-1 inline-flex min-h-11 items-center font-bold hover:underline"
+              href={withNextPath("/signup", next)}
+            >
+              회원가입
+            </Link>
+          </p>
           <Link
-            className="text-brand-700 ml-1 font-bold hover:underline"
-            href={withNextPath("/signup", next)}
+            href="/home"
+            className="inline-flex min-h-11 items-center text-sm font-medium text-neutral-600 underline underline-offset-4 hover:text-neutral-900"
           >
-            회원가입
+            먼저 둘러보기
           </Link>
-        </p>
-      </section>
+        </div>
+      </Card>
     </AuthWelcome>
   );
 }

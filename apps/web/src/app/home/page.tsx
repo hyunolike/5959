@@ -5,18 +5,25 @@ import { PencilLine } from "lucide-react";
 import { Suspense } from "react";
 
 import { useMeQuery } from "@/entities/member";
+import { useGuestAccess } from "@/features/auth/guest-access";
 import { LogoutButton } from "@/features/auth/logout";
 import { stopNotificationStream } from "@/features/notification-stream";
 import { HomeInstall } from "@/features/install-app";
-import { Button, Spinner } from "@/shared/ui";
+import { Button, ListSkeleton } from "@/shared/ui";
 import { FeedList } from "@/widgets/feed-list";
 import { BossBanner } from "@/widgets/raid-arena";
+import { GuestHome } from "@/widgets/guest-home";
 
 /**
  * 홈은 피드다(US2). 로그인과 온보딩은 proxy.ts의 라우트 가드가 먼저 확인한다
  * (온보딩 전이면 /onboarding으로 보낸다).
  */
 export default function HomePage() {
+  const { authenticated } = useGuestAccess();
+  return authenticated ? <MemberHome /> : <GuestHome />;
+}
+
+function MemberHome() {
   const { data: member, isError } = useMeQuery();
 
   return (
@@ -25,7 +32,7 @@ export default function HomePage() {
         <div>
           <h1 className="text-2xl font-bold text-neutral-900">마음 이야기</h1>
           {member?.nickname ? (
-            <p className="mt-1 text-xs text-neutral-500">
+            <p className="mt-1 text-sm text-neutral-600">
               {member.nickname}님, 반가워요
             </p>
           ) : null}
@@ -49,13 +56,7 @@ export default function HomePage() {
       <BossBanner />
       <HomeInstall />
       {/* 정렬과 필터를 주소 검색어에서 읽는다(useSearchParams). */}
-      <Suspense
-        fallback={
-          <div className="flex justify-center py-8">
-            <Spinner />
-          </div>
-        }
-      >
+      <Suspense fallback={<ListSkeleton label="피드" />}>
         <FeedList />
       </Suspense>
     </div>

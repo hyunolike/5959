@@ -86,9 +86,9 @@ export function PostComments({ postId }: { postId: number }) {
           댓글을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
         </p>
       ) : comments.length === 0 ? (
-        <p className="text-sm text-neutral-500">첫 댓글을 남겨 주세요.</p>
+        <p className="text-sm text-neutral-600">첫 댓글을 남겨 주세요.</p>
       ) : (
-        <ul className="flex flex-col gap-4">
+        <ul className="flex flex-col divide-y divide-neutral-100 [&>li]:py-4 [&>li:first-child]:pt-0">
           {comments.map((comment) => (
             <li key={comment.commentId}>
               <CommentItem
@@ -100,7 +100,7 @@ export function PostComments({ postId }: { postId: number }) {
                       <button
                         type="button"
                         onClick={() => setReplyTo(target)}
-                        className="rounded px-1 text-neutral-500 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none"
+                        className="focus-visible:ring-brand-600 inline-flex min-h-11 items-center rounded px-1 text-neutral-600 hover:text-neutral-900 focus-visible:ring-2 focus-visible:outline-none"
                       >
                         답글 달기
                       </button>

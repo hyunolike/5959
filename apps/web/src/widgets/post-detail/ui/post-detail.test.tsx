@@ -116,6 +116,9 @@ describe("PostDetail", () => {
     );
 
     expect(await screen.findByText("삭제된 글이에요.")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "마음 이야기로 돌아가기" }),
+    ).toHaveAttribute("href", "/home");
   });
 });
 

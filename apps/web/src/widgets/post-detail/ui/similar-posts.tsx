@@ -27,11 +27,11 @@ export function SimilarPosts({ postId }: { postId: number }) {
 
   const headingId = `similar-posts-${postId}`;
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-3">
-      <h2 id={headingId} className="text-sm font-semibold text-neutral-800">
+    <section aria-labelledby={headingId} className="mt-4 flex flex-col gap-3">
+      <h2 id={headingId} className="text-base font-bold text-neutral-900">
         {HEADINGS[data.basis]}
       </h2>
-      <ul className="flex flex-col gap-3">
+      <ul className="rounded-surface flex flex-col overflow-hidden border border-neutral-200 bg-white [&>li:last-child>a]:border-b-0">
         {data.items.map((item) => (
           <li key={item.postId}>
             <PostCard
