@@ -36,7 +36,7 @@ for (const viewport of [
     }));
     expect(layout.overflow).toBe(false);
     expect(layout.background).toBe("rgb(255, 255, 255)");
-    expect(layout.font).toContain("oguSans");
+    expect(layout.font).toContain("Pretendard");
     if (viewport.width < 768) {
       const google = await page
         .getByRole("link", { name: "구글로 계속하기" })
