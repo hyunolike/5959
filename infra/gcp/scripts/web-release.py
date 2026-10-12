@@ -3,6 +3,7 @@
 import argparse
 import copy
 import hashlib
+import http.client
 from html.parser import HTMLParser
 import io
 import json
@@ -180,6 +181,14 @@ class ReleaseInterrupted(Exception):
     """Signals must bypass retry catches and enter deployment recovery."""
 
 
+class ConditionalUpdateUncertain(RuntimeError):
+    """A transient response cannot prove whether the server applied the write."""
+
+
+class CleanupConflict(RuntimeError):
+    """An external change must not cause a cleanup retry or traffic rollback."""
+
+
 def deploy(cloud, image, suffix, tag, record=lambda data: None, prepared=None):
     cloud.fresh()
     journal = prepare(cloud, image, suffix, tag)
@@ -232,6 +241,9 @@ def deploy(cloud, image, suffix, tag, record=lambda data: None, prepared=None):
         journal.update(phase="success", traffic={revision: 100}); record(journal)
         return journal
     except Exception as failure:
+        if isinstance(failure, CleanupConflict):
+            journal["phase"] = "manual-recovery-required"; record(journal)
+            raise RuntimeError("cleanup observed an external change; manual recovery required") from failure
         journal["phase"] = "failed"; record(journal)
         try:
             current = cloud.describe()
@@ -303,18 +315,22 @@ class GCloud:
             with urllib.request.urlopen(request, timeout=30) as response:
                 response.read()  # Never print/store raw configuration responses.
         except urllib.error.HTTPError as error:
-            raise RuntimeError(f"conditional Cloud Run update failed (HTTP {error.code})") from None
-        except (urllib.error.URLError, TimeoutError):
-            raise RuntimeError("conditional Cloud Run update outcome uncertain") from None
+            kind = ConditionalUpdateUncertain if error.code >= 500 else RuntimeError
+            raise kind(f"conditional Cloud Run update failed (HTTP {error.code})") from None
+        except (urllib.error.URLError, TimeoutError, ConnectionError, http.client.HTTPException):
+            raise ConditionalUpdateUncertain("conditional Cloud Run update outcome uncertain") from None
         deadline = time.monotonic() + 120
         while time.monotonic() < deadline:
-            current = self.describe()
+            try:
+                current = self.describe()
+            except RuntimeError:
+                raise ConditionalUpdateUncertain("readiness observation unavailable after update") from None
             status = current["status"]
             if (int(status.get("observedGeneration", 0)) == int(current["metadata"].get("generation", 1))
                     and any(c.get("type") == "Ready" and c.get("status") in ("True", "False") for c in status.get("conditions", []))):
                 return
             time.sleep(3)
-        raise RuntimeError("conditional update readiness timed out")
+        raise ConditionalUpdateUncertain("conditional update readiness timed out")
 
     @staticmethod
     def explicit_traffic(observed):
@@ -338,6 +354,31 @@ class GCloud:
             desired["spec"]["traffic"] = [{"revisionName": k, "percent": v} for k, v in mapping.items()] + existing_tags
         self.replace(observed, change)
 
+    @staticmethod
+    def cleanup_state(service):
+        # Compare the whole desired configuration, not just the traffic summary.
+        # Controller resourceVersion/generation changes are not operator intent.
+        spec = copy.deepcopy(service["spec"])
+        targets = spec.pop("traffic", service.get("status", {}).get("traffic", []))
+        percentages, tagged = {}, {}
+        for target in targets:
+            revision = target.get("revisionName")
+            if target.get("latestRevision"):
+                revision = service.get("status", {}).get("latestReadyRevisionName")
+            if not revision:
+                raise CleanupConflict("traffic intent has no resolved revision")
+            percentages[revision] = percentages.get(revision, 0) + target.get("percent", 0)
+            if target.get("tag"):
+                tagged[target["tag"]] = revision
+        percentages = {r: p for r, p in percentages.items() if p}
+        metadata = service.get("metadata", {})
+        ignored = {"serving.knative.dev/creator", "serving.knative.dev/lastModifier",
+                   "run.googleapis.com/creatorEmail", "run.googleapis.com/lastModifierEmail",
+                   "run.googleapis.com/operation-id"}
+        return {"spec": spec, "traffic": percentages, "tags": tagged,
+                "labels": metadata.get("labels", {}),
+                "annotations": {k: v for k, v in metadata.get("annotations", {}).items() if k not in ignored}}
+
     def remove_tag(self, tag, observed):
         def change(desired):
             targets = self.explicit_traffic(observed)
@@ -345,7 +386,40 @@ class GCloud:
                 if target.get("tag") == tag:
                     target.pop("tag")
             desired["spec"]["traffic"] = [t for t in targets if t.get("percent", 0) or t.get("tag")]
-        self.replace(observed, change)
+        baseline = self.cleanup_state(observed)
+        desired = copy.deepcopy(observed); change(desired)
+        intended = self.cleanup_state(desired)
+        for attempt in range(3):
+            try:
+                self.replace(observed, change)
+                return
+            except ConditionalUpdateUncertain:
+                # A 503 may follow an accepted write. Never blindly resend it.
+                deadline = time.monotonic() + 120
+                while True:
+                    try:
+                        current = self.describe()
+                    except RuntimeError:
+                        if time.monotonic() >= deadline:
+                            raise CleanupConflict("cleanup outcome cannot be observed") from None
+                        time.sleep(3)
+                        continue
+                    actual = self.cleanup_state(current)
+                    if actual not in (baseline, intended):
+                        raise CleanupConflict("service changed during tag cleanup") from None
+                    try:
+                        settled(current)
+                        break
+                    except RuntimeError:
+                        if time.monotonic() >= deadline:
+                            raise CleanupConflict("cleanup outcome remains unreconciled") from None
+                        time.sleep(3)
+                if actual == intended:
+                    return
+                if attempt == 2:
+                    raise
+                # Still exactly our original state: retry under its fresh version.
+                observed = current
 
     def fresh(self):
         gate(self.run_id, self.sha)
