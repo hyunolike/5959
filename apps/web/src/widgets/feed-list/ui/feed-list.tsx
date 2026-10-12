@@ -9,7 +9,7 @@ import { CAREER_YEAR_LABELS, JOB_ROLE_LABELS } from "@/entities/member";
 import { MonsterDisplay } from "@/entities/monster";
 import { PostCard, useFeedQuery, type FeedFilter } from "@/entities/post";
 import { useInfiniteScroll } from "@/shared/lib";
-import { Button, Card, Spinner } from "@/shared/ui";
+import { Button, Spinner } from "@/shared/ui";
 
 import {
   parseFeedFilter,
@@ -72,11 +72,11 @@ function FeedItems({ filter }: { filter: FeedFilter }) {
 
   if (isError && items.length === 0) {
     return (
-      <Card className="text-center">
+      <div className="px-4 py-12 text-center">
         <p role="alert" className="text-sm text-red-600">
           피드를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
         </p>
-      </Card>
+      </div>
     );
   }
 
@@ -84,13 +84,13 @@ function FeedItems({ filter }: { filter: FeedFilter }) {
     const filtered =
       filter.jobRoles.length > 0 || filter.careerYears.length > 0;
     return (
-      <Card className="text-center">
+      <div className="px-4 py-12 text-center">
         <Image
           src="/brand/ogu-companion.png"
           alt=""
-          width={180}
-          height={150}
-          className="mx-auto mb-4 h-36 w-44 object-contain"
+          width={96}
+          height={79}
+          className="mx-auto mb-4 h-20 w-24 object-contain"
         />
         <p className="font-bold text-neutral-800">
           {filtered
@@ -100,25 +100,26 @@ function FeedItems({ filter }: { filter: FeedFilter }) {
         <p className="mt-2 text-sm text-neutral-500">
           {filtered
             ? "다른 직군이나 경력으로도 찾아보세요."
-            : "첫 이야기를 들려주세요. 당신의 마음에 귀 기울일게요."}
+            : "첫 이야기를 들려주세요."}
         </p>
         {!filtered ? (
           <Button asChild variant="outline" className="mt-5">
             <Link href="/write">첫 고민 남기기</Link>
           </Button>
         ) : null}
-      </Card>
+      </div>
     );
   }
 
   return (
     <>
-      <ul className="flex flex-col gap-3">
+      <ul className="flex flex-col">
         {items.map((item) => (
           <li key={item.postId}>
             <PostCard
               item={item}
               authorMeta={`${JOB_ROLE_LABELS[item.author.jobRole]} · ${CAREER_YEAR_LABELS[item.author.careerYear]}`}
+              showCreatedAt
               renderMonster={(monster) => (
                 <MonsterDisplay monster={monster} variant="card" />
               )}

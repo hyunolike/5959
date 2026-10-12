@@ -30,22 +30,33 @@ export function FeedControls({
 
   return (
     <div className="flex flex-col gap-3">
-      <div role="group" aria-label="정렬" className="flex gap-2">
+      <div
+        role="group"
+        aria-label="정렬"
+        className="flex gap-6 border-b border-neutral-200"
+      >
         {(Object.keys(ORDER_LABELS) as FeedOrder[]).map((order) => (
-          <Chip
+          <button
             key={order}
-            pressed={filter.order === order}
+            type="button"
+            aria-pressed={filter.order === order}
+            className={cn(
+              "min-h-11 border-b-2 px-1 text-sm transition-colors",
+              filter.order === order
+                ? "border-brand-600 text-brand-700 font-bold"
+                : "border-transparent text-neutral-500 hover:text-neutral-900",
+            )}
             onClick={() => onChange({ ...filter, order })}
           >
             {ORDER_LABELS[order]}
-          </Chip>
+          </button>
         ))}
       </div>
       <details
         open={filtered}
-        className="rounded-lg border border-neutral-200 bg-white p-3"
+        className="border-b border-neutral-200 bg-white pb-2"
       >
-        <summary className="focus-visible:ring-brand-600 flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-lg text-sm font-medium text-neutral-700 focus-visible:ring-2 focus-visible:outline-none">
+        <summary className="focus-visible:ring-brand-600 flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-sm text-sm font-medium text-neutral-600 focus-visible:ring-2 focus-visible:outline-none">
           <SlidersHorizontal size={16} aria-hidden />
           필터
           {filtered
@@ -132,10 +143,10 @@ function Chip({
       aria-pressed={pressed}
       onClick={onClick}
       className={cn(
-        "focus-visible:ring-brand-600 min-h-9 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
+        "focus-visible:ring-brand-600 min-h-9 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
         pressed
-          ? "border-brand-600 bg-brand-600 text-white"
-          : "hover:border-brand-200 hover:bg-brand-50 border-neutral-200 bg-white text-neutral-600",
+          ? "border-brand-200 bg-brand-50 text-brand-700"
+          : "border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300 hover:bg-neutral-50",
       )}
     >
       {children}

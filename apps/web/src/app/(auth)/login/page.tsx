@@ -5,7 +5,6 @@ import {
   OAuthButtons,
   OAuthLoginErrorNotice,
 } from "@/features/auth/oauth-buttons";
-import { Card } from "@/shared/ui";
 import { env } from "@/shared/config";
 import { withNextPath } from "@/shared/lib";
 import { AuthWelcome } from "@/widgets/auth-welcome";
@@ -24,10 +23,10 @@ export default async function LoginPage({
 
   return (
     <AuthWelcome>
-      <Card className="w-full px-6 py-8 sm:p-9">
+      <section className="mx-auto w-full max-w-sm">
         <h1 className="text-2xl font-bold text-neutral-900">로그인</h1>
         <p className="mt-2 text-sm text-neutral-500">
-          다시 만나 반가워요. 편하게 쉬어가세요.
+          오구오구에 다시 오신 걸 환영해요.
         </p>
         <div className="mt-4">
           <OAuthLoginErrorNotice error={error} />
@@ -52,7 +51,7 @@ export default async function LoginPage({
             회원가입
           </Link>
         </p>
-      </Card>
+      </section>
     </AuthWelcome>
   );
 }

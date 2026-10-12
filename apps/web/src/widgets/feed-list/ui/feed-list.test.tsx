@@ -89,6 +89,12 @@ describe("FeedList", () => {
     expect(await screen.findByText("고민 2")).toBeInTheDocument();
     expect(screen.getByText("고민 1")).toBeInTheDocument();
     expect(screen.getAllByText("디자인 · 3년차")).toHaveLength(2);
+    for (const link of screen.getAllByRole("link")) {
+      expect(link.querySelector("time")).toHaveAttribute(
+        "dateTime",
+        "2026-10-03T00:00:00Z",
+      );
+    }
   });
 
   it("US2-AC2 목록 끝이 보이면 다음 쪽을 이어 붙인다", async () => {
