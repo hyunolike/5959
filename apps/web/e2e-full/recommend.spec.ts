@@ -162,7 +162,9 @@ test("US1-AC7 글을 쓰고 상세로 가면 새로고침 없이 비슷한 고�
     .toBe(false);
 
   await viewer.page.goto("/write");
-  await viewer.page.getByLabel("고민").fill(`${topic} 이직 준비가 막막해요`);
+  await viewer.page
+    .getByRole("textbox", { name: "고민", exact: true })
+    .fill(`${topic} 이직 준비가 막막해요`);
   await viewer.page.getByRole("button", { name: "무조건 위로해주기" }).click();
   await viewer.page.getByRole("button", { name: "올리기" }).click();
   await viewer.page.waitForURL(/\/post\/\d+$/);

@@ -77,7 +77,9 @@ async function writePost(author: Member, content: string): Promise<number> {
 /** 글쓰기 화면에서 실제로 써서 올린다. 올리면 글 상세로 이동한다. */
 async function writePostOnScreen(author: Member, content: string) {
   await author.page.goto("/write");
-  await author.page.getByLabel("고민").fill(content);
+  await author.page
+    .getByRole("textbox", { name: "고민", exact: true })
+    .fill(content);
   await author.page.getByRole("button", { name: "무조건 위로해주기" }).click();
   await author.page.getByRole("button", { name: "올리기" }).click();
   await author.page.waitForURL(/\/post\/\d+$/);

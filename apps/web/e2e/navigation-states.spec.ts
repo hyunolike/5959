@@ -57,6 +57,9 @@ for (const width of [320, 390, 430, 1440]) {
     await expect(page).toHaveURL(/\/write$/);
     await expect(write).toHaveAttribute("aria-current", "page");
     await expect(home).not.toHaveAttribute("aria-current");
+    const content = page.getByRole("textbox", { name: "고민", exact: true });
+    await content.fill("로컬 검증용 입력입니다.");
+    await expect(content).toHaveValue("로컬 검증용 입력입니다.");
     const sizes = await nav.getByRole("link").evaluateAll((nodes) =>
       nodes.map((el) => ({
         width: el.getBoundingClientRect().width,
