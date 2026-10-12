@@ -15,3 +15,4 @@ export { EmotionTag } from "./ui/emotion-tag";
 export { HpBar, hpPercent } from "./ui/hp-bar";
 export { MonsterStage } from "./ui/monster-stage";
 export { MonsterThumb } from "./ui/monster-thumb";
+export { MonsterSummary } from "./ui/monster-summary";
