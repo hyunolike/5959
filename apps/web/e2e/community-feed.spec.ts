@@ -169,6 +169,37 @@ for (const viewport of [
       await expect(
         page.getByRole("article", { name: "고민 글" }),
       ).toBeVisible();
+      if (i === 0) {
+        // DS-US3-AC2: 무대는 글의 감정 색이고 큰 HP 막대와 게임 버튼이 있다.
+        const article = page.getByRole("article", { name: "고민 글" });
+        const stage = article.locator('[aria-label="몬스터"]').locator("..");
+        await expect(stage).toHaveCSS("background-color", "rgb(241, 235, 255)");
+        await expect(
+          article.getByRole("progressbar", { name: "몬스터 HP" }),
+        ).toHaveCSS("height", "22px");
+        await expect(
+          article.getByRole("button", { name: "공감 3", exact: true }),
+        ).toHaveCSS("background-color", "rgb(255, 214, 10)");
+        const monsterImage = article.getByRole("img", { name: /몬스터, / });
+        await expect
+          .poll(() =>
+            monsterImage.evaluate(
+              (image: HTMLImageElement) =>
+                image.complete && image.naturalWidth > 0,
+            ),
+          )
+          .toBe(true);
+        await page.evaluate(() => document.fonts.ready);
+        expect(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth > innerWidth,
+          ),
+        ).toBe(false);
+        await page.screenshot({
+          path: testInfo.outputPath("post-detail.png"),
+          fullPage: true,
+        });
+      }
       await page.goBack();
       await expect(page).toHaveURL(/\/home\?order=POPULAR$/);
       await expect(

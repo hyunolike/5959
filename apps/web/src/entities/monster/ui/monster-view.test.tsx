@@ -184,6 +184,8 @@ describe("MonsterDisplay 무대 모양", () => {
       "h-[22px]",
     );
     expect(screen.getByText("상처 입음")).toBeInTheDocument();
+    // 무대가 감정의 옅은 색이라 태그는 흰 면으로 구분한다.
+    expect(screen.getByText("외로움")).toHaveClass("bg-surface");
   });
 
   it("처치된 몬스터의 HP 글자는 처치됨과 다른 요소다", () => {

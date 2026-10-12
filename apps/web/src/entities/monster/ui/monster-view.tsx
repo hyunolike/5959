@@ -74,7 +74,7 @@ export function MonsterDisplay({
         />
       </div>
       <div className="flex items-center gap-2">
-        <EmotionTag emotion={monster.emotion} />
+        <EmotionTag emotion={monster.emotion} className="bg-surface" />
         {defeated ? (
           <span className="bg-action text-caption text-on-action rounded-full px-2 py-0.5 font-medium">
             처치됨
