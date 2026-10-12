@@ -107,4 +107,16 @@ describe("MonsterStage", () => {
     expect(stage).not.toHaveAttribute("data-emotion");
     expect(stage).toHaveClass("bg-emotion-tint");
   });
+
+  it("DS-US3-AC3 무대는 role과 이름을 넘겨받아 구역이 될 수 있다", () => {
+    render(
+      <MonsterStage emotion="IRRITATION" role="region" aria-label="보스">
+        <p>보스</p>
+      </MonsterStage>,
+    );
+    expect(screen.getByRole("region", { name: "보스" })).toHaveAttribute(
+      "data-emotion",
+      "IRRITATION",
+    );
+  });
 });

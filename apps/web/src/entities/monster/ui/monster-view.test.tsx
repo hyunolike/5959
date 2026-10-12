@@ -201,6 +201,53 @@ describe("MonsterDisplay 무대 모양", () => {
   });
 });
 
+describe("MonsterDisplay HP 숫자", () => {
+  function bossHpParagraph() {
+    return screen.getByText(
+      (_, element) =>
+        element?.tagName === "P" &&
+        /^HP [\d,]+\/[\d,]+$/.test(element.textContent ?? ""),
+    );
+  }
+
+  it("DS-US3-AC3 보스의 HP 숫자는 36px 단계이고 네 자리부터 쉼표를 넣는다", () => {
+    render(
+      <MonsterDisplay
+        monster={{
+          emotion: "IRRITATION",
+          hp: 4120,
+          maxHp: 10000,
+          status: "ALIVE",
+        }}
+        variant="boss"
+      />,
+    );
+    // 숫자마다 크기가 달라 여러 요소로 나뉜다. 문단 전체의 글자가 "HP n/m"인지 본다.
+    expect(bossHpParagraph()).toHaveTextContent(/^HP 4,120\/10,000$/);
+    expect(screen.getByText("4,120")).toHaveClass("text-numeric");
+  });
+
+  it("세 자리 이하 보스의 HP 글자는 그대로다", () => {
+    render(
+      <MonsterDisplay
+        monster={{ emotion: "LETHARGY", hp: 30, maxHp: 30, status: "ALIVE" }}
+        variant="boss"
+      />,
+    );
+    expect(bossHpParagraph()).toHaveTextContent(/^HP 30\/30$/);
+  });
+
+  it("상세의 HP 글자에는 쉼표를 넣지 않는다", () => {
+    render(
+      <MonsterDisplay
+        monster={{ emotion: "ANXIETY", hp: 1200, maxHp: 3000, status: "ALIVE" }}
+        variant="detail"
+      />,
+    );
+    expect(screen.getByText("HP 1200/3000")).toBeInTheDocument();
+  });
+});
+
 describe("MonsterDisplay 맞는 반응", () => {
   it("US3-AC10 HP가 줄면 그림과 HP 바를 함께 흔들고 바뀐 HP를 바로 보여 준다", () => {
     const { rerender } = render(

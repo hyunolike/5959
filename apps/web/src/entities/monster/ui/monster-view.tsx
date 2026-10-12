@@ -85,18 +85,41 @@ export function MonsterDisplay({
           </span>
         )}
       </div>
-      <div className="flex w-full items-center gap-3">
-        <HpBar
-          emotion={monster.emotion}
-          hp={monster.hp}
-          maxHp={monster.maxHp}
-          size="lg"
-          className="flex-1"
-        />
-        <p className="text-body-sm text-fg font-extrabold whitespace-nowrap tabular-nums">
-          HP {monster.hp}/{monster.maxHp}
-        </p>
-      </div>
+      {boss ? (
+        // 보스는 HP가 주인공이라 숫자를 막대 위에 크게 둔다. 글자의 전체 내용은 "HP n/m"이다.
+        <div className="flex w-full flex-col gap-2">
+          <p className="text-fg flex flex-wrap items-baseline tabular-nums">
+            <span className="text-body-sm text-fg-muted font-bold whitespace-pre">
+              {"HP "}
+            </span>
+            <span className="text-numeric font-extrabold">
+              {monster.hp.toLocaleString("ko-KR")}
+            </span>
+            <span className="text-body text-fg-muted font-medium">
+              /{monster.maxHp.toLocaleString("ko-KR")}
+            </span>
+          </p>
+          <HpBar
+            emotion={monster.emotion}
+            hp={monster.hp}
+            maxHp={monster.maxHp}
+            size="lg"
+          />
+        </div>
+      ) : (
+        <div className="flex w-full items-center gap-3">
+          <HpBar
+            emotion={monster.emotion}
+            hp={monster.hp}
+            maxHp={monster.maxHp}
+            size="lg"
+            className="flex-1"
+          />
+          <p className="text-body-sm text-fg font-extrabold whitespace-nowrap tabular-nums">
+            HP {monster.hp}/{monster.maxHp}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
