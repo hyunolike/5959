@@ -364,6 +364,22 @@ describe("PostDetail 공감과 댓글", () => {
     expect(within(stage).getByText("공감 4")).toBeInTheDocument();
   });
 
+  it("DS-US3-AC4 위기 안내는 감정 색 무대 밖에 있다", async () => {
+    renderDetail(
+      jsonResponse({
+        success: true,
+        data: detail({
+          ...ALIVE,
+          safety: { level: "CRISIS", hidden: true, reviewRequested: false },
+        }),
+        error: null,
+      }),
+    );
+    const notice = await screen.findByRole("region", { name: "도움 안내" });
+    expect(notice.closest("[data-emotion]")).toBeNull();
+    expect(await findStage()).not.toContainElement(notice);
+  });
+
   it("DS-US3-AC2 몬스터가 아직 없으면 무대는 감정 색 범위를 열지 않는다", async () => {
     renderDetail(jsonResponse({ success: true, data: detail(), error: null }));
     const stage = await findStage();

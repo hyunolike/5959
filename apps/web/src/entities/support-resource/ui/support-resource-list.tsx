@@ -18,18 +18,16 @@ export function SupportResourceList({ enabled = true }: { enabled?: boolean }) {
         {resources.map((resource) => (
           <li
             key={resource.phone}
-            className="flex flex-wrap items-baseline gap-x-2 text-sm"
+            className="text-body-sm flex flex-wrap items-baseline gap-x-2"
           >
-            <span className="font-medium text-neutral-900">
-              {resource.name}
-            </span>
+            <span className="text-fg font-medium">{resource.name}</span>
             <a
               href={`tel:${resource.phone.replaceAll("-", "")}`}
-              className="font-semibold text-neutral-900 underline underline-offset-2 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none"
+              className="text-fg font-bold underline underline-offset-2"
             >
               {resource.phone}
             </a>
-            <span className="text-xs text-neutral-600">
+            <span className="text-caption text-fg-subtle">
               {resource.hours} · {resource.description}
             </span>
           </li>
@@ -38,9 +36,9 @@ export function SupportResourceList({ enabled = true }: { enabled?: boolean }) {
     );
   }
   return isError ? (
-    <p className="text-sm text-neutral-900">
+    <p className="text-body-sm text-fg">
       자살예방상담전화{" "}
-      <a href="tel:109" className="font-semibold underline">
+      <a href="tel:109" className="font-bold underline">
         109
       </a>
     </p>

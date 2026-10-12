@@ -228,4 +228,15 @@ describe("worstSafetyOfMine", () => {
       reviewRequested: false,
     });
   });
+
+  it("DS-US3-AC4 위기 안내는 주의 색만 쓰고 감정 색과 게임 요소가 없다", async () => {
+    renderNotice(safety({ level: "CRISIS", hidden: true }));
+    const region = await screen.findByRole("region", { name: "도움 안내" });
+    expect(region).toHaveClass("bg-warning-tint", "border-warning");
+    expect(
+      region.querySelector(
+        '[data-emotion], [class*="emotion"], [class*="bg-game"], [class*="shadow-game"]',
+      ),
+    ).toBeNull();
+  });
 });

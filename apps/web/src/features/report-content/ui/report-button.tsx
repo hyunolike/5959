@@ -4,7 +4,7 @@ import { useId, useState } from "react";
 
 import { ApiError } from "@/shared/api";
 import { countGraphemes } from "@/shared/lib";
-import { ConfirmDialog } from "@/shared/ui";
+import { Button, ConfirmDialog, Textarea } from "@/shared/ui";
 
 import { useReportMutation } from "../api/use-report-mutation";
 import {
@@ -98,7 +98,7 @@ export function ReportButton({
 
   if (notice !== null) {
     return (
-      <span role="status" className="text-xs text-neutral-500">
+      <span role="status" className="text-caption text-fg-subtle">
         {notice}
       </span>
     );
@@ -106,16 +106,15 @@ export function ReportButton({
 
   return (
     <>
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="sm"
         onClick={() => setOpen(true)}
-        className={
-          className ??
-          "rounded px-1 text-xs text-neutral-500 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none"
-        }
+        className={className ?? "text-label px-2 font-medium"}
       >
         신고
-      </button>
+      </Button>
       <ConfirmDialog
         open={open}
         title={`이 ${target}을 신고할까요?`}
@@ -131,7 +130,7 @@ export function ReportButton({
           {REPORT_REASONS.map((option) => (
             <label
               key={option.value}
-              className="flex items-center gap-2 text-sm text-neutral-900"
+              className="text-body-sm text-fg flex items-center gap-2"
             >
               <input
                 type="radio"
@@ -149,21 +148,21 @@ export function ReportButton({
         </fieldset>
         {reason === "OTHER" ? (
           <div className="flex flex-col gap-1">
-            <label htmlFor={detailId} className="text-sm text-neutral-700">
+            <label htmlFor={detailId} className="text-body-sm text-fg-muted">
               어떤 점이 문제인지 알려 주세요 (선택)
             </label>
-            <textarea
+            <Textarea
               id={detailId}
               rows={3}
               value={detail}
               onChange={(event) => setDetail(event.target.value)}
-              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none"
+              className="text-body-sm min-h-20 resize-y px-3 py-2"
             />
             <p
               className={
                 detailTooLong
-                  ? "text-right text-xs text-red-600"
-                  : "text-right text-xs text-neutral-500"
+                  ? "text-caption text-danger text-right"
+                  : "text-caption text-fg-subtle text-right"
               }
             >
               {detailLength}/{REPORT_DETAIL_MAX_LENGTH}
