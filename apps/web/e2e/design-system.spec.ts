@@ -35,7 +35,7 @@ for (const viewport of [
       font: getComputedStyle(document.body).fontFamily,
     }));
     expect(layout.overflow).toBe(false);
-    expect(layout.background).toBe("rgb(247, 247, 251)");
+    expect(layout.background).toBe("rgb(255, 255, 255)");
     expect(layout.font).toContain("oguSans");
     if (viewport.width < 768) {
       const google = await page
