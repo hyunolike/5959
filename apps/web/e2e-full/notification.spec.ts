@@ -265,6 +265,47 @@ async function closeAll(...members: Member[]) {
   await Promise.all(members.map((member) => member.context.close()));
 }
 
+for (const viewport of [
+  { width: 1440, height: 1000 },
+  { width: 390, height: 844 },
+]) {
+  test(`US1-AC1 새 알림이 헤더와 모바일 메뉴를 가리지 않는다 (${viewport.width}px)`, async ({
+    browser,
+  }, testInfo) => {
+    const author = await newMember(browser, "ta");
+    const visitor = await newMember(browser, "tb");
+    try {
+      await author.page.setViewportSize(viewport);
+      const postId = await writePostAndWaitForMonster(
+        author,
+        "토스트 위치 확인",
+      );
+      await like(visitor, postId);
+      const notice = toast(author.page, `${visitor.nickname} 님이 공감했어요`);
+      await expect(notice).toBeVisible();
+      await notice.focus();
+      const rect = await author.page
+        .getByRole("region", { name: "새 알림" })
+        .boundingBox();
+      expect(rect).not.toBeNull();
+      expect(rect!.y).toBeGreaterThan(80);
+      expect(rect!.y + rect!.height).toBeLessThan(viewport.height);
+      if (viewport.width < 768) {
+        const menu = await author.page
+          .getByRole("navigation", { name: "모바일 주요 메뉴" })
+          .boundingBox();
+        expect(menu).not.toBeNull();
+        expect(rect!.y + rect!.height).toBeLessThan(menu!.y);
+      }
+      await author.page.screenshot({
+        path: testInfo.outputPath("notification.png"),
+      });
+    } finally {
+      await closeAll(author, visitor);
+    }
+  });
+}
+
 test("US1-AC1 다른 회원이 내 글에 댓글과 답글을 달면 새로고침 없이 토스트가 뜨고 배지가 늘어난다", async ({
   browser,
 }) => {
@@ -457,7 +498,10 @@ test("US1-AC8 로그인하지 않으면 알림 종이 없고 스트림 요청이
   await expect(page.getByRole("button", { name: "로그인" })).toBeVisible();
   await expect(bell(page)).toHaveCount(0);
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "오구오구" })).toBeVisible();
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(
+    page.getByRole("heading", { name: "로그인", level: 1 }),
+  ).toBeVisible();
   await expect(bell(page)).toHaveCount(0);
   expect(requests).toEqual([]);
 

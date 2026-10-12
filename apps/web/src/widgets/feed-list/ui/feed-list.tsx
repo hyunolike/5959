@@ -1,6 +1,8 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import Image from "next/image";
+import Link from "next/link";
 import { useMemo } from "react";
 
 import { CAREER_YEAR_LABELS, JOB_ROLE_LABELS } from "@/entities/member";
@@ -83,11 +85,28 @@ function FeedItems({ filter }: { filter: FeedFilter }) {
       filter.jobRoles.length > 0 || filter.careerYears.length > 0;
     return (
       <Card className="text-center">
-        <p className="text-sm text-neutral-600">
+        <Image
+          src="/brand/ogu-companion.png"
+          alt=""
+          width={180}
+          height={150}
+          className="mx-auto mb-4 h-36 w-44 object-contain"
+        />
+        <p className="font-bold text-neutral-800">
           {filtered
             ? "조건에 맞는 고민이 없어요."
             : "아직 올라온 고민이 없어요."}
         </p>
+        <p className="mt-2 text-sm text-neutral-500">
+          {filtered
+            ? "다른 직군이나 경력으로도 찾아보세요."
+            : "첫 이야기를 들려주세요. 당신의 마음에 귀 기울일게요."}
+        </p>
+        {!filtered ? (
+          <Button asChild variant="outline" className="mt-5">
+            <Link href="/write">첫 고민 남기기</Link>
+          </Button>
+        ) : null}
       </Card>
     );
   }

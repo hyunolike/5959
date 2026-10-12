@@ -1,5 +1,7 @@
 "use client";
 
+import { Bell } from "lucide-react";
+
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
@@ -77,19 +79,7 @@ export function NotificationBell() {
         data-stream-status={status}
         className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-neutral-700 hover:bg-neutral-200 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none"
       >
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 24 24"
-          className="h-6 w-6"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M6 9a6 6 0 1 1 12 0c0 5 2 6 2 6H4s2-1 2-6" />
-          <path d="M10 19a2 2 0 0 0 4 0" />
-        </svg>
+        <Bell aria-hidden size={22} strokeWidth={1.8} />
         {badge ? (
           <span
             aria-hidden="true"
@@ -100,7 +90,11 @@ export function NotificationBell() {
           </span>
         ) : null}
       </Link>
-      <Toaster toasts={toasts} onDismiss={dismiss} />
+      <Toaster
+        toasts={toasts}
+        onDismiss={dismiss}
+        className="bottom-[calc(6rem+env(safe-area-inset-bottom))] md:bottom-4"
+      />
     </>
   );
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { SlidersHorizontal } from "lucide-react";
+
 import { CAREER_YEAR_LABELS, JOB_ROLE_LABELS } from "@/entities/member";
 import type { FeedFilter, FeedOrder } from "@/entities/post";
 import { cn } from "@/shared/lib";
@@ -43,7 +45,8 @@ export function FeedControls({
         open={filtered}
         className="rounded-lg border border-neutral-200 bg-white p-3"
       >
-        <summary className="cursor-pointer text-sm font-medium text-neutral-700">
+        <summary className="focus-visible:ring-brand-600 flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-lg text-sm font-medium text-neutral-700 focus-visible:ring-2 focus-visible:outline-none">
+          <SlidersHorizontal size={16} aria-hidden />
           필터
           {filtered
             ? ` (${filter.jobRoles.length + filter.careerYears.length})`
@@ -129,10 +132,10 @@ function Chip({
       aria-pressed={pressed}
       onClick={onClick}
       className={cn(
-        "rounded-full border px-3 py-1 text-xs transition-colors",
+        "focus-visible:ring-brand-600 min-h-9 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
         pressed
-          ? "border-neutral-900 bg-neutral-900 text-white"
-          : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100",
+          ? "border-brand-600 bg-brand-600 text-white"
+          : "hover:border-brand-200 hover:bg-brand-50 border-neutral-200 bg-white text-neutral-600",
       )}
     >
       {children}

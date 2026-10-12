@@ -10,6 +10,7 @@ import { sanitizeNextPath } from "@/shared/lib";
  * | 경로 | 조건 | 동작 |
  * |---|---|---|
  * | `/` | `ogu_rt` 있음 | `/home` |
+ * | `/` | `ogu_rt` 없음 | `/login` |
  * | 보호 경로(`/home`, `/write`, `/post`, `/my`, `/settings`, `/notifications` 이하) | `ogu_rt` 없음 | `/login?next=<원래 경로>` |
  * | 보호 경로 | `ogu_rt` 있고 `ogu_ob` 없음 | `/onboarding` |
  * | `/onboarding` | `ogu_rt` 없음 | `/login` |
@@ -65,7 +66,7 @@ export function resolveRouteGuardAction(
   search = "",
 ): RouteGuardAction {
   if (pathname === "/") {
-    return cookies.hasRefreshToken ? redirect("/home") : null;
+    return redirect(cookies.hasRefreshToken ? "/home" : "/login");
   }
 
   if (isProtectedPath(pathname)) {

@@ -31,6 +31,7 @@ describe("proxy matcher", () => {
   });
 
   it("일반 페이지는 가드를 거친다", () => {
+    expect(middlewareRuns("/")).toBe(true);
     expect(middlewareRuns("/home")).toBe(true);
     expect(middlewareRuns("/login")).toBe(true);
   });

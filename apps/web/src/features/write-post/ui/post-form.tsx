@@ -72,7 +72,7 @@ export function PostForm({
           id="content"
           rows={8}
           placeholder="요즘 마음을 무겁게 하는 일을 적어 주세요."
-          className="w-full resize-y rounded-md border border-neutral-300 bg-white p-3 text-sm text-neutral-900 placeholder:text-neutral-400 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none"
+          className="focus-visible:ring-brand-600 w-full resize-y rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-sm leading-7 text-neutral-900 transition-colors placeholder:text-neutral-500 focus:bg-white focus-visible:ring-2 focus-visible:outline-none"
           {...register("content")}
         />
         <div className="flex items-start justify-between gap-2">

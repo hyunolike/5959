@@ -1,3 +1,6 @@
+import { MessageCircle } from "lucide-react";
+import Image from "next/image";
+
 import { Button } from "@/shared/ui";
 
 const PROVIDERS = [
@@ -26,7 +29,14 @@ export function OAuthButtons({
       {PROVIDERS.filter(({ id }) => id !== "kakao" || kakaoEnabled).map(
         ({ id, label }) => (
           <Button key={id} asChild variant="outline">
-            <a href={`/api/auth/oauth/${id}?${query}`}>{label}</a>
+            <a href={`/api/auth/oauth/${id}?${query}`}>
+              {id === "google" ? (
+                <Image src="/brand/google.png" alt="" width={18} height={18} />
+              ) : (
+                <MessageCircle size={18} aria-hidden />
+              )}
+              {label}
+            </a>
           </Button>
         ),
       )}

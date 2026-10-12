@@ -56,7 +56,7 @@ test("US4-AC1 인증 유효 시간이 지나도 보호 기능이 그대로 동�
   await page.goto("/my");
 
   await expect(page).toHaveURL(/\/my$/);
-  await expect(page.getByText(nickname)).toBeVisible();
+  await expect(page.getByText(nickname, { exact: true })).toBeVisible();
   // BFF가 만료된 access 토큰 대신 refresh로 새 토큰을 받았다(교체된 refresh 토큰).
   const refreshAfter = await cookieValue(page, "__Host-ogu_rt");
   expect(refreshAfter).toBeDefined();
@@ -85,7 +85,7 @@ test("US4-AC5 로그인하면 /my로 돌아온다", async ({ page }) => {
   await submitLogin(page, email);
 
   await page.waitForURL(/\/my$/);
-  await expect(page.getByText(nickname)).toBeVisible();
+  await expect(page.getByText(nickname, { exact: true })).toBeVisible();
 });
 
 test("US4-AC6 document.cookie에 ogu_ 쿠키가 없다", async ({ page }) => {

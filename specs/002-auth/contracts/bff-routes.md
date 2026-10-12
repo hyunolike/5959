@@ -79,7 +79,8 @@ apps/api가 JSON이 아닌 본문을 돌려주면(예상 밖의 5xx 오류 페�
 
 | 경로 | 조건 | 동작 |
 |---|---|---|
-| `/` | `ogu_rt` 있음 | `302 /home` |
+| `/` | `ogu_rt` 있음 | `307 /home` |
+| `/` | `ogu_rt` 없음 | `307 /login` |
 | 보호 경로(`/home`, `/write`, `/post`, `/my`, `/settings`, `/notifications` 이하) | `ogu_rt` 없음 | `302 /login?next=<원래 경로>` |
 | 같은 경로 | `ogu_rt` 있고 `ogu_ob` 없음 | `302 /onboarding` |
 | `/onboarding` | `ogu_rt` 없음 | `302 /login` |

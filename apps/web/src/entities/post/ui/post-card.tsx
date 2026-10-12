@@ -1,3 +1,5 @@
+import { Heart, MessageCircle } from "lucide-react";
+
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -30,16 +32,26 @@ export function PostCard({
   return (
     <Link
       href={`/post/${item.postId}`}
-      className="block rounded-lg focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none"
+      className="group focus-visible:ring-brand-600 block rounded-2xl focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
     >
-      <Card className="flex flex-col gap-4 transition-colors hover:border-neutral-300">
-        <div className="flex items-baseline gap-2">
-          <span className="font-medium text-neutral-900">
-            {item.author.nickname}
+      <Card className="hover:border-brand-200 flex flex-col gap-4 transition-[border-color,box-shadow] hover:shadow-sm">
+        <div className="flex items-center gap-3">
+          <span
+            aria-hidden
+            className="bg-brand-50 text-brand-700 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold"
+          >
+            {Array.from(item.author.nickname)[0]}
           </span>
-          <span className="text-xs text-neutral-500">{authorMeta}</span>
+          <div className="min-w-0">
+            <span className="font-bold text-neutral-900">
+              {item.author.nickname}
+            </span>
+            <span className="mt-0.5 block text-xs text-neutral-500">
+              {authorMeta}
+            </span>
+          </div>
         </div>
-        <p className="text-sm break-words whitespace-pre-line text-neutral-800">
+        <p className="text-sm leading-7 break-words whitespace-pre-line text-neutral-800">
           {item.contentPreview}
         </p>
         <div aria-label="몬스터">
@@ -49,14 +61,24 @@ export function PostCard({
             <p className="text-sm text-neutral-500">분석 중</p>
           )}
         </div>
-        <div className="flex items-center gap-3 text-xs text-neutral-600 tabular-nums">
-          <span>공감 {item.likeCount}</span>
+        <div className="flex flex-wrap items-center gap-3 border-t border-neutral-100 pt-4 text-xs text-neutral-600 tabular-nums">
+          <span className="inline-flex items-center gap-1.5">
+            <Heart
+              size={16}
+              aria-hidden
+              className={item.likedByMe ? "fill-brand-100 text-brand-700" : ""}
+            />
+            공감 {item.likeCount}
+          </span>
           {item.likedByMe ? (
-            <span className="rounded-full bg-red-50 px-2 py-0.5 text-red-600">
+            <span className="bg-brand-50 text-brand-700 rounded-full px-2 py-0.5">
               내가 공감함
             </span>
           ) : null}
-          <span>댓글 {item.commentCount}</span>
+          <span className="inline-flex items-center gap-1.5">
+            <MessageCircle size={16} aria-hidden />
+            댓글 {item.commentCount}
+          </span>
           {item.hidden ? (
             <span className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-800">
               {HIDDEN_FROM_OTHERS_LABEL}
