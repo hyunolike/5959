@@ -36,9 +36,9 @@ async function newMember(
   await page.getByLabel("경력").selectOption("YEAR_3");
   await page.getByRole("button", { name: "완료" }).click();
   await page.waitForURL("**/home");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    "님, 반가워요",
-  );
+  await expect(
+    page.getByText(`${nickname}님, 반가워요`, { exact: true }),
+  ).toBeVisible();
   return { page, nickname };
 }
 

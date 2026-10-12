@@ -65,9 +65,9 @@ test("US2-AC1 가입과 온보딩을 마친 사용자가 올바른 이메일과 
   await login(page, email);
 
   await page.waitForURL("**/home");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    `${nickname}님`,
-  );
+  await expect(
+    page.getByText(`${nickname}님, 반가워요`, { exact: true }),
+  ).toBeVisible();
 });
 
 test("US2-AC5 로그아웃하면 로그인 화면으로 이동하고, 뒤로 가기로 /home에 가도 이전 데이터가 보이지 않는다", async ({
@@ -78,9 +78,9 @@ test("US2-AC5 로그아웃하면 로그인 화면으로 이동하고, 뒤로 가
   await login(page, email);
   await page.waitForURL("**/home");
   await waitForHomeLoaded(page);
-  await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    `${nickname}님`,
-  );
+  await expect(
+    page.getByText(`${nickname}님, 반가워요`, { exact: true }),
+  ).toBeVisible();
 
   await page.getByRole("button", { name: "로그아웃" }).click();
   await page.waitForURL("**/login");

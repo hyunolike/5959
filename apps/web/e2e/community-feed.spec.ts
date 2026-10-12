@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { waitForHomeLoaded } from "../e2e-full/support/home";
 
 const author = {
   id: 2,
@@ -86,6 +87,7 @@ for (const viewport of [
       });
     });
     await page.goto("/home");
+    await waitForHomeLoaded(page);
     await expect(page.getByText(item.contentPreview)).toBeVisible();
     await expect(page.getByText("분석 중", { exact: true })).toBeVisible();
     await expect(
