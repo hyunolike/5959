@@ -130,6 +130,13 @@ describe("PostLikeButton", () => {
     );
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
+  it("DS-US3-AC2 글 공감은 게임 버튼이고 이름은 공감 수 그대로다", () => {
+    renderWithClient(<CachedPostLikeButton />);
+    const button = screen.getByRole("button", { name: "공감 2" });
+    expect(button).toHaveClass("bg-game", "shadow-game");
+    expect(button).toHaveAttribute("aria-pressed", "false");
+  });
+
   it("US3-AC8 내 글이면 공감 버튼을 보여 주지 않는다", () => {
     renderWithClient(<PostLikeButton detail={detail({ mine: true })} />);
     expect(screen.queryByRole("button")).not.toBeInTheDocument();

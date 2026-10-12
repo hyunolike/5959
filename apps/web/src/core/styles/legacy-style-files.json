@@ -22,7 +22,6 @@
   "features/edit-profile/ui/profile-form.tsx": 16,
   "features/install-app/ui/home-install.tsx": 13,
   "features/like/ui/comment-like-button.tsx": 7,
-  "features/like/ui/post-like-button.tsx": 1,
   "features/onboarding/ui/onboarding-form.tsx": 14,
   "features/raid-attack/ui/attack-button.tsx": 1,
   "features/report-content/ui/report-button.tsx": 11,
