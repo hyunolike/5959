@@ -360,9 +360,11 @@ test("US3-AC1, US3-AC2 다른 회원의 글과 댓글을 사유와 함께 신고
   await dialog.getByRole("textbox").fill("확인용 설명이에요");
   await dialog.getByRole("button", { name: "신고하기" }).click();
 
-  await expect(reporter.page.getByRole("status").first()).toHaveText(
-    "신고가 접수됐어요",
-  );
+  await expect(
+    reporter.page
+      .getByRole("status")
+      .filter({ hasText: /^신고가 접수됐어요$/ }),
+  ).toHaveText("신고가 접수됐어요");
   await expect(dialog).toHaveCount(0);
 
   // 댓글 신고
@@ -372,7 +374,9 @@ test("US3-AC1, US3-AC2 다른 회원의 글과 댓글을 사유와 함께 신고
   await comment.getByRole("button", { name: "신고" }).click();
   await dialog.getByRole("radio", { name: "욕설이나 비방이에요" }).check();
   await dialog.getByRole("button", { name: "신고하기" }).click();
-  await expect(comment.getByRole("status")).toHaveText("신고가 접수됐어요");
+  await expect(
+    comment.getByRole("status").filter({ hasText: /^신고가 접수됐어요$/ }),
+  ).toHaveText("신고가 접수됐어요");
 
   // 새로고침하면 신고 버튼이 다시 보인다(신고했다는 것을 서버가 알려 주지 않는다). 다시 신고하면 안내를 받는다
   await reporter.page.reload();
@@ -380,9 +384,11 @@ test("US3-AC1, US3-AC2 다른 회원의 글과 댓글을 사유와 함께 신고
   await dialog.getByRole("radio", { name: "광고나 도배예요" }).check();
   await dialog.getByRole("button", { name: "신고하기" }).click();
 
-  await expect(reporter.page.getByRole("status").first()).toHaveText(
-    "이미 신고한 글이에요",
-  );
+  await expect(
+    reporter.page
+      .getByRole("status")
+      .filter({ hasText: /^이미 신고한 글이에요$/ }),
+  ).toHaveText("이미 신고한 글이에요");
   // 신고해도 글은 그대로 보인다
   await expect(reporter.page.getByText("글쓴이가 단 댓글")).toBeVisible();
 
