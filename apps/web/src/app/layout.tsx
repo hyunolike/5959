@@ -1,29 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import localFont from "next/font/local";
 import { cookies } from "next/headers";
 
+import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 import "@/core/styles/globals.css";
 import { AppProviders } from "@/core/providers/app-providers";
 import { ONBOARDED_COOKIE, REFRESH_TOKEN_COOKIE } from "@/shared/server";
 import { AppShell } from "@/widgets/app-shell";
 import { NotificationBell } from "@/widgets/notification-bell";
-
-const oguSans = localFont({
-  src: [
-    {
-      path: "../shared/ui/fonts/SpoqaHanSansNeo-Regular.woff2",
-      weight: "400",
-      style: "normal",
-    },
-    {
-      path: "../shared/ui/fonts/SpoqaHanSansNeo-Bold.woff2",
-      weight: "700",
-      style: "normal",
-    },
-  ],
-  variable: "--font-ogu-sans",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "오구오구",
@@ -52,7 +35,7 @@ export default async function RootLayout({
     cookieStore.get(ONBOARDED_COOKIE)?.value === "1";
 
   return (
-    <html lang="ko" className={`${oguSans.variable} h-full antialiased`}>
+    <html lang="ko" className="h-full antialiased">
       <body className="flex min-h-full flex-col">
         <AppProviders>
           <AppShell
