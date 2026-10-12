@@ -76,29 +76,32 @@ export function WeeklyChart({
           );
         })}
       </ol>
-      <table className="sr-only">
-        <caption>최근 8주 감정별 몬스터 수</caption>
-        <thead>
-          <tr>
-            <th scope="col">주 시작일</th>
-            {weekly[0]?.counts.map((item) => (
-              <th key={item.emotion} scope="col">
-                {labels[item.emotion]}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {weekly.map((week) => (
-            <tr key={week.weekStart}>
-              <th scope="row">{week.weekStart}</th>
-              {week.counts.map((item) => (
-                <td key={item.emotion}>{item.count}</td>
+      {/* 표의 최소 콘텐츠 폭이 숨김 영역 밖에서 페이지를 넓히지 않도록 컨테이너를 자른다. */}
+      <div className="sr-only">
+        <table>
+          <caption>최근 8주 감정별 몬스터 수</caption>
+          <thead>
+            <tr>
+              <th scope="col">주 시작일</th>
+              {weekly[0]?.counts.map((item) => (
+                <th key={item.emotion} scope="col">
+                  {labels[item.emotion]}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {weekly.map((week) => (
+              <tr key={week.weekStart}>
+                <th scope="row">{week.weekStart}</th>
+                {week.counts.map((item) => (
+                  <td key={item.emotion}>{item.count}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

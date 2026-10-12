@@ -31,10 +31,10 @@ export function PostCard({
   return (
     <Link
       href={`/post/${item.postId}`}
-      className="group focus-visible:ring-brand-600 block border-b border-neutral-200 px-1 py-6 transition-colors hover:bg-neutral-50 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+      className="group focus-visible:ring-brand-600 hover:bg-brand-50 active:bg-brand-100 block border-b border-neutral-200 bg-white px-4 py-6 transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none sm:px-6"
     >
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs text-neutral-500">
-        <span className="font-bold break-words text-neutral-700">
+        <span className="text-sm font-bold break-words text-neutral-900">
           {item.author.nickname}
         </span>
         <span>{authorMeta}</span>
@@ -44,7 +44,7 @@ export function PostCard({
           </time>
         ) : null}
       </div>
-      <p className="mt-3 text-[15px] leading-7 break-words whitespace-pre-line text-neutral-900 sm:text-base">
+      <p className="mt-3 text-base leading-7 break-words whitespace-pre-line text-neutral-900 sm:text-base">
         {item.contentPreview}
       </p>
       <div aria-label="몬스터" className="mt-4 max-w-[260px]">

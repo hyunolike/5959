@@ -137,7 +137,7 @@ export function WriteCommentForm({
             type="button"
             onClick={cancelReply}
             aria-label="답글 취소"
-            className="rounded px-1 text-neutral-500 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none"
+            className="ogu-pressable rounded-control min-h-11 min-w-11 px-2 text-neutral-500 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none"
           >
             취소
           </button>
@@ -148,16 +148,22 @@ export function WriteCommentForm({
       </label>
       <textarea
         id={contentId}
+        aria-invalid={!!errors.content || overLimit}
+        aria-describedby={errors.content ? `${contentId}-error` : undefined}
         rows={3}
         placeholder={
           replyTo ? "답글을 남겨 주세요." : "따뜻한 한마디를 남겨 주세요."
         }
-        className="w-full resize-y rounded-md border border-neutral-300 bg-white p-3 text-sm text-neutral-900 placeholder:text-neutral-400 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none"
+        className="rounded-control focus-visible:border-brand-600 focus-visible:ring-brand-600 w-full resize-y border border-neutral-300 bg-white p-4 text-base leading-7 text-neutral-900 placeholder:text-neutral-500 hover:border-neutral-600 focus-visible:ring-2 focus-visible:outline-none aria-invalid:border-red-600"
         {...register("content")}
       />
       <div className="flex items-start justify-between gap-2">
         {errors.content ? (
-          <p role="alert" className="text-sm text-red-600">
+          <p
+            id={`${contentId}-error`}
+            role="alert"
+            className="text-sm text-red-600"
+          >
             {errors.content.message}
           </p>
         ) : errors.root ? (

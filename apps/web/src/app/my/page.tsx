@@ -22,14 +22,14 @@ import { MyActivity } from "@/widgets/my-activity";
 export default function MyPage() {
   return (
     <div className="flex w-full max-w-xl flex-col gap-6">
-      <header className="flex items-center justify-between gap-4">
-        <div>
+      <header className="flex flex-wrap items-center justify-between gap-4">
+        <div className="min-w-40">
           <p className="text-brand-700 mb-1 text-xs font-bold">
             나를 조금 더 알아가는 시간
           </p>
           <h1 className="text-2xl font-bold text-neutral-900">마이페이지</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2">
           <Button asChild variant="ghost" size="sm">
             <Link href="/home">피드로</Link>
           </Button>

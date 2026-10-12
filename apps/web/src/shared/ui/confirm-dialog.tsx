@@ -224,7 +224,7 @@ export function ConfirmDialog({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
-        className={`flex max-h-[85dvh] w-full max-w-sm flex-col gap-4 overflow-y-auto bg-white p-6 shadow-lg ${presentation === "sheet" ? "rounded-t-2xl pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:rounded-lg" : "rounded-lg"}`}
+        className={`flex max-h-[85dvh] w-full max-w-sm flex-col gap-4 overflow-y-auto bg-white p-6 shadow-lg ${presentation === "sheet" ? "sm:rounded-surface rounded-t-2xl pb-[max(1.5rem,env(safe-area-inset-bottom))]" : "rounded-surface"}`}
       >
         <div className="flex flex-col gap-1">
           <h2 id={titleId} className="text-base font-semibold text-neutral-900">

@@ -7,12 +7,18 @@ import type { ReactNode } from "react";
 
 import { cn } from "@/shared/lib";
 import { BrandMark } from "@/shared/ui";
+import { NavigationItem } from "./navigation-item";
 
 const NAVIGATION = [
-  { href: "/home", label: "마음 이야기", icon: House },
-  { href: "/raid", label: "함께 이겨내기", icon: Swords },
-  { href: "/write", label: "고민 쓰기", icon: PencilLine },
-  { href: "/my", label: "내 마음 기록", icon: UserRound },
+  { href: "/home", label: "마음 이야기", shortLabel: "이야기", icon: House },
+  { href: "/raid", label: "함께 이겨내기", shortLabel: "함께", icon: Swords },
+  {
+    href: "/write",
+    label: "고민 쓰기",
+    shortLabel: "고민 쓰기",
+    icon: PencilLine,
+  },
+  { href: "/my", label: "내 마음 기록", shortLabel: "기록", icon: UserRound },
 ];
 
 export function AppShell({
@@ -25,8 +31,12 @@ export function AppShell({
   notification?: ReactNode;
 }) {
   const pathname = usePathname();
-  const isActive = (href: string) =>
-    pathname === href || pathname.startsWith(`${href}/`);
+  const current = (href: string): "page" | "location" | undefined =>
+    pathname === href
+      ? "page"
+      : pathname.startsWith(`${href}/`)
+        ? "location"
+        : undefined;
   return (
     <>
       <a
@@ -58,27 +68,20 @@ export function AppShell({
       <div
         className={cn(
           "mx-auto flex w-full max-w-[1120px] flex-1 gap-12 px-5 sm:px-8",
-          authenticated ? "py-7 pb-28 md:py-10" : "py-8 sm:py-14",
+          authenticated
+            ? "py-6 pb-[calc(104px+env(safe-area-inset-bottom))] md:py-10"
+            : "py-8 sm:py-14",
         )}
       >
         {authenticated ? (
           <aside className="sticky top-28 hidden h-fit w-44 shrink-0 md:block">
             <nav aria-label="주요 메뉴" className="flex flex-col gap-1">
-              {NAVIGATION.map(({ href, label, icon: Icon }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  aria-current={isActive(href) ? "page" : undefined}
-                  className={cn(
-                    "flex min-h-12 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors",
-                    isActive(href)
-                      ? "bg-brand-50 text-brand-700"
-                      : "text-neutral-600 hover:bg-neutral-100",
-                  )}
-                >
-                  <Icon size={20} aria-hidden strokeWidth={1.8} />
-                  {label}
-                </Link>
+              {NAVIGATION.map((item) => (
+                <NavigationItem
+                  key={item.href}
+                  {...item}
+                  current={current(item.href)}
+                />
               ))}
             </nav>
           </aside>
@@ -94,21 +97,15 @@ export function AppShell({
       {authenticated ? (
         <nav
           aria-label="모바일 주요 메뉴"
-          className="fixed right-0 bottom-0 left-0 z-30 flex border-t border-neutral-200 bg-white px-2 pt-2 pb-[max(10px,env(safe-area-inset-bottom))] md:hidden"
+          className="fixed right-0 bottom-0 left-0 z-30 flex border-t border-neutral-200 bg-white px-3 pt-1 pb-[max(8px,env(safe-area-inset-bottom))] shadow-[0_-4px_24px_rgba(39,35,51,0.05)] md:hidden"
         >
-          {NAVIGATION.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              aria-current={isActive(href) ? "page" : undefined}
-              className={cn(
-                "flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-lg text-[11px] font-medium",
-                isActive(href) ? "text-brand-700" : "text-neutral-500",
-              )}
-            >
-              <Icon size={21} aria-hidden strokeWidth={1.8} />
-              {label}
-            </Link>
+          {NAVIGATION.map((item) => (
+            <NavigationItem
+              key={item.href}
+              {...item}
+              current={current(item.href)}
+              mobile
+            />
           ))}
         </nav>
       ) : (

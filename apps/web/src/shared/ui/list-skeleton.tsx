@@ -2,7 +2,10 @@ export function ListSkeleton({ label }: { label: string }) {
   return (
     <div role="status" aria-busy="true">
       <span className="sr-only">{label} 불러오는 중</span>
-      <div aria-hidden className="divide-y divide-neutral-200">
+      <div
+        aria-hidden
+        className="divide-y divide-neutral-200 bg-white px-4 sm:px-6"
+      >
         {[0, 1, 2].map((row) => (
           <div key={row} className="space-y-3 py-6">
             <div className="h-3 w-24 rounded bg-neutral-100" />

@@ -21,7 +21,7 @@ const GENERIC_ERROR_MESSAGE =
   "온보딩을 완료하지 못했습니다. 잠시 후 다시 시도해주세요.";
 
 const SELECT_CLASS_NAME =
-  "h-10 w-full rounded-md border border-neutral-300 bg-white px-3 text-sm text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50";
+  "h-12 w-full rounded-control border border-neutral-300 bg-white px-4 text-base text-neutral-900 transition-colors hover:border-neutral-600 focus-visible:border-brand-600 focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:outline-none disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500";
 
 /**
  * 온보딩 폼(닉네임, 직군, 경력). 완료하면 `/home`으로 이동한다(US1-AC4).
@@ -126,7 +126,7 @@ export function OnboardingForm({ next }: OnboardingFormProps) {
               className={cn(
                 "text-sm",
                 settledNicknameResult?.available
-                  ? "text-emerald-600"
+                  ? "text-leaf-700"
                   : "text-neutral-500",
               )}
             >

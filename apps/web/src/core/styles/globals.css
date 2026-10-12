@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #29292e;
+  --background: #f7f7fb;
+  --foreground: #272333;
   color-scheme: light;
 }
 
@@ -10,22 +10,29 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-ogu-sans);
-  --color-brand-50: #f1ebfb;
-  --color-brand-100: #e5daf7;
-  --color-brand-200: #d2bfed;
-  --color-brand-500: #8b69c6;
-  --color-brand-600: #7655b4;
-  --color-brand-700: #614095;
+  --color-brand-50: #f4f0ff;
+  --color-brand-100: #eee8ff;
+  --color-brand-200: #d8c9f8;
+  --color-brand-500: #8666e2;
+  --color-brand-600: #7252d6;
+  --color-brand-650: #6343c3;
+  --color-brand-700: #5938b6;
+  --color-leaf-50: #edf5e9;
+  --color-leaf-500: #78a86a;
+  --color-leaf-700: #426436;
   --color-neutral-50: #f8f8fa;
-  --color-neutral-100: #f1f1f4;
-  --color-neutral-200: #e4e4e9;
-  --color-neutral-300: #ccccd4;
+  --color-neutral-100: #efedf5;
+  --color-neutral-200: #e6e1ed;
+  --color-neutral-300: #8e839d;
   --color-neutral-400: #93939f;
-  --color-neutral-500: #6f6f7b;
+  --color-neutral-500: #716b7b;
   --color-neutral-600: #5f5f6b;
   --color-neutral-700: #484852;
   --color-neutral-800: #35353e;
-  --color-neutral-900: #29292e;
+  --color-neutral-900: #272333;
+  --radius-control: 12px;
+  --radius-surface: 20px;
+  --shadow-surface: 0 2px 10px rgba(39, 35, 51, 0.035);
   --color-neutral-950: #202025;
 }
 
@@ -38,8 +45,27 @@ body {
 }
 
 ::selection {
-  background: #e5daf7;
+  background: #eee8ff;
   color: #382946;
+}
+
+.ogu-pressable {
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ogu-pressable {
+    transition:
+      background-color 150ms ease,
+      border-color 150ms ease,
+      color 150ms ease,
+      transform 150ms ease;
+  }
+  .ogu-pressable:active:not(:disabled):not([aria-disabled="true"]) {
+    transform: scale(0.98);
+  }
 }
 
 /* Every interactive control shares a visible keyboard focus treatment. */
