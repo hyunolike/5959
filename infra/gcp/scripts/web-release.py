@@ -41,14 +41,14 @@ def eligible(run, jobs, current_sha, expected_sha):
     if not re.fullmatch(r"[a-f0-9]{40}", expected_sha):
         raise ValueError("invalid source SHA")
     required = {"name": "CI", "path": ".github/workflows/ci.yml", "event": "push",
-                "status": "completed", "conclusion": "success", "head_branch": "develop",
+                "status": "completed", "conclusion": "success", "head_branch": "main",
                 "head_sha": expected_sha}
     if any(run.get(k) != v for k, v in required.items()):
-        raise ValueError("CI run is not an eligible successful develop push")
+        raise ValueError("CI run is not an eligible successful main push")
     if any(run.get(k, {}).get("full_name") != REPO for k in ("repository", "head_repository")):
         raise ValueError("foreign repository cannot deploy")
     if current_sha != expected_sha:
-        raise ValueError("develop advanced; skip obsolete SHA")
+        raise ValueError("main advanced; skip obsolete SHA")
     if not any(j.get("name") == "ci-ok" and j.get("conclusion") == "success"
                and j.get("status") == "completed" for j in jobs):
         raise ValueError("successful ci-ok job is required")
@@ -60,7 +60,7 @@ def gate(run_id, sha):
     run = json.loads(command(["gh", "api", f"{root}/actions/runs/{run_id}"]))
     pages = json.loads(command(["gh", "api", "--paginate", "--slurp",
                                f"{root}/actions/runs/{run_id}/jobs?filter=latest&per_page=100"]))
-    current = json.loads(command(["gh", "api", f"{root}/git/ref/heads/develop"]))["object"]["sha"]
+    current = json.loads(command(["gh", "api", f"{root}/git/ref/heads/main"]))["object"]["sha"]
     return eligible(run, [j for p in pages for j in p["jobs"]], current, sha)
 
 

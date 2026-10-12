@@ -4,7 +4,7 @@ on:
   workflow_run:
     workflows: [CI]
     types: [completed]
-    branches: [develop]
+    branches: [main]
 
 # A release must finish recovery rather than be cancelled by a newer commit.
 concurrency:
@@ -20,7 +20,7 @@ jobs:
       vars.GCP_WEB_DEPLOY_ENABLED == 'true' &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push' &&
-      github.event.workflow_run.head_branch == 'develop' &&
+      github.event.workflow_run.head_branch == 'main' &&
       github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
     permissions:
@@ -32,9 +32,9 @@ jobs:
       # Read the gate from the trusted branch, never a PR/fork artifact.
       - uses: actions/checkout@v7
         with:
-          ref: develop
+          ref: main
           persist-credentials: false
-      - name: Verify exact CI SHA and current develop
+      - name: Verify exact CI SHA and current main
         id: gate
         env:
           GH_TOKEN: ${{ github.token }}
