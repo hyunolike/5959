@@ -1,0 +1,17 @@
+# Web-only source archive. No API/DB builds, build secrets or runtime settings.
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - apps/web/Dockerfile
+      - --label
+      - org.opencontainers.image.revision=${_SOURCE_SHA}
+      - -t
+      - ${_REGISTRY}/web:${_RELEASE}
+      - .
+images:
+  - ${_REGISTRY}/web:${_RELEASE}
+options:
+  logging: CLOUD_LOGGING_ONLY
+timeout: 1800s
