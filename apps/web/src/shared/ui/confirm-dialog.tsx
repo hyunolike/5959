@@ -235,7 +235,7 @@ export function ConfirmDialog({
   return createPortal(
     <div
       ref={overlayRef}
-      className={`fixed inset-0 z-50 flex justify-center bg-neutral-950/40 ${presentation === "sheet" ? "items-end sm:items-center sm:p-4" : "items-center p-4"}`}
+      className={`bg-scrim fixed inset-0 z-50 flex justify-center ${presentation === "sheet" ? "items-end sm:items-center sm:p-4" : "items-center p-4"}`}
       onClick={(event) => {
         // 안내를 연 더블클릭의 두 번째 클릭이 새 배경을 바로 닫지 않게 한다.
         if (
@@ -254,21 +254,21 @@ export function ConfirmDialog({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
-        className={`flex max-h-[85dvh] w-full max-w-sm flex-col gap-4 overflow-y-auto bg-white p-6 shadow-lg ${presentation === "sheet" ? "sm:rounded-surface rounded-t-2xl pb-[max(1.5rem,env(safe-area-inset-bottom))]" : "rounded-surface"}`}
+        className={`bg-surface flex max-h-[85dvh] w-full max-w-sm flex-col gap-4 overflow-y-auto p-6 ${presentation === "sheet" ? "sm:rounded-surface rounded-t-2xl pb-[max(1.5rem,env(safe-area-inset-bottom))]" : "rounded-surface"}`}
       >
         <div className="flex flex-col gap-1">
-          <h2 id={titleId} className="text-base font-semibold text-neutral-900">
+          <h2 id={titleId} className="text-fg text-base font-bold">
             {title}
           </h2>
           {description ? (
-            <p id={descriptionId} className="text-sm text-neutral-600">
+            <p id={descriptionId} className="text-fg-subtle text-sm">
               {description}
             </p>
           ) : null}
         </div>
         {children}
         {error ? (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-danger text-sm">
             {error}
           </p>
         ) : null}
