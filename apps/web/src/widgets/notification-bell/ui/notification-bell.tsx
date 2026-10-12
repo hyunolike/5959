@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell } from "lucide-react";
+import { Bell } from "@phosphor-icons/react";
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -77,14 +77,14 @@ export function NotificationBell() {
         prefetch={false}
         aria-label={badge ? `알림, 안 읽은 알림 ${badge}개` : "알림"}
         data-stream-status={status}
-        className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-neutral-700 hover:bg-neutral-200 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none"
+        className="text-fg hover:bg-surface-sunken relative inline-flex size-11 items-center justify-center rounded-full"
       >
-        <Bell aria-hidden size={22} strokeWidth={1.8} />
+        <Bell aria-hidden size={24} />
         {badge ? (
           <span
             aria-hidden="true"
             data-testid="notification-badge"
-            className="absolute -top-0.5 -right-0.5 min-w-5 rounded-full bg-red-600 px-1 text-center text-xs leading-5 font-semibold text-white"
+            className="bg-danger text-caption text-on-danger absolute -top-0.5 -right-0.5 min-w-5 rounded-full px-1 text-center leading-5 font-bold"
           >
             {badge}
           </span>

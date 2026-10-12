@@ -1,11 +1,10 @@
 "use client";
 
-import { Check, SlidersHorizontal } from "lucide-react";
+import { SlidersHorizontal } from "@phosphor-icons/react";
 
 import { CAREER_YEAR_LABELS, JOB_ROLE_LABELS } from "@/entities/member";
 import type { FeedFilter, FeedOrder } from "@/entities/post";
-import { cn } from "@/shared/lib";
-import { SelectionIndicator } from "@/shared/ui";
+import { Button, Chip } from "@/shared/ui";
 
 import {
   CAREER_YEARS,
@@ -30,42 +29,27 @@ export function FeedControls({
   const filtered = filter.jobRoles.length > 0 || filter.careerYears.length > 0;
 
   return (
-    <div className="flex flex-col gap-3">
-      <div
-        role="group"
-        aria-label="정렬"
-        className="relative grid w-44 grid-cols-2 border-b border-neutral-200"
-      >
+    <div className="flex flex-col gap-2">
+      <div role="group" aria-label="정렬" className="flex gap-2">
         {(Object.keys(ORDER_LABELS) as FeedOrder[]).map((order) => (
-          <button
+          <Chip
             key={order}
-            type="button"
-            aria-pressed={filter.order === order}
-            className={cn(
-              "focus-visible:ring-brand-600 ogu-pressable rounded-control active:bg-brand-100 min-h-11 px-1 text-sm focus-visible:ring-2 focus-visible:outline-none",
-              filter.order === order
-                ? "text-brand-700 font-bold"
-                : "text-neutral-500 hover:text-neutral-900",
-            )}
+            pressed={filter.order === order}
             onClick={() => onChange({ ...filter, order })}
           >
             {ORDER_LABELS[order]}
-          </button>
+          </Chip>
         ))}
-        <SelectionIndicator
-          index={filter.order === "POPULAR" ? 1 : 0}
-          count={2}
-        />
       </div>
-      <details open={filtered} className="border-b border-neutral-200 pb-2">
-        <summary className="focus-visible:ring-brand-600 flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-sm text-sm font-medium text-neutral-600 focus-visible:ring-2 focus-visible:outline-none">
-          <SlidersHorizontal size={16} aria-hidden />
+      <details open={filtered} className="pb-2">
+        <summary className="rounded-inline text-label text-fg-muted flex min-h-11 cursor-pointer list-none items-center gap-2 font-medium">
+          <SlidersHorizontal size={18} aria-hidden />
           필터
           {filtered
             ? ` (${filter.jobRoles.length + filter.careerYears.length})`
             : ""}
         </summary>
-        <div className="mt-3 flex flex-col gap-3">
+        <div className="mt-2 flex flex-col gap-3">
           <ChipGroup label="직군">
             {JOB_ROLES.map((jobRole) => (
               <Chip
@@ -99,15 +83,16 @@ export function FeedControls({
             ))}
           </ChipGroup>
           {filtered ? (
-            <button
-              type="button"
-              className="focus-visible:ring-brand-600 min-h-11 self-start rounded-sm text-xs text-neutral-600 underline underline-offset-4 hover:text-neutral-900 focus-visible:ring-2 focus-visible:outline-none"
+            <Button
+              variant="ghost"
+              size="sm"
+              className="self-start underline underline-offset-4"
               onClick={() =>
                 onChange({ ...DEFAULT_FEED_FILTER, order: filter.order })
               }
             >
               필터 지우기
-            </button>
+            </Button>
           ) : null}
         </div>
       </details>
@@ -123,36 +108,10 @@ function ChipGroup({
   children: React.ReactNode;
 }) {
   return (
-    <div role="group" aria-label={label} className="flex flex-col gap-1.5">
-      <span className="text-xs text-neutral-500">{label}</span>
-      <div className="flex flex-wrap gap-1.5">{children}</div>
+    <div role="group" aria-label={label} className="flex flex-col gap-2">
+      <span className="text-caption text-fg-subtle">{label}</span>
+      {/* 칩의 누르는 영역이 위아래로 5px씩 넓어서, 줄 사이를 12px로 둬 겹치지 않게 한다. */}
+      <div className="flex flex-wrap gap-x-2 gap-y-3">{children}</div>
     </div>
-  );
-}
-
-function Chip({
-  pressed,
-  onClick,
-  children,
-}: {
-  pressed: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={pressed}
-      onClick={onClick}
-      className={cn(
-        "focus-visible:ring-brand-600 ogu-pressable rounded-control inline-flex min-h-11 items-center gap-1.5 border px-3 py-1.5 text-xs font-medium focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
-        pressed
-          ? "border-brand-600 bg-brand-100 text-brand-700 font-bold"
-          : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100 active:bg-neutral-200",
-      )}
-    >
-      {pressed ? <Check aria-hidden size={14} strokeWidth={2.5} /> : null}
-      {children}
-    </button>
   );
 }

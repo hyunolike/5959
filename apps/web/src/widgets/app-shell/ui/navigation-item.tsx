@@ -1,10 +1,10 @@
 "use client";
 
-import { m } from "framer-motion";
-import { LoaderCircle, Lock, type LucideIcon } from "lucide-react";
+import { CircleNotch, LockSimple, type Icon } from "@phosphor-icons/react";
 import Link, { useLinkStatus } from "next/link";
 import { useId, type MouseEventHandler } from "react";
-import { cn, useReducedMotionPreference } from "@/shared/lib";
+
+import { cn } from "@/shared/lib";
 
 export function NavigationItem({
   href,
@@ -20,7 +20,7 @@ export function NavigationItem({
   href: string;
   label: string;
   shortLabel: string;
-  icon: LucideIcon;
+  icon: Icon;
   current?: "page" | "location";
   mobile?: boolean;
   /** 익명에게 로그인 안내를 먼저 여는 메뉴. 이름은 그대로 두고 설명으로만 알린다. */
@@ -38,11 +38,11 @@ export function NavigationItem({
       aria-current={current}
       aria-describedby={locked ? lockedId : undefined}
       className={cn(
-        "ogu-pressable group relative rounded-xl focus-visible:outline-offset-2",
+        "ogu-pressable group rounded-control relative",
         mobile ? "min-h-16 min-w-0 flex-1" : "min-h-12",
         current
-          ? "text-brand-700"
-          : "text-neutral-600 hover:bg-neutral-100 active:bg-neutral-200",
+          ? "text-fg"
+          : "text-fg-subtle hover:bg-surface-sunken active:bg-line",
       )}
     >
       <NavigationContents
@@ -66,20 +66,20 @@ export function NavigationItem({
 function NavigationContents({
   label,
   shortLabel,
-  icon: Icon,
+  icon: NavIcon,
   selected,
   mobile,
   locked,
 }: {
   label: string;
   shortLabel: string;
-  icon: LucideIcon;
+  icon: Icon;
   selected: boolean;
   mobile: boolean;
   locked: boolean;
 }) {
   const { pending } = useLinkStatus();
-  const reduce = useReducedMotionPreference();
+  const weight = selected ? "fill" : "regular";
   return (
     <span
       data-navigation-pending={pending}
@@ -88,72 +88,53 @@ function NavigationContents({
         mobile
           ? "flex-col items-center justify-center py-1"
           : "items-center gap-3 px-3 py-2",
-        selected && !mobile && "bg-brand-50 rounded-xl",
+        selected && !mobile && "rounded-control bg-surface-sunken",
       )}
     >
       <span
         aria-busy={pending}
-        className={cn("flex items-center", mobile ? "flex-col gap-1" : "gap-3")}
+        className={cn(
+          "flex items-center",
+          mobile ? "flex-col gap-0.5" : "gap-3",
+        )}
       >
-        <span
-          className={cn(
-            "relative flex shrink-0 items-center justify-center rounded-2xl",
-            mobile ? "h-8 w-12" : "size-8",
-            pending && "text-brand-700",
-          )}
-        >
-          {/* 선택은 채운 자리로, 이동 대기는 채움 없이 돌아가는 표시로 구분한다. */}
-          <m.span
+        <span className="relative flex size-8 shrink-0 items-center justify-center">
+          {/* 선택은 채운 아이콘으로, 이동 대기는 돌아가는 표시로 구분한다. */}
+          <NavIcon
             aria-hidden
-            initial={false}
-            animate={{ opacity: selected ? 1 : 0, scale: selected ? 1 : 0.9 }}
-            transition={{ duration: reduce ? 0 : 0.15 }}
-            className="bg-brand-100 absolute inset-0 rounded-2xl"
-          />
-          <Icon
-            aria-hidden
-            size={mobile ? 21 : 20}
-            strokeWidth={selected ? 2.4 : 1.8}
-            className={cn("relative", pending && "opacity-0")}
+            size={24}
+            weight={weight}
+            data-icon-weight={weight}
+            className={cn(pending && "opacity-0")}
           />
           {pending ? (
-            <LoaderCircle
-              size={18}
+            <CircleNotch
+              size={20}
               aria-hidden
-              className="text-brand-700 absolute motion-safe:animate-spin"
+              className="absolute motion-safe:animate-spin"
             />
           ) : null}
           {locked && !pending ? (
             <span
               aria-hidden
-              className={cn(
-                "absolute flex size-4 items-center justify-center rounded-full bg-white text-neutral-500",
-                mobile ? "-top-0.5 right-1.5" : "-top-1 -right-1",
-              )}
+              className="bg-surface text-fg-subtle absolute -top-0.5 -right-1 flex size-4 items-center justify-center rounded-full"
             >
-              <Lock size={10} strokeWidth={2.4} />
+              <LockSimple size={11} weight="fill" />
             </span>
           ) : null}
         </span>
         <span
           className={cn(
-            "relative inline-flex items-center gap-1 whitespace-nowrap",
-            mobile ? "text-xs leading-4" : "text-sm",
+            "relative whitespace-nowrap",
+            mobile ? "text-caption" : "text-body-sm",
             selected ? "font-bold" : "font-medium",
           )}
         >
-          {selected ? (
-            <span
-              aria-hidden
-              data-current-mark
-              className="bg-brand-600 size-1.5 rounded-full"
-            />
-          ) : null}
           {mobile ? shortLabel : label}
           {!mobile && pending ? (
             <span
               aria-hidden
-              className="text-brand-700 absolute top-full left-0 text-[10px] leading-3"
+              className="text-fg-subtle absolute top-full left-0 text-[10px] leading-3"
             >
               이동 중
             </span>
@@ -161,7 +142,7 @@ function NavigationContents({
         </span>
       </span>
       {mobile ? (
-        <span aria-hidden className="text-brand-700 h-3 text-[10px] leading-3">
+        <span aria-hidden className="text-fg-subtle h-3 text-[10px] leading-3">
           {pending ? "이동 중" : null}
         </span>
       ) : null}

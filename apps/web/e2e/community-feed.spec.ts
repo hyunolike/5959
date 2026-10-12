@@ -23,6 +23,7 @@ const item = {
 for (const viewport of [
   { width: 1440, height: 1000 },
   { width: 390, height: 844 },
+  { width: 320, height: 844 },
 ]) {
   test(`본문과 실제 상태 정보를 읽고 상세에서 피드로 돌아온다 (${viewport.width}px)`, async ({
     page,
@@ -103,6 +104,25 @@ for (const viewport of [
     );
     await expect(post.getByText("공감 3", { exact: true })).toBeVisible();
     await expect(post.getByText("댓글 2", { exact: true })).toBeVisible();
+    // DS-US3-AC1: 작성 시각은 상대 시각이거나 날짜다. 피드의 몬스터는 48px 자리다.
+    await expect(post.locator("time")).toHaveText(
+      /^(방금|\d+분 전|\d+시간 전|\d+일 전|\d{4}\.\d{2}\.\d{2})$/,
+    );
+    await expect(post.getByText("불안", { exact: true })).toBeVisible();
+    const monsterImage = page
+      .getByRole("region", { name: "피드", exact: true })
+      .getByRole("img", { name: /몬스터, / })
+      .first();
+    await expect
+      .poll(() =>
+        monsterImage.evaluate(
+          (image: HTMLImageElement) => image.complete && image.naturalWidth > 0,
+        ),
+      )
+      .toBe(true);
+    const thumb = await monsterImage.boundingBox();
+    expect(thumb!.width).toBeGreaterThanOrEqual(40);
+    expect(thumb!.width).toBeLessThanOrEqual(48);
     expect(await post.getByRole("button").count()).toBe(0);
     await page.evaluate(() => document.fonts.ready);
     expect(

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 
 import { CAREER_YEAR_LABELS, JOB_ROLE_LABELS } from "@/entities/member";
-import { MonsterDisplay } from "@/entities/monster";
+import { EmotionTag, MonsterSummary } from "@/entities/monster";
 import { PostCard, useFeedQuery, type FeedFilter } from "@/entities/post";
 import { useInfiniteScroll } from "@/shared/lib";
 import { Button, ListSkeleton, Spinner } from "@/shared/ui";
@@ -17,10 +17,6 @@ import {
   uniqueItems,
 } from "../model/filter-params";
 import { FeedControls } from "./feed-controls";
-
-/** 목록, 빈 상태, 오류, 로딩이 같은 흰 읽기 면을 쓴다. */
-const SURFACE_CLASS_NAME =
-  "overflow-hidden rounded-surface border border-neutral-200 bg-white";
 
 /**
  * 피드(US2): 정렬 토글, 직군과 경력 다중 선택 필터, 무한 스크롤.
@@ -70,16 +66,12 @@ function FeedItems({ filter }: { filter: FeedFilter }) {
   );
 
   if (isPending) {
-    return (
-      <div className={SURFACE_CLASS_NAME}>
-        <ListSkeleton label="피드" />
-      </div>
-    );
+    return <ListSkeleton label="피드" />;
   }
 
   if (isError && items.length === 0) {
     return (
-      <div className={`${SURFACE_CLASS_NAME} px-5 py-10 text-center`}>
+      <div className="py-10 text-center">
         <Image
           src="/brand/ogu-companion.png"
           alt=""
@@ -87,7 +79,7 @@ function FeedItems({ filter }: { filter: FeedFilter }) {
           height={79}
           className="mx-auto mb-4 h-auto w-16 object-contain"
         />
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-body-sm text-danger">
           피드를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
         </p>
         <Button
@@ -107,7 +99,7 @@ function FeedItems({ filter }: { filter: FeedFilter }) {
     const filtered =
       filter.jobRoles.length > 0 || filter.careerYears.length > 0;
     return (
-      <div className={`${SURFACE_CLASS_NAME} px-5 py-10 text-center`}>
+      <div className="py-10 text-center">
         <Image
           src="/brand/ogu-companion.png"
           alt=""
@@ -115,12 +107,12 @@ function FeedItems({ filter }: { filter: FeedFilter }) {
           height={79}
           className="mx-auto mb-4 h-auto w-16 object-contain"
         />
-        <p className="font-bold text-neutral-900">
+        <p className="text-body text-fg font-bold">
           {filtered
             ? "조건에 맞는 고민이 없어요."
             : "아직 올라온 고민이 없어요."}
         </p>
-        <p className="mt-1 text-sm text-neutral-600">
+        <p className="text-body-sm text-fg-subtle mt-1">
           {filtered
             ? "다른 직군이나 경력으로도 찾아보세요."
             : "첫 이야기를 들려주세요."}
@@ -136,18 +128,17 @@ function FeedItems({ filter }: { filter: FeedFilter }) {
 
   return (
     <>
-      <ul
-        className={`${SURFACE_CLASS_NAME} flex flex-col [&>li:last-child>a]:border-b-0`}
-      >
+      <ul className="border-line -mx-5 flex flex-col border-t">
         {items.map((item) => (
-          <li key={item.postId}>
+          <li key={item.postId} className="border-line border-b">
             <PostCard
               item={item}
               authorMeta={`${JOB_ROLE_LABELS[item.author.jobRole]} · ${CAREER_YEAR_LABELS[item.author.careerYear]}`}
               showCreatedAt
-              renderMonster={(monster) => (
-                <MonsterDisplay monster={monster} variant="card" />
+              renderEmotion={(monster) => (
+                <EmotionTag emotion={monster.emotion} />
               )}
+              renderMonster={(monster) => <MonsterSummary monster={monster} />}
             />
           </li>
         ))}
@@ -155,7 +146,7 @@ function FeedItems({ filter }: { filter: FeedFilter }) {
       <div ref={sentinel} aria-hidden className="h-px" />
       {isError ? (
         <div className="py-4">
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-body-sm text-danger">
             {isFetchNextPageError
               ? "다음 이야기를 불러오지 못했어요."
               : "새 이야기를 확인하지 못했어요."}
