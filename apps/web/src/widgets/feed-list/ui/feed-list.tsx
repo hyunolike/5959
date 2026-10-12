@@ -91,7 +91,7 @@ function FeedItems({ filter }: { filter: FeedFilter }) {
           피드를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
         </p>
         <Button
-          variant="outline"
+          variant="secondary"
           className="mt-4"
           disabled={isFetching}
           aria-busy={isFetching}
@@ -161,7 +161,7 @@ function FeedItems({ filter }: { filter: FeedFilter }) {
               : "새 이야기를 확인하지 못했어요."}
           </p>
           <Button
-            variant="outline"
+            variant="secondary"
             className="mt-3"
             disabled={isFetching}
             onClick={() =>
@@ -180,7 +180,7 @@ function FeedItems({ filter }: { filter: FeedFilter }) {
       ) : hasNextPage ? (
         // 스크롤을 못 쓰는 환경(키보드, 보조기기)에서도 다음 쪽을 부를 수 있게 둔다
         <Button
-          variant="outline"
+          variant="secondary"
           className="self-center"
           onClick={() => void fetchNextPage({ cancelRefetch: false })}
         >

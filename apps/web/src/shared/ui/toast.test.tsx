@@ -47,6 +47,14 @@ describe("Toast", () => {
     expect(region).toHaveTextContent("알림 1");
   });
 
+  it("DS-US1-AC2 토스트는 바탕과 구분되는 진한 테두리를 가진다", () => {
+    render(<Harness />);
+    showToast();
+    expect(
+      screen.getByText("알림 1").closest("div.pointer-events-auto"),
+    ).toHaveClass("border", "border-line-strong");
+  });
+
   it("4초 뒤에 저절로 사라진다", () => {
     render(<Harness />);
     showToast();

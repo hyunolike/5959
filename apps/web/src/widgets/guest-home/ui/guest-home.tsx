@@ -73,7 +73,7 @@ export function GuestHome() {
           </Button>
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             onClick={() => requestLogin("/write")}
           >
             <PencilLine size={16} aria-hidden />

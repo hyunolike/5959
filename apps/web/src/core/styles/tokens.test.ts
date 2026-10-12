@@ -111,3 +111,27 @@ describe("색 토큰", () => {
     expect(css).not.toMatch(/--color-ink-\d+/);
   });
 });
+
+describe("초점 표시", () => {
+  it("DS-US2-AC2 공통 초점 규칙은 base 레이어에 있어 컴포넌트가 끌 수 있다", () => {
+    const layer = css.match(/@layer base\s*\{([\s\S]*?)\n\}/);
+    expect(layer, "@layer base 블록").not.toBeNull();
+    expect(layer![1]).toMatch(/:focus-visible\s*\{[^}]*outline: 2px solid/);
+    expect(layer![1]).toMatch(/summary/);
+  });
+});
+
+describe("DESIGN_SYSTEM.md", () => {
+  it("DS-US4-AC4 문서에 적힌 색 값은 모두 globals.css에 있다", () => {
+    const doc = readFileSync(
+      path.resolve(__dirname, "../../../docs/DESIGN_SYSTEM.md"),
+      "utf8",
+    );
+    const documented = [...new Set(doc.match(/#[0-9a-fA-F]{6}\b/g) ?? [])];
+    expect(documented.length).toBeGreaterThan(20);
+    const known = css.toLowerCase();
+    expect(
+      documented.filter((hex) => !known.includes(hex.toLowerCase())),
+    ).toEqual([]);
+  });
+});

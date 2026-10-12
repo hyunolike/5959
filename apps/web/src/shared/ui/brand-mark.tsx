@@ -5,7 +5,7 @@ export function BrandMark({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-2 text-[26px] leading-none font-bold tracking-[-0.055em] text-neutral-900",
+        "text-fg inline-flex items-center gap-2 text-[26px] leading-none font-bold tracking-[-0.055em]",
         className,
       )}
     >

@@ -13,14 +13,14 @@ export const EMOTION_LABELS: Record<EmotionType, string> = {
 };
 
 /**
- * 차트에서 감정을 가르는 색. 감정마다 고정이고 순서(계약의 EmotionType 순서)로 정한다. 수가 바뀌어도
- * 색은 감정을 따라간다. 밝은 바탕에서 이웃한 색끼리 색각 이상에서도 구분되는 조합이다. 다만 바탕과의
- * 대비가 낮은 색이 있어, 차트는 언제나 이름과 숫자를 글자로 함께 보인다.
+ * 차트에서 감정을 가르는 색. 몬스터 그림에서 뽑았고 `globals.css`의 `[data-emotion]` 값과 같다
+ * (types.test.ts가 지킨다). 불안(보라)과 무기력(남색)은 색이 가까우니, 차트는 언제나 이름과 숫자를
+ * 글자로 함께 보인다.
  */
 export const EMOTION_COLORS: Record<EmotionType, string> = {
-  ANXIETY: "#2a78d6",
-  LETHARGY: "#eb6834",
-  LONELINESS: "#1baf7a",
-  SELF_DEPRECATION: "#eda100",
-  IRRITATION: "#e87ba4",
+  ANXIETY: "#8b5cf6",
+  LETHARGY: "#7187e0",
+  LONELINESS: "#35b6d3",
+  SELF_DEPRECATION: "#8a9a3c",
+  IRRITATION: "#e5484d",
 };

@@ -30,7 +30,7 @@ export function PostLikeButton({ detail }: { detail: PostDetail }) {
       <Button
         type="button"
         size="sm"
-        variant={liked ? "primary" : "outline"}
+        variant={liked ? "primary" : "secondary"}
         aria-pressed={liked}
         disabled={mutation.isPending}
         aria-busy={mutation.isPending}

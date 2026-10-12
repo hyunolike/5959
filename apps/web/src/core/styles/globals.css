@@ -170,10 +170,23 @@ body {
   }
 }
 
-/* Every interactive control shares a visible keyboard focus treatment. */
-:where(a, button, select, input, textarea, [tabindex]):focus-visible {
-  outline: 2px solid var(--ink-900);
-  outline-offset: 2px;
+/*
+ * Every interactive control shares a visible keyboard focus treatment. base 레이어에 두어
+ * 컴포넌트가 유틸리티(`focus-visible:outline-none` 등)로 끄거나 바꿀 수 있게 한다.
+ */
+@layer base {
+  :where(
+    a,
+    button,
+    summary,
+    select,
+    input,
+    textarea,
+    [tabindex]
+  ):focus-visible {
+    outline: 2px solid var(--ink-900);
+    outline-offset: 2px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

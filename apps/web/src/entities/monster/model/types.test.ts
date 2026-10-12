@@ -1,6 +1,9 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
-import { EMOTION_LABELS, type EmotionType } from "./types";
+import { EMOTION_COLORS, EMOTION_LABELS, type EmotionType } from "./types";
 
 const ALL_EMOTIONS: EmotionType[] = [
   "ANXIETY",
@@ -24,5 +27,21 @@ describe("EMOTION_LABELS", () => {
       SELF_DEPRECATION: "자기비하",
       IRRITATION: "짜증",
     });
+  });
+});
+
+describe("EMOTION_COLORS", () => {
+  it("DS-US1-AC3 차트의 감정 색은 globals.css의 감정 색과 같다", () => {
+    const css = readFileSync(
+      path.resolve(__dirname, "../../../core/styles/globals.css"),
+      "utf8",
+    );
+    for (const [emotion, color] of Object.entries(EMOTION_COLORS)) {
+      const block = css.match(
+        new RegExp(`\\[data-emotion="${emotion}"\\]\\s*\\{([^}]*)\\}`),
+      );
+      expect(block, `${emotion}의 색 묶음`).not.toBeNull();
+      expect(block![1]).toContain(`--emotion: ${color};`);
+    }
   });
 });

@@ -28,6 +28,8 @@ export const env = createEnv({
     GOOGLE_CLIENT_ID: z.string().min(1).optional(),
     // 개발/스테이징에서 에러 프로브(테스트용 강제 에러 라우트)를 켤지 여부.
     ENABLE_ERROR_PROBE: z.stringbool().optional(),
+    // 디자인 카탈로그(/debug/design)를 켤지 여부. 운영에서는 켜지 않는다.
+    ENABLE_DESIGN_CATALOG: z.stringbool().optional(),
     // e2e면 OAuth 시작 라우트가 제공자 대신 자기 콜백으로 바로 보낸다(가짜 제공자).
     APP_ENV: z
       .enum(["development", "e2e", "production"])

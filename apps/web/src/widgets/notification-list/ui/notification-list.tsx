@@ -136,7 +136,7 @@ export function NotificationList() {
         </p>
         {/* 누른 뒤에도 초점이 버튼에 남도록 disabled 대신 aria-disabled로 막는다. */}
         <Button
-          variant="outline"
+          variant="secondary"
           size="sm"
           aria-disabled={canMarkAll ? undefined : true}
           className="shrink-0 aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
@@ -159,7 +159,7 @@ export function NotificationList() {
         </div>
       ) : hasNextPage ? (
         // 스크롤을 못 쓰는 환경(키보드, 보조기기)에서도 다음 쪽을 부를 수 있게 둔다
-        <Button variant="outline" onClick={loadNext}>
+        <Button variant="secondary" onClick={loadNext}>
           더 보기
         </Button>
       ) : null}

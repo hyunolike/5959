@@ -137,6 +137,21 @@ describe("WriteForm", () => {
     );
   });
 
+  it("DS-US2-AC1 고른 말투는 테두리와 가라앉은 면으로 안 고른 말투와 구분된다", async () => {
+    const user = userEvent.setup({ delay: null });
+    renderForm();
+
+    await user.click(screen.getByRole("button", { name: "웃겨주기" }));
+    expect(screen.getByRole("button", { name: "웃겨주기" })).toHaveClass(
+      "border",
+      "border-action",
+      "bg-surface-sunken",
+    );
+    expect(
+      screen.getByRole("button", { name: "대신 욕해주기" }),
+    ).not.toHaveClass("border-action");
+  });
+
   it("글자 수 카운터는 사람이 보는 글자(grapheme)로 센다", async () => {
     const user = userEvent.setup({ delay: null });
     renderForm();

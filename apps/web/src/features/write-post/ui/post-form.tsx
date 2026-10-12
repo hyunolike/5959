@@ -134,15 +134,15 @@ export function PostForm({
               {COMMENT_TONES.map(([tone, label]) => {
                 const selected = field.value === tone;
                 return (
-                  // 선택은 연한 면과 체크로 보인다. 채운 보라는 올리기 버튼에만 쓴다.
+                  // 선택은 진한 테두리와 가라앉은 면, 체크로 보인다. 채운 먹색은 올리기 버튼에만 쓴다.
                   <Button
                     key={tone}
                     type="button"
-                    variant={selected ? "secondary" : "outline"}
+                    variant="secondary"
                     aria-pressed={selected}
                     className={cn(
                       "h-auto gap-1 px-2 py-2 text-center break-keep whitespace-normal",
-                      selected && "border-brand-600",
+                      selected && "border-action bg-surface-sunken",
                     )}
                     onClick={() => field.onChange(tone)}
                   >

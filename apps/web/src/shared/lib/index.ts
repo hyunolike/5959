@@ -1,5 +1,6 @@
 export { cn } from "./cn";
 export { formatDate } from "./format-date";
+export { formatRelativeTime } from "./format-relative-time";
 export { countGraphemes, trimmedGraphemeLength } from "./grapheme";
 export { useDebouncedValue } from "./use-debounced-value";
 export { useInfiniteScroll } from "./use-infinite-scroll";
