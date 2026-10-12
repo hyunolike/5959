@@ -61,7 +61,7 @@ export function ActivityList<T>({
           목록을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
         </p>
         <Button
-          variant="outline"
+          variant="secondary"
           className="mt-4"
           disabled={isFetching}
           aria-busy={isFetching}
@@ -81,7 +81,7 @@ export function ActivityList<T>({
           <Button asChild size="sm">
             <Link href="/write">글쓰기</Link>
           </Button>
-          <Button asChild variant="outline" size="sm">
+          <Button asChild variant="secondary" size="sm">
             <Link href="/home">피드 보기</Link>
           </Button>
         </div>
@@ -105,7 +105,7 @@ export function ActivityList<T>({
               : "목록을 새로 확인하지 못했어요."}
           </p>
           <Button
-            variant="outline"
+            variant="secondary"
             className="mt-3"
             disabled={isFetching}
             onClick={() => (isFetchNextPageError ? loadNext() : void refetch())}
@@ -119,7 +119,7 @@ export function ActivityList<T>({
         </div>
       ) : hasNextPage ? (
         // 스크롤을 못 쓰는 환경(키보드, 보조기기)에서도 다음 쪽을 부를 수 있게 둔다
-        <Button variant="outline" onClick={loadNext}>
+        <Button variant="secondary" onClick={loadNext}>
           더 보기
         </Button>
       ) : null}

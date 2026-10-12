@@ -197,7 +197,7 @@ export function ProfileForm({ member }: { member: MemberProfile }) {
           </p>
         ) : null}
         <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
-          <Button asChild variant="outline">
+          <Button asChild variant="secondary">
             <Link href={MY_PAGE}>취소</Link>
           </Button>
           <Button

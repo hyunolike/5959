@@ -1,4 +1,6 @@
 export { Button } from "./button";
+export { GameButton } from "./game-button";
+export { IconButton } from "./icon-button";
 export { BrandMark } from "./brand-mark";
 export { Card } from "./card";
 export { ConfirmDialog } from "./confirm-dialog";

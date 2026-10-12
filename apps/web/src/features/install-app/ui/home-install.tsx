@@ -47,7 +47,7 @@ export function HomeInstall() {
             <div className="mt-2 flex flex-wrap items-center gap-2 sm:mt-0">
               {state.canPrompt || state.pending ? (
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   className="min-h-11 px-2"
                   disabled={state.pending}

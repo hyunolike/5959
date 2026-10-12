@@ -10,7 +10,7 @@ import { Button } from "@/shared/ui";
 export function ErrorProbeButton() {
   return (
     <Button
-      variant="destructive"
+      variant="danger"
       onClick={() => {
         throw new Error("오구오구 오류 수집 테스트용 오류(error-probe)");
       }}

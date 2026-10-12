@@ -138,7 +138,7 @@ export function PostForm({
                   <Button
                     key={tone}
                     type="button"
-                    variant={selected ? "secondary" : "outline"}
+                    variant={selected ? "subtle" : "secondary"}
                     aria-pressed={selected}
                     className={cn(
                       "h-auto gap-1 px-2 py-2 text-center break-keep whitespace-normal",

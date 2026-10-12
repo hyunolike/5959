@@ -28,7 +28,7 @@ export function OAuthButtons({
     <div className="flex flex-col gap-2">
       {PROVIDERS.filter(({ id }) => id !== "kakao" || kakaoEnabled).map(
         ({ id, label }) => (
-          <Button key={id} asChild variant="outline">
+          <Button key={id} asChild variant="secondary">
             <a href={`/api/auth/oauth/${id}?${query}`}>
               {id === "google" ? (
                 <Image src="/brand/google.png" alt="" width={18} height={18} />

@@ -33,7 +33,6 @@
   "features/request-review/ui/request-review-button.tsx",
   "features/write-post/ui/post-form.tsx",
   "shared/ui/brand-mark.tsx",
-  "shared/ui/button.tsx",
   "shared/ui/card.tsx",
   "shared/ui/confirm-dialog.tsx",
   "shared/ui/input.tsx",

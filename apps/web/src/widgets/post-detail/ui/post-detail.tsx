@@ -64,7 +64,7 @@ function Unavailable({
       >
         {message}
       </p>
-      <Button asChild variant="outline" className="mt-5">
+      <Button asChild variant="secondary" className="mt-5">
         <Link href="/home">마음 이야기로 돌아가기</Link>
       </Button>
     </Card>

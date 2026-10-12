@@ -44,7 +44,7 @@ export function LogoutButton({ onLoggedOut }: LogoutButtonProps = {}) {
   return (
     <Button
       type="button"
-      variant="outline"
+      variant="secondary"
       onClick={handleLogout}
       disabled={logoutMutation.isPending}
     >

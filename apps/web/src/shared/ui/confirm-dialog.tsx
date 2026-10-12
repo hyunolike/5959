@@ -70,7 +70,7 @@ export function ConfirmDialog({
   finalFocus,
   role = "alertdialog",
   presentation = "dialog",
-  confirmVariant = "destructive",
+  confirmVariant = "danger",
   dismissOnBack = false,
   children,
   onConfirm,
@@ -88,7 +88,7 @@ export function ConfirmDialog({
   finalFocus?: () => HTMLElement | null;
   role?: "dialog" | "alertdialog";
   presentation?: "dialog" | "sheet";
-  confirmVariant?: "primary" | "destructive";
+  confirmVariant?: "primary" | "danger";
   /** 모바일 안내창에서 뒤로 가기는 페이지를 떠나기 전에 안내창을 닫는다. */
   dismissOnBack?: boolean;
   /** 설명 아래에 둘 입력(고를 것, 적을 것). 대화상자 안의 초점 순환에 함께 든다. */
@@ -276,7 +276,7 @@ export function ConfirmDialog({
           <Button
             ref={cancelRef}
             type="button"
-            variant="outline"
+            variant="secondary"
             size="sm"
             disabled={pending}
             onClick={onCancel}

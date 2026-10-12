@@ -78,7 +78,7 @@ function Profile() {
         <p className="min-w-0 text-base font-bold break-words text-neutral-900">
           {member.nickname}님의 마음 기록
         </p>
-        <Button asChild variant="outline" size="sm" className="ml-auto">
+        <Button asChild variant="secondary" size="sm" className="ml-auto">
           <Link href="/my/edit">프로필 수정</Link>
         </Button>
       </div>
