@@ -29,4 +29,25 @@ describe("GameButton", () => {
     expect(button).toBeDisabled();
     expect(button).toHaveClass("disabled:shadow-none");
   });
+
+  it("DS-US3-AC2 눌린 상태(aria-pressed)는 내려가 있고 그림자가 없다", () => {
+    render(<GameButton aria-pressed>공감 3</GameButton>);
+    expect(screen.getByRole("button", { name: "공감 3" })).toHaveClass(
+      "aria-pressed:translate-y-1",
+      "aria-pressed:shadow-none",
+    );
+  });
+
+  it("요청이 가는 동안(disabled와 aria-busy)에는 회색으로 깜빡이지 않는다", () => {
+    render(
+      <GameButton disabled aria-busy>
+        공감 3
+      </GameButton>,
+    );
+    expect(screen.getByRole("button", { name: "공감 3" })).toHaveClass(
+      "disabled:aria-busy:bg-game",
+      "disabled:aria-busy:text-fg",
+      "disabled:aria-busy:border-game-line",
+    );
+  });
 });

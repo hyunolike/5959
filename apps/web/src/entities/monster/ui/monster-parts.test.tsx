@@ -96,4 +96,15 @@ describe("MonsterStage", () => {
     expect(stage).toHaveAttribute("data-emotion", "IRRITATION");
     expect(stage).toHaveClass("bg-emotion-tint");
   });
+
+  it("DS-US3-AC2 감정이 아직 없는 무대는 감정 색 범위를 열지 않는다", () => {
+    render(
+      <MonsterStage>
+        <p>분석 중</p>
+      </MonsterStage>,
+    );
+    const stage = screen.getByText("분석 중").parentElement;
+    expect(stage).not.toHaveAttribute("data-emotion");
+    expect(stage).toHaveClass("bg-emotion-tint");
+  });
 });

@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { ApiError } from "@/shared/api";
+import { Button } from "@/shared/ui";
 
 import {
   useRequestReviewMutation,
@@ -33,7 +34,7 @@ export function RequestReviewButton({
 
   if (requested || done) {
     return (
-      <p role="status" className="text-sm text-neutral-700">
+      <p role="status" className="text-body-sm text-fg-muted">
         다시 살펴봐 달라고 요청했어요. 결과는 알림으로 알려 드려요.
       </p>
     );
@@ -46,8 +47,10 @@ export function RequestReviewButton({
 
   return (
     <div className="flex flex-col items-start gap-1">
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="sm"
         disabled={review.isPending}
         onClick={() => {
           setFailed(false);
@@ -68,12 +71,12 @@ export function RequestReviewButton({
             },
           );
         }}
-        className="rounded text-sm font-medium text-neutral-900 underline underline-offset-2 hover:text-neutral-700 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none disabled:opacity-50"
+        className="text-fg -ml-3 underline underline-offset-2"
       >
         다시 살펴봐 달라고 요청하기
-      </button>
+      </Button>
       {failed ? (
-        <p role="alert" className="text-xs text-red-600">
+        <p role="alert" className="text-caption text-danger">
           요청하지 못했어요. 잠시 후 다시 시도해 주세요.
         </p>
       ) : null}

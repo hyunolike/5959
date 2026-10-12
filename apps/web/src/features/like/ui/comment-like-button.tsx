@@ -1,10 +1,10 @@
 "use client";
 
-import { Heart } from "lucide-react";
+import { Heart } from "@phosphor-icons/react";
 
 import type { Comment } from "@/entities/comment";
 import { cn } from "@/shared/lib";
-import { ReactionIcon } from "@/shared/ui";
+import { Button, ReactionIcon } from "@/shared/ui";
 
 import { useCommentLikeMutation } from "../api/use-comment-like-mutation";
 import { likeErrorMessage } from "../model/like-error";
@@ -30,8 +30,10 @@ export function CommentLikeButton({
 
   return (
     <>
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="sm"
         aria-pressed={liked}
         aria-label={`댓글 공감 ${comment.likeCount}`}
         disabled={mutation.isPending}
@@ -51,26 +53,20 @@ export function CommentLikeButton({
           );
         }}
         className={cn(
-          "focus-visible:ring-brand-600 inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 py-1 tabular-nums transition-colors focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50",
-          liked
-            ? "bg-brand-50 text-brand-700"
-            : "text-neutral-600 hover:bg-neutral-100",
+          "text-label gap-1.5 px-2 font-medium tabular-nums",
+          liked && "bg-surface-sunken text-fg",
         )}
       >
         <ReactionIcon confirmation={feedback.confirmation}>
-          <Heart
-            size={14}
-            aria-hidden
-            className={liked ? "fill-brand-100" : ""}
-          />
+          <Heart size={16} weight={liked ? "fill" : "regular"} aria-hidden />
         </ReactionIcon>
         공감 {comment.likeCount}
-      </button>
+      </Button>
       <span role="status" className="sr-only">
         {mutation.isPending ? "공감 처리 중" : feedback.message}
       </span>
       {errorMessage ? (
-        <span role="alert" className="text-red-600">
+        <span role="alert" className="text-danger">
           {errorMessage}
         </span>
       ) : null}

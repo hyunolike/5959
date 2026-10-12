@@ -67,16 +67,14 @@ describe("MonsterDisplay 그림 고르기", () => {
       ],
     ];
 
-    for (const variant of ["card", "detail"] as const) {
-      for (const [monster, file, name] of cases) {
-        const view = render(
-          <MonsterDisplay monster={monster} variant={variant} />,
-        );
-        const img = screen.getByRole("img", { name });
-        expect(img.tagName).toBe("IMG");
-        expect(spriteSrc(img)).toContain(file);
-        view.unmount();
-      }
+    for (const [monster, file, name] of cases) {
+      const view = render(
+        <MonsterDisplay monster={monster} variant="detail" />,
+      );
+      const img = screen.getByRole("img", { name });
+      expect(img.tagName).toBe("IMG");
+      expect(spriteSrc(img)).toContain(file);
+      view.unmount();
     }
   });
 
@@ -124,13 +122,8 @@ describe("MonsterDisplay 대기 움직임", () => {
     expect(screen.getByRole("img").className).toContain(className);
   });
 
-  it("피드 카드와 쓰러진 몬스터는 움직이지 않는다", () => {
-    const { rerender } = render(
-      <MonsterDisplay monster={ANXIETY_FULL} variant="card" />,
-    );
-    expect(screen.getByRole("img").className).not.toContain("monster-idle");
-
-    rerender(
+  it("쓰러진 몬스터는 움직이지 않는다", () => {
+    render(
       <MonsterDisplay
         monster={{ ...ANXIETY_FULL, hp: 0, status: "DEFEATED" }}
         variant="detail"
@@ -145,7 +138,7 @@ describe("MonsterDisplay 감정 이름과 HP", () => {
     render(
       <MonsterDisplay
         monster={{ emotion: "IRRITATION", hp: 4, maxHp: 10, status: "ALIVE" }}
-        variant="card"
+        variant="detail"
       />,
     );
     expect(screen.getByText("짜증", { exact: true })).toBeInTheDocument();
@@ -172,6 +165,39 @@ describe("MonsterDisplay 감정 이름과 HP", () => {
     expect(
       spriteSrc(screen.getByRole("img", { name: "불안 몬스터, 쓰러짐" })),
     ).toContain("/monsters/anxiety-defeated.webp");
+  });
+});
+
+describe("MonsterDisplay 무대 모양", () => {
+  it("DS-US3-AC2 큰 HP 막대와 그 감정의 색 범위를 쓴다", () => {
+    const { container } = render(
+      <MonsterDisplay
+        monster={{ emotion: "LONELINESS", hp: 5, maxHp: 10, status: "ALIVE" }}
+        variant="detail"
+      />,
+    );
+    expect(container.firstElementChild).toHaveAttribute(
+      "data-emotion",
+      "LONELINESS",
+    );
+    expect(screen.getByRole("progressbar", { name: "몬스터 HP" })).toHaveClass(
+      "h-[22px]",
+    );
+    expect(screen.getByText("상처 입음")).toBeInTheDocument();
+    // 무대가 감정의 옅은 색이라 태그는 흰 면으로 구분한다.
+    expect(screen.getByText("외로움")).toHaveClass("bg-surface");
+  });
+
+  it("처치된 몬스터의 HP 글자는 처치됨과 다른 요소다", () => {
+    render(
+      <MonsterDisplay
+        monster={{ ...ANXIETY_FULL, hp: 0, status: "DEFEATED" }}
+        variant="detail"
+      />,
+    );
+    expect(screen.getByText(/^HP \d+\/\d+$/)).toHaveTextContent(/^HP 0\/10$/);
+    expect(screen.getByText("처치됨")).toBeInTheDocument();
+    expect(screen.queryByText("쓰러짐")).not.toBeInTheDocument();
   });
 });
 

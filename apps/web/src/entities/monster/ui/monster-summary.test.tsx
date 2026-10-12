@@ -41,4 +41,16 @@ describe("MonsterSummary", () => {
       width: "0%",
     });
   });
+
+  it("DS-US3-AC6 좁은 자리에서도 HP 글자와 처치됨은 글자 단위로 꺾이지 않는다", () => {
+    render(
+      <MonsterSummary
+        monster={{ emotion: "LETHARGY", hp: 0, maxHp: 10, status: "DEFEATED" }}
+      />,
+    );
+    const hp = screen.getByText("HP 0/10");
+    expect(hp).toHaveClass("whitespace-nowrap");
+    expect(screen.getByText("처치됨")).toHaveClass("whitespace-nowrap");
+    expect(hp.closest("[data-emotion]")).toHaveClass("shrink-0");
+  });
 });

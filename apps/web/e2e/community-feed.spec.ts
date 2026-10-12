@@ -49,6 +49,24 @@ for (const viewport of [
                     analysisStatus: "PENDING",
                     likedByMe: false,
                   },
+                  {
+                    ...item,
+                    postId: 9,
+                    author: {
+                      ...author,
+                      nickname: "아주긴닉네임을쓰는검증회원",
+                    },
+                    contentPreview: "로컬 검증용 처치된 몬스터 글입니다.",
+                    monster: {
+                      emotion: "SELF_DEPRECATION",
+                      hp: 0,
+                      maxHp: 10,
+                      status: "DEFEATED",
+                    },
+                    likeCount: 12,
+                    likedByMe: false,
+                    commentCount: 34,
+                  },
                 ],
                 nextCursor: null,
               }
@@ -91,13 +109,22 @@ for (const viewport of [
     await waitForHomeLoaded(page);
     await expect(page.getByText(item.contentPreview)).toBeVisible();
     await expect(page.getByText("분석 중", { exact: true })).toBeVisible();
-    await expect(
-      page.getByRole("progressbar", { name: "몬스터 HP" }),
-    ).toHaveAttribute("aria-valuenow", "7");
     const post = page
       .getByRole("region", { name: "피드", exact: true })
       .getByRole("link")
       .filter({ hasText: item.contentPreview });
+    await expect(
+      post.getByRole("progressbar", { name: "몬스터 HP" }),
+    ).toHaveAttribute("aria-valuenow", "7");
+    // 좁은 화면에서도 처치된 몬스터의 HP 글자와 처치됨이 글자 단위로 꺾이지 않는다(한 줄).
+    const defeated = page
+      .getByRole("region", { name: "피드", exact: true })
+      .getByRole("link")
+      .filter({ hasText: "로컬 검증용 처치된 몬스터 글입니다." });
+    for (const text of ["HP 0/10", "처치됨"]) {
+      const box = await defeated.getByText(text, { exact: true }).boundingBox();
+      expect(box!.height).toBeLessThan(24);
+    }
     await expect(post.locator("time")).toHaveAttribute(
       "datetime",
       item.createdAt,
@@ -121,7 +148,7 @@ for (const viewport of [
       )
       .toBe(true);
     const thumb = await monsterImage.boundingBox();
-    expect(thumb!.width).toBeGreaterThanOrEqual(40);
+    expect(thumb!.width).toBeGreaterThanOrEqual(44);
     expect(thumb!.width).toBeLessThanOrEqual(48);
     expect(await post.getByRole("button").count()).toBe(0);
     await page.evaluate(() => document.fonts.ready);
@@ -142,6 +169,37 @@ for (const viewport of [
       await expect(
         page.getByRole("article", { name: "고민 글" }),
       ).toBeVisible();
+      if (i === 0) {
+        // DS-US3-AC2: 무대는 글의 감정 색이고 큰 HP 막대와 게임 버튼이 있다.
+        const article = page.getByRole("article", { name: "고민 글" });
+        const stage = article.locator('[aria-label="몬스터"]').locator("..");
+        await expect(stage).toHaveCSS("background-color", "rgb(241, 235, 255)");
+        await expect(
+          article.getByRole("progressbar", { name: "몬스터 HP" }),
+        ).toHaveCSS("height", "22px");
+        await expect(
+          article.getByRole("button", { name: "공감 3", exact: true }),
+        ).toHaveCSS("background-color", "rgb(255, 214, 10)");
+        const monsterImage = article.getByRole("img", { name: /몬스터, / });
+        await expect
+          .poll(() =>
+            monsterImage.evaluate(
+              (image: HTMLImageElement) =>
+                image.complete && image.naturalWidth > 0,
+            ),
+          )
+          .toBe(true);
+        await page.evaluate(() => document.fonts.ready);
+        expect(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth > innerWidth,
+          ),
+        ).toBe(false);
+        await page.screenshot({
+          path: testInfo.outputPath("post-detail.png"),
+          fullPage: true,
+        });
+      }
       await page.goBack();
       await expect(page).toHaveURL(/\/home\?order=POPULAR$/);
       await expect(
