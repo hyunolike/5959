@@ -42,6 +42,14 @@ Before activation, request execution-time approval for the following specific
 resources and bindings in project `ogu-5959-prod` (number `161374563129`). No
 existing personal credential or JSON service-account key is copied to GitHub.
 
+The official WIF prerequisites also require IAM, IAM Credentials, STS and Cloud
+Resource Manager APIs. Read-only inspection found `iam.googleapis.com` and
+`iamcredentials.googleapis.com` already enabled; `sts.googleapis.com` and
+`cloudresourcemanager.googleapis.com` were absent from the enabled list. Include
+**enabling those two APIs in this project** in the separate setup approval. The
+setup operator needs `serviceusage.services.enable`; do not grant that permission
+or serviceUsageAdmin to the ongoing CI identity. No API was enabled by this PR.
+
 | Proposed resource or grant                                                    | Scope and reason                                                                                                                                                                                                                                                     |
 | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | WIF pool `ogu-github`, OIDC provider `github-web`                             | GitHub issuer `https://token.actions.githubusercontent.com`; authenticate this workflow without a stored key                                                                                                                                                         |
