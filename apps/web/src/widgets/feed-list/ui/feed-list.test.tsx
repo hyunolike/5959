@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  within,
   act,
   fireEvent,
   render,
@@ -255,5 +256,41 @@ describe("FeedList", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/feed?jobRole=DESIGN", {
       cache: "no-store",
     });
+  });
+
+  it("DS-US2-AC1 정렬과 필터는 공용 칩이고 고른 것만 눌린 상태다", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(ok({ items: [feedItem(1)], nextCursor: null })),
+    );
+    renderFeed();
+    await screen.findByText("고민 1");
+
+    const latest = screen.getByRole("button", { name: "최신순" });
+    expect(latest).toHaveAttribute("aria-pressed", "true");
+    expect(latest).toHaveClass("h-9", "rounded-full");
+    expect(screen.getByRole("button", { name: "인기순" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+  });
+
+  it("DS-US3-AC1 목록은 카드 테두리 없이 구분선으로 나눈다", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          ok({ items: [feedItem(2), feedItem(1)], nextCursor: null }),
+        ),
+    );
+    renderFeed();
+    await screen.findByText("고민 2");
+
+    const list = screen.getByRole("list");
+    expect(list).not.toHaveClass("rounded-surface");
+    for (const row of within(list).getAllByRole("listitem")) {
+      expect(row).toHaveClass("border-b", "border-line");
+    }
   });
 });
