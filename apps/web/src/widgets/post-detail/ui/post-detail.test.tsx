@@ -233,6 +233,19 @@ describe("PostDetail 공감과 댓글", () => {
     expect(screen.getByLabelText("답글")).toHaveFocus();
   });
 
+  it("DS-US2-AC2 답글 달기와 댓글 공감은 공용 버튼이고 누르는 영역이 44px이다", async () => {
+    renderDetailWithComments(detail({ ...ANALYZED, mine: false }));
+    const root = await screen.findByRole("article", {
+      name: "공감러의 댓글",
+    });
+    for (const name of ["답글 달기", "댓글 공감 1"]) {
+      expect(within(root).getAllByRole("button", { name })[0]).toHaveClass(
+        "ogu-pressable",
+        "min-h-11",
+      );
+    }
+  });
+
   it("댓글이 없으면 첫 댓글을 남겨 달라고 안내한다", async () => {
     renderDetailWithComments(detail({ ...ANALYZED, mine: false }), []);
 

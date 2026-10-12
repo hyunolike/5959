@@ -139,4 +139,12 @@ describe("CommentItem", () => {
       within(item).getByText("다른 회원에게 보이지 않아요"),
     ).toBeInTheDocument();
   });
+
+  it("DS-US3-AC4 숨겨진 내 댓글 표시는 감정 색이 아니라 주의 색이다", () => {
+    render(<CommentItem comment={comment({ hidden: true, mine: true })} />);
+    expect(screen.getByText("다른 회원에게 보이지 않아요")).toHaveClass(
+      "bg-warning-tint",
+      "text-warning",
+    );
+  });
 });
