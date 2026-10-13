@@ -3,6 +3,9 @@ import type { components, operations } from "@/shared/api";
 export type PostDetail = components["schemas"]["PostDetail"];
 export type FeedItem = components["schemas"]["FeedItem"];
 export type FeedPage = components["schemas"]["FeedPage"];
+/** 로그인하지 않은 방문자에게 보이는 글(011). 닉네임과 회원 번호가 들어갈 자리가 없다. */
+export type PublicFeedItem = components["schemas"]["PublicFeedItem"];
+export type PublicFeed = components["schemas"]["PublicFeed"];
 export type SimilarPosts = components["schemas"]["SimilarPosts"];
 export type CommentTone = components["schemas"]["CommentTone"];
 

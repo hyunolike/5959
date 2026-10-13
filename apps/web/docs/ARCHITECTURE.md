@@ -157,6 +157,11 @@ to where they started after login (US4-AC5).
 - `features/write-post`, `features/manage-post`: 글 쓰기, 수정, 삭제.
 - `features/like`, `features/comment`: 글 공감, 댓글 공감, 댓글 쓰기와 수정, 삭제. 낙관적 HP 계산이 여기 있다.
 - `widgets/feed-list`, `widgets/post-detail`, `widgets/post-editor`: 위 슬라이스를 화면 단위로 조립한다.
+- `widgets/guest-home`: 로그인하지 않은 방문자의 홈(011). `entities/post`의 `usePublicFeedQuery`와
+  `PublicPostCard`로 최근 글 20개를 닉네임 없이 보인다. 카드는 링크가 아니라 버튼이고, 누르면
+  `useGuestAccess().requestLogin("/post/{id}")`로 로그인 안내를 연다. 이 조회에는
+  `ANONYMOUS_QUERY_META`(`shared/api`)를 붙인다. 붙이지 않으면 401이 세션 만료로 읽혀 방문자가 로그인
+  화면으로 보내진다. 로그인 없이 부르는 조회를 더 만들 때도 같은 표시를 붙인다.
 
 ### 쿼리 키와 폴링
 
@@ -164,7 +169,8 @@ to where they started after login (US4-AC5).
 목록은 그 아래 `["posts", id, "comments"]`이고, 피드는 따로 `["feed", filter]`다. 공격이
 끝나면 `["posts", id]` 하나를 무효화해 상세와 댓글을 함께 서버 값으로 맞추고, 피드는
 `["feed"]`로 낡은 것으로만 표시한다. 피드를 `["posts"]` 아래에 두지 않은 까닭은 상세를
-무효화할 때 피드까지 다시 불러오지 않게 하려는 것이다.
+무효화할 때 피드까지 다시 불러오지 않게 하려는 것이다. 비회원 둘러보기 피드는 `["public-feed"]`로
+또 따로 둔다.
 
 상세는 몬스터가 생길 때까지 3초마다 다시 불러오고, 처음 불러온 지 2분이 지나면 15초로
 늦춘다(research R10). 몬스터가 생기면 멈추고, 4xx(지운 글 404 등)를 받아도 멈춘다. 5xx와

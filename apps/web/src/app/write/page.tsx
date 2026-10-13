@@ -26,6 +26,10 @@ export default function WritePage() {
           </Link>
           가 먼저 답할 수 있어요.
         </p>
+        {/* 글이 어디까지 보이는지 쓰기 전에 알린다(011 US3-AC1). */}
+        <p className="text-body-sm text-fg-subtle leading-6">
+          올린 글의 앞부분은 로그인하지 않은 방문자에게도 닉네임 없이 보여요.
+        </p>
       </header>
       <WriteForm />
     </div>
