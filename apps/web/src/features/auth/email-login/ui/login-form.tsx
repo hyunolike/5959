@@ -79,7 +79,7 @@ export function LoginForm({ next }: LoginFormProps) {
           {...register("email")}
         />
         {errors.email && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-body-sm text-danger">
             {errors.email.message}
           </p>
         )}
@@ -95,19 +95,19 @@ export function LoginForm({ next }: LoginFormProps) {
           {...register("password")}
         />
         {errors.password && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-body-sm text-danger">
             {errors.password.message}
           </p>
         )}
       </div>
 
       {errors.root && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-body-sm text-danger">
           {errors.root.message}
         </p>
       )}
 
-      <Button type="submit" disabled={isSubmitting}>
+      <Button type="submit" size="lg" disabled={isSubmitting}>
         로그인
       </Button>
     </form>

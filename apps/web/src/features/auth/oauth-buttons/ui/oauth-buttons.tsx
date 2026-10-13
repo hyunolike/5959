@@ -1,4 +1,4 @@
-import { MessageCircle } from "lucide-react";
+import { ChatCircle } from "@phosphor-icons/react/dist/ssr";
 import Image from "next/image";
 
 import { Button } from "@/shared/ui";
@@ -28,12 +28,12 @@ export function OAuthButtons({
     <div className="flex flex-col gap-2">
       {PROVIDERS.filter(({ id }) => id !== "kakao" || kakaoEnabled).map(
         ({ id, label }) => (
-          <Button key={id} asChild variant="secondary">
+          <Button key={id} asChild variant="secondary" size="lg">
             <a href={`/api/auth/oauth/${id}?${query}`}>
               {id === "google" ? (
                 <Image src="/brand/google.png" alt="" width={18} height={18} />
               ) : (
-                <MessageCircle size={18} aria-hidden />
+                <ChatCircle size={20} weight="fill" aria-hidden />
               )}
               {label}
             </a>

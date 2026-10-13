@@ -77,7 +77,7 @@ export function SignupForm({ next }: SignupFormProps) {
           {...register("email")}
         />
         {errors.email && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-body-sm text-danger">
             {errors.email.message}
           </p>
         )}
@@ -92,23 +92,23 @@ export function SignupForm({ next }: SignupFormProps) {
           {...register("password")}
         />
         {errors.password ? (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-body-sm text-danger">
             {errors.password.message}
           </p>
         ) : (
-          <p className="text-xs text-neutral-500">
+          <p className="text-caption text-fg-subtle">
             영문과 숫자를 포함해 8~20자로 입력하세요.
           </p>
         )}
       </div>
 
       {errors.root && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-body-sm text-danger">
           {errors.root.message}
         </p>
       )}
 
-      <Button type="submit" disabled={isSubmitting}>
+      <Button type="submit" size="lg" disabled={isSubmitting}>
         가입하기
       </Button>
     </form>
