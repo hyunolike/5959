@@ -270,4 +270,25 @@ describe("레이드의 감정 색", () => {
       "sm:col-span-1",
     );
   });
+
+  it("DS-US3-AC3 전투 무대는 보스의 이름을 가장 큰 글자로 보인다", () => {
+    renderWith(<RaidArena />, raid());
+    const boss = screen.getByRole("region", { name: "보스" });
+    expect(within(boss).getByText("오늘의 보스")).toBeInTheDocument();
+    expect(within(boss).getByRole("heading", { name: "불안" })).toHaveClass(
+      "text-display",
+    );
+  });
+
+  it("DS-US3-AC3 홈의 보스 안내는 큰 HP에 쉼표를 넣고 이름은 그대로 둔다", () => {
+    const state = raid();
+    renderWith(<BossBanner />, {
+      ...state,
+      boss: { ...state.boss!, hp: 4120, maxHp: 10000 },
+    });
+    const link = screen.getByRole("link", {
+      name: "레이드: 불안 보스, HP 4120/10000",
+    });
+    expect(link).toHaveTextContent("HP 4,120/10,000");
+  });
 });

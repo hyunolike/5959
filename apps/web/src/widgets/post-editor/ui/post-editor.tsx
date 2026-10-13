@@ -10,7 +10,7 @@ import { Spinner } from "@/shared/ui";
 
 function Notice({ message }: { message: string }) {
   return (
-    <p role="alert" className="text-body-sm text-fg-subtle text-center">
+    <p role="alert" className="text-body-sm text-fg-subtle">
       {message}
     </p>
   );
@@ -67,8 +67,8 @@ export function PostEditor({ postId }: { postId: number }) {
   );
 }
 
-/** 고치기 화면 틀(제목과 안내, 폼). 페이지는 이것만 그린다. 이름의 Card는 테두리 카드였던 때의 것이다. */
-export function PostEditorCard({ postId }: { postId: number }) {
+/** 고치기 화면 틀(제목과 안내, 폼). 페이지는 이것만 그린다. */
+export function PostEditorScreen({ postId }: { postId: number }) {
   return (
     <div className="w-full max-w-xl">
       <h1 className="text-heading text-fg font-bold">고민 고치기</h1>

@@ -22,6 +22,11 @@
   --emotion-tint: var(--ink-100);
   --emotion-fg: var(--ink-700);
 
+  /* 움직임의 시간 세 단계. 누름과 hover는 fast, 값이 바뀌는 막대와 반응은 base, 화면이 바뀌는 것은 slow. */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+
   color-scheme: light;
 }
 
@@ -124,17 +129,17 @@ body {
 
 .ogu-pressable {
   transition:
-    background-color 150ms ease,
-    border-color 150ms ease,
-    color 150ms ease;
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
 }
 @media (prefers-reduced-motion: no-preference) {
   .ogu-pressable {
     transition:
-      background-color 150ms ease,
-      border-color 150ms ease,
-      color 150ms ease,
-      transform 150ms ease;
+      background-color var(--duration-fast) ease,
+      border-color var(--duration-fast) ease,
+      color var(--duration-fast) ease,
+      transform var(--duration-fast) ease;
   }
   .ogu-pressable:active:not(:disabled):not([aria-disabled="true"]) {
     transform: scale(0.98);

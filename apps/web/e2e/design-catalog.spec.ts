@@ -18,6 +18,12 @@ for (const width of [320, 390, 1440]) {
     expect(layout.overflow).toBe(false);
     expect(layout.background).toBe("rgb(255, 255, 255)");
     expect(layout.font).toContain("Pretendard");
+    // 글꼴 이름만이 아니라 실제로 불러와졌는지 본다.
+    expect(
+      await page.evaluate(() =>
+        document.fonts.check('16px "Pretendard Variable"'),
+      ),
+    ).toBe(true);
   });
 }
 
@@ -101,6 +107,11 @@ test("DS-US2-AC4 나머지 공용 컴포넌트와 상태가 카탈로그에 있�
   await page.goto("/debug/design");
   await expect(page.getByRole("button", { name: "작은 버튼" })).toBeVisible();
   await expect(page.getByLabel("잠긴 입력")).toBeDisabled();
+  await expect(page.getByLabel("잠긴 선택")).toBeDisabled();
+  await expect(page.getByLabel("잘못된 선택")).toHaveCSS(
+    "border-top-color",
+    "rgb(180, 35, 24)",
+  );
   await expect(page.getByTestId("catalog-card")).toBeVisible();
   await expect(page.getByTestId("catalog-loading")).toBeVisible();
   const widths = await page

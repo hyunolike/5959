@@ -156,4 +156,13 @@ describe("DESIGN_SYSTEM.md", () => {
       documented.filter((hex) => !known.includes(hex.toLowerCase())),
     ).toEqual([]);
   });
+
+  it("DS-US4-AC3 움직임의 시간은 세 단계이고 누르는 요소는 가장 짧은 단계를 쓴다", () => {
+    expect(css).toMatch(/--duration-fast:\s*120ms;/);
+    expect(css).toMatch(/--duration-base:\s*200ms;/);
+    expect(css).toMatch(/--duration-slow:\s*320ms;/);
+    const pressable = css.match(/\.ogu-pressable\s*\{([^}]*)\}/);
+    expect(pressable?.[1]).toContain("var(--duration-fast)");
+    expect(css).not.toMatch(/\b150ms\b/);
+  });
 });

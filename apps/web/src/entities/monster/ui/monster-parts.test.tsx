@@ -119,4 +119,9 @@ describe("MonsterStage", () => {
       "IRRITATION",
     );
   });
+
+  it("DS-US1-AC3 계약에 없는 감정 값이 와도 태그에 이름이 비지 않는다", () => {
+    render(<EmotionTag emotion={"UNKNOWN" as never} />);
+    expect(screen.getByText("감정")).toHaveAttribute("data-emotion", "UNKNOWN");
+  });
 });

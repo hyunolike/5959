@@ -2,12 +2,14 @@ import dayjs from "dayjs";
 
 /**
  * 작성 시각을 "12분 전"처럼 쓴다. 일주일이 지나면 날짜(`2026.10.06`)로 쓴다.
- * 기기 시계가 어긋나 시각이 미래로 보이면 "방금"으로, 읽을 수 없는 값은 빈 문자열로 돌려준다.
+ * 기기 시계가 어긋나 시각이 미래로 보이면 "방금"으로, 빈 값과 읽을 수 없는 값은 빈 문자열로 돌려준다.
  */
 export function formatRelativeTime(
   date: string | number | Date,
   now: string | number | Date = new Date(),
 ): string {
+  // dayjs는 undefined를 지금으로 읽는다. 빈 값은 시각이 없는 것이다.
+  if (date === undefined || date === null || date === "") return "";
   const then = dayjs(date);
   if (!then.isValid()) return "";
   const minutes = dayjs(now).diff(then, "minute");
