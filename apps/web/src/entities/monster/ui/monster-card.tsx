@@ -18,15 +18,18 @@ import { emotionLabel } from "../model/types";
  * `.ogu-card`가 `data-grade`를 보고 그린다. 등급과 감정은 글자로도 적는다(색과 반짝임만으로 알리지 않는다).
  * 글자가 든 줄(`ogu-card-text`)은 반짝임 위에 그려, 빛이 글자의 색과 대비를 바꾸지 않는다.
  * `lg`는 크게 볼 때의 모습으로, 물리친 날을 길게 적고 내 몫을 한 줄 더 보인다.
+ * `sample`은 빈 도감에 보이는 예시 카드다. 번호와 날짜 자리에 예시임을 적어 진짜 카드와 헷갈리지 않게 한다.
  */
 export function MonsterCard({
   card,
   size = "sm",
+  sample = false,
   className,
   ...props
 }: Omit<ComponentProps<"div">, "children"> & {
   card: MonsterCardData;
   size?: "sm" | "lg";
+  sample?: boolean;
 }) {
   const large = size === "lg";
   return (
@@ -61,7 +64,7 @@ export function MonsterCard({
               large ? "text-label" : "text-caption",
             )}
           >
-            No.{card.cardNo}
+            {sample ? "예시" : `No.${card.cardNo}`}
           </span>
         </div>
         <div className="bg-emotion-tint rounded-inline flex min-h-0 flex-1 items-center justify-center p-2">
@@ -85,9 +88,11 @@ export function MonsterCard({
             {CARD_GRADE_LABELS[card.grade]}
           </span>
           <span className="text-fg-muted tabular-nums">
-            {large
-              ? `${cardDateLong(card.defeatedAt)}에 물리침`
-              : cardDateShort(card.defeatedAt)}
+            {sample
+              ? "물리친 날이 적혀요"
+              : large
+                ? `${cardDateLong(card.defeatedAt)}에 물리침`
+                : cardDateShort(card.defeatedAt)}
           </span>
         </div>
         <p

@@ -145,6 +145,20 @@ describe("MonsterCollection", () => {
     renderCollection();
 
     expect(await screen.findByText("아직 모은 카드가 없어요")).toBeVisible();
+    // 어떤 카드가 생기는지 예시 한 장으로 보인다. 가장 반짝이는 전설 카드다
+    const sample = screen.getByRole("figure", { name: /예시 카드/ });
+    expect(within(sample).getByText("예시")).toBeVisible();
+    expect(within(sample).getByText("전설")).toBeVisible();
+    expect(sample.querySelector(".ogu-card")).toHaveAttribute(
+      "data-grade",
+      "LEGENDARY",
+    );
+    expect(sample.querySelector(".ogu-card")).toHaveClass(
+      "ogu-card-tilt",
+      "ogu-card-sweep",
+    );
+    // 예시는 누를 수 있는 진짜 카드가 아니다
+    expect(within(sample).queryByRole("button")).not.toBeInTheDocument();
     expect(
       screen.getByText(/공감과 댓글로 함께 물리치면 카드가 생겨요/),
     ).toBeVisible();
@@ -236,6 +250,18 @@ describe("MonsterCollection", () => {
     fail = false;
     await user.click(screen.getByRole("button", { name: "다시 시도" }));
     expect(await screen.findByText("아직 모은 카드가 없어요")).toBeVisible();
+  });
+
+  it("FR-016 예시 카드가 있는 빈 도감에도 재촉하는 문구가 없다", async () => {
+    stubCards(() =>
+      json({ items: [], nextCursor: null, summary: summary({}) }),
+    );
+    renderCollection();
+
+    await screen.findByRole("figure", { name: /예시 카드/ });
+    expect(document.body).not.toHaveTextContent(
+      /순위|랭킹|연속|더 모아|서둘러|남았어요|지금 바로|놓치지/,
+    );
   });
 
   it("FR-016 순위나 재촉하는 문구가 없다", async () => {

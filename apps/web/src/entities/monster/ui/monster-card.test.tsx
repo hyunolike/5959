@@ -105,6 +105,19 @@ describe("MonsterCard", () => {
     expect(screen.getByText("No.123456")).toBeInTheDocument();
   });
 
+  it("US1-AC6 예시 카드는 번호와 날짜 자리에 예시임을 적어 진짜 카드와 헷갈리지 않는다", () => {
+    render(<MonsterCard size="lg" sample card={card()} />);
+
+    expect(screen.getByText("예시")).toBeInTheDocument();
+    expect(screen.queryByText(/^No\./)).not.toBeInTheDocument();
+    expect(screen.getByText("물리친 날이 적혀요")).toBeInTheDocument();
+    expect(screen.queryByText(/에 물리침$/)).not.toBeInTheDocument();
+    // 나머지는 진짜 카드와 같은 모양이다
+    expect(screen.getByText("전설")).toBeInTheDocument();
+    expect(screen.getByText("내 몬스터")).toBeInTheDocument();
+    expect(screen.getByText("함께 물리친 회원")).toBeInTheDocument();
+  });
+
   it("US3-AC3 반짝임은 장식이라 낭독하지 않는다", () => {
     const { container } = render(<MonsterCard card={card()} />);
 
