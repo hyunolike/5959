@@ -11,7 +11,7 @@ export default function NotificationsPage() {
   return (
     <div className="flex w-full max-w-xl flex-col gap-6">
       <header className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-neutral-900">알림</h1>
+        <h1 className="text-heading text-fg font-bold">알림</h1>
         <Button asChild variant="ghost" size="sm">
           <Link href="/home">피드로</Link>
         </Button>

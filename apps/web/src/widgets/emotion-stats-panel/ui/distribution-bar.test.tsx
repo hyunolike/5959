@@ -90,4 +90,52 @@ describe("DistributionBar", () => {
     expect(screen.queryAllByTestId("distribution-segment")).toHaveLength(0);
     expect(screen.getAllByText("0%")).toHaveLength(5);
   });
+
+  it("DS-US1-AC3 막대의 조각과 범례의 점은 감정마다 같은 색이고, 글자는 감정 색을 입지 않는다", () => {
+    render(
+      <DistributionBar
+        distribution={distribution([
+          [2, 40],
+          [1, 20],
+          [1, 20],
+          [1, 20],
+          [0, 0],
+        ])}
+        labels={LABELS}
+      />,
+    );
+    const segments = screen.getAllByTestId("distribution-segment");
+    const items = within(
+      screen.getByRole("list", { name: "감정 분포" }),
+    ).getAllByRole("listitem");
+    segments.forEach((segment, index) => {
+      const dot = items[index].querySelector("[aria-hidden]") as HTMLElement;
+      expect(dot.style.backgroundColor).toBe(segment.style.backgroundColor);
+      expect(segment.style.backgroundColor).not.toBe("");
+    });
+    for (const item of items) {
+      for (const text of item.querySelectorAll("span:not([aria-hidden])")) {
+        expect((text as HTMLElement).style.color).toBe("");
+        expect(text.className).not.toContain("emotion");
+      }
+    }
+  });
+
+  it("DS-US3-AC6 조각 사이는 2px 띄우고 막대의 양 끝만 둥글다", () => {
+    render(
+      <DistributionBar
+        distribution={distribution([
+          [2, 67],
+          [0, 0],
+          [0, 0],
+          [0, 0],
+          [1, 33],
+        ])}
+        labels={LABELS}
+      />,
+    );
+    const bar = screen.getAllByTestId("distribution-segment")[0]
+      .parentElement as HTMLElement;
+    expect(bar).toHaveClass("gap-0.5", "rounded-full", "overflow-hidden");
+  });
 });

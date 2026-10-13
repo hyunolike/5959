@@ -112,7 +112,7 @@ export function NotificationList() {
   if (isError && items.length === 0) {
     return (
       <Card className="text-center">
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-body-sm text-danger">
           알림을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
         </p>
       </Card>
@@ -122,7 +122,7 @@ export function NotificationList() {
   if (items.length === 0) {
     return (
       <Card className="text-center">
-        <p className="text-sm text-neutral-600">아직 받은 알림이 없어요.</p>
+        <p className="text-body-sm text-fg-subtle">아직 받은 알림이 없어요.</p>
       </Card>
     );
   }
@@ -131,7 +131,7 @@ export function NotificationList() {
     <section aria-label="알림 목록" className="flex w-full flex-col gap-3">
       <div className="flex min-h-8 items-center justify-between gap-3">
         {/* 비어 있어도 남겨 두어, 안내가 생기면 화면 낭독기가 읽는다. */}
-        <p role="status" className="text-sm text-neutral-700">
+        <p role="status" className="text-body-sm text-fg-muted">
           {notice}
         </p>
         {/* 누른 뒤에도 초점이 버튼에 남도록 disabled 대신 aria-disabled로 막는다. */}
@@ -145,7 +145,10 @@ export function NotificationList() {
           모두 읽음
         </Button>
       </div>
-      <ul aria-label="알림" className="flex flex-col gap-2">
+      <ul
+        aria-label="알림"
+        className="border-line divide-line -mx-5 flex flex-col divide-y border-y"
+      >
         {items.map((item) => (
           <li key={item.notificationId}>
             <NotificationItem notification={item} onSelect={select} />

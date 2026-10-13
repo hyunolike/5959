@@ -221,4 +221,16 @@ describe("ProfileForm", () => {
     );
     expect(pushMock).not.toHaveBeenCalled();
   });
+
+  it("DS-US2-AC2 직군과 경력은 52px 공용 선택 상자이고 지금 값이 골라져 있다", () => {
+    renderForm();
+    for (const [name, value] of [
+      ["직군", "DEVELOPMENT"],
+      ["경력", "YEAR_3"],
+    ]) {
+      const select = screen.getByLabelText(name);
+      expect(select).toHaveClass("h-13", "border-line-strong");
+      expect(select).toHaveValue(value);
+    }
+  });
 });

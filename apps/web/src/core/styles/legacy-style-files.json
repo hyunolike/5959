@@ -1,20 +1,7 @@
 {
   "app/debug/error-probe/page.tsx": 3,
-  "app/my/edit/page.tsx": 4,
-  "app/my/page.tsx": 11,
-  "app/notifications/page.tsx": 1,
   "app/page.tsx": 3,
-  "app/report/[weekStart]/page.tsx": 1,
-  "entities/notification/ui/notification-item.tsx": 13,
-  "entities/weekly-report/ui/weekly-report-item.tsx": 6,
-  "features/edit-profile/ui/profile-form.tsx": 16,
   "features/install-app/ui/home-install.tsx": 13,
-  "widgets/emotion-stats-panel/ui/distribution-bar.tsx": 4,
-  "widgets/emotion-stats-panel/ui/emotion-stats-panel.tsx": 11,
-  "widgets/emotion-stats-panel/ui/weekly-chart.tsx": 3,
   "widgets/guest-home/ui/guest-home.tsx": 19,
-  "widgets/my-activity/ui/my-activity.tsx": 6,
-  "widgets/notification-list/ui/notification-list.tsx": 3,
-  "widgets/service-status/ui/service-status-view.tsx": 4,
-  "widgets/weekly-report/ui/weekly-report.tsx": 23
+  "widgets/service-status/ui/service-status-view.tsx": 4
 }
