@@ -14,6 +14,7 @@ export function NavigationItem({
   current,
   mobile = false,
   primary = false,
+  wide = false,
   locked = false,
   onClick,
   prefetch,
@@ -24,8 +25,10 @@ export function NavigationItem({
   icon: Icon;
   current?: "page" | "location";
   mobile?: boolean;
-  /** 좁은 화면의 메뉴에서 주요 동작 색으로 채워 보이는 메뉴. 넓은 화면에서는 다른 메뉴와 같다. */
+  /** 좁은 화면의 메뉴에서 막대 위로 올라온 둥근 버튼으로 보이는 메뉴. 넓은 화면에서는 다른 메뉴와 같다. */
   primary?: boolean;
+  /** 좁은 화면의 메뉴에서 두 칸을 쓴다. */
+  wide?: boolean;
   /** 익명에게 로그인 안내를 먼저 여는 메뉴. 이름은 그대로 두고 설명으로만 알린다. */
   locked?: boolean;
   onClick?: MouseEventHandler<HTMLAnchorElement>;
@@ -44,9 +47,10 @@ export function NavigationItem({
       className={cn(
         "ogu-pressable group rounded-control relative",
         mobile ? "min-h-16 min-w-0" : "min-h-12",
-        mobile && (filled ? "flex-[1.4]" : "flex-1"),
+        mobile && wide && "col-span-2",
+        // 둥근 버튼은 칸 밖으로 올라와 있어 칸의 바탕을 바꾸지 않는다.
         filled
-          ? "bg-action text-on-action hover:bg-action-hover"
+          ? "text-fg"
           : current
             ? "text-fg"
             : "text-fg-subtle hover:bg-surface-sunken active:bg-line",
@@ -108,7 +112,16 @@ function NavigationContents({
           mobile ? "flex-col gap-0.5" : "gap-3",
         )}
       >
-        <span className="relative flex size-8 shrink-0 items-center justify-center">
+        <span
+          data-navigation-primary={filled ? "" : undefined}
+          className={cn(
+            "relative flex shrink-0 items-center justify-center",
+            // 56px 원을 24px 올려 흐름에서는 다른 아이콘과 같은 32px만 차지한다. 글자의 줄이 맞는다.
+            filled
+              ? "border-surface bg-action text-on-action group-hover:bg-action-hover -mt-6 size-14 rounded-full border-4"
+              : "size-8",
+          )}
+        >
           {/* 선택은 채운 아이콘으로, 이동 대기는 돌아가는 표시로 구분한다. */}
           <NavIcon
             aria-hidden
@@ -156,13 +169,7 @@ function NavigationContents({
         </span>
       </span>
       {mobile ? (
-        <span
-          aria-hidden
-          className={cn(
-            "h-3 text-[10px] leading-3",
-            filled ? "text-on-action" : "text-fg-subtle",
-          )}
-        >
+        <span aria-hidden className="text-fg-subtle h-3 text-[10px] leading-3">
           {pending ? "이동 중" : null}
         </span>
       ) : null}

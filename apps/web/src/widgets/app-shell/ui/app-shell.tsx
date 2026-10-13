@@ -23,7 +23,14 @@ const NAVIGATION = [
     icon: PencilSimpleLine,
     primary: true,
   },
-  { href: "/my", label: "내 마음 기록", shortLabel: "기록", icon: User },
+  // 좁은 화면에서는 고민 쓰기가 정가운데 칸에 오도록 오른쪽의 하나가 두 칸을 쓴다.
+  {
+    href: "/my",
+    label: "내 마음 기록",
+    shortLabel: "기록",
+    icon: User,
+    wide: true,
+  },
 ];
 
 export function AppShell({
@@ -114,7 +121,7 @@ function ShellContents({
       {showNavigation ? (
         <nav
           aria-label="모바일 주요 메뉴"
-          className="border-line bg-surface rounded-t-surface fixed right-0 bottom-0 left-0 z-30 flex gap-1 border border-b-0 px-3 pt-2 pb-[max(8px,env(safe-area-inset-bottom))] md:hidden"
+          className="border-line bg-surface rounded-t-surface fixed right-0 bottom-0 left-0 z-30 grid grid-cols-5 border border-b-0 px-3 pt-2 pb-[max(8px,env(safe-area-inset-bottom))] md:hidden"
         >
           {NAVIGATION.map((item) => (
             <NavigationItem

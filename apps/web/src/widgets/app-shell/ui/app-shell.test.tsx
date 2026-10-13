@@ -181,30 +181,62 @@ describe("AppShell", () => {
     expect(menu.className).not.toMatch(/shadow/);
   });
 
-  it("좁은 화면의 고민 쓰기는 주요 동작 색으로 채운 버튼이고 다른 메뉴보다 넓다", () => {
+  it("좁은 화면의 고민 쓰기는 막대 한가운데 칸에 있다", () => {
+    render(<AppShell authenticated>{null}</AppShell>);
+    const menu = screen.getByRole("navigation", { name: "모바일 주요 메뉴" });
+    // 다섯 칸으로 나눠 셋째 칸이 정가운데다. 오른쪽의 하나는 두 칸을 쓴다.
+    expect(menu).toHaveClass("grid", "grid-cols-5");
+    const links = within(menu).getAllByRole("link");
+    expect(links.map((link) => link.getAttribute("aria-label"))).toEqual([
+      "마음 이야기",
+      "함께 이겨내기",
+      "고민 쓰기",
+      "내 마음 기록",
+    ]);
+    expect(links[3]).toHaveClass("col-span-2");
+    for (const link of links.slice(0, 3)) {
+      expect(link).not.toHaveClass("col-span-2");
+    }
+  });
+
+  it("좁은 화면의 고민 쓰기는 막대 위로 올라온 둥근 버튼이고 주요 동작 색이다", () => {
     render(<AppShell authenticated>{null}</AppShell>);
     const nav = within(
       screen.getByRole("navigation", { name: "모바일 주요 메뉴" }),
     );
     const write = nav.getByRole("link", { name: "고민 쓰기" });
-    expect(write).toHaveClass("bg-action", "text-on-action", "flex-[1.4]");
-    expect(write).not.toHaveClass("text-fg-subtle");
+    const circle = write.querySelector("[data-navigation-primary]");
+    expect(circle).toHaveClass(
+      "size-14",
+      "-mt-6",
+      "rounded-full",
+      "bg-action",
+      "text-on-action",
+    );
+    // 그림자 대신 면 색 테두리로 본문과 나눈다.
+    expect(circle).toHaveClass("border-4", "border-surface");
+    expect(circle?.className).not.toMatch(/shadow/);
     expect(within(write).getByText("고민 쓰기")).toBeVisible();
+    expect(write).toHaveClass("text-fg");
     for (const name of ["마음 이야기", "함께 이겨내기", "내 마음 기록"]) {
-      const other = nav.getByRole("link", { name });
-      expect(other).not.toHaveClass("bg-action");
-      expect(other).toHaveClass("flex-1");
+      expect(
+        nav
+          .getByRole("link", { name })
+          .querySelector("[data-navigation-primary]"),
+      ).toBeNull();
     }
   });
 
-  it("고민 쓰기 화면에 있으면 채운 버튼의 아이콘이 채워지고 현재 위치로 알린다", () => {
+  it("고민 쓰기 화면에 있으면 둥근 버튼의 아이콘이 채워지고 현재 위치로 알린다", () => {
     route.pathname = "/write";
     render(<AppShell authenticated>{null}</AppShell>);
     const write = within(
       screen.getByRole("navigation", { name: "모바일 주요 메뉴" }),
     ).getByRole("link", { name: "고민 쓰기" });
     expect(write).toHaveAttribute("aria-current", "page");
-    expect(write).toHaveClass("bg-action", "text-on-action");
+    expect(write.querySelector("[data-navigation-primary]")).toHaveClass(
+      "bg-action",
+    );
     expect(write.querySelector("svg")).toHaveAttribute(
       "data-icon-weight",
       "fill",
@@ -216,11 +248,12 @@ describe("AppShell", () => {
     const write = within(
       screen.getByRole("navigation", { name: "주요 메뉴" }),
     ).getByRole("link", { name: "고민 쓰기" });
-    expect(write).not.toHaveClass("bg-action");
+    expect(write.querySelector("[data-navigation-primary]")).toBeNull();
     expect(write).toHaveClass("text-fg-subtle");
+    expect(write).not.toHaveClass("col-span-2");
   });
 
-  it("익명에게 잠긴 고민 쓰기의 자물쇠는 채운 버튼 위에서도 보이는 색이다", () => {
+  it("익명에게 잠긴 고민 쓰기의 자물쇠는 둥근 버튼 위에서도 보이는 색이다", () => {
     render(<AppShell authenticated={false}>{null}</AppShell>);
     const write = within(
       screen.getByRole("navigation", { name: "모바일 주요 메뉴" }),
