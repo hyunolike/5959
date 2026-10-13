@@ -16,6 +16,7 @@ import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.time.temporal.ChronoUnit
+import java.util.Random
 import java.util.random.RandomGenerator
 
 sealed interface ReactionClaim {
@@ -42,7 +43,9 @@ class ReactionStore(
     aiProperties: AiProperties,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
-    private val random: RandomGenerator = RandomGenerator.getDefault()
+
+    // 운영 이미지의 JRE(eclipse-temurin의 jre)에는 `RandomGenerator.getDefault()`의 알고리즘이 든 jdk.random 모듈이 없다
+    private val random: RandomGenerator = Random()
 
     /** 맡은 동안 다른 실행기가 손대지 않을 시간: 댓글 쓰기와 위험 분류의 타임아웃 + 여유 10초. */
     private val lease: Duration = aiProperties.timeout.plus(aiProperties.riskTimeout).plus(LEASE_MARGIN)

@@ -3,6 +3,7 @@ package com.ogu.companion.application
 import com.ogu.post.PostCompanionApi
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Component
+import java.util.Random
 import java.util.random.RandomGenerator
 
 /**
@@ -42,7 +43,8 @@ object ReactionCount {
 class WeightedReactionCountPicker(
     private val properties: CompanionProperties,
 ) : ReactionCountPicker {
-    private val random: RandomGenerator = RandomGenerator.getDefault()
+    // 운영 이미지의 JRE(eclipse-temurin의 jre)에는 `RandomGenerator.getDefault()`의 알고리즘이 든 jdk.random 모듈이 없다
+    private val random: RandomGenerator = Random()
 
     override fun pick(postId: Long): Int = ReactionCount.pick(properties.countWeights, random)
 }
