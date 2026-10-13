@@ -85,8 +85,14 @@ describe("AppShell", () => {
       "page",
     );
     expect(target).not.toHaveAttribute("aria-current");
-    expect(within(target).getByText("이동 중", { exact: true })).toBeVisible();
+    // 글자로 "이동 중"을 띄우지 않는다. 아이콘 자리의 돌아가는 표시와 낭독용 안내만 둔다
+    expect(
+      within(target).queryByText("이동 중", { exact: true }),
+    ).not.toBeInTheDocument();
     expect(target.querySelector('[aria-busy="true"]')).not.toBeNull();
+    expect(within(target).getByText("내 마음 기록 이동 중")).toHaveClass(
+      "sr-only",
+    );
     route.pathname = "/my";
     route.pending = false;
     rerender(
@@ -336,14 +342,25 @@ describe("AppShell", () => {
     ).not.toHaveAccessibleDescription();
   });
 
-  it("이동 대기 중에는 아이콘 자리에 돌아가는 표시와 이동 중 안내가 나온다", () => {
+  it("이동 대기 중에는 아이콘 자리에 돌아가는 표시만 나오고 이동 중이라는 글자는 보이지 않는다", () => {
     route.pending = true;
     render(<AppShell authenticated>{null}</AppShell>);
-    const nav = screen.getByRole("navigation", { name: "모바일 주요 메뉴" });
-    expect(
-      nav.querySelectorAll('[data-navigation-pending="true"]').length,
-    ).toBeGreaterThan(0);
-    expect(within(nav).getAllByText("이동 중").length).toBeGreaterThan(0);
+    for (const name of ["모바일 주요 메뉴", "주요 메뉴"]) {
+      const nav = screen.getByRole("navigation", { name });
+      expect(
+        nav.querySelectorAll('[data-navigation-pending="true"]').length,
+      ).toBeGreaterThan(0);
+      expect(
+        nav.querySelectorAll(".animate-spin, [class*='animate-spin']").length,
+      ).toBeGreaterThan(0);
+      // 보이는 글자로는 띄우지 않는다. 화면 낭독기에는 어느 메뉴로 가는 중인지 알린다
+      expect(
+        within(nav).queryByText("이동 중", { exact: true }),
+      ).not.toBeInTheDocument();
+      for (const announcement of within(nav).getAllByText(/ 이동 중$/)) {
+        expect(announcement).toHaveClass("sr-only");
+      }
+    }
   });
 
   it("DS-US4-AC1 좁은 화면의 메뉴는 본문보다 앞에 있어 끝없는 피드를 지나지 않고 닿는다", () => {
