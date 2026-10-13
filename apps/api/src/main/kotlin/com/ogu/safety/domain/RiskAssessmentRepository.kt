@@ -52,27 +52,26 @@ class RiskAssessmentRepository(
             .orElse(null)
 
     /**
-     * [ids] 가운데 가장 새 판정의 상태가 [settled]에 없는 대상. 판정 기록이 없는 대상은 들지 않는다. 대상마다 가장 새
-     * 행 하나만 본다(`risk_assessment_target_idx`).
+     * [ids] 가운데 가장 새 판정이 AI 분류까지 끝났고(`DONE`) 단계가 없음인 대상. 판정 기록이 없는 대상은 들지 않는다.
+     * 대상마다 가장 새 행 하나만 본다(`risk_assessment_target_idx`). 분류 결과는 상태와 단계를 한 문장으로 적으므로
+     * ([close]) 여기서 둘을 함께 읽으면 어긋나지 않는다.
      */
-    fun unsettledIds(
+    fun clearedIds(
         type: ContentType,
         ids: Set<Long>,
-        settled: Set<String>,
     ): Set<Long> =
         jdbcClient
             .sql(
                 """
                 select latest.target_id from (
-                    select distinct on (target_id) target_id, status from risk_assessment
+                    select distinct on (target_id) target_id, status, level from risk_assessment
                     where target_type = :type and target_id in (:ids)
                     order by target_id, id desc
                 ) latest
-                where latest.status not in (:settled)
+                where latest.status = 'DONE' and latest.level = 'NONE'
                 """.trimIndent(),
             ).param("type", type.name)
             .param("ids", ids)
-            .param("settled", settled)
             .query(Long::class.java)
             .list()
             .filterNotNull()

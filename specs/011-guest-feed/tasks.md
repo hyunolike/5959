@@ -15,9 +15,9 @@ description: "Task list for 011-guest-feed (비회원 둘러보기 피드)"
 
 ## Phase 2: API (US1, US2)
 
-- [X] T002 [US2] `apps/api/src/test/kotlin/com/ogu/safety/RiskApiTests.kt`에 `US2-AC3 판정이 끝나지 않은 글만 unsettledPostIds에 든다`(끝난 글, 기다리는 글, 닫힌 글, 기록이 없는 글)를 먼저 쓰고, `safety`의 `RiskApi.unsettledPostIds`와 구현
+- [X] T002 [US2] `apps/api/src/test/kotlin/com/ogu/safety/RiskApiTests.kt`에 `US2-AC3 AI 분류가 위험 없음으로 끝난 글만 clearedPostIds에 든다`(끝난 글, 우려 글, 기다리는 글, 닫힌 글, 키워드로만 닫힌 글, 기록이 없는 글)와 `US2-AC3 clearedPostIds는 가장 새 판정만 본다`를 먼저 쓰고, `safety`의 `RiskApi.clearedPostIds`와 구현(research R8)
 - [X] T003 [US1] `apps/api/src/test/kotlin/com/ogu/feed/presentation/PublicFeedApiTests.kt`를 먼저 쓴다: `US1-AC1 로그인 없이 최근 글부터 받는다`, `US1-AC2 감정, 직군과 경력, 본문, 몬스터, 수가 있다`, `US1-AC3 응답 원문에 닉네임과 회원 번호가 없다`, `US1-AC5 스무 개까지만 주고 커서가 없다`, `US1-AC6 보일 글이 없으면 빈 목록이다`, `US2-AC1 지운 글과 숨긴 글은 없다`, `US2-AC2 우려와 위기 글은 없다`, `US2-AC3 판정이 끝나지 않은 글은 없고 끝나면 보인다`, `US2-AC4 욕설을 가린다`, `US2-AC5 로그인 없이는 회원의 피드와 글 상세와 댓글이 401이다`, 쿼리는 4개다
-- [X] T004 [US1] `feed`: `application/PublicFeedQuery.kt`, `presentation/dto/PublicFeedResponse.kt`, `presentation/PublicFeedController.kt`. `apps/api/src/main/java/com/ogu/feed/package-info.java`와 `ModularityTests`의 허용 표에 `safety`. `SecurityPaths.PUBLIC`에 `/api/v1/public/feed`
+- [X] T004 [US1] `feed`: `application/PublicFeedQuery.kt`, `presentation/dto/PublicFeedResponse.kt`, `presentation/PublicFeedController.kt`. `apps/api/src/main/java/com/ogu/feed/package-info.java`와 `ModularityTests`의 허용 표에 `safety`. `SecurityPaths.PUBLIC_GET`에 `/api/v1/public/feed`
 
 ## Phase 3: 웹 (US1, US2, US3)
 
@@ -30,7 +30,7 @@ description: "Task list for 011-guest-feed (비회원 둘러보기 피드)"
 
 - [X] T009 [P] 문서: `apps/api/AGENTS.md`(공개 조회, `feed → safety`), `apps/web/docs/ARCHITECTURE.md`, `docs/architecture/overview.md`의 그래프
 - [X] T010 `./gradlew clean build`, 웹의 `typecheck`, `lint`, `lint:fsd`, `format:check`, `test`, `test:e2e`. 390px 화면을 눈으로 본다
-- [ ] T011 별도 검토자가 브랜치 전체를 본다. 지적을 고친 뒤 `main`으로 PR을 연다. PR에 API 배포가 따로 필요하다고 적는다
+- [X] T011 별도 검토자가 브랜치 전체를 본다. 지적을 고친 뒤 `main`으로 PR을 연다. PR에 API 배포가 따로 필요하다고 적는다
 
 ## Dependencies
 

@@ -16,8 +16,9 @@ import org.springframework.stereotype.Service
  * 로그인하지 않은 방문자가 보는 최근 글(011 research R1~R4). 회원의 피드를 여는 것이 아니라 따로 조립한다. 응답 타입에
  * 닉네임과 회원 번호가 들어갈 자리가 없고, 회원을 읽지도 않는다.
  *
- * 누구나 보는 자리라 회원의 피드보다 좁게 고른다. 지우지도 숨기지도 않았고, 위험 단계가 없음이고, 위험 판정이 끝난 글만
- * 내보낸다. 회원에게는 보이는 우려 글과, AI 분류를 아직 받지 못한 글이 여기서 빠진다(원칙 IV). 욕설은 언제나 가린다.
+ * 누구나 보는 자리라 회원의 피드보다 좁게 고른다. 지우지도 숨기지도 않았고, AI 분류까지 끝나 위험 없음으로 판정된 글만
+ * 내보낸다([RiskApi.clearedPostIds]). 회원에게는 보이는 우려 글, AI 분류를 기다리는 글, 분류가 끝내 실패해 키워드로만
+ * 닫힌 글, 판정 기록이 없는 옛 글이 여기서 빠진다(원칙 IV). 욕설은 언제나 가린다.
  * 최근 [LIMIT]개까지만 주고 넘겨 볼 방법을 두지 않는다. 쿼리는 4개다.
  */
 @Service
@@ -32,8 +33,9 @@ class PublicFeedQuery(
         // 걸러질 글을 감안해 넉넉히 읽는다. 보는 회원이 없으므로 공감 여부는 쓰지 않는다
         val candidates = postApi.page(PostPageQuery(viewerId = NOBODY, size = CANDIDATES)).items.map { it.post }
         val calm = candidates.filter { !it.hidden && RiskLevel.of(it.riskLevel) == RiskLevel.NONE }
-        val unsettled = riskApi.unsettledPostIds(calm.map { it.postId })
-        val posts = calm.filterNot { it.postId in unsettled }.take(LIMIT)
+        // 글의 단계 열은 분류 결과보다 늦게 따라올 수 있다. 내보낼 글은 판정 기록이 허락한 것만이다
+        val cleared = riskApi.clearedPostIds(calm.map { it.postId })
+        val posts = calm.filter { it.postId in cleared }.take(LIMIT)
 
         val postIds = posts.map { it.postId }
         val monsters = monsterApi.findByPostIds(postIds)

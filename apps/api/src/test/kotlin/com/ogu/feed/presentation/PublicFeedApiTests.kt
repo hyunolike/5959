@@ -19,10 +19,12 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
+import org.springframework.http.HttpMethod
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.DefaultMockMvcBuilder
@@ -84,9 +86,8 @@ class PublicFeedApiTests {
     fun `US1-AC2 감정, 직군과 경력, 본문의 앞부분, 몬스터, 수, 올린 때가 있다`() {
         val author = members.onboarded(jobRole = "DESIGN", careerYear = "YEAR_5")
         val helper = members.onboarded()
-        val postId = loop.createPost(author, "[불안:낮음] " + "가".repeat(60))
+        val postId = settledPost(author, "[불안:낮음] " + "가".repeat(60))
         loop.awaitMonster(postId)
-        awaitSettled(postId)
         loop.likePost(helper, postId).andExpect(status().isOk)
         loop.comment(helper, postId)
 
@@ -148,7 +149,7 @@ class PublicFeedApiTests {
     @Test
     fun `US1-AC5 스무 개까지만 주고 넘겨 볼 방법이 없다`() {
         val author = members.onboarded()
-        val posts = (1..25).map { safety.insertPost(author, "$SAFE_TEXT $it") }
+        val posts = (1..25).map { safety.insertPost(author, "$SAFE_TEXT $it").also(::markCleared) }
 
         val data = data()
         val ids = data.get("items").toList().map { it.get("postId").asLong() }
@@ -184,7 +185,7 @@ class PublicFeedApiTests {
         val concernByKeyword = loop.createPost(author, "[실패] $CONCERN_TEXT")
         val crisis = loop.createPost(author, "[실패] $CRISIS_TEXT")
         val safe = settledPost(author, "[실패] $SAFE_TEXT")
-        listOf(concernByAi, concernByKeyword).forEach(::awaitSettled)
+        listOf(concernByAi, concernByKeyword).forEach(::awaitClassified)
 
         // 회원에게는 보이는 우려 글도 로그인하지 않은 방문자에게는 내보내지 않는다
         assertThat(feedIds()).contains(safe).doesNotContain(concernByAi, concernByKeyword, crisis)
@@ -208,6 +209,51 @@ class PublicFeedApiTests {
     }
 
     @Test
+    fun `US2-AC3 AI가 보지 못한 글은 없다`() {
+        val author = members.onboarded()
+        val noRecord = safety.insertPost(author, "$SAFE_TEXT 판정 기록이 없는 옛 글")
+        val keywordOnly = settledPost(author, "[실패] $SAFE_TEXT 키워드로만 닫힌 글")
+        val seen = settledPost(author, "[실패] $SAFE_TEXT")
+        // 분류가 기한까지 실패해 키워드 판정만으로 닫힌 글
+        jdbcTemplate.update(
+            "update risk_assessment set status = 'FALLBACK', ai_level = null " +
+                "where target_type = 'POST' and target_id = ?",
+            keywordOnly,
+        )
+
+        assertThat(feedIds()).contains(seen).doesNotContain(noRecord, keywordOnly)
+    }
+
+    @Test
+    fun `US2-AC3 고친 글은 다시 판정이 끝날 때까지 없다`() {
+        val author = members.onboarded()
+        val postId = settledPost(author, "[실패] $SAFE_TEXT")
+        assertThat(feedIds()).contains(postId)
+
+        loop
+            .updatePost(author, postId, mapOf("content" to "[실패] [위험분류실패] $SAFE_TEXT 고친 글"))
+            .andExpect(status().isNoContent)
+
+        assertThat(feedIds()).doesNotContain(postId)
+    }
+
+    @Test
+    fun `US2-AC2 판정이 위기로 끝났으면 글의 단계가 아직 없음이어도 없다`() {
+        val postId = settledPost(members.onboarded(), "[실패] $SAFE_TEXT")
+        // 분류 결과가 커밋된 순간을 흉내 낸다. 목록이 글을 먼저 읽고 판정을 나중에 읽어도 새지 않아야 한다
+        jdbcTemplate.update(
+            "update risk_assessment set ai_level = 'CRISIS', level = 'CRISIS' " +
+                "where target_type = 'POST' and target_id = ?",
+            postId,
+        )
+
+        assertThat(
+            jdbcTemplate.queryForObject("select risk_level from posts where id = ?", String::class.java, postId),
+        ).isEqualTo("NONE")
+        assertThat(feedIds()).doesNotContain(postId)
+    }
+
+    @Test
     fun `US2-AC4 욕설을 가린다`() {
         val postId = settledPost(members.onboarded(), "[실패] 오늘 팀장이 병신 같은 소리를 해서 화가 났다")
 
@@ -227,6 +273,10 @@ class PublicFeedApiTests {
         }
         // 공개 조회의 이웃 경로도 열리지 않는다
         mockMvc.perform(get("/api/v1/public/posts/$postId")).andExpect(status().isUnauthorized)
+        // 연 것은 GET 하나다
+        for (method in listOf(HttpMethod.POST, HttpMethod.PUT, HttpMethod.PATCH, HttpMethod.DELETE)) {
+            mockMvc.perform(request(method, PUBLIC_FEED)).andExpect(status().isUnauthorized)
+        }
     }
 
     @Test
@@ -240,20 +290,39 @@ class PublicFeedApiTests {
         assertThat(queries).isEqualTo(4)
     }
 
-    /** 글을 쓰고 위험 판정이 끝날 때까지 기다린다. */
+    /** 글을 쓰고 AI 분류가 위험 없음으로 끝날 때까지 기다린다. */
     private fun settledPost(
         author: TestMember,
         content: String,
-    ): Long = loop.createPost(author, content).also(::awaitSettled)
+    ): Long =
+        loop.createPost(author, content).also { postId ->
+            await().atMost(SafetyFixture.AWAIT_LIMIT).pollInterval(SafetyFixture.POLL).until {
+                riskApi.clearedPostIds(listOf(postId)).isNotEmpty()
+            }
+        }
 
-    private fun awaitSettled(postId: Long) {
+    /** AI 분류가 끝날 때까지 기다린다. 단계는 보지 않는다. */
+    private fun awaitClassified(postId: Long) {
         await().atMost(SafetyFixture.AWAIT_LIMIT).pollInterval(SafetyFixture.POLL).until {
             jdbcTemplate.queryForObject(
-                "select count(*) from risk_assessment where target_type = 'POST' and target_id = ?",
+                "select count(*) from risk_assessment where target_type = 'POST' and target_id = ? and status = 'DONE'",
                 Int::class.java,
                 postId,
-            )!! > 0 && riskApi.unsettledPostIds(listOf(postId)).isEmpty()
+            )!! > 0
         }
+    }
+
+    /** SQL로 넣은 글에 AI 분류가 위험 없음으로 끝난 판정을 붙인다. */
+    private fun markCleared(postId: Long) {
+        jdbcTemplate.update(
+            """
+            insert into risk_assessment (target_type, target_id, post_id, author_id, content_version, keyword_level,
+                                         ai_level, level, status, next_attempt_at, created_at, completed_at)
+            select 'POST', id, id, author_id, updated_at, 'NONE', 'NONE', 'NONE', 'DONE', now(), now(), now()
+            from posts where id = ?
+            """.trimIndent(),
+            postId,
+        )
     }
 
     private fun data(): JsonNode {

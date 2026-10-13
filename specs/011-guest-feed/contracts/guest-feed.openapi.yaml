@@ -28,7 +28,7 @@ components:
       type: object
       description: |
         로그인하지 않은 방문자에게 보이는 글 하나. 닉네임, 회원 번호, 댓글의 내용, 공감한 회원이 들어갈 자리가 없다(011 FR-003).
-        지운 글, 숨긴 글, 위험 단계가 없음이 아닌 글, 위험 판정이 끝나지 않은 글은 나오지 않는다(011 FR-004).
+        지운 글, 숨긴 글, AI 분류까지 끝나 위험 없음으로 판정되지 않은 글은 나오지 않는다(011 FR-004).
       required: [postId, jobRole, careerYear, contentPreview, analysisStatus, monster, likeCount, commentCount, createdAt]
       properties:
         postId: { type: integer, format: int64, description: 로그인한 뒤 이 글로 가는 데 쓴다 }

@@ -6,7 +6,7 @@
 
 ## Summary
 
-로그인하지 않은 방문자가 둘러보기로 들어오면 최근 고민 글 20개를 목록으로 본다. 닉네임 없이 직군과 경력만 보이고, 글을 누르면 로그인 안내가 뜬다. 지운 글, 숨긴 글, 위험 단계가 없음이 아닌 글, 위험 판정이 끝나지 않은 글은 내보내지 않는다.
+로그인하지 않은 방문자가 둘러보기로 들어오면 최근 고민 글 20개를 목록으로 본다. 닉네임 없이 직군과 경력만 보이고, 글을 누르면 로그인 안내가 뜬다. 지운 글, 숨긴 글, AI 분류까지 끝나 위험 없음으로 판정되지 않은 글은 내보내지 않는다.
 
 API에는 로그인 없이 부르는 조회 하나(`GET /api/v1/public/feed`)를 `feed`에 더한다. 회원의 피드를 여는 것이 아니라 응답 타입을 따로 두어, 닉네임과 회원 번호가 들어갈 자리를 처음부터 없앤다. 넘겨 보기가 없어 얻을 수 있는 것은 그때의 최근 20개뿐이다. 웹은 비회원 홈에 목록을 그리고 문구를 바꾼 공개 범위에 맞춘다. 결정 근거는 [research.md](research.md)에 있다.
 
@@ -28,7 +28,7 @@ API에는 로그인 없이 부르는 조회 하나(`GET /api/v1/public/feed`)를
 
 **Constraints**:
 - 응답에 닉네임, 회원 번호, 댓글의 내용이 없다(FR-003)
-- 위험 판정이 끝나지 않은 글과 위험 단계가 없음이 아닌 글을 내보내지 않는다(FR-004, constitution IV)
+- AI 분류까지 끝나 위험 없음으로 판정된 글만 내보낸다(FR-004, constitution IV)
 - 넘겨 볼 수 없다. 한 번에 20개까지다(FR-001)
 - 글 상세, 댓글, 회원의 피드는 로그인 없이는 지금처럼 401이다(FR-007)
 
@@ -53,7 +53,7 @@ API에는 로그인 없이 부르는 조회 하나(`GET /api/v1/public/feed`)를
 apps/api/src/main/kotlin/com/ogu/
 ├── feed/application/PublicFeedQuery.kt
 ├── feed/presentation/PublicFeedController.kt, dto/PublicFeedResponse.kt
-├── safety/RiskApi.kt, application/RiskQueryService.kt, domain/RiskAssessmentRepository.kt   # unsettledPostIds
+├── safety/RiskApi.kt, application/RiskQueryService.kt, domain/RiskAssessmentRepository.kt   # clearedPostIds
 └── member/infrastructure/security/SecurityPaths.kt                                          # 공개 경로
 apps/api/src/main/java/com/ogu/feed/package-info.java                                        # safety
 apps/api/src/test/kotlin/com/ogu/feed/presentation/PublicFeedApiTests.kt
@@ -72,7 +72,7 @@ contracts/openapi.yaml             # 0.12.0
 | 묶음 | 내용 | 스토리 |
 |---|---|---|
 | 1 | 계약 합치기, 웹 타입 다시 만들기 | 기반 |
-| 2 | API: `RiskApi.unsettledPostIds`, `PublicFeedQuery`, 컨트롤러, 공개 경로, 테스트 | US1, US2 |
+| 2 | API: `RiskApi.clearedPostIds`, `PublicFeedQuery`, 컨트롤러, 공개 경로, 테스트 | US1, US2 |
 | 3 | 웹: 조회와 카드, 비회원 홈, 문구, noindex, e2e | US1, US2, US3 |
 | 4 | 문서, 검토, PR | 마무리 |
 
