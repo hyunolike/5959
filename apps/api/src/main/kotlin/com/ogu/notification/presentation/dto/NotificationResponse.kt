@@ -30,7 +30,7 @@ data class NotificationResponse(
                 postId = n.postId,
                 post = view.post?.let { NotificationPostResponse(it.postId, it.contentPreview) },
                 commentId = n.commentId,
-                actor = view.actor?.let { NotificationActorResponse(it.id, it.nickname) },
+                actor = view.actor?.let { NotificationActorResponse(it.id, it.nickname, it.ai) },
                 actorCount = n.actorCount,
                 reportWeekStart = n.reportWeekStart,
                 read = n.readAt != null,
@@ -47,8 +47,9 @@ data class NotificationPostResponse(
     val contentPreview: String,
 )
 
-/** 계약의 `NotificationActor`. 닉네임은 지금 닉네임이다. */
+/** 계약의 `NotificationActor`. 닉네임은 지금 닉네임이다. [ai]가 true면 AI 친구가 한 일이다(009 US2-AC2). */
 data class NotificationActorResponse(
     val id: Long,
     val nickname: String,
+    val ai: Boolean,
 )

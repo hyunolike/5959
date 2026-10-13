@@ -22,14 +22,17 @@ import java.util.UUID
 @Service
 class OnboardingService(
     private val memberRepository: MemberRepository,
+    private val nicknamePolicy: NicknamePolicy,
     private val jwtIssuer: JwtIssuer,
     private val clock: Clock,
 ) {
-    /** 형식이 틀리면 `INVALID_FORMAT`, 대소문자를 무시하고 이미 쓰이면 `TAKEN`. */
+    /** 형식이 틀리면 `INVALID_FORMAT`, AI 친구와 헷갈리면 `RESERVED`, 대소문자를 무시하고 이미 쓰이면 `TAKEN`. */
     @Transactional(readOnly = true)
     fun checkNickname(raw: String): NicknameAvailability =
         when {
             !Nickname.isValid(raw) -> NicknameAvailability.unavailable(NicknameUnavailableReason.INVALID_FORMAT)
+            nicknamePolicy.isReserved(Nickname.of(raw)) ->
+                NicknameAvailability.unavailable(NicknameUnavailableReason.RESERVED)
             memberRepository.existsByNicknameKey(Nickname.of(raw).key) ->
                 NicknameAvailability.unavailable(NicknameUnavailableReason.TAKEN)
             else -> NicknameAvailability.AVAILABLE
@@ -48,6 +51,7 @@ class OnboardingService(
     ): OnboardingResult {
         val member = lockNotOnboardedMember(memberId)
         val validated = Nickname.of(nickname)
+        nicknamePolicy.rejectIfReserved(validated)
         rejectIfNicknameTaken(validated)
 
         member.completeOnboarding(validated.value, jobRole, careerYear, clock.instant())
@@ -85,6 +89,9 @@ data class OnboardingResult(
 enum class NicknameUnavailableReason {
     INVALID_FORMAT,
     TAKEN,
+
+    /** AI 친구의 닉네임이나 AI 표시와 헷갈린다(009 US2-AC5). */
+    RESERVED,
 }
 
 data class NicknameAvailability(

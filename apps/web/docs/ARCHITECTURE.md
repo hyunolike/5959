@@ -415,6 +415,16 @@ id, 연달아 실패한 횟수만 둔다. 알림과 안 읽은 수는 TanStack Q
 - `widgets/monster-collection`: 도감의 본문. 요약과 감정 고르기(`CollectionSummary`), 목록, 크게 보기(`CardDialog`), 기울기(`useCardTilt`). 기울기는 CSS 변수만 고치고 다시 그리지 않는다.
 - `app/cards/page.tsx`: 조립만. `/cards`는 라우트 가드의 보호 경로다. 목록에 없는 경로는 가드가 그냥 통과시키므로 화면을 더할 때 목록도 함께 고친다.
 
+## AI 친구 (009-ai-companions)
+
+웹이 하는 일은 AI임을 드러내는 것뿐이다. 반응은 API의 주기 작업이 남긴다.
+
+- `shared/ui`의 `AiBadge`: 닉네임 옆의 "AI 친구" 표시. 댓글 엔티티가 써야 해서 `entities/member`가 아니라 `shared/ui`에 있다(엔티티끼리는 서로 가져올 수 없다).
+- `entities/comment`: 작성자의 `ai`가 true면 표시를 붙이고 댓글의 이름에 "AI 친구"를 넣는다.
+- `entities/notification`의 `notificationMessage`: 행동한 회원의 `ai`가 true면 문구에 "AI 친구"를 넣는다.
+- `entities/member`의 `NICKNAME_REASON_LABEL`: `RESERVED`(AI 친구와 헷갈리는 닉네임).
+- `app/ai-friends/page.tsx`: AI 친구가 무엇인지 알리는 정적 화면. 회원 데이터가 없어 라우트 가드의 보호 경로에 넣지 않았다. 로그인하지 않아도 읽을 수 있다. 글쓰기 화면의 한 줄 안내와 댓글의 표시가 여기로 온다.
+
 ## Recent-practice choices worth calling out
 
 - **Next.js 16 / React 19**, App Router, Turbopack builds.

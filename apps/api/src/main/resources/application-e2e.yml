@@ -35,3 +35,15 @@ ogu:
     poll-interval: 5s
     letter:
       poll-interval: 5s
+  # 009 AI 친구: 가짜 댓글 쓰기를 쓰고 5초만 기다렸다 반응한다. 가짜는 본문에 [AI친구]가 있는 글에만 답하고
+  # 나머지 글에서는 실패한다(다른 시나리오의 댓글 수와 HP가 흔들리지 않게). 그 실패도 하루의 몫을 쓰므로 넉넉히 둔다
+  # 수동 검증(009 quickstart)에서 끄거나 상한과 기다리는 시간을 바꿔 볼 수 있게 운영과 같은 환경 변수를 받는다
+  companion:
+    enabled: ${AI_COMPANION_ENABLED:true}
+    daily-limit: ${AI_COMPANION_DAILY_LIMIT:100000}
+    wait: ${AI_COMPANION_WAIT:5s}
+    poll-interval: 2s
+    risk-wait: 2s
+    retry:
+      initial-interval: 2s
+      max-interval: 4s

@@ -32,4 +32,9 @@ class ComposeTests(unittest.TestCase):
         for key in ["AI_API_KEY", "JWT_SECRET", "OGU_BFF_KEY", "GOOGLE_CLIENT_SECRET"]:
             self.assertEqual(services["api"]["environment"][key], credential)
         self.assertEqual(services["postgres"]["environment"]["POSTGRES_PASSWORD"], credential)
+        # 009: the AI companion ships switched off and only listed variables reach the container.
+        api = services["api"]["environment"]
+        self.assertEqual(api["AI_COMPANION_ENABLED"], "false")
+        self.assertEqual(api["AI_COMPANION_DAILY_LIMIT"], "30")
+        self.assertEqual(api["AI_COMPANION_WAIT"], "10m")
         self.assertEqual(services["redis"]["command"][2], credential)

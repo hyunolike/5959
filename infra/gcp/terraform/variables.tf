@@ -54,6 +54,32 @@ variable "kakao_login_enabled" {
   default     = true
 }
 
+variable "ai_companion_enabled" {
+  type        = bool
+  description = "Let the AI companions comment on posts nobody answered. Ships off; turn on after reading real model output."
+  default     = false
+}
+
+variable "ai_companion_daily_limit" {
+  type        = number
+  description = "How many times per day (Asia/Seoul) the API may ask the model for a companion comment."
+  default     = 30
+  validation {
+    condition     = var.ai_companion_daily_limit >= 0 && floor(var.ai_companion_daily_limit) == var.ai_companion_daily_limit
+    error_message = "Use a non-negative whole number."
+  }
+}
+
+variable "ai_companion_wait" {
+  type        = string
+  description = "How long a post waits for a member's comment before a companion answers, e.g. 10m."
+  default     = "10m"
+  validation {
+    condition     = can(regex("^[1-9][0-9]*[smh]$", var.ai_companion_wait))
+    error_message = "Use a duration such as 30s, 10m or 1h."
+  }
+}
+
 variable "kakao_client_id" {
   type    = string
   default = ""

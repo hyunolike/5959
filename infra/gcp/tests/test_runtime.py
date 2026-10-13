@@ -24,6 +24,38 @@ class RuntimeTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "GOOGLE_CLIENT_SECRET"):
             runtime.validate_secrets(values)
 
+    def test_ai_companion_is_off_unless_the_deployment_config_turns_it_on(self):
+        self.assertEqual(runtime.companion_settings({}), {
+            "AI_COMPANION_ENABLED": "false", "AI_COMPANION_DAILY_LIMIT": "30", "AI_COMPANION_WAIT": "10m",
+        })
+        # Only a real boolean true enables it; a truthy string does not.
+        self.assertEqual(runtime.companion_settings({"ai_companion_enabled": "true"})["AI_COMPANION_ENABLED"], "false")
+        enabled = runtime.companion_settings(
+            {"ai_companion_enabled": True, "ai_companion_daily_limit": 5, "ai_companion_wait": "30m"},
+        )
+        self.assertEqual(enabled, {
+            "AI_COMPANION_ENABLED": "true", "AI_COMPANION_DAILY_LIMIT": "5", "AI_COMPANION_WAIT": "30m",
+        })
+
+    def test_ai_companion_rejects_malformed_limits(self):
+        for config in [
+            {"ai_companion_daily_limit": -1}, {"ai_companion_daily_limit": "30"},
+            {"ai_companion_daily_limit": True}, {"ai_companion_wait": "ten minutes"},
+            {"ai_companion_wait": "0m"}, {"ai_companion_wait": 10},
+        ]:
+            with self.subTest(config=config), self.assertRaises(ValueError):
+                runtime.companion_settings(config)
+
+    def test_deployment_config_overrides_companion_fields_in_the_secret(self):
+        secret = {key: "x" * 64 for key in runtime.REQUIRED}
+        secret["AI_COMPANION_ENABLED"] = "true"
+        config = {"project_id": "p", "api_secret": "a", "bff_secret": "b", "web_origin": "https://web.example",
+                  "api_image": "image", "api_domain": "api.example"}
+        with mock.patch.object(runtime, "secret", side_effect=[json.dumps(secret), "b" * 32]):
+            values = runtime.environment(config, "token")
+        self.assertEqual(values["AI_COMPANION_ENABLED"], "false")
+        self.assertEqual(values["AI_COMPANION_DAILY_LIMIT"], "30")
+
     def test_wrong_data_disk_is_rejected_before_docker_can_start(self):
         with mock.patch.object(runtime.os.path, "ismount", return_value=True):
             with mock.patch.object(runtime.subprocess, "check_output", side_effect=["expected\n", "other\n"]):

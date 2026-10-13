@@ -1,5 +1,6 @@
 package com.ogu.notification.application
 
+import com.ogu.member.MemberApi
 import com.ogu.notification.domain.LikeParticipantRepository
 import com.ogu.notification.domain.NewNotification
 import com.ogu.notification.domain.NotificationRepository
@@ -30,6 +31,7 @@ class NotificationWriter(
     private val notifications: NotificationRepository,
     private val participants: LikeParticipantRepository,
     private val signals: RedisSignalPublisher,
+    private val memberApi: MemberApi,
     private val clock: Clock,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -41,7 +43,19 @@ class NotificationWriter(
      */
     fun writeAll(drafts: List<NotificationDraft>) {
         requireTransaction()
-        drafts.sortedBy { it.receiverId }.forEach(::write)
+        val readers = humansAmong(drafts.map { it.receiverId })
+        drafts.filter { it.receiverId in readers }.sortedBy { it.receiverId }.forEach(::write)
+    }
+
+    /**
+     * 알림을 읽을 수 있는 회원만 남긴다. AI 친구는 로그인하지 않아 읽을 사람이 없다(009 FR-017, research R10). 종류마다
+     * 거르지 않고 쓰는 곳에서 걸러, 뒤에 생기는 알림 종류도 따라온다. 회원 행이 없는 번호는 그대로 둔다.
+     */
+    private fun humansAmong(receiverIds: Collection<Long>): Set<Long> {
+        val ids = receiverIds.toSet()
+        if (ids.isEmpty()) return ids
+        val members = memberApi.getMembers(ids)
+        return ids.filterNot { members[it]?.ai == true }.toSet()
     }
 
     /**
@@ -55,6 +69,15 @@ class NotificationWriter(
         likerId: Long,
     ): Boolean {
         requireTransaction()
+        // 받을 사람이 AI 친구면 쓰지 않는다. 아무것도 쓰지 않았으니 트랜잭션을 되돌릴 것도 없다
+        return receiverId in humansAmong(listOf(receiverId)) && addToGroup(receiverId, postId, likerId)
+    }
+
+    private fun addToGroup(
+        receiverId: Long,
+        postId: Long,
+        likerId: Long,
+    ): Boolean {
         val seq = sequences.next(receiverId)
         val now = now()
         val groupId = notifications.upsertLikeGroup(receiverId, postId, likerId, seq, now)

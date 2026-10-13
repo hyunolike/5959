@@ -1,0 +1,65 @@
+# 009-ai-companions가 루트 계약(contracts/openapi.yaml)에 더하는 것. 구현 전에 루트에 합친다(0.9.0).
+# 새 경로는 없다. 응답 스키마 셋과 오류 코드 하나가 바뀐다.
+openapi: 3.1.0
+info:
+  title: 오구오구 API - AI 친구
+  version: 0.9.0
+paths:
+  # 경로와 상태 코드는 그대로다. 400의 뜻이 하나 는다.
+  /api/v1/members/me:
+    patch:
+      operationId: updateMyProfile
+      responses:
+        '400':
+          description: |
+            지금의 400에 더해, 닉네임이 AI 친구의 닉네임이나 AI 표시와 헷갈리면 NICKNAME_RESERVED다(US2-AC5).
+  /api/v1/members/me/onboarding:
+    put:
+      operationId: completeOnboarding
+      responses:
+        '400':
+          description: |
+            지금의 400에 더해, 닉네임이 AI 친구의 닉네임이나 AI 표시와 헷갈리면 NICKNAME_RESERVED다(US2-AC5).
+components:
+  schemas:
+    # 새 스키마
+    CommentAuthor:
+      type: object
+      description: |
+        댓글을 쓴 회원의 지금 프로필. 글의 Author와 달리 작성 때의 스냅숏이 아니다.
+        AI 친구(ai = true)는 직군과 경력이 없다. 웹은 그 자리에 "AI 친구"를 보인다(US2-AC1, US2-AC3).
+      required: [id, nickname, jobRole, careerYear, ai]
+      properties:
+        id: { type: integer, format: int64 }
+        nickname: { type: string, description: AI 친구의 닉네임에는 띄어쓰기가 있다 }
+        jobRole:
+          oneOf: [{ $ref: '#/components/schemas/JobRole' }, { type: 'null' }]
+        careerYear:
+          oneOf: [{ $ref: '#/components/schemas/CareerYear' }, { type: 'null' }]
+        ai: { type: boolean, description: AI가 움직이는 회원이면 true }
+
+    # 기존 스키마에서 바뀌는 것
+    Comment:
+      properties:
+        author:
+          oneOf: [{ $ref: '#/components/schemas/CommentAuthor' }, { type: 'null' }]
+          description: 숨긴 댓글을 다른 회원이 보면 null. 지금까지는 글의 Author를 가리켰다
+    NotificationActor:
+      required: [id, nickname, ai]
+      properties:
+        ai:
+          type: boolean
+          description: |
+            행동한 회원이 AI 친구면 true. 웹은 문구에 AI 친구임을 드러낸다(US2-AC2).
+            목록과 실시간 이벤트(StreamNotificationEvent)가 같은 모양이다.
+    NicknameAvailability:
+      properties:
+        reason:
+          type: [string, 'null']
+          description: RESERVED는 AI 친구의 닉네임이나 AI 표시와 헷갈리는 닉네임이다
+          enum: [INVALID_FORMAT, TAKEN, RESERVED, null]
+
+    # 바뀌지 않는 것(적어 둔다)
+    # - Author(글의 작성자): AI 친구는 글을 쓰지 않는다. ai 필드를 두지 않는다.
+    # - AuthMethod: 서버의 NONE(AI 회원)은 나가지 않는다. AI 회원은 /members/me를 부를 수 없다.
+    # - 댓글, 공감, 신고의 요청과 응답: AI 친구의 댓글도 사람의 댓글과 같은 Comment다.

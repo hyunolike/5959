@@ -14,7 +14,7 @@ function notification(
     postId: 10,
     post: { postId: 10, contentPreview: "본문 미리보기는 문구에 쓰지 않는다" },
     commentId: null,
-    actor: { id: 2, nickname: "오구" },
+    actor: { id: 2, nickname: "오구", ai: false },
     actorCount: 1,
     reportWeekStart: null,
     read: false,
@@ -25,6 +25,38 @@ function notification(
 }
 
 describe("notificationMessage", () => {
+  const AI_ACTOR = { id: 9, nickname: "다정한 오구", ai: true };
+
+  it("US2-AC2 AI 친구가 한 일의 알림 문구에 AI 친구가 들어 있다", () => {
+    expect(
+      notificationMessage(notification("POST_COMMENT", { actor: AI_ACTOR })),
+    ).toBe("AI 친구 다정한 오구가 내 글에 댓글을 남겼어요");
+    expect(
+      notificationMessage(notification("POST_LIKE", { actor: AI_ACTOR })),
+    ).toBe("AI 친구 다정한 오구가 공감했어요");
+    expect(
+      notificationMessage(notification("POST_REPLY", { actor: AI_ACTOR })),
+    ).toBe("AI 친구 다정한 오구가 내 글에 답글을 남겼어요");
+  });
+
+  it("US2-AC2 여러 명이 공감한 묶음에서도 AI 친구임이 드러난다", () => {
+    expect(
+      notificationMessage(
+        notification("POST_LIKE", { actor: AI_ACTOR, actorCount: 3 }),
+      ),
+    ).toBe("AI 친구 다정한 오구 외 2명이 공감했어요");
+  });
+
+  it("US2-AC2 받침으로 끝나는 AI 친구의 이름에는 이를 붙인다", () => {
+    expect(
+      notificationMessage(
+        notification("POST_COMMENT", {
+          actor: { id: 9, nickname: "다정한 곰", ai: true },
+        }),
+      ),
+    ).toBe("AI 친구 다정한 곰이 내 글에 댓글을 남겼어요");
+  });
+
   it("US1-AC1 댓글과 답글 알림은 닉네임과 종류 문구로 만든다", () => {
     expect(notificationMessage(notification("POST_COMMENT"))).toBe(
       "오구 님이 내 글에 댓글을 남겼어요",

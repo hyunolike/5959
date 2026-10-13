@@ -916,8 +916,11 @@ export interface components {
     };
     NicknameAvailability: {
       available: boolean;
-      /** @enum {string|null} */
-      reason?: "INVALID_FORMAT" | "TAKEN" | null;
+      /**
+       * @description RESERVED는 AI 친구의 닉네임이나 AI 표시와 헷갈리는 닉네임이다(009 US2-AC5)
+       * @enum {string|null}
+       */
+      reason?: "INVALID_FORMAT" | "TAKEN" | "RESERVED" | null;
     };
     EmailPasswordRequest: {
       /** Format: email */
@@ -946,6 +949,20 @@ export interface components {
       nickname: string;
       jobRole: components["schemas"]["JobRole"];
       careerYear: components["schemas"]["CareerYear"];
+    };
+    /**
+     * @description 댓글을 쓴 회원의 지금 프로필. 글의 Author와 달리 작성 때의 스냅숏이 아니다.
+     *     AI 친구(ai = true)는 직군과 경력이 없다. 웹은 닉네임 옆에 "AI 친구"를 보인다(009 US2-AC1, US2-AC3).
+     */
+    CommentAuthor: {
+      /** Format: int64 */
+      id: number;
+      /** @description AI 친구의 닉네임에는 띄어쓰기가 있다 */
+      nickname: string;
+      jobRole: components["schemas"]["JobRole"] | null;
+      careerYear: components["schemas"]["CareerYear"] | null;
+      /** @description AI가 움직이는 회원이면 true */
+      ai: boolean;
     };
     PostWriteRequest: {
       /** @description 앞뒤 공백을 뺀 글자(grapheme) 1~500자 */
@@ -1007,7 +1024,7 @@ export interface components {
       /** Format: int64 */
       commentId: number;
       /** @description 숨긴 댓글을 다른 회원이 보면 null */
-      author: components["schemas"]["Author"] | null;
+      author: components["schemas"]["CommentAuthor"] | null;
       /** @description 숨긴 댓글을 다른 회원이 보면 null. 웹은 "가려진 댓글이에요"를 보인다 */
       content: string | null;
       /** @description 다른 회원에게 보이지 않는 댓글이면 true */
@@ -1067,6 +1084,8 @@ export interface components {
       id: number;
       /** @description 지금 닉네임 */
       nickname: string;
+      /** @description 행동한 회원이 AI 친구면 true. 웹은 문구에 AI 친구임을 드러낸다(009 US2-AC2) */
+      ai: boolean;
     };
     NotificationPost: {
       /** Format: int64 */
@@ -1567,7 +1586,10 @@ export interface components {
     };
   };
   responses: {
-    /** @description 입력 검증 실패 (INVALID_REQUEST). 댓글 작성에서는 INVALID_PARENT_COMMENT도 쓴다 */
+    /**
+     * @description 입력 검증 실패 (INVALID_REQUEST). 댓글 작성에서는 INVALID_PARENT_COMMENT도 쓴다.
+     *     온보딩과 프로필 수정에서는 닉네임이 AI 친구의 닉네임이나 AI 표시와 헷갈리면 NICKNAME_RESERVED다(009 US2-AC5).
+     */
     BadRequest: {
       headers: {
         [name: string]: unknown;

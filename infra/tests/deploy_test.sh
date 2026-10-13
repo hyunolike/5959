@@ -166,6 +166,12 @@ assert "운영 redis는 디스크에 저장하지 않는다(--save \"\", --appen
 assert "api는 redis에 service_started로만 의존한다(Redis 장애가 기동을 막지 않는다)" \
   '[[ "$(depends_condition "$api_block" redis)" == "service_started" ]]'
 
+# 009: compose는 적힌 변수만 컨테이너에 넣는다. AI 친구의 스위치가 빠지면 서버에서 켤 수 없다
+assert "운영 compose가 AI 친구의 설정을 api에 넘기고 기본은 꺼짐이다" \
+  'grep -qF "AI_COMPANION_ENABLED: \${AI_COMPANION_ENABLED:-false}" <<< "$api_block" \
+    && grep -qF "AI_COMPANION_DAILY_LIMIT: \${AI_COMPANION_DAILY_LIMIT:-30}" <<< "$api_block" \
+    && grep -qF "AI_COMPANION_WAIT: \${AI_COMPANION_WAIT:-10m}" <<< "$api_block"'
+
 assert "Caddyfile은 알림 스트림 경로를 압축에서 뺀다" \
   'grep -qE "^[[:space:]]*@compressible not path /api/v1/notifications/stream$" "$CADDYFILE" \
     && grep -qE "^[[:space:]]*encode @compressible " "$CADDYFILE" \

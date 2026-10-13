@@ -89,9 +89,21 @@ resilience4j:
         wait-duration-in-open-state: 60s
         permitted-number-of-calls-in-half-open-state: 2
         automatic-transition-from-open-to-half-open-enabled: true
+      # 009: AI 친구의 댓글 쓰기도 따로 연다
+      companionComment:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 60s
+        permitted-number-of-calls-in-half-open-state: 2
+        automatic-transition-from-open-to-half-open-enabled: true
   timelimiter:
     instances:
       weeklyLetter:
+        timeout-duration: ${ogu.ai.timeout}
+        cancel-running-future: true
+      companionComment:
         timeout-duration: ${ogu.ai.timeout}
         cancel-running-future: true
       emotionAnalyzer:
@@ -149,6 +161,9 @@ ogu:
     risk-timeout: 20s # 첫 재시도 간격(30초)보다 짧게 둔다
     # 008 주간 리포트의 편지. 답은 300자 이하지만 추론 토큰이 함께 든다
     letter-max-tokens: 900
+    # 009 AI 친구의 댓글. 답은 300자 이하지만 추론 토큰이 함께 든다
+    companion-max-tokens: 900
+    companion-temperature: 0.8
     # low, medium, high. 비우면 보내지 않는다
     reasoning-effort: ${AI_REASONING_EFFORT:low}
     # 007 추천의 임베딩. 차원은 post_embedding.embedding 열과 같아야 한다
@@ -221,6 +236,21 @@ ogu:
       max-length: 300
     retention: 365d
     purge-cron: "0 40 4 * * *" # 매일 04:40 한국 시간
+  # 009 AI 친구(data-model.md "설정"). 꺼진 채로 나간다. 켜는 것은 서버의 AI_COMPANION_ENABLED다(research R12)
+  companion:
+    enabled: ${AI_COMPANION_ENABLED:false}
+    # 글이 올라온 뒤 다른 회원의 댓글을 기다리는 시간
+    wait: ${AI_COMPANION_WAIT:10m}
+    max-age: 24h
+    # 하루(한국 시간)에 AI에 댓글을 청하는 횟수. 실패한 시도도 든다(research R8)
+    daily-limit: ${AI_COMPANION_DAILY_LIMIT:30}
+    max-attempts: 3
+    poll-interval: 30s
+    batch-size: 3
+    retry:
+      initial-interval: 1m
+      max-interval: 5m
+    risk-wait: 30s
   # 006 레이드(data-model.md "설정"). 바꾸면 다음에 나오는 보스부터 적용된다
   raid:
     cooldown: 1s

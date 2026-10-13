@@ -1,6 +1,7 @@
 export { Button } from "./button";
 export { GameButton } from "./game-button";
 export { IconButton } from "./icon-button";
+export { AI_FRIENDS_PATH, AiBadge } from "./ai-badge";
 export { BrandMark } from "./brand-mark";
 export { Card } from "./card";
 export { Chip } from "./chip";

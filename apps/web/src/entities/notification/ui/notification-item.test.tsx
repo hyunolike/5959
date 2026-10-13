@@ -13,7 +13,7 @@ function notification(overrides: Partial<Notification> = {}): Notification {
     postId: 10,
     post: { postId: 10, contentPreview: "내일 발표가 걱정돼요" },
     commentId: 3,
-    actor: { id: 2, nickname: "오구" },
+    actor: { id: 2, nickname: "오구", ai: false },
     actorCount: 1,
     reportWeekStart: null,
     read: false,

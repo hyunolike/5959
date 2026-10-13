@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { AiBadge } from "@/shared/ui";
+
 import type { Comment } from "../model/types";
 
 export interface CommentActionContext {
@@ -76,11 +78,12 @@ function CommentBody({
       </article>
     );
   }
-  const nickname = comment.author.nickname;
+  const { nickname, ai } = comment.author;
 
   return (
     <article
-      aria-label={`${nickname}의 ${isReply ? "답글" : "댓글"}`}
+      // AI 친구의 댓글은 이름에서부터 AI임이 드러난다(009 US2-AC1).
+      aria-label={`${ai ? "AI 친구 " : ""}${nickname}의 ${isReply ? "답글" : "댓글"}`}
       className={
         isReply
           ? "border-line flex flex-col gap-1 border-l-2 pl-3"
@@ -89,6 +92,7 @@ function CommentBody({
     >
       <p className="text-body-sm text-fg flex flex-wrap items-center gap-2 font-medium">
         {nickname}
+        {ai ? <AiBadge /> : null}
         {comment.hidden ? (
           // 내 댓글이 숨겨졌다. 나에게는 내용이 보이지만 다른 회원에게는 자리만 보인다(005 US1-AC5).
           <span className="bg-warning-tint text-caption text-warning rounded-full px-2 py-0.5 font-normal">

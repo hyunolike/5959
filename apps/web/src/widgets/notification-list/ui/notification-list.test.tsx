@@ -39,7 +39,7 @@ function notification(
       contentPreview: `글 앞부분 ${notificationId}`,
     },
     commentId: 1,
-    actor: { id: 2, nickname: `회원${notificationId}` },
+    actor: { id: 2, nickname: `회원${notificationId}`, ai: false },
     actorCount: 1,
     reportWeekStart: null,
     read: false,

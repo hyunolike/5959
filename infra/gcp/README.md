@@ -85,6 +85,11 @@ JSON 파일을 `infra/gcp/secrets/credentials.json`에 준비한다(이 디렉�
 아래 prepare-secrets 명령에 `--without-kakao`를 붙인다. 이때 카카오 ID와 시크릿은 없어도 된다.
 웹의 카카오 버튼과 웹/API의 카카오 인증 요청이 함께 비활성화된다.
 
+AI 친구(009)는 꺼진 채로 배포된다. `specs/009-ai-companions/quickstart.md`의 운영 준비를 마친 뒤
+`terraform.tfvars`에 `ai_companion_enabled = true`를 지정하고 apply한다. 하루에 AI에 댓글을 청하는 횟수
+(`ai_companion_daily_limit`, 기본 30)와 기다리는 시간(`ai_companion_wait`, 기본 `10m`)도 같은 곳에서 바꾼다.
+끄려면 `false`로 되돌리고 다시 apply한다. 이미 남긴 댓글은 그대로 남는다.
+
 ```bash
 python3 infra/gcp/scripts/prepare-secrets.py infra/gcp/secrets/credentials.json
 bash infra/gcp/scripts/upload-secrets.sh

@@ -11,7 +11,13 @@ import { CommentManageMenu } from "./comment-manage-menu";
 
 const COMMENT = {
   commentId: 11,
-  author: { id: 2, nickname: "나", jobRole: "HR", careerYear: "YEAR_2" },
+  author: {
+    id: 2,
+    nickname: "나",
+    jobRole: "HR",
+    careerYear: "YEAR_2",
+    ai: false,
+  },
   content: "원래 댓글",
   hidden: false,
   likeCount: 0,

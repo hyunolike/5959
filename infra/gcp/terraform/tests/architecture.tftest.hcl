@@ -41,6 +41,27 @@ run "infrastructure_only" {
   }
 }
 
+run "ai_companion_ships_off" {
+  command = apply
+  assert {
+    condition     = !jsondecode(google_compute_instance.api.metadata["deployment-config"]).ai_companion_enabled && jsondecode(google_compute_instance.api.metadata["deployment-config"]).ai_companion_daily_limit == 30
+    error_message = "AI companions must ship switched off with the agreed daily limit."
+  }
+}
+
+run "ai_companion_can_be_turned_on" {
+  command = apply
+  variables {
+    ai_companion_enabled     = true
+    ai_companion_daily_limit = 10
+    ai_companion_wait        = "30m"
+  }
+  assert {
+    condition     = jsondecode(google_compute_instance.api.metadata["deployment-config"]).ai_companion_enabled && jsondecode(google_compute_instance.api.metadata["deployment-config"]).ai_companion_wait == "30m"
+    error_message = "The operator's AI companion settings must reach the VM."
+  }
+}
+
 run "web_scales_to_zero" {
   command = apply
   variables {

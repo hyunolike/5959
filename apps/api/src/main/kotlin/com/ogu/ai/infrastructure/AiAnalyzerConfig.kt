@@ -1,5 +1,6 @@
 package com.ogu.ai.infrastructure
 
+import com.ogu.ai.CompanionCommentWriter
 import com.ogu.ai.Embedder
 import com.ogu.ai.EmotionAnalyzer
 import com.ogu.ai.RiskClassifier
@@ -116,6 +117,33 @@ class WeeklyLetterWriterConfig {
     }
 }
 
+/**
+ * 실제 AI 친구의 댓글 쓰기(009 research R11). `e2e` 프로필이 아니면 쓴다. 키가 비어 있으면 외부로 보내지 않고 바로
+ * 실패한다. 그때 AI 친구는 아무 댓글도 남기지 않는다.
+ */
+@Configuration(proxyBeanMethods = false)
+@Profile("!e2e")
+class CompanionCommentWriterConfig {
+    @Bean
+    fun springAiCompanionCommentWriter(
+        properties: AiProperties,
+        circuitBreakerRegistry: CircuitBreakerRegistry,
+        timeLimiterRegistry: TimeLimiterRegistry,
+    ): CompanionCommentWriter {
+        if (properties.apiKey.isBlank()) {
+            LoggerFactory
+                .getLogger(javaClass)
+                .warn("ogu.ai.api-key(AI_API_KEY)가 비어 있어 AI 친구의 댓글을 끕니다. AI 친구는 반응하지 않습니다.")
+            return FakeCompanionCommentWriter.Disabled()
+        }
+        return SpringAiCompanionCommentWriter.create(
+            properties,
+            circuitBreakerRegistry.circuitBreaker(SpringAiCompanionCommentWriter.RESILIENCE_NAME),
+            timeLimiterRegistry.timeLimiter(SpringAiCompanionCommentWriter.RESILIENCE_NAME),
+        )
+    }
+}
+
 /** e2e 프로필은 결정적인 가짜 분석기를 쓴다(research R3). 테스트는 테스트 설정에서 따로 등록한다. */
 @Configuration(proxyBeanMethods = false)
 @Profile("e2e")
@@ -131,4 +159,8 @@ class FakeEmotionAnalyzerConfig {
 
     @Bean
     fun fakeWeeklyLetterWriter(): WeeklyLetterWriter = FakeWeeklyLetterWriter()
+
+    /** e2e는 기능을 켠 채 돈다. 본문에 `[AI친구]`가 있는 글에만 답해 다른 시나리오를 흔들지 않는다. */
+    @Bean
+    fun fakeCompanionCommentWriter(): CompanionCommentWriter = FakeCompanionCommentWriter(optInOnly = true)
 }

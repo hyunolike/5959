@@ -7,7 +7,8 @@ Guidance for AI coding agents working in this repository.
 오구오구 백엔드: Kotlin + Spring Boot + Spring Modulith 모듈러 모놀리스.
 kotlin-spring-modulith-template에서 이식했다. 단일 Gradle 모듈이며 루트 패키지는
 `com.ogu`. 지금 모듈은 `shared`(OPEN), `member`, `post`, `ai`, `emotion`,
-`monster`, `feed`, `notification`(004) 여덟 개다. 모듈 목록과 의존 방향은
+`monster`, `feed`, `notification`(004), `safety`(005), `raid`(006), `recommend`(007),
+`report`(008), `companion`(009) 열세 개다. 모듈 목록과 의존 방향은
 `docs/architecture/overview.md` 5.1절을 따른다.
 
 ## Commands
@@ -279,6 +280,8 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   동기 `@EventListener`로 받아 판정하고 위기면 그 자리에서 숨긴다. 저장과 숨김이 함께 커밋되므로 목록에 있는
   위기 표현이 든 글은 한 번도 공개되지 않는다(SC-001). 여기서는 메모리 계산과 짧은 쓰기만 한다.
   글과 댓글을 고치는 쪽은 이벤트를 내기 전에 flush한다(`PostModerationService`가 JdbcClient라서).
+- **`updated_at`은 본문의 판이다.** 글의 `updated_at`은 본문을 고칠 때만 바뀐다. 위험 판정(`risk_assessment.content_version`)과
+  AI 친구가 남길 때의 재확인이 이 값에 묶여 있다. 말투만 고칠 때 바꾸면 기다리던 판정이 AI 분류 없이 버려진다(009 research R15).
 - **AI 분류는 커밋 뒤에 따로 돈다.** `RiskClassificationRunner`가 트랜잭션 밖에서 `RiskClassifier`를 부르고,
   실패하면 `risk_assessment.next_attempt_at`으로 다시 시도한다(30초부터 두 배씩, 최대 5분, 24시간 뒤 `FALLBACK`).
   감정 분석의 `AnalysisStore`, `AnalysisRetryScheduler`와 같은 구조다. 판정은 키워드와 AI 가운데 높은 쪽이고,
@@ -423,6 +426,61 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   작업을 끈 채 직접 부른다. 테스트마다 `ReportFixture.newWeek()`로 아직 쓰지 않은 주를 받는다. 같은 주를 쓰면 앞
   테스트가 끝냈다고 적은 기록 때문에 아무것도 만들어지지 않는다. e2e는 글의 때를 한 주 앞으로 옮기고
   `weekly_report_run`을 지운다.
+
+## AI companions (`companion` module)
+
+009-ai-companions에서 생겼다. 허용 의존은 `shared`, `post`, `safety`, `emotion`, `ai`다. `companion`에 의존하는 모듈은 없다.
+HTTP API도 이벤트도 없다. 글이 올라온 뒤 한동안 다른 회원의 댓글이 없으면 AI 친구 한 명이 댓글 하나와 공감 하나를 남긴다.
+
+| 모듈 | 공개 타입 | 발행 이벤트 | 받는 이벤트 |
+|---|---|---|---|
+| `companion` | - | - | `PostCreated`(커밋 뒤, 반응 기록 만들기) |
+| `post`(더한 것) | `PostCompanionApi`(`target`, `react`), `CompanionTarget`, `CompanionReactionResult` | - | - |
+| `safety`(더한 것) | `RiskApi`(`postRisk`, `keywordLevel`), `PostRisk` | - | - |
+| `ai`(더한 것) | `CompanionCommentWriter`, `CompanionCommentInput`, `CompanionTone`, `CompanionVoice`, `CompanionCommentFailed` | - | - |
+| `member`(더한 것) | `MemberInfo.ai` | - | - |
+
+- **AI 친구는 `member`의 행이다.** `kind = 'AI'`인 회원 셋이고 V9 마이그레이션의 시드로만 생긴다. `auth_method`는 `NONE`이고
+  이메일, 비밀번호, `oauth_identity`가 없어 로그인할 길이 없다. 직군과 경력은 제약으로 NULL이다. 닉네임에는 띄어쓰기가 있어
+  사람의 닉네임(`Nickname`의 정규식)과 겹치지 않는다. 회원 수를 세는 쿼리를 만들면 `kind = 'HUMAN'`으로 센다.
+- **AI 표시는 응답의 `ai` 필드다.** AI 친구의 닉네임이 나가는 곳은 댓글의 작성자(`CommentAuthorResponse`)와 알림의 행동한
+  회원(`NotificationActorResponse`) 둘이다. 닉네임이 나가는 응답을 새로 만들면 `MemberInfo.ai`를 함께 싣는다. 닉네임 글자에
+  "AI"를 넣지 않는다.
+- **사람의 닉네임 규칙은 `NicknamePolicy` 하나다.** AI 친구의 닉네임에서 띄어쓰기를 뺀 것, AI 표시와 헷갈리는 것
+  (`ReservedNickname`)을 온보딩, 프로필 수정, 미리 확인이 함께 막는다(`NICKNAME_RESERVED`, `RESERVED`).
+- **AI 회원에게는 알림을 쓰지 않는다.** `NotificationWriter`가 받는 회원이 AI면 건너뛴다. 종류마다 거르지 않는다.
+- **글마다 `companion_reaction` 행이 하나다.** `PostCreated`를 받아 `WAITING`으로 넣고(`ON CONFLICT DO NOTHING`),
+  `ReactionRunner`가 차례가 된 행을 `FOR UPDATE SKIP LOCKED`로 맡아 `DONE`이나 `SKIPPED`로 닫는다. "한 글에 한 번"은
+  `companion_reaction_post_key`가 지킨다. ShedLock을 넣지 않는다. 닫힌 행은 글이 고쳐져도 다시 열지 않는다.
+- **행은 기능이 꺼져 있어도 생긴다.** 켜고 끄기(`ogu.companion.enabled`, `AI_COMPANION_ENABLED`, 기본 false)는 맡을 때만 본다.
+  그래서 껐다 켜면 그동안의 글 가운데 24시간 안의 것은 반응을 받고 넘은 것은 `EXPIRED`로 닫힌다.
+- **AI를 부르기 전에 거른다.** `ReactionEligibility`가 지운 글과 숨긴 글(`GONE`), 다른 회원이 댓글을 단 글
+  (`HUMAN_COMMENT`), 판정이 끝나지 않은 글(조금 뒤에 다시, 시도로 세지 않는다), 위기나 우려 글(`RISK`)을 먼저 본다.
+  위험 판정은 `posts.risk_level`이 아니라 `RiskApi.postRisk`로 묻는다. 그 열은 저장 직후에 키워드 단계만 들어 있다.
+- **AI의 댓글은 판정한 뒤에 저장한다.** 사람의 댓글은 저장한 뒤 판정해 위기면 숨기지만, AI의 댓글은 `ai`의
+  `CompanionCommentValidator`(모양과 규칙)와 `CommentGate`(욕설, 키워드 위험, AI 위험 분류)를 통과해야 저장된다. AI 위험
+  분류가 실패하면 키워드 판정만으로 올린다. 올린 뒤에는 사람의 댓글과 같은 분류가 다시 돈다.
+- **댓글과 공감은 `PostCompanionApi.react` 한 트랜잭션이다.** 글의 행을 잠그고 다시 본 뒤 `CommentService.write`와
+  `LikeService.likePost`를 그대로 부른다. 그래서 몬스터 HP, 알림, 위험 판정이 사람의 댓글과 같은 이벤트로 돈다. `post`는
+  AI를 모른다. 어느 회원이 AI 친구인지는 `companion`이 번호로 넘긴다.
+- **하루의 몫은 "AI에 댓글을 청한 횟수"다.** `DailyBudget`이 한국 시간의 하루에 `daily-limit`(30)번까지 받는다. 조건부 갱신
+  한 문장이라 여러 인스턴스가 함께 돌아도 넘지 않는다. 실패한 시도도 몫을 쓰고, 회로가 열려 호출이 나가지 않았을 때만
+  돌려준다. 한 글은 `max-attempts`(3)번까지 청한다. 다른 재시도처럼 24시간 기한으로 끊지 않는다. 한 글이 하루의 몫을 다
+  쓰지 못하게 한다. 몫이 떨어져 건너뛴 글(`DAILY_LIMIT`)은 다음 날 다시 보지 않는다.
+- **공급자에 보내는 것은 `CompanionCommentInput`이 전부다.** 본문, 말투, 감정, 말씨뿐이다. 닉네임, 직군, 경력, 회원 번호,
+  다른 댓글의 자리가 없다. 자리를 더하려면 스펙 009의 FR-012부터 고친다. 감정은 분석이 끝났을 때만 보낸다.
+- **본문과 댓글을 남기지 않는다.** 로그, 이벤트, `companion_reaction.last_error`에는 글 번호와 분류만 남는다.
+- **친구는 가장 오래 쉰 순서로 고른다.** 완료 시각이 아니라 가장 최근에 반응한 기록의 번호로 견준다(`CompanionPicker`).
+  인스턴스의 시계가 달라도 차례가 흐트러지지 않는다. 도메인 타입의 이름은 `Friend`다. `Companion`은 Kotlin의 companion
+  object와 겹친다.
+- **테스트.** 주기 작업을 끄고(`ogu.companion.scheduler-enabled=false`) `ReactionRunner.attempt(postId)`를 글마다 부른다.
+  컨텍스트들이 DB를 함께 써서 `runDue`를 부르면 다른 테스트의 글에도 댓글이 달린다. 시계를 움직이는 컨텍스트는
+  `CompanionSettings`의 설정과 `FutureClockSchedulers`를 함께 쓴다. 하루의 몫을 재는 테스트는 `CompanionFixture.freshDay()`로
+  아무도 쓰지 않은 날로 옮긴다. 가짜 쓰기(`FakeCompanionCommentWriter`)는 글의 본문에 든 `[AI댓글실패:N]`, `[AI댓글욕설]`,
+  `[AI댓글위험]`, `[AI댓글긴글]`로 결과를 정한다. `e2e` 프로필에서는 본문에 `[AI친구]`가 있는 글에만 답한다. 기능을 켠 채
+  도는 e2e에서 다른 시나리오의 댓글 수와 HP가 흔들리지 않게 한다.
+- **실제 모델.** 프롬프트나 모델을 바꾸면 `OGU_RUN_AI_EVAL=true`로 `CompanionCommentLiveTest`를 돌려 댓글 40개를 읽는다.
+  규칙 검사는 낱말 목록이라 다 잡지 못한다. 기능을 켜기 전에도 읽는다(009 quickstart "운영 준비").
 
 ## Gotchas
 

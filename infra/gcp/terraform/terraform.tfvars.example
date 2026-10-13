@@ -15,3 +15,8 @@ kakao_client_id  = ""
 # Set false to deploy with Google login only.
 kakao_login_enabled = true
 google_client_id = ""
+
+# AI 친구(009). 꺼진 채로 둔다. 실제 모델의 댓글을 읽어 본 뒤 true로 바꾸고 apply한다.
+ai_companion_enabled     = false
+ai_companion_daily_limit = 30
+ai_companion_wait        = "10m"

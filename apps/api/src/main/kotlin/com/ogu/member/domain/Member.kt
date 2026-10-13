@@ -73,6 +73,12 @@ class Member private constructor(
     var role: MemberRole = MemberRole.MEMBER
         protected set
 
+    /** 사람인지 AI 친구인지(009 research R2). 애플리케이션은 바꾸지 않는다. AI 회원은 마이그레이션이 넣는다. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "kind", nullable = false, insertable = false, updatable = false, length = 10)
+    var kind: MemberKind = MemberKind.HUMAN
+        protected set
+
     val isOnboarded: Boolean
         get() = onboardedAt != null
 

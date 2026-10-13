@@ -25,6 +25,7 @@ enum class ErrorCode(
     EMAIL_REGISTERED_WITH_OTHER_METHOD(HttpStatus.CONFLICT, "이미 다른 방법으로 가입된 이메일입니다."),
     OAUTH_PROVIDER_UNAVAILABLE(HttpStatus.BAD_GATEWAY, "외부 계정 제공자가 응답하지 않습니다."),
     NICKNAME_TAKEN(HttpStatus.CONFLICT, "이미 사용 중인 닉네임입니다."),
+    NICKNAME_RESERVED(HttpStatus.BAD_REQUEST, "AI 친구와 헷갈릴 수 있어 쓸 수 없는 닉네임입니다."),
     ALREADY_ONBOARDED(HttpStatus.CONFLICT, "이미 온보딩을 완료했습니다."),
 
     // 003-core-loop 계약(contracts/openapi.yaml)의 오류 코드
