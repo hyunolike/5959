@@ -82,35 +82,6 @@
   --radius-control: 14px;
   --radius-surface: 20px;
   --shadow-game: 0 4px 0 var(--ink-900);
-
-  /*
-   * 옛 이름. 화면을 옮기는 동안만 새 값에 이어 둔다. 화면 개편의 마지막 PR에서 지운다.
-   * 새 코드에서 쓰면 token-usage.test.ts가 막는다.
-   */
-  --color-background: var(--white);
-  --color-foreground: var(--ink-900);
-  --color-brand-50: var(--ink-100);
-  --color-brand-100: var(--ink-100);
-  --color-brand-200: var(--ink-300);
-  --color-brand-500: var(--ink-700);
-  --color-brand-600: var(--ink-900);
-  --color-brand-650: var(--ink-800);
-  --color-brand-700: var(--ink-900);
-  --color-leaf-50: #edf5e9;
-  --color-leaf-500: #78a86a;
-  --color-leaf-700: #426436;
-  --color-neutral-50: var(--ink-100);
-  --color-neutral-100: var(--ink-100);
-  --color-neutral-200: var(--ink-200);
-  --color-neutral-300: var(--ink-500);
-  --color-neutral-400: var(--ink-500);
-  --color-neutral-500: var(--ink-600);
-  --color-neutral-600: var(--ink-600);
-  --color-neutral-700: var(--ink-700);
-  --color-neutral-800: var(--ink-800);
-  --color-neutral-900: var(--ink-900);
-  --color-neutral-950: var(--ink-900);
-  --shadow-surface: 0 0 #0000;
 }
 
 @theme {

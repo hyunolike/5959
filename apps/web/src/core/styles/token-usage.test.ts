@@ -1,10 +1,9 @@
-import { readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
 const SRC = path.resolve(__dirname, "../..");
-const BASELINE = path.resolve(__dirname, "legacy-style-files.json");
 
 const COLOR_UTILITY = String.raw`(?:bg|text|border(?:-[trblxyse])?|ring(?:-offset)?|inset-ring|outline|fill|stroke|divide|placeholder|decoration|accent|caret|from|via|to|shadow|inset-shadow)`;
 const PALETTE = String.raw`(?:brand|neutral|leaf|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|slate|gray|zinc|stone|white|black)`;
@@ -41,27 +40,10 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
-/** 옛 이름을 쓰는 파일과 그 수. */
-const offenders: Record<string, number> = Object.fromEntries(
-  sourceFiles(SRC)
-    .map(
-      (file) =>
-        [
-          path.relative(SRC, file).split(path.sep).join("/"),
-          countLegacy(readFileSync(file, "utf8")),
-        ] as const,
-    )
-    .filter(([, count]) => count > 0)
-    .sort(([a], [b]) => a.localeCompare(b)),
-);
-
-if (process.env.UPDATE_LEGACY_BASELINE) {
-  writeFileSync(BASELINE, `${JSON.stringify(offenders, null, 2)}\n`);
-}
-
-const baseline: Record<string, number> = JSON.parse(
-  readFileSync(BASELINE, "utf8"),
-);
+const sources = sourceFiles(SRC).map((file) => ({
+  path: path.relative(SRC, file).split(path.sep).join("/"),
+  text: readFileSync(file, "utf8"),
+}));
 
 describe("옛 색 이름을 찾는 규칙", () => {
   it.each([
@@ -103,19 +85,54 @@ describe("옛 색 이름을 찾는 규칙", () => {
 });
 
 describe("옛 색 이름", () => {
-  it("DS-US1-AC1 어떤 파일도 옛 색 이름을 목록보다 많이 쓰지 않는다", () => {
+  it("DS-US1-AC1 소스에 옛 색 이름과 Tailwind 기본 색이 하나도 없다", () => {
     expect(
-      Object.entries(offenders).filter(
-        ([file, count]) => count > (baseline[file] ?? 0),
-      ),
+      sources
+        .map(({ path: file, text }) => [file, countLegacy(text)] as const)
+        .filter(([, count]) => count > 0),
     ).toEqual([]);
   });
 
-  it("DS-US1-AC1 옛 색 이름을 줄인 파일은 목록의 수도 줄인다", () => {
+  it("DS-US1-AC1 Lucide 아이콘을 가져오는 파일이 없다", () => {
     expect(
-      Object.entries(baseline).filter(
-        ([file, count]) => (offenders[file] ?? 0) < count,
-      ),
+      sources
+        .filter(({ text }) => text.includes("lucide-react"))
+        .map(({ path: file }) => file),
+    ).toEqual([]);
+  });
+});
+
+/** 게임 버튼을 쓸 수 있는 곳: 글 상세의 공감, 레이드의 공격, 그리고 카탈로그. */
+const GAME_BUTTON_USERS = [
+  "app/debug/design/page.tsx",
+  "features/like/ui/post-like-button.tsx",
+  "features/raid-attack/ui/attack-button.tsx",
+];
+
+describe("게임 요소를 쓰는 곳", () => {
+  it("DS-US3-AC2 게임 버튼은 정해진 파일에서만 쓴다", () => {
+    expect(
+      sources
+        .filter(
+          ({ path: file, text }) =>
+            !file.startsWith("shared/ui/") && /\bGameButton\b/.test(text),
+        )
+        .map(({ path: file }) => file)
+        .sort(),
+    ).toEqual(GAME_BUTTON_USERS);
+  });
+
+  it("DS-US3-AC4 위기 안내와 신고, 재검토 요청은 게임 요소와 감정 색을 쓰지 않는다", () => {
+    const guarded = sources.filter(({ path: file }) =>
+      /safety-notice|support-resource|report-content|request-review/.test(file),
+    );
+    expect(guarded.length).toBeGreaterThan(3);
+    expect(
+      guarded
+        .filter(({ text }) =>
+          /GameButton|bg-game|shadow-game|emotion|MonsterStage/.test(text),
+        )
+        .map(({ path: file }) => file),
     ).toEqual([]);
   });
 });
