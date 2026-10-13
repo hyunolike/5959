@@ -17,10 +17,8 @@ export default function ErrorProbePage() {
 
   return (
     <Card className="w-full max-w-sm text-center">
-      <h1 className="text-xl font-semibold text-neutral-900">
-        오류 수집 테스트
-      </h1>
-      <p className="mt-1 text-sm text-neutral-500">
+      <h1 className="text-title text-fg font-bold">오류 수집 테스트</h1>
+      <p className="text-body-sm text-fg-subtle mt-1">
         버튼을 누르면 처리되지 않은 오류가 발생합니다.
       </p>
       <div className="mt-6">
