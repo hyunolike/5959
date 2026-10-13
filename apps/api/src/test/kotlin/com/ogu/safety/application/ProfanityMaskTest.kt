@@ -63,6 +63,26 @@ class ProfanityMaskTest {
         assertThat(ProfanityMasker.mask(raw, terms)).isEqualTo(expected)
     }
 
+    @ParameterizedTest(name = "[{index}] {0} → {1}")
+    @CsvSource(
+        delimiter = '|',
+        textBlock = """
+        다시 발표하래요|다시 발표하래요
+        민수씨 발표 잘했어요|민수씨 발표 잘했어요
+        김 씨 발표 자료|김 씨 발표 자료
+        질병 신고 접수|질병 신고 접수
+        아 시 발 진짜|아 *** 진짜
+        시 발 뭐야|*** 뭐야
+        야 시 발!|야 ***!
+        개시발 진짜|개** 진짜""",
+    )
+    fun `US5-AC2 띄어 쓴 욕설은 앞뒤 말에 붙어 있지 않을 때만 가린다`(
+        raw: String,
+        expected: String,
+    ) {
+        assertThat(ProfanityMasker.mask(raw, terms)).isEqualTo(expected)
+    }
+
     @Test
     fun `겹치는 낱말은 긴 쪽까지 모두 가린다`() {
         assertThat(ProfanityMasker.mask("저 개새끼가", terms)).isEqualTo("저 ***가")
