@@ -10,6 +10,7 @@ export { SegmentedControl } from "./segmented-control";
 export { ConfirmDialog } from "./confirm-dialog";
 export { Input } from "./input";
 export { Label } from "./label";
+export { PageHeader } from "./page-header";
 export { Select } from "./select";
 export { TextField } from "./text-field";
 export { Textarea } from "./textarea";
