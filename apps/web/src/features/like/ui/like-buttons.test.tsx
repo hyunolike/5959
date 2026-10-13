@@ -46,7 +46,13 @@ function detail(overrides: Partial<PostDetail> = {}): PostDetail {
 
 const COMMENT: Comment = {
   commentId: 11,
-  author: { id: 2, nickname: "공감러", jobRole: "HR", careerYear: "YEAR_2" },
+  author: {
+    id: 2,
+    nickname: "공감러",
+    jobRole: "HR",
+    careerYear: "YEAR_2",
+    ai: false,
+  },
   content: "힘내요",
   hidden: false,
   likeCount: 4,

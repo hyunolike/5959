@@ -29,7 +29,7 @@ function notification(
     postId: 10,
     post: { postId: 10, contentPreview: "미리보기" },
     commentId: 1,
-    actor: { id: 2, nickname: "오구" },
+    actor: { id: 2, nickname: "오구", ai: false },
     actorCount: 1,
     reportWeekStart: null,
     read,

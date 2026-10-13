@@ -130,11 +130,11 @@ apps/api/src/test/kotlin/com/ogu/
 └── support/TestAiConfiguration.kt                 # ScriptedCompanionCommentWriter
 
 apps/web/src/
-├── entities/member/ui/ai-badge.tsx                # 글자 "AI 친구". 안내 화면으로 가는 링크(ui 폴더를 새로 둔다)
+├── shared/ui/ai-badge.tsx                         # 글자 "AI 친구". 안내 화면으로 가는 링크
 ├── entities/member/model/profile-schema.ts        # RESERVED 안내
 ├── entities/comment/ui/comment-item.tsx           # 닉네임 옆 표시, 댓글의 이름
 ├── entities/notification/model/message.ts         # AI 친구가 한 일임을 문구에(목록과 토스트 공용)
-├── widgets/post-editor/                           # 글쓰기 화면의 한 줄 안내(R13)
+├── app/write/page.tsx                             # 글쓰기 화면의 한 줄 안내(R13)
 ├── app/ai-friends/page.tsx, layout.tsx            # AI 친구 안내
 └── shared/api/generated.ts                        # 계약에서 다시 만든다
 

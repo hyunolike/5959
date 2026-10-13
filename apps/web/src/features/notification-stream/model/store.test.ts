@@ -22,7 +22,7 @@ function notificationEvent(notificationId: number, seq: number) {
       postId: 10,
       post: null,
       commentId: 7,
-      actor: { id: 2, nickname: "오구" },
+      actor: { id: 2, nickname: "오구", ai: false },
       actorCount: 1,
       reportWeekStart: null,
       read: false,

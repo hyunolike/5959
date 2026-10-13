@@ -7,7 +7,13 @@ import { CommentItem } from "./comment-item";
 function comment(overrides: Partial<Comment> = {}): Comment {
   return {
     commentId: 1,
-    author: { id: 2, nickname: "공감러", jobRole: "HR", careerYear: "YEAR_2" },
+    author: {
+      id: 2,
+      nickname: "공감러",
+      jobRole: "HR",
+      careerYear: "YEAR_2",
+      ai: false,
+    },
     content: "힘내요",
     hidden: false,
     likeCount: 3,
@@ -20,6 +26,61 @@ function comment(overrides: Partial<Comment> = {}): Comment {
 }
 
 describe("CommentItem", () => {
+  const AI_AUTHOR = {
+    id: 9,
+    nickname: "다정한 오구",
+    jobRole: null,
+    careerYear: null,
+    ai: true,
+  };
+
+  it("US2-AC1 AI 친구의 댓글은 닉네임 옆에 AI 친구라고 글자로 보인다", () => {
+    render(<CommentItem comment={comment({ author: AI_AUTHOR })} />);
+
+    const item = screen.getByRole("article", {
+      name: "AI 친구 다정한 오구의 댓글",
+    });
+    expect(within(item).getByText("다정한 오구")).toBeInTheDocument();
+    expect(within(item).getByRole("link", { name: "AI 친구" })).toHaveAttribute(
+      "href",
+      "/ai-friends",
+    );
+  });
+
+  it("US2-AC1 AI 친구의 답글도 이름에 AI 친구가 들어 있다", () => {
+    render(
+      <CommentItem
+        comment={comment({
+          replies: [comment({ commentId: 2, author: AI_AUTHOR })],
+        })}
+      />,
+    );
+
+    expect(
+      screen.getByRole("article", { name: "AI 친구 다정한 오구의 답글" }),
+    ).toBeInTheDocument();
+  });
+
+  it("US2-AC3 AI 친구의 댓글에는 직군과 경력을 꾸며 보이지 않는다", () => {
+    render(<CommentItem comment={comment({ author: AI_AUTHOR })} />);
+
+    const item = screen.getByRole("article", {
+      name: "AI 친구 다정한 오구의 댓글",
+    });
+    expect(item).not.toHaveTextContent(/년차|신입|개발|인사|기획/);
+  });
+
+  it("US2-AC1 사람의 댓글에는 AI 표시가 없다", () => {
+    render(<CommentItem comment={comment()} />);
+
+    expect(
+      screen.queryByRole("link", { name: "AI 친구" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("article", { name: "공감러의 댓글" }),
+    ).toBeInTheDocument();
+  });
+
   it("작성자 닉네임, 본문, 공감 수를 보여 준다", () => {
     render(<CommentItem comment={comment()} />);
 
@@ -41,6 +102,7 @@ describe("CommentItem", () => {
                 nickname: "답글러",
                 jobRole: "SALES",
                 careerYear: "YEAR_1",
+                ai: false,
               },
               content: "저도요",
               likeCount: 1,
@@ -104,6 +166,7 @@ describe("CommentItem", () => {
                 nickname: "답글러",
                 jobRole: "SALES",
                 careerYear: "YEAR_1",
+                ai: false,
               },
               content: "힘내세요",
             }),

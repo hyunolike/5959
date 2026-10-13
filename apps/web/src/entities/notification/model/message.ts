@@ -11,8 +11,17 @@ export function notificationMessage(
   notification: Pick<Notification, "type" | "actor" | "actorCount">,
 ): string {
   const { type, actor, actorCount } = notification;
-  const who = actor ? `${actor.nickname} 님` : UNKNOWN_ACTOR;
-  const subject = actor ? `${who}이` : who;
+  // AI 친구가 한 일은 문구에서부터 드러낸다(009 US2-AC2). 사람처럼 "님"을 붙이지 않는다.
+  const who = !actor
+    ? UNKNOWN_ACTOR
+    : actor.ai
+      ? `AI 친구 ${actor.nickname}`
+      : `${actor.nickname} 님`;
+  const subject = !actor
+    ? who
+    : actor.ai
+      ? `${who}${endsWithFinalConsonant(actor.nickname) ? "이" : "가"}`
+      : `${who}이`;
 
   switch (type) {
     case "POST_COMMENT":
@@ -45,6 +54,12 @@ export function notificationMessage(
     case "WEEKLY_REPORT":
       return "지난주 리포트가 도착했어요";
   }
+}
+
+/** 한글로 끝나고 받침이 있으면 true. 조사 이/가를 고르는 데 쓴다. */
+function endsWithFinalConsonant(text: string): boolean {
+  const code = text.charCodeAt(text.length - 1) - 0xac00;
+  return code >= 0 && code <= 11171 && code % 28 !== 0;
 }
 
 /** 레이드 화면. 처치 알림을 누르면 여기로 간다(006 US4-AC6). */

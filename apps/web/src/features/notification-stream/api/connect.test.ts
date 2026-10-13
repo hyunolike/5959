@@ -81,7 +81,7 @@ const notificationEvent = {
     postId: 10,
     post: { postId: 10, contentPreview: "미리보기" },
     commentId: 7,
-    actor: { id: 2, nickname: "오구" },
+    actor: { id: 2, nickname: "오구", ai: false },
     actorCount: 1,
     read: false,
     createdAt: "2026-10-06T00:00:00Z",
