@@ -222,24 +222,24 @@ describe("ProfileForm", () => {
     expect(pushMock).not.toHaveBeenCalled();
   });
 
-  it("DS-US2-AC2 직군과 경력은 52px 공용 선택 상자이고 지금 값이 골라져 있다", () => {
+  it("DS-US2-AC2 직군과 경력은 56px 공용 선택 상자이고 지금 값이 골라져 있다", () => {
     renderForm();
     for (const [name, value] of [
       ["직군", "DEVELOPMENT"],
       ["경력", "YEAR_3"],
     ]) {
       const select = screen.getByLabelText(name);
-      expect(select).toHaveClass("h-13", "border-line-strong");
+      expect(select).toHaveClass("h-14", "border-line-strong");
       expect(select).toHaveValue(value);
     }
   });
 
-  it("DS-US2-AC2 저장과 취소는 다른 폼의 제출 버튼처럼 52px이다", () => {
+  it("DS-US2-AC2 저장과 취소는 다른 폼의 제출 버튼처럼 56px이다", () => {
     renderForm();
     expect(screen.getByRole("button", { name: "저장" })).toHaveClass(
-      "min-h-13",
+      "min-h-14",
     );
-    expect(screen.getByRole("link", { name: "취소" })).toHaveClass("min-h-13");
+    expect(screen.getByRole("link", { name: "취소" })).toHaveClass("min-h-14");
   });
 
   it("US5-AC2 닉네임 규칙은 늘 보이고, 확인 결과는 처음부터 있던 알림 자리에 채워진다", async () => {

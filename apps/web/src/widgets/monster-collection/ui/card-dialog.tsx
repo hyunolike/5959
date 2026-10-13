@@ -118,7 +118,7 @@ export function CardDialog({
           {...tilt}
         />
         <div className="flex gap-2">
-          <Button asChild variant="secondary" className="bg-surface flex-1">
+          <Button asChild variant="outline" className="flex-1">
             <Link href={`/post/${card.postId}`}>글 보기</Link>
           </Button>
           <Button

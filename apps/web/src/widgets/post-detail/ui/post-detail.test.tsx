@@ -328,9 +328,11 @@ describe("PostDetail 공감과 댓글", () => {
       name: "공감러의 댓글",
     });
     for (const name of ["답글 달기", "댓글 공감 1"]) {
+      // 보이는 높이는 40px이고 `::before`로 44px까지 넓힌다.
       expect(within(root).getAllByRole("button", { name })[0]).toHaveClass(
         "ogu-pressable",
-        "min-h-11",
+        "min-h-10",
+        "before:-inset-y-0.5",
       );
     }
   });

@@ -124,8 +124,8 @@ export default function DesignCatalogPage() {
       <Section title="버튼">
         <div className="flex flex-wrap gap-2">
           <Button>주요 동작</Button>
-          <Button variant="secondary">테두리</Button>
-          <Button variant="subtle">가라앉은 면</Button>
+          <Button variant="secondary">보조</Button>
+          <Button variant="outline">테두리</Button>
           <Button variant="ghost">글자만</Button>
           <Button variant="danger">삭제</Button>
           <Button disabled>잠김</Button>

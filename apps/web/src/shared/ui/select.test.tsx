@@ -6,7 +6,7 @@ import { Label } from "./label";
 import { Select } from "./select";
 
 describe("Select", () => {
-  it("DS-US2-AC2 선택 상자는 52px이고 이름표와 이어진다", () => {
+  it("DS-US2-AC2 선택 상자는 56px이고 이름표와 이어진다", () => {
     render(
       <>
         <Label htmlFor="jobRole">직군</Label>
@@ -19,7 +19,7 @@ describe("Select", () => {
       </>,
     );
     expect(screen.getByLabelText("직군")).toHaveClass(
-      "h-13",
+      "h-14",
       "border-line-strong",
     );
   });
