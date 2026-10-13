@@ -37,10 +37,10 @@
 
 **Files:** `apps/web/src/core/styles/globals.css`, `tokens.test.ts`
 
-- [ ] 이 계획과 스펙의 로고 결정을 커밋한다.
-- [ ] 실패하는 테스트: "POLISH-AC1 모서리는 8, 12, 16, 24px이다", "POLISH-AC1 떠 있는 것과 고른 칸의 그림자가 있다", "POLISH-AC2 카카오 바탕 위의 잉크 글자는 4.5:1 이상이다".
-- [ ] `--radius-control-sm: 12px`, `--radius-control: 16px`, `--radius-surface: 24px`, `--shadow-float`, `--shadow-raised`, 원색 `--kakao-yellow: #fee500`과 역할 `--color-kakao`를 더한다.
-- [ ] 커밋: `feat(web): 모서리와 그림자 토큰을 맞추고 카카오 색을 더한다`
+- [x] 이 계획과 스펙의 로고 결정을 커밋한다.
+- [x] 실패하는 테스트: "POLISH-AC1 모서리는 8, 12, 16, 24px이다", "POLISH-AC1 떠 있는 것과 고른 칸의 그림자가 있다", "POLISH-AC2 카카오 바탕 위의 잉크 글자는 4.5:1 이상이다".
+- [x] `--radius-control-sm: 12px`, `--radius-control: 16px`, `--radius-surface: 24px`, `--shadow-float`, `--shadow-raised`, 원색 `--kakao-yellow: #fee500`과 역할 `--color-kakao`를 더한다.
+- [x] 커밋: `feat(web): 모서리와 그림자 토큰을 맞추고 카카오 색을 더한다`
 
 ### Task 2: Button
 
@@ -48,9 +48,9 @@
 
 - `secondary`는 옅은 채움(`bg-surface-sunken hover:bg-line`), `outline`은 옛 `secondary`(테두리). `subtle`은 없앤다.
 - 크기: `sm`은 보이는 높이 40px(`h-10`, `rounded-control-sm`, `relative`와 `before:-inset-y-0.5`로 44px), `md`는 48px, `lg`는 56px.
-- [ ] 실패하는 테스트: "POLISH-AC3 보조 버튼은 테두리 없이 옅은 채움이다", "POLISH-AC3 테두리 버튼은 outline이다", "POLISH-AC4 크기는 40, 48, 56px이고 작은 것의 누르는 영역은 44px이다".
-- [ ] 구현한다. `subtle`을 쓰던 곳을 `secondary`로, 옅은 면 위의 `secondary`를 `outline`으로 옮긴다.
-- [ ] 커밋: `feat(web): 보조 버튼을 옅은 채움으로 바꾸고 높이를 세 단계로 맞춘다`
+- [x] 실패하는 테스트: "POLISH-AC3 보조 버튼은 테두리 없이 옅은 채움이다", "POLISH-AC3 테두리 버튼은 outline이다", "POLISH-AC4 크기는 40, 48, 56px이고 작은 것의 누르는 영역은 44px이다".
+- [x] 구현한다. `subtle`을 쓰던 곳을 `secondary`로, 옅은 면 위의 `secondary`를 `outline`으로 옮긴다.
+- [x] 커밋: `feat(web): 보조 버튼을 옅은 채움으로 바꾸고 높이를 세 단계로 맞춘다`
 
 ### Task 3: Chip과 SegmentedControl
 
@@ -58,25 +58,25 @@
 
 - `Chip`: 고르지 않은 것은 `bg-surface-sunken text-fg-muted`, 고른 것은 `bg-action text-on-action`. 테두리 없음. 높이 40px, 누르는 영역 44px.
 - `SegmentedControl<T extends string>({ label, options, value, onChange })`: `role="group"`과 `aria-label`, 칸마다 `aria-pressed`. 바탕은 `bg-surface-sunken rounded-control-sm p-1`, 고른 칸은 `bg-surface shadow-raised`. 칸의 보이는 높이 32px, 누르는 영역 44px.
-- [ ] 실패하는 테스트: "POLISH-AC5 칩은 테두리 없이 채움으로 고른 것을 알린다", "POLISH-AC6 세그먼트는 고른 칸만 눌린 상태이고 누르면 그 값으로 onChange를 부른다", "POLISH-AC6 이미 고른 칸을 눌러도 onChange를 부르지 않는다".
-- [ ] 구현, 커밋: `feat(web): 칩을 채움으로 바꾸고 세그먼트를 더한다`
+- [x] 실패하는 테스트: "POLISH-AC5 칩은 테두리 없이 채움으로 고른 것을 알린다", "POLISH-AC6 세그먼트는 고른 칸만 눌린 상태이고 누르면 그 값으로 onChange를 부른다", "POLISH-AC6 이미 고른 칸을 눌러도 onChange를 부르지 않는다".
+- [x] 구현, 커밋: `feat(web): 칩을 채움으로 바꾸고 세그먼트를 더한다`
 
 ### Task 4: 입력
 
 **Files:** `shared/ui/input.tsx`, `textarea.tsx`, `select.tsx`, `text-field.tsx`(+tests)
 
 - 높이 56px(`h-14`). 테두리는 그대로 두고 초점에서 `border-fg`와 2px(`focus-visible:border-2`는 크기가 흔들리므로 `outline` 공통 규칙을 그대로 쓰고 테두리 색만 바꾼다).
-- [ ] 실패하는 테스트: "POLISH-AC7 입력은 56px이고 테두리가 남아 있다".
-- [ ] 구현, 커밋: `feat(web): 입력의 높이와 모서리를 맞춘다`
+- [x] 실패하는 테스트: "POLISH-AC7 입력은 56px이고 테두리가 남아 있다".
+- [x] 구현, 커밋: `feat(web): 입력의 높이와 모서리를 맞춘다`
 
 ### Task 5: EmptyState
 
 **Files:** `shared/ui/empty-state.tsx`(+test), `shared/ui/index.ts`, 빈 화면과 오류를 그리는 위젯(`feed-list`, `post-detail`, `notification-list`, `my-activity`, `monster-collection`, `weekly-report` 가운데 같은 모양을 손으로 그린 곳)
 
 - `EmptyState({ imageSrc, title, description, tone = "empty", children })`: 그림 132px(`alt=""`), 제목 `text-title font-extrabold`, 설명 `text-body-sm text-fg-subtle`, `children`은 버튼 자리. `tone="error"`면 제목이 `role="alert"`다.
-- [ ] 실패하는 테스트: "POLISH-AC8 빈 화면은 그림, 제목, 설명, 버튼 자리를 가진다", "POLISH-AC8 오류일 때 제목이 alert로 읽힌다", "그림은 장식이라 이름이 없다".
-- [ ] 구현하고 위젯들을 옮긴다. 문구와 버튼 이름은 그대로 둔다. 위젯 테스트가 그대로 통과해야 한다.
-- [ ] 커밋: `feat(web): 빈 화면과 오류를 한 부품으로 맞춘다`
+- [x] 실패하는 테스트: "POLISH-AC8 빈 화면은 그림, 제목, 설명, 버튼 자리를 가진다", "POLISH-AC8 오류일 때 제목이 alert로 읽힌다", "그림은 장식이라 이름이 없다".
+- [x] 구현하고 위젯들을 옮긴다. 문구와 버튼 이름은 그대로 둔다. 위젯 테스트가 그대로 통과해야 한다.
+- [x] 커밋: `feat(web): 빈 화면과 오류를 한 부품으로 맞춘다`
 
 ### Task 6: ConfirmDialog와 Toaster
 
@@ -84,22 +84,22 @@
 
 - 시트: `rounded-t-surface`, 맨 위에 손잡이(`aria-hidden`, 36×4px), 버튼 두 개는 `md` 크기로 같은 너비(`grid grid-cols-2`). 가운데 대화상자는 지금 배치를 유지한다.
 - 토스트: `bg-action text-on-action shadow-float rounded-control`, 테두리 없음. hover는 `bg-action-hover`. 초점 표시는 `focus-visible:outline-on-action`과 `-outline-offset-2`.
-- [ ] 실패하는 테스트: "POLISH-AC9 시트에는 손잡이가 있고 버튼 두 개의 너비가 같다", "POLISH-AC9 가운데 대화상자에는 손잡이가 없다", "POLISH-AC10 토스트는 잉크 바탕이고 떠 있다".
-- [ ] 구현, 커밋: `feat(web): 시트에 손잡이를 두고 토스트를 잉크 띠로 바꾼다`
+- [x] 실패하는 테스트: "POLISH-AC9 시트에는 손잡이가 있고 버튼 두 개의 너비가 같다", "POLISH-AC9 가운데 대화상자에는 손잡이가 없다", "POLISH-AC10 토스트는 잉크 바탕이고 떠 있다".
+- [x] 구현, 커밋: `feat(web): 시트에 손잡이를 두고 토스트를 잉크 띠로 바꾼다`
 
 ### Task 7: PageHeader
 
 **Files:** `shared/ui/page-header.tsx`(+test), `shared/ui/index.ts`
 
 - `PageHeader({ title, backHref, backLabel })`: 왼쪽 뒤로 가기 링크(44px, `aria-label`은 `backLabel`), 가운데 `h1`(`text-body-lg font-bold`), 오른쪽은 같은 너비의 빈 칸. 높이 56px.
-- [ ] 실패하는 테스트: "POLISH-AC11 안쪽 화면의 머리말은 뒤로 가기와 h1 제목을 가진다", "뒤로 가기의 누르는 영역은 44px이다".
-- [ ] 구현, 커밋: `feat(web): 안쪽 화면의 머리말 부품을 더한다`
+- [x] 실패하는 테스트: "POLISH-AC11 안쪽 화면의 머리말은 뒤로 가기와 h1 제목을 가진다", "뒤로 가기의 누르는 영역은 44px이다".
+- [x] 구현, 커밋: `feat(web): 안쪽 화면의 머리말 부품을 더한다`
 
 ### Task 8: 문서, 카탈로그, 전체 확인
 
 **Files:** `apps/web/docs/DESIGN_SYSTEM.md`, `app/debug/design/page.tsx`, 높이나 모서리의 옛 클래스를 보는 테스트
 
-- [ ] 디자인 문서의 "모양과 움직임", "컴포넌트" 표, "에셋과 출처"(참고한 저장소와 가져오지 않는다는 것)를 고친다. 카탈로그에 새 부품을 올린다.
-- [ ] 확인 명령과 `pnpm --filter web test:e2e`를 돌린다. 320, 390, 1440px의 넘침 검사가 통과해야 한다.
-- [ ] 390px에서 홈, 글 상세, 글쓰기, 기록, 로그인을 캡처해 눈으로 본다.
-- [ ] 별도 검토자가 브랜치를 본다. 지적을 고친 뒤 `main`으로 PR을 연다.
+- [x] 디자인 문서의 "모양과 움직임", "컴포넌트" 표, "에셋과 출처"(참고한 저장소와 가져오지 않는다는 것)를 고친다. 카탈로그에 새 부품을 올린다.
+- [x] 확인 명령과 `pnpm --filter web test:e2e`를 돌린다. 320, 390, 1440px의 넘침 검사가 통과해야 한다.
+- [x] 390px에서 홈, 글 상세, 글쓰기, 기록, 로그인을 캡처해 눈으로 본다.
+- [x] 별도 검토자가 브랜치를 본다. 지적을 고친 뒤 `main`으로 PR을 연다.
