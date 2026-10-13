@@ -26,7 +26,7 @@ class RuntimeTests(unittest.TestCase):
 
     def test_ai_companion_is_off_unless_the_deployment_config_turns_it_on(self):
         self.assertEqual(runtime.companion_settings({}), {
-            "AI_COMPANION_ENABLED": "false", "AI_COMPANION_DAILY_LIMIT": "30", "AI_COMPANION_WAIT": "10m",
+            "AI_COMPANION_ENABLED": "false", "AI_COMPANION_DAILY_LIMIT": "45", "AI_COMPANION_WAIT": "10m",
         })
         # Only a real boolean true enables it; a truthy string does not.
         self.assertEqual(runtime.companion_settings({"ai_companion_enabled": "true"})["AI_COMPANION_ENABLED"], "false")
@@ -54,7 +54,7 @@ class RuntimeTests(unittest.TestCase):
         with mock.patch.object(runtime, "secret", side_effect=[json.dumps(secret), "b" * 32]):
             values = runtime.environment(config, "token")
         self.assertEqual(values["AI_COMPANION_ENABLED"], "false")
-        self.assertEqual(values["AI_COMPANION_DAILY_LIMIT"], "30")
+        self.assertEqual(values["AI_COMPANION_DAILY_LIMIT"], "45")
 
     def test_wrong_data_disk_is_rejected_before_docker_can_start(self):
         with mock.patch.object(runtime.os.path, "ismount", return_value=True):

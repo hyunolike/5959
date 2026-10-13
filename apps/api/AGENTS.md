@@ -440,7 +440,8 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
 ## AI companions (`companion` module)
 
 009-ai-companions에서 생겼다. 허용 의존은 `shared`, `post`, `safety`, `emotion`, `ai`다. `companion`에 의존하는 모듈은 없다.
-HTTP API도 이벤트도 없다. 글이 올라온 뒤 한동안 다른 회원의 댓글이 없으면 AI 친구 한 명이 댓글 하나와 공감 하나를 남긴다.
+HTTP API도 이벤트도 없다. 글이 올라온 뒤 한동안 다른 회원의 댓글이 없으면 AI 친구가 댓글 하나와 공감 하나를 남긴다.
+012-companion-activity부터 한 글에 한 명에서 세 명이 차례로 답한다.
 
 | 모듈 | 공개 타입 | 발행 이벤트 | 받는 이벤트 |
 |---|---|---|---|
@@ -460,8 +461,23 @@ HTTP API도 이벤트도 없다. 글이 올라온 뒤 한동안 다른 회원의
   (`ReservedNickname`)을 온보딩, 프로필 수정, 미리 확인이 함께 막는다(`NICKNAME_RESERVED`, `RESERVED`).
 - **AI 회원에게는 알림을 쓰지 않는다.** `NotificationWriter`가 받는 회원이 AI면 건너뛴다. 종류마다 거르지 않는다.
 - **글마다 `companion_reaction` 행이 하나다.** `PostCreated`를 받아 `WAITING`으로 넣고(`ON CONFLICT DO NOTHING`),
-  `ReactionRunner`가 차례가 된 행을 `FOR UPDATE SKIP LOCKED`로 맡아 `DONE`이나 `SKIPPED`로 닫는다. "한 글에 한 번"은
-  `companion_reaction_post_key`가 지킨다. ShedLock을 넣지 않는다. 닫힌 행은 글이 고쳐져도 다시 열지 않는다.
+  `ReactionRunner`가 차례가 된 행을 `FOR UPDATE SKIP LOCKED`로 맡아 `DONE`이나 `SKIPPED`로 닫는다. ShedLock을 넣지 않는다.
+  닫힌 행은 글이 고쳐져도 다시 열지 않는다.
+- **한 글에 한 명에서 세 명이 답한다(012 research R1~R4).** 행을 만들 때 `ReactionCountPicker`가 수를 뽑아 `target_count`에
+  적고 다시 바꾸지 않는다(`ogu.companion.count-weights`, 기본 `60,30,10`). 친구 한 명이 남기면 `companion_reaction_entry`에
+  한 행을 적고 `done_count`를 올린 뒤, 남은 수가 있으면 같은 행의 `next_attempt_at`을 3분에서 10분 뒤로 미룬다
+  (`follow-up.min-gap`, `max-gap`). 친구마다 행을 따로 두지 않는다. 한 행이라야 "한 번에 한 명", "사람이 답하면 남은 친구가
+  멈춘다"가 저절로 지켜진다. `attempts`는 친구 한 명의 차례 안에서만 세고 남기면 0으로 돌아간다.
+- **`DONE`은 한 명 이상 반응하고 끝난 것, `SKIPPED`는 아무도 반응하지 않고 끝난 것이다.** 한 명 이상 반응한 뒤 멈췄으면
+  `DONE`이고 `skip_reason`에 멈춘 까닭이 남는다. 다 채웠으면 까닭이 없다. 닫는 쿼리 하나(`close`)가 `done_count`를 보고
+  상태를 정한다. 상태를 코드에서 정해 넘기지 않는다.
+- **글에 남은 댓글이 진실이고 기록이 그것을 따라간다.** `ReactionRunner`는 차례마다 먼저 글에 남아 있는 AI 친구의 댓글
+  (`CompanionTarget.companionComments`)과 entry를 맞춘다. 남긴 뒤 적기 전에 죽었거나 맡은 시간이 지나 다른 실행기가
+  이어받아도 여기서 맞춰진다. "한 글에 같은 친구는 한 번"은 `companion_reaction_entry_post_companion_key`가, "정해진 수를
+  넘지 않는다"는 `PostCompanionApi.react`가 글의 행을 잠근 채 다시 세는 것(`CompanionReactionCheck.limit`)이 지킨다.
+- **뒤따르는 친구도 차례마다 처음과 같은 확인을 다시 탄다.** 따로 만든 길이 없다. 그 사이 사람이 댓글을 달았거나, 글이
+  사라졌거나, 위험으로 판정됐거나, 24시간이 지났거나, 하루의 몫이 떨어졌거나, 그 친구가 세 번 실패했으면 남은 친구는
+  반응하지 않는다. 이미 남긴 댓글과 공감은 그대로다.
 - **행은 기능이 꺼져 있어도 생긴다.** 켜고 끄기(`ogu.companion.enabled`, `AI_COMPANION_ENABLED`, 기본 false)는 맡을 때만 본다.
   그래서 껐다 켜면 그동안의 글 가운데 24시간 안의 것은 반응을 받고 넘은 것은 `EXPIRED`로 닫힌다.
 - **AI를 부르기 전에 거른다.** `ReactionEligibility`가 지운 글과 숨긴 글(`GONE`), 다른 회원이 댓글을 단 글
@@ -473,22 +489,25 @@ HTTP API도 이벤트도 없다. 글이 올라온 뒤 한동안 다른 회원의
 - **댓글과 공감은 `PostCompanionApi.react` 한 트랜잭션이다.** 글의 행을 잠그고 다시 본 뒤 `CommentService.write`와
   `LikeService.likePost`를 그대로 부른다. 그래서 몬스터 HP, 알림, 위험 판정이 사람의 댓글과 같은 이벤트로 돈다. `post`는
   AI를 모른다. 어느 회원이 AI 친구인지는 `companion`이 번호로 넘긴다.
-- **하루의 몫은 "AI에 댓글을 청한 횟수"다.** `DailyBudget`이 한국 시간의 하루에 `daily-limit`(30)번까지 받는다. 조건부 갱신
+- **하루의 몫은 "AI에 댓글을 청한 횟수"다.** `DailyBudget`이 한국 시간의 하루에 `daily-limit`(45, 012에서 올렸다)번까지 받는다. 조건부 갱신
   한 문장이라 여러 인스턴스가 함께 돌아도 넘지 않는다. 실패한 시도도 몫을 쓰고, 회로가 열려 호출이 나가지 않았을 때만
   돌려준다. 한 글은 `max-attempts`(3)번까지 청한다. 다른 재시도처럼 24시간 기한으로 끊지 않는다. 한 글이 하루의 몫을 다
   쓰지 못하게 한다. 몫이 떨어져 건너뛴 글(`DAILY_LIMIT`)은 다음 날 다시 보지 않는다.
-- **공급자에 보내는 것은 `CompanionCommentInput`이 전부다.** 본문, 말투, 감정, 말씨뿐이다. 닉네임, 직군, 경력, 회원 번호,
-  다른 댓글의 자리가 없다. 자리를 더하려면 스펙 009의 FR-012부터 고친다. 감정은 분석이 끝났을 때만 보낸다.
+- **공급자에 보내는 것은 `CompanionCommentInput`이 전부다.** 본문, 말투, 감정, 말씨, 같은 글에 앞서 남긴 보이는 AI 친구의
+  댓글(`previous`, 012 FR-010)뿐이다. 닉네임, 직군, 경력, 회원 번호, 사람의 댓글의 자리가 없다. 자리를 더하려면 스펙부터
+  고친다. 감정은 분석이 끝났을 때만 보낸다. 앞 댓글의 문장을 되풀이한 답은 `CommentGate`가 `REPEATED`로 떨어뜨린다.
 - **본문과 댓글을 남기지 않는다.** 로그, 이벤트, `companion_reaction.last_error`에는 글 번호와 분류만 남는다.
-- **친구는 가장 오래 쉰 순서로 고른다.** 완료 시각이 아니라 가장 최근에 반응한 기록의 번호로 견준다(`CompanionPicker`).
-  인스턴스의 시계가 달라도 차례가 흐트러지지 않는다. 도메인 타입의 이름은 `Friend`다. `Companion`은 Kotlin의 companion
+- **친구는 가장 오래 쉰 순서로 고른다.** 완료 시각이 아니라 가장 최근에 남긴 entry의 번호로 견준다(`CompanionPicker`).
+  인스턴스의 시계가 달라도 차례가 흐트러지지 않는다. 그 글에 이미 남긴 친구와 글쓴이는 고르지 않는다. 도메인 타입의 이름은 `Friend`다. `Companion`은 Kotlin의 companion
   object와 겹친다.
 - **테스트.** 주기 작업을 끄고(`ogu.companion.scheduler-enabled=false`) `ReactionRunner.attempt(postId)`를 글마다 부른다.
   컨텍스트들이 DB를 함께 써서 `runDue`를 부르면 다른 테스트의 글에도 댓글이 달린다. 시계를 움직이는 컨텍스트는
   `CompanionSettings`의 설정과 `FutureClockSchedulers`를 함께 쓴다. 하루의 몫을 재는 테스트는 `CompanionFixture.freshDay()`로
   아무도 쓰지 않은 날로 옮긴다. 가짜 쓰기(`FakeCompanionCommentWriter`)는 글의 본문에 든 `[AI댓글실패:N]`, `[AI댓글욕설]`,
-  `[AI댓글위험]`, `[AI댓글긴글]`로 결과를 정한다. `e2e` 프로필에서는 본문에 `[AI친구]`가 있는 글에만 답한다. 기능을 켠 채
-  도는 e2e에서 다른 시나리오의 댓글 수와 HP가 흔들리지 않게 한다.
+  `[AI댓글위험]`, `[AI댓글긴글]`, `[AI댓글되풀이]`로 결과를 정한다. `e2e` 프로필에서는 본문에 `[AI친구]`가 있는 글에만 답한다.
+  기능을 켠 채 도는 e2e에서 다른 시나리오의 댓글 수와 HP가 흔들리지 않게 한다. 같은 까닭으로 `e2e` 프로필은 반응할 수를
+  무작위로 뽑지 않고 본문의 `[AI친구:2]`, `[AI친구:3]`으로 정한다(없으면 한 명). 통합 테스트는 `postOf(count = 3)`으로
+  정한다(`ScriptedReactionCountPicker`, 정하지 않으면 한 명). 뒤따르는 차례는 `followUp(postId)`로 10분을 보낸 뒤 맡는다.
 - **실제 모델.** 프롬프트나 모델을 바꾸면 `OGU_RUN_AI_EVAL=true`로 `CompanionCommentLiveTest`를 돌려 댓글 40개를 읽는다.
   규칙 검사는 낱말 목록이라 다 잡지 못한다. 기능을 켜기 전에도 읽는다(009 quickstart "운영 준비").
 

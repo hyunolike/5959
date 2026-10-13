@@ -9,7 +9,10 @@ import org.springframework.context.annotation.Import
 import org.springframework.dao.DataAccessException
 import org.springframework.jdbc.core.JdbcTemplate
 
-/** V9__ai_companions.sql(009-ai-companions)의 스키마, 제약, 시드. 글 번호는 다른 테스트와 겹치지 않게 음수를 쓴다. */
+/**
+ * V9__ai_companions.sql(009-ai-companions)와 V11__companion_multi_reaction.sql(012-companion-activity)의 스키마, 제약, 시드.
+ * 글 번호는 다른 테스트와 겹치지 않게 음수를 쓴다.
+ */
 @SpringBootTest
 @Import(TestcontainersConfiguration::class)
 class CompanionMigrationTests {
@@ -98,7 +101,8 @@ class CompanionMigrationTests {
         assertRejected { insert(ReactionRow(post)) }
         assertThat(indexDef("companion_reaction_post_key")).contains("UNIQUE").contains("(post_id)")
         assertThat(indexDef("companion_reaction_due_idx")).contains("(post_created_at)").contains("'WAITING'")
-        assertThat(indexDef("companion_reaction_done_idx")).contains("(companion_id, id DESC)").contains("'DONE'")
+        // 가장 오래 쉰 친구는 친구별 반응으로 고른다(012)
+        assertThat(indexDef("companion_reaction_entry_companion_idx")).contains("(companion_id, id DESC)")
     }
 
     @Test
@@ -115,10 +119,72 @@ class CompanionMigrationTests {
         assertRejected { insert(waiting.copy(postId = post - 5, completed = "now()")) }
         assertRejected { insert(closed.copy(postId = post - 6, status = "SKIPPED", skipReason = "BORED")) }
         assertRejected { insert(waiting.copy(postId = post - 7, status = "REACTING")) }
-        insert(closed.copy(postId = post - 8, status = "DONE", commentId = 1))
+        insert(closed.copy(postId = post - 8, status = "DONE", commentId = 1, doneCount = 1))
         for ((index, reason) in SKIP_REASONS.withIndex()) {
             insert(closed.copy(postId = post - 10 - index, status = "SKIPPED", skipReason = reason))
         }
+    }
+
+    @Test
+    fun `US1-AC10 수를 적지 않은 반응 기록은 한 명이 반응하는 것으로 본다`() {
+        val post = -System.nanoTime()
+
+        jdbcTemplate.update(
+            "insert into companion_reaction (post_id, post_created_at, status, next_attempt_at, created_at) " +
+                "values (?, now(), 'WAITING', now(), now())",
+            post,
+        )
+
+        val sql = "select target_count, done_count from companion_reaction where post_id = ?"
+        val row = jdbcTemplate.queryForMap(sql, post)
+        assertThat((row["target_count"] as Number).toInt()).isEqualTo(1)
+        assertThat((row["done_count"] as Number).toInt()).isZero()
+    }
+
+    @Test
+    fun `FR-005 반응할 수는 1에서 3이고 반응한 수는 그 수를 넘지 못한다`() {
+        val post = -System.nanoTime()
+        val waiting = ReactionRow(post)
+
+        assertRejected { insert(waiting.copy(postId = post - 1, targetCount = 0)) }
+        assertRejected { insert(waiting.copy(postId = post - 2, targetCount = 4)) }
+        assertRejected { insert(waiting.copy(postId = post - 3, targetCount = 2, doneCount = 3)) }
+        assertRejected { insert(waiting.copy(postId = post - 4, doneCount = -1)) }
+        insert(waiting.copy(postId = post - 5, targetCount = 3, doneCount = 2))
+    }
+
+    @Test
+    fun `US7-AC4 DONE은 한 명 이상 반응한 것이고 SKIPPED는 아무도 반응하지 않은 것이다`() {
+        val post = -System.nanoTime()
+        val closed = ReactionRow(post, next = null, completed = "now()", targetCount = 3)
+
+        assertRejected { insert(closed.copy(postId = post - 1, status = "DONE", doneCount = 0)) }
+        val skipped = closed.copy(status = "SKIPPED", skipReason = "GONE")
+        assertRejected { insert(skipped.copy(postId = post - 2, doneCount = 1)) }
+        // 한 명 이상 반응한 뒤 멈췄으면 DONE이고 멈춘 까닭이 남는다
+        insert(closed.copy(postId = post - 3, status = "DONE", skipReason = "HUMAN_COMMENT", doneCount = 1))
+        // 정해진 수를 다 채웠으면 까닭이 없다
+        insert(closed.copy(postId = post - 4, status = "DONE", doneCount = 3))
+    }
+
+    @Test
+    fun `FR-005 한 글에 같은 친구의 반응은 하나만 적힌다`() {
+        val post = -System.nanoTime()
+        insert(ReactionRow(post, targetCount = 3))
+        val reactionId =
+            jdbcTemplate.queryForObject("select id from companion_reaction where post_id = ?", Long::class.java, post)
+        val entry =
+            "insert into companion_reaction_entry (reaction_id, post_id, companion_id, comment_id, created_at) " +
+                "values (?, ?, ?, ?, now())"
+
+        jdbcTemplate.update(entry, reactionId, post, 1, 100)
+
+        assertRejected { jdbcTemplate.update(entry, reactionId, post, 1, 101) }
+        jdbcTemplate.update(entry, reactionId, post, 2, 102)
+        assertRejected { jdbcTemplate.update(entry, -1, post, 3, 103) }
+        assertThat(indexDef("companion_reaction_entry_post_companion_key"))
+            .contains("UNIQUE")
+            .contains("(post_id, companion_id)")
     }
 
     @Test
@@ -153,12 +219,14 @@ class CompanionMigrationTests {
     private fun insert(row: ReactionRow) {
         jdbcTemplate.update(
             "insert into companion_reaction (post_id, post_created_at, status, skip_reason, comment_id, " +
-                "next_attempt_at, created_at, completed_at) values (?, now(), ?, ?, ?, ${row.next ?: "null"}, " +
-                "now(), ${row.completed ?: "null"})",
+                "next_attempt_at, created_at, completed_at, target_count, done_count) " +
+                "values (?, now(), ?, ?, ?, ${row.next ?: "null"}, now(), ${row.completed ?: "null"}, ?, ?)",
             row.postId,
             row.status,
             row.skipReason,
             row.commentId,
+            row.targetCount,
+            row.doneCount,
         )
     }
 
@@ -182,6 +250,8 @@ class CompanionMigrationTests {
         val commentId: Long? = null,
         val next: String? = "now()",
         val completed: String? = null,
+        val targetCount: Int = 1,
+        val doneCount: Int = 0,
     )
 
     private fun indexDef(name: String): String =

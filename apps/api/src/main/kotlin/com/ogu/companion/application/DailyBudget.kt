@@ -1,9 +1,9 @@
 package com.ogu.companion.application
 
-import com.ogu.companion.domain.CompanionReactionRepository
 import com.ogu.companion.domain.CompanionRepository
 import com.ogu.companion.domain.DailyUsageRepository
 import com.ogu.companion.domain.Friend
+import com.ogu.companion.domain.ReactionEntryRepository
 import org.springframework.stereotype.Component
 import java.time.Clock
 import java.time.LocalDate
@@ -42,19 +42,23 @@ class DailyBudget(
 }
 
 /**
- * 반응할 친구를 고른다(009 FR-011). 가장 오래 쉰 친구다: 반응한 적이 없는 친구가 먼저이고, 그다음은 가장 최근에 반응한
- * 글이 가장 오래된 친구다. 글이 차례로 오면 세 친구가 돌아가며 나온다(US4-AC2).
+ * 반응할 친구를 고른다(009 FR-011, 012 FR-006). 가장 오래 쉰 친구다: 반응한 적이 없는 친구가 먼저이고, 그다음은 가장 최근에
+ * 남긴 반응의 번호가 가장 작은 친구다. 글이 차례로 오면 세 친구가 돌아가며 나온다. 한 글에 여러 친구가 반응할 때는 그 글에
+ * 이미 남긴 친구와 글쓴이를 빼고 고른다.
  */
 @Component
 class CompanionPicker(
     private val companions: CompanionRepository,
-    private val reactions: CompanionReactionRepository,
+    private val entries: ReactionEntryRepository,
 ) {
     fun all(): List<Friend> = companions.all()
 
-    fun pick(): Friend {
-        val lastDone = reactions.lastDoneByCompanion()
-        return all().minWith(compareBy<Friend> { lastDone[it.id] ?: NEVER }.thenBy { it.id })
+    /** [excluded]는 고르지 않을 친구의 회원 번호다. 남은 친구가 없으면 null이다. */
+    fun pick(excluded: Set<Long> = emptySet()): Friend? {
+        val lastEntry = entries.lastByCompanion()
+        return all()
+            .filter { it.memberId !in excluded }
+            .minWithOrNull(compareBy<Friend> { lastEntry[it.id] ?: NEVER }.thenBy { it.id })
     }
 
     private companion object {

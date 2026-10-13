@@ -8,6 +8,7 @@ import com.ogu.companion.application.CompanionProperties
 import com.ogu.companion.application.ReactionClaim
 import com.ogu.companion.application.ReactionStore
 import com.ogu.companion.domain.CompanionReactionRepository
+import com.ogu.companion.domain.ReactionEntryRepository
 import com.ogu.shared.config.AiProperties
 import com.ogu.support.CompanionFixture
 import com.ogu.support.CompanionSettings
@@ -45,6 +46,9 @@ class CompanionOperationTests : CompanionTestBase() {
     lateinit var reactions: CompanionReactionRepository
 
     @Autowired
+    lateinit var entries: ReactionEntryRepository
+
+    @Autowired
     lateinit var properties: CompanionProperties
 
     @Autowired
@@ -54,7 +58,8 @@ class CompanionOperationTests : CompanionTestBase() {
     fun `US5-AC3 기다리는 시간을 바꾸면 그 시간이 지난 뒤에 맡는다`() {
         val postId = postOf(members.onboarded())
         // 컨텍스트를 하나 더 띄우지 않고, 기다리는 시간만 3분으로 바꾼 설정으로 같은 기록을 본다
-        val threeMinutes = ReactionStore(reactions, properties.copy(wait = Duration.ofMinutes(3)), clock, aiProperties)
+        val threeMinutes =
+            ReactionStore(reactions, entries, properties.copy(wait = Duration.ofMinutes(3)), clock, aiProperties)
 
         companions.pass(Duration.ofMinutes(2).plusSeconds(59))
         assertThat(threeMinutes.claim(postId)).isNull()
@@ -180,6 +185,17 @@ class CompanionOperationTests : CompanionTestBase() {
             "last_error",
             "created_at",
             "completed_at",
+            "target_count",
+            "done_count",
+        )
+        // 친구별 반응의 기록에도 없다(012)
+        assertThat(companions.entries(reacted).single().keys).containsExactlyInAnyOrder(
+            "id",
+            "reaction_id",
+            "post_id",
+            "companion_id",
+            "comment_id",
+            "created_at",
         )
     }
 

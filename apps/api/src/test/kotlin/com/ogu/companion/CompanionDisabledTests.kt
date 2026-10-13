@@ -4,6 +4,7 @@ import com.ogu.TestcontainersConfiguration
 import com.ogu.companion.application.CompanionProperties
 import com.ogu.companion.application.ReactionRunner
 import com.ogu.monster.MonsterApi
+import com.ogu.post.CompanionReactionCheck
 import com.ogu.post.PostCompanionApi
 import com.ogu.support.CompanionFixture
 import com.ogu.support.CoreLoopFixture
@@ -67,7 +68,7 @@ class CompanionDisabledTests {
         assertThat(properties.enabled).isFalse()
         assertThat(properties.wait).isEqualTo(Duration.ofMinutes(10))
         assertThat(properties.maxAge).isEqualTo(Duration.ofHours(24))
-        assertThat(properties.dailyLimit).isEqualTo(30)
+        assertThat(properties.dailyLimit).isEqualTo(45)
         assertThat(properties.maxAttempts).isEqualTo(3)
     }
 
@@ -90,5 +91,30 @@ class CompanionDisabledTests {
         assertThat(writer.callsOf(postId)).isZero()
         assertThat(companions.comments(before)).hasSize(1)
         assertThat(companions.likers(before)).hasSize(1)
+    }
+
+    @Test
+    fun `US2-AC10 꺼져 있으면 뒤따르는 친구의 차례가 되어도 맡지 않는다`() {
+        val postId = loop.postWithoutMonster(members.onboarded())
+        companions.awaitReady(postId)
+        // 켜져 있을 때 세 명 가운데 한 명이 반응하고 다음 차례를 기다리던 기록
+        val ids = companions.memberIds
+        companionApi.react(postId, ids[0], "켜져 있을 때 남긴 댓글", ids, CompanionReactionCheck(limit = 3))
+        jdbcTemplate.update("update companion_reaction set target_count = 3, done_count = 1 where post_id = ?", postId)
+        companions.backdate(postId, Duration.ofMinutes(30))
+
+        assertThat(runner.attempt(postId)).isFalse()
+        assertThat(runner.runDue()).isZero()
+
+        assertThat(companions.reaction(postId)!!["status"]).isEqualTo("WAITING")
+        assertThat(companions.comments(postId)).hasSize(1)
+        assertThat(writer.callsOf(postId)).isZero()
+    }
+
+    @Test
+    fun `US7-AC2 따로 정하지 않으면 수의 무게는 60과 30과 10이고 뒤따르는 간격은 3분에서 10분이다`() {
+        assertThat(properties.countWeights).containsExactly(60, 30, 10)
+        assertThat(properties.followUp.minGap).isEqualTo(Duration.ofMinutes(3))
+        assertThat(properties.followUp.maxGap).isEqualTo(Duration.ofMinutes(10))
     }
 }

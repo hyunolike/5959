@@ -169,8 +169,14 @@ assert "api는 redis에 service_started로만 의존한다(Redis 장애가 기�
 # 009: compose는 적힌 변수만 컨테이너에 넣는다. AI 친구의 스위치가 빠지면 서버에서 켤 수 없다
 assert "운영 compose가 AI 친구의 설정을 api에 넘기고 기본은 꺼짐이다" \
   'grep -qF "AI_COMPANION_ENABLED: \${AI_COMPANION_ENABLED:-false}" <<< "$api_block" \
-    && grep -qF "AI_COMPANION_DAILY_LIMIT: \${AI_COMPANION_DAILY_LIMIT:-30}" <<< "$api_block" \
+    && grep -qF "AI_COMPANION_DAILY_LIMIT: \${AI_COMPANION_DAILY_LIMIT:-45}" <<< "$api_block" \
     && grep -qF "AI_COMPANION_WAIT: \${AI_COMPANION_WAIT:-10m}" <<< "$api_block"'
+
+# 012: 한 글에 여러 AI 친구가 반응한다. 수의 무게와 뒤따르는 간격을 서버에서 바꿀 수 있어야 한다
+assert "운영 compose가 AI 친구의 수의 무게와 뒤따르는 간격을 api에 넘긴다" \
+  'grep -qF "AI_COMPANION_COUNT_WEIGHTS: \${AI_COMPANION_COUNT_WEIGHTS:-60,30,10}" <<< "$api_block" \
+    && grep -qF "AI_COMPANION_FOLLOW_UP_MIN: \${AI_COMPANION_FOLLOW_UP_MIN:-3m}" <<< "$api_block" \
+    && grep -qF "AI_COMPANION_FOLLOW_UP_MAX: \${AI_COMPANION_FOLLOW_UP_MAX:-10m}" <<< "$api_block"'
 
 assert "Caddyfile은 알림 스트림 경로를 압축에서 뺀다" \
   'grep -qE "^[[:space:]]*@compressible not path /api/v1/notifications/stream$" "$CADDYFILE" \

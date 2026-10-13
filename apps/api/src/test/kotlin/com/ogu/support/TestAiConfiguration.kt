@@ -17,6 +17,7 @@ import com.ogu.ai.infrastructure.FakeEmbedder
 import com.ogu.ai.infrastructure.FakeEmotionAnalyzer
 import com.ogu.ai.infrastructure.FakeRiskClassifier
 import com.ogu.ai.infrastructure.FakeWeeklyLetterWriter
+import com.ogu.companion.application.ReactionCountPicker
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Primary
@@ -54,6 +55,22 @@ class TestAiConfiguration {
         val fake = FakeCompanionCommentWriter()
         return ScriptedCompanionCommentWriter(fake)
     }
+
+    /** 한 글에 반응할 AI 친구의 수를 테스트가 정한다(012 research R20). 정하지 않으면 한 명이라 009의 테스트가 그대로다. */
+    @Bean
+    @Primary
+    fun scriptedReactionCountPicker(): ScriptedReactionCountPicker = ScriptedReactionCountPicker()
+}
+
+/**
+ * 무작위로 뽑는 대신 테스트가 정한 수를 돌려준다. [next]를 정해 두면 그 뒤에 올라오는 글의 반응 기록이 그 수로 생긴다.
+ * 컨텍스트 안의 테스트들이 함께 쓰므로, 쓴 테스트가 끝에 1로 되돌린다.
+ */
+class ScriptedReactionCountPicker : ReactionCountPicker {
+    @Volatile
+    var next: Int = 1
+
+    override fun pick(postId: Long): Int = next
 }
 
 /**

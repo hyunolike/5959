@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Primary
 import org.springframework.jdbc.core.JdbcTemplate
 import java.sql.Date
+import java.sql.Timestamp
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -54,6 +55,24 @@ class CompanionFixture(
 
     fun reaction(postId: Long): Map<String, Any?>? =
         jdbcTemplate.queryForList("select * from companion_reaction where post_id = ?", postId).firstOrNull()
+
+    /** 이 글에 AI 친구가 남긴 반응의 기록(남긴 순). 친구 한 명에 한 행이다(012). */
+    fun entries(postId: Long): List<Map<String, Any?>> =
+        jdbcTemplate.queryForList("select * from companion_reaction_entry where post_id = ? order by id", postId)
+
+    /** 이 글의 다음 차례. 닫힌 기록이면 null이다. */
+    fun nextAttemptAt(postId: Long): Instant? = (reaction(postId)!!["next_attempt_at"] as Timestamp?)?.toInstant()
+
+    /** 친구(1, 2, 3)를 가장 오래 쉰 순서로 놓은 것. 실행기가 고를 차례와 같다. */
+    fun restOrder(): List<Int> {
+        val sql = "select companion_id, max(id) as last_id from companion_reaction_entry group by companion_id"
+        val last = jdbcTemplate.query(sql) { rs, _ -> rs.getInt("companion_id") to rs.getLong("last_id") }.toMap()
+        return memberIdByCompanion.keys.sortedWith(compareBy<Int> { last[it] ?: Long.MIN_VALUE }.thenBy { it })
+    }
+
+    fun moveTo(instant: Instant) {
+        checkNotNull(clock) { "시계를 움직이는 컨텍스트가 아닙니다" }.moveTo(instant)
+    }
 
     /** 글이 커밋된 뒤 비동기로 생기는 반응 기록을 기다린다. */
     fun awaitEnrolled(postId: Long) {
@@ -157,6 +176,9 @@ class CompanionFixture(
     companion object {
         val SEOUL: ZoneId = ZoneId.of("Asia/Seoul")
         val WAIT: Duration = Duration.ofMinutes(10)
+
+        /** 뒤따르는 친구의 차례가 반드시 오는 시간(`follow-up.max-gap`). */
+        val FOLLOW_UP: Duration = Duration.ofMinutes(10)
         val AWAIT_LIMIT: Duration = Duration.ofSeconds(10)
         val POLL: Duration = Duration.ofMillis(50)
 

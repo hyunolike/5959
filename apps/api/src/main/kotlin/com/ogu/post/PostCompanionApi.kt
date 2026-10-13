@@ -17,19 +17,20 @@ interface PostCompanionApi {
      * [memberId]의 이름으로 댓글 하나와 공감 하나를 한 트랜잭션에 남긴다. 사람이 쓰는 댓글 쓰기와 공감을 그대로 타므로
      * 글자 수 검사, 카운터, 이벤트(몬스터 HP, 알림, 위험 판정)가 같다. 댓글과 공감은 함께 남거나 함께 남지 않는다.
      *
-     * 남기기 전에 글의 행을 잠그고 다시 본다. 글이 사라졌으면 [CompanionReactionOutcome.GONE], [companionIds] 가운데
-     * 누가 이미 댓글을 달았으면 [CompanionReactionOutcome.ALREADY_REACTED], 그 사이 다른 회원이 댓글을 달았으면
-     * [CompanionReactionOutcome.HUMAN_COMMENTED]다. [contentVersion]을 주면 본문이 그 판([CompanionTarget.contentVersion])
+     * 남기기 전에 글의 행을 잠그고 다시 본다. 글이 사라졌으면 [CompanionReactionOutcome.GONE], [memberId]가 이미 댓글을
+     * 달았으면 [CompanionReactionOutcome.ALREADY_REACTED], [companionIds]의 댓글이 이미 정해진 수([CompanionReactionCheck.limit])만큼
+     * 있으면 [CompanionReactionOutcome.FULL], 그 사이 다른 회원이 댓글을 달았으면
+     * [CompanionReactionOutcome.HUMAN_COMMENTED]다. 본문의 판([CompanionReactionCheck.contentVersion])을 주면 본문이 그 판
      * 그대로일 때만 남긴다. 댓글을 쓰는 사이에 본문이 고쳐졌으면 [CompanionReactionOutcome.STALE]이다(옛 본문에 맞춘
      * 댓글이고, 고친 글의 위험 판정은 아직이다). 댓글이 규칙에 맞지 않거나 공감이 실패하면 사람의 요청과 같은 예외가 나가고
-     * 아무것도 남지 않는다. [memberId]는 [companionIds] 가운데 하나여야 한다.
+     * 아무것도 남지 않는다. [memberId]는 [companionIds] 가운데 하나여야 하고 글쓴이가 아니어야 한다.
      */
     fun react(
         postId: Long,
         memberId: Long,
         content: String,
         companionIds: Collection<Long>,
-        contentVersion: Instant? = null,
+        check: CompanionReactionCheck = CompanionReactionCheck(),
     ): CompanionReactionResult
 }
 
@@ -44,15 +45,43 @@ data class CompanionTarget(
     val contentVersion: Instant,
     /** 다른 회원에게 보이지 않는 글이면 true. */
     val hidden: Boolean,
-    /** AI 친구가 이 글에 이미 남긴 댓글(지우지 않은 것). 없으면 null이다. */
-    val companionCommentId: Long?,
+    /**
+     * AI 친구가 이 글에 남긴, 지우지 않은 댓글(먼저 남긴 순). 회원마다 가장 먼저 남긴 것 하나다. 숨겨진 것도 든다(그 친구는
+     * 다시 남기지 않는다).
+     */
+    val companionComments: List<CompanionComment> = emptyList(),
     /** 글쓴이도 AI 친구도 아닌 회원의, 지우지도 숨기지도 않은 댓글이 있다. */
     val otherCommented: Boolean,
 )
 
+/** 남기기 직전에 글의 행을 잠근 채 다시 견줄 것(009 research R15, 012 research R7). */
+data class CompanionReactionCheck(
+    /** 대상을 읽을 때의 본문의 판([CompanionTarget.contentVersion]). null이면 견주지 않는다. */
+    val contentVersion: Instant? = null,
+    /**
+     * 그 글에 반응하기로 정해진 AI 친구의 수. 잠금 안에서 보므로 두 실행기가 같은 글을 서로 다른 친구로 함께 남겨도 이 수를
+     * 넘지 않는다.
+     */
+    val limit: Int = 1,
+)
+
+/** AI 친구 한 명이 글에 남긴 댓글. [content]는 가리지 않은 원문이다. 다음 친구가 같은 말을 되풀이하지 않게 하는 데 쓴다. */
+data class CompanionComment(
+    val memberId: Long,
+    val commentId: Long,
+    val content: String,
+    /** 지우지도 숨기지도 않았으면 true. */
+    val visible: Boolean,
+)
+
 enum class CompanionReactionOutcome {
     REACTED,
+
+    /** 이 회원이 이 글에 이미 댓글을 남겼다. */
     ALREADY_REACTED,
+
+    /** AI 친구의 댓글이 이미 정해진 수만큼 있다. 아무것도 남기지 않았다. */
+    FULL,
     GONE,
     HUMAN_COMMENTED,
 

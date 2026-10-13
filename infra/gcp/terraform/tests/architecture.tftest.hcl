@@ -44,7 +44,7 @@ run "infrastructure_only" {
 run "ai_companion_ships_off" {
   command = apply
   assert {
-    condition     = !jsondecode(google_compute_instance.api.metadata["deployment-config"]).ai_companion_enabled && jsondecode(google_compute_instance.api.metadata["deployment-config"]).ai_companion_daily_limit == 30
+    condition     = !jsondecode(google_compute_instance.api.metadata["deployment-config"]).ai_companion_enabled && jsondecode(google_compute_instance.api.metadata["deployment-config"]).ai_companion_daily_limit == 45
     error_message = "AI companions must ship switched off with the agreed daily limit."
   }
 }

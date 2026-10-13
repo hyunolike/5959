@@ -35,6 +35,10 @@ class ComposeTests(unittest.TestCase):
         # 009: the AI companion ships switched off and only listed variables reach the container.
         api = services["api"]["environment"]
         self.assertEqual(api["AI_COMPANION_ENABLED"], "false")
-        self.assertEqual(api["AI_COMPANION_DAILY_LIMIT"], "30")
+        self.assertEqual(api["AI_COMPANION_DAILY_LIMIT"], "45")
         self.assertEqual(api["AI_COMPANION_WAIT"], "10m")
+        # 012: several companions may answer one post; the weights and the gap are tunable on the server.
+        self.assertEqual(api["AI_COMPANION_COUNT_WEIGHTS"], "60,30,10")
+        self.assertEqual(api["AI_COMPANION_FOLLOW_UP_MIN"], "3m")
+        self.assertEqual(api["AI_COMPANION_FOLLOW_UP_MAX"], "10m")
         self.assertEqual(services["redis"]["command"][2], credential)

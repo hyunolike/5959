@@ -63,7 +63,7 @@ variable "ai_companion_enabled" {
 variable "ai_companion_daily_limit" {
   type        = number
   description = "How many times per day (Asia/Seoul) the API may ask the model for a companion comment."
-  default     = 30
+  default     = 45
   validation {
     condition     = var.ai_companion_daily_limit >= 0 && floor(var.ai_companion_daily_limit) == var.ai_companion_daily_limit
     error_message = "Use a non-negative whole number."

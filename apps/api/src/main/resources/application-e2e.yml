@@ -47,3 +47,7 @@ ogu:
     retry:
       initial-interval: 2s
       max-interval: 4s
+    # 012: 반응할 수는 무작위가 아니라 본문의 [AI친구:2], [AI친구:3]으로 정한다(없으면 한 명). 뒤따르는 친구는 몇 초 뒤에 온다
+    follow-up:
+      min-gap: ${AI_COMPANION_FOLLOW_UP_MIN:2s}
+      max-gap: ${AI_COMPANION_FOLLOW_UP_MAX:4s}

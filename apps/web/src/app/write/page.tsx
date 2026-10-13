@@ -15,7 +15,7 @@ export default function WritePage() {
         <p className="text-body-sm text-fg-subtle mt-1 leading-6">
           털어놓으면 고민이 몬스터가 돼요. 회원들의 공감과 댓글로 함께 물리쳐요.
         </p>
-        {/* AI의 댓글을 받기 전에 미리 알린다(009 research R13). */}
+        {/* AI의 댓글을 받기 전에 미리 알린다(009 research R13). 한 명이 아닐 수 있다(012 US4-AC7). */}
         <p className="text-body-sm text-fg-subtle leading-6">
           한동안 댓글이 없으면{" "}
           <Link
@@ -24,7 +24,7 @@ export default function WritePage() {
           >
             AI 친구
           </Link>
-          가 먼저 답할 수 있어요.
+          가 한 명에서 세 명까지 먼저 답할 수 있어요.
         </p>
         {/* 글이 어디까지 보이는지 쓰기 전에 알린다(011 US3-AC1). 50자가 안 되는 글은 전체가 보인다. */}
         <p className="text-body-sm text-fg-subtle leading-6">
