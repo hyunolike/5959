@@ -77,3 +77,12 @@ resource "google_cloud_run_v2_service_iam_member" "public" {
   role     = "roles/run.invoker"
   member   = "allUsers"
 }
+
+# The web keeps answering on run.app; APP_ORIGIN decides which origin may log in.
+resource "google_cloud_run_domain_mapping" "web" {
+  count    = var.web_image == "" || var.web_domain == "" ? 0 : 1
+  name     = var.web_domain
+  location = var.region
+  metadata { namespace = var.project_id }
+  spec { route_name = google_cloud_run_v2_service.web[0].name }
+}

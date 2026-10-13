@@ -10,6 +10,9 @@ machine_type = "e2-small"
 api_image = ""
 web_image = ""
 
+# 웹에 붙일 도메인. 비우면 run.app 주소를 쓴다. 채우면 OAuth redirect URI와 SSE 허용 출처도 이 주소로 바뀐다.
+web_domain = ""
+
 # OAuth client ID는 공개 식별자. client secret은 Secret Manager에 넣는다.
 kakao_client_id  = ""
 # Set false to deploy with Google login only.

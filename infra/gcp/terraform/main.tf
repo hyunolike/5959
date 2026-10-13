@@ -10,7 +10,8 @@ locals {
     bff_key     = "ogu-bff-key"
     oauth_state = "ogu-oauth-state"
   }
-  web_origin = "https://ogu-web-${data.google_project.current.number}.${var.region}.run.app"
+  run_origin = "https://ogu-web-${data.google_project.current.number}.${var.region}.run.app"
+  web_origin = var.web_domain == "" ? local.run_origin : "https://${var.web_domain}"
   api_domain = "api.${replace(google_compute_address.api.address, ".", "-")}.sslip.io"
   registry   = "${var.region}-docker.pkg.dev/${var.project_id}/ogu"
   deployment_config = {
