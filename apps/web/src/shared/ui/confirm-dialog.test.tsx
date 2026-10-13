@@ -123,6 +123,41 @@ describe("ConfirmDialog", () => {
     expect(document.body.style.overflow).not.toBe("hidden");
     expect(screen.getByRole("button", { name: "방법 보기" })).toHaveFocus();
   });
+  it("POLISH-AC9 시트에는 손잡이가 있고 버튼 두 개의 너비가 같다", () => {
+    render(
+      <ConfirmDialog
+        open
+        role="dialog"
+        presentation="sheet"
+        title="로그인이 필요해요"
+        confirmLabel="로그인하기"
+        cancelLabel="계속 둘러보기"
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    const dialog = screen.getByRole("dialog", { name: "로그인이 필요해요" });
+    expect(dialog).toHaveClass("rounded-t-surface");
+    const grabber = dialog.querySelector("[data-sheet-grabber]");
+    expect(grabber).toHaveAttribute("aria-hidden", "true");
+    const actions = screen.getByRole("button", {
+      name: "로그인하기",
+    }).parentElement!;
+    expect(actions).toHaveClass("grid", "grid-cols-2");
+    for (const name of ["로그인하기", "계속 둘러보기"]) {
+      expect(screen.getByRole("button", { name })).toHaveClass("min-h-12");
+    }
+  });
+
+  it("POLISH-AC9 가운데 대화상자에는 손잡이가 없고 버튼은 오른쪽에 모인다", () => {
+    renderDialog(true);
+    const dialog = screen.getByRole("alertdialog", { name: "글을 지울까요?" });
+    expect(dialog.querySelector("[data-sheet-grabber]")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "삭제" }).parentElement,
+    ).toHaveClass("flex", "justify-end");
+  });
+
   it("닫혀 있으면 아무것도 그리지 않는다", () => {
     renderDialog(false);
 
