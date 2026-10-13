@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useId } from "react";
+import { useEffect, useId, useRef } from "react";
 import { useForm, useWatch } from "react-hook-form";
 
 import type { Comment } from "@/entities/comment";
@@ -16,6 +16,9 @@ import {
   type WriteCommentFormInput,
   type WriteCommentFormValues,
 } from "../model/schema";
+
+/** 남은 글자가 이보다 적어지면 글자 수를 보인다. */
+const COUNTER_MARGIN = 50;
 
 const GENERIC_ERROR_MESSAGE =
   "댓글을 올리지 못했습니다. 잠시 후 다시 시도해주세요.";
@@ -47,6 +50,7 @@ function isUnreplyable(error: unknown): boolean {
  * 댓글과 답글 쓰기 폼(US3-AC2, US3-AC3, FR-008). 글자 수는 사람이 보는 글자로 세어
  * 300자 기준으로 보여 준다(research R8). `replyTo`가 있으면 그 원 댓글에 다는 답글이고,
  * 누구에게 다는지 보여 준다. 올리면 입력을 비우고 답글 상태를 끝낸다.
+ * 입력 칸과 등록 버튼은 한 줄이다. 글 상세는 좁은 화면에서 이 폼을 화면 아래에 붙인다.
  */
 export function WriteCommentForm({
   postId,
@@ -89,6 +93,33 @@ export function WriteCommentForm({
   const content = useWatch({ control, name: "content" }) ?? "";
   const length = countGraphemes(content.trim());
   const overLimit = length > COMMENT_CONTENT_MAX_LENGTH;
+  // 글자 수는 끝이 가까워졌을 때만 보인다. 한 줄 입력 옆에 늘 두면 입력줄이 번잡하다.
+  const showCounter = length > COMMENT_CONTENT_MAX_LENGTH - COUNTER_MARGIN;
+
+  // 입력 칸은 한 줄에서 시작해 내용만큼 늘어난다. 가장 큰 높이는 CSS(`max-h-32`)가 막는다.
+  const { ref: registerContent, ...contentField } = register("content");
+  const contentRef = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    const fit = () => {
+      const element = contentRef.current;
+      // 그려지지 않은 곳(테스트 환경, 숨은 화면)에서는 높이를 알 수 없다. 건드리지 않는다.
+      if (!element || element.scrollHeight === 0) {
+        return;
+      }
+      // 비어 있으면 한 줄로 돌아간다. 좁은 화면에서 줄바꿈된 안내 글자가 높이를 늘리지 않게 한다.
+      if (element.value === "") {
+        element.style.height = "";
+        return;
+      }
+      const border = element.offsetHeight - element.clientHeight;
+      element.style.height = "auto";
+      element.style.height = `${element.scrollHeight + border}px`;
+    };
+    fit();
+    // 화면을 돌리거나 폭이 바뀌면 줄바꿈이 달라진다. 다시 잰다.
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [content]);
   const label = replyTo ? "답글" : "댓글";
 
   const onSubmit = handleSubmit(async ({ content: value }) => {
@@ -149,50 +180,52 @@ export function WriteCommentForm({
           AI 친구는 답글에 다시 답하지 못해요.
         </p>
       ) : null}
+      {errors.content ? (
+        <p
+          id={`${contentId}-error`}
+          role="alert"
+          className="text-body-sm text-danger"
+        >
+          {errors.content.message}
+        </p>
+      ) : errors.root ? (
+        <p role="alert" className="text-body-sm text-danger">
+          {errors.root.message}
+        </p>
+      ) : null}
       <label htmlFor={contentId} className="sr-only">
         {label}
       </label>
-      <Textarea
-        id={contentId}
-        aria-invalid={!!errors.content || overLimit}
-        aria-describedby={errors.content ? `${contentId}-error` : undefined}
-        rows={3}
-        placeholder={
-          replyTo ? "답글을 남겨 주세요." : "따뜻한 한마디를 남겨 주세요."
-        }
-        className="min-h-24 resize-y"
-        {...register("content")}
-      />
-      <div className="flex items-start justify-between gap-2">
-        {errors.content ? (
-          <p
-            id={`${contentId}-error`}
-            role="alert"
-            className="text-body-sm text-danger"
-          >
-            {errors.content.message}
-          </p>
-        ) : errors.root ? (
-          <p role="alert" className="text-body-sm text-danger">
-            {errors.root.message}
-          </p>
-        ) : (
-          <span />
-        )}
-        <div className="flex shrink-0 items-center gap-3">
-          <p
-            className={cn(
-              "text-caption tabular-nums",
-              overLimit ? "text-danger" : "text-fg-subtle",
-            )}
-          >
-            {length}/{COMMENT_CONTENT_MAX_LENGTH}
-          </p>
-          <Button type="submit" size="sm" disabled={isSubmitting}>
-            등록
-          </Button>
-        </div>
+      <div className="flex items-end gap-2">
+        <Textarea
+          id={contentId}
+          aria-invalid={!!errors.content || overLimit}
+          aria-describedby={errors.content ? `${contentId}-error` : undefined}
+          rows={1}
+          placeholder={
+            replyTo ? "답글을 남겨 주세요." : "따뜻한 한마디를 남겨 주세요."
+          }
+          className="max-h-32 min-h-12 flex-1 resize-none py-2.5 placeholder:truncate"
+          {...contentField}
+          ref={(element) => {
+            registerContent(element);
+            contentRef.current = element;
+          }}
+        />
+        <Button type="submit" className="shrink-0" disabled={isSubmitting}>
+          등록
+        </Button>
       </div>
+      {showCounter ? (
+        <p
+          className={cn(
+            "text-caption self-end tabular-nums",
+            overLimit ? "text-danger" : "text-fg-subtle",
+          )}
+        >
+          {length}/{COMMENT_CONTENT_MAX_LENGTH}
+        </p>
+      ) : null}
       {/* 카운터는 입력마다 읽히지 않게 두고, 넘었을 때만 한 번 알린다. */}
       <div role="status" className="sr-only">
         {overLimit ? `${COMMENT_CONTENT_MAX_LENGTH}자를 넘었어요.` : null}

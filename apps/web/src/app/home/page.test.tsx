@@ -103,10 +103,14 @@ describe("HomePage", () => {
       "마음 이야기",
     );
     expect(screen.getByText("오구님, 반가워요")).toBeInTheDocument();
-    expect(main.getByRole("link", { name: "고민 쓰기" })).toHaveAttribute(
-      "href",
-      "/write",
-    );
+    // POLISH-AC13: 위쪽의 고민 쓰기는 넓은 화면에서만 보인다. 좁은 화면에는 하단 메뉴에 있다.
+    const write = main.getByRole("link", { name: "고민 쓰기" });
+    expect(write).toHaveAttribute("href", "/write");
+    expect(write).toHaveClass("hidden", "md:inline-flex");
+    // POLISH-AC13: 홈에는 로그아웃이 없다. 기록 화면에 있다.
+    expect(
+      screen.queryByRole("button", { name: "로그아웃" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("region", { name: "피드" })).toBeInTheDocument();
     // 006 US5-AC7: 홈에서 레이드로 가는 안내가 있다
     expect(main.getByRole("link", { name: "레이드" })).toHaveAttribute(

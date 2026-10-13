@@ -161,6 +161,35 @@ for (const viewport of [
       path: testInfo.outputPath("feed-populated.png"),
       fullPage: true,
     });
+    // POLISH-AC14: 정렬과 필터 여닫이는 한 줄에 있고 가장 좁은 화면에서도 겹치지 않는다.
+    const sortBox = (await page
+      .getByRole("group", { name: "정렬" })
+      .boundingBox())!;
+    const filterBox = (await page
+      .locator("summary", { hasText: "필터" })
+      .boundingBox())!;
+    expect(Math.abs(sortBox.y - filterBox.y)).toBeLessThanOrEqual(1);
+    expect(sortBox.x + sortBox.width).toBeLessThanOrEqual(filterBox.x - 8);
+    // 고른 필터의 개수가 붙어 여닫이가 넓어져도 겹치지 않고, 펼친 칩은 그 아래에 놓인다.
+    await page.goto("/home?jobRole=DEVELOPMENT&jobRole=DESIGN");
+    // 주소가 바뀌면 Next가 이전 화면을 숨긴 채 잠깐 남겨 둔다. 보이는 쪽만 본다.
+    const counted = page
+      .locator("summary", { hasText: "필터 (2)" })
+      .filter({ visible: true });
+    await expect(counted).toBeVisible();
+    const countedBox = (await counted.boundingBox())!;
+    const sortAgain = (await page
+      .getByRole("group", { name: "정렬" })
+      .filter({ visible: true })
+      .boundingBox())!;
+    expect(sortAgain.x + sortAgain.width).toBeLessThanOrEqual(countedBox.x - 4);
+    const chips = (await page
+      .getByRole("group", { name: "직군" })
+      .filter({ visible: true })
+      .boundingBox())!;
+    expect(chips.y).toBeGreaterThanOrEqual(sortAgain.y + sortAgain.height);
+    await page.goto("/home");
+    await waitForHomeLoaded(page);
     for (let i = 0; i < 2; i += 1) {
       await page.getByRole("button", { name: "인기순", exact: true }).click();
       await expect(page).toHaveURL(/order=POPULAR/);
@@ -195,9 +224,77 @@ for (const viewport of [
             () => document.documentElement.scrollWidth > innerWidth,
           ),
         ).toBe(false);
+        // POLISH-AC12, AC17: 좁은 화면의 글 상세는 하단 메뉴 대신 댓글 입력줄이 화면 아래에 붙는다.
+        const dock = page.locator("[data-comment-dock]");
+        const mobileNav = page.getByRole("navigation", {
+          name: "모바일 주요 메뉴",
+        });
+        if (viewport.width < 768) {
+          await expect(mobileNav).toHaveCount(0);
+          await expect(dock).toHaveCSS("position", "fixed");
+          const box = (await dock.boundingBox())!;
+          expect(Math.round(box.y + box.height)).toBe(viewport.height);
+          // 맨 아래로 내려도 본문의 끝이 입력줄에 가리지 않는다.
+          await page.evaluate(() =>
+            window.scrollTo(0, document.documentElement.scrollHeight),
+          );
+          const lastBottom = await page.getByRole("main").evaluate((main) => {
+            const flow = [...main.querySelectorAll("section, article")].filter(
+              (element) => !element.closest("[data-comment-dock]"),
+            );
+            return Math.max(
+              ...flow.map((element) => element.getBoundingClientRect().bottom),
+            );
+          });
+          expect(lastBottom).toBeLessThanOrEqual(
+            (await dock.boundingBox())!.y + 1,
+          );
+          // 여러 줄을 쓰면 입력 칸이 늘어나고(네 줄까지), 본문 아래의 여백이 따라가 끝이 가리지 않는다.
+          const input = page.getByLabel("댓글", { exact: true });
+          const oneLine = (await input.boundingBox())!.height;
+          expect(oneLine).toBe(48);
+          await input.fill(
+            "첫 줄\n둘째 줄\n셋째 줄\n넷째 줄\n다섯째 줄\n여섯째 줄",
+          );
+          await expect
+            .poll(async () => (await input.boundingBox())!.height)
+            .toBe(128);
+          await expect
+            .poll(() =>
+              page.evaluate(() =>
+                getComputedStyle(document.documentElement)
+                  .getPropertyValue("--comment-dock-height")
+                  .trim(),
+              ),
+            )
+            .toMatch(/^1[4-9]\dpx$/);
+          await page.evaluate(() =>
+            window.scrollTo(0, document.documentElement.scrollHeight),
+          );
+          const tallBottom = await page.getByRole("main").evaluate((main) => {
+            const flow = [...main.querySelectorAll("section, article")].filter(
+              (element) => !element.closest("[data-comment-dock]"),
+            );
+            return Math.max(
+              ...flow.map((element) => element.getBoundingClientRect().bottom),
+            );
+          });
+          expect(tallBottom).toBeLessThanOrEqual(
+            (await dock.boundingBox())!.y + 1,
+          );
+          await input.fill("");
+          await expect
+            .poll(async () => (await input.boundingBox())!.height)
+            .toBe(48);
+          await page.evaluate(() => window.scrollTo(0, 0));
+        } else {
+          await expect(dock).toHaveCSS("position", "static");
+        }
+        await expect(
+          page.getByRole("link", { name: "마음 이야기로 돌아가기" }),
+        ).toBeVisible();
         await page.screenshot({
           path: testInfo.outputPath("post-detail.png"),
-          fullPage: true,
         });
       }
       await page.goBack();

@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 
 import { CAREER_YEAR_LABELS, JOB_ROLE_LABELS } from "@/entities/member";
 import type { FeedFilter, FeedOrder } from "@/entities/post";
-import { Button, Chip } from "@/shared/ui";
+import { Button, Chip, SegmentedControl } from "@/shared/ui";
 
 import {
   CAREER_YEARS,
@@ -14,10 +14,10 @@ import {
   toggleValue,
 } from "../model/filter-params";
 
-const ORDER_LABELS: Record<FeedOrder, string> = {
-  LATEST: "최신순",
-  POPULAR: "인기순",
-};
+const ORDERS: readonly { value: FeedOrder; label: string }[] = [
+  { value: "LATEST", label: "최신순" },
+  { value: "POPULAR", label: "인기순" },
+];
 
 /** 정렬 토글과 직군, 경력 다중 선택(FR-011). 같은 종류 안에서는 하나라도 맞으면 통과한다. */
 export function FeedControls({
@@ -41,26 +41,24 @@ export function FeedControls({
   const summaryRef = useRef<HTMLElement>(null);
 
   return (
-    <div className="flex flex-col gap-2">
-      <div role="group" aria-label="정렬" className="flex gap-2">
-        {(Object.keys(ORDER_LABELS) as FeedOrder[]).map((order) => (
-          <Chip
-            key={order}
-            pressed={filter.order === order}
-            onClick={() => onChange({ ...filter, order })}
-          >
-            {ORDER_LABELS[order]}
-          </Chip>
-        ))}
-      </div>
+    // 정렬과 필터 여닫이를 한 줄에 둔다. 같은 격자 칸에 겹쳐 놓고 여닫이의 summary를 오른쪽으로 민다.
+    // 펼친 칩은 여닫이 안이라 그 아래 전체 너비로 놓인다. 정렬은 여닫이의 빈 자리에 깔리지 않게 위로 올린다.
+    <div className="grid grid-cols-1 pb-2">
+      <SegmentedControl
+        label="정렬"
+        options={ORDERS}
+        value={filter.order}
+        onChange={(order) => onChange({ ...filter, order })}
+        className="relative z-10 col-start-1 row-start-1 self-start justify-self-start"
+      />
       <details
         open={open}
         onToggle={(event) => setOpen(event.currentTarget.open)}
-        className="group pb-2"
+        className="group col-start-1 row-start-1"
       >
         <summary
           ref={summaryRef}
-          className="rounded-inline text-label text-fg-muted flex min-h-11 w-fit cursor-pointer list-none items-center gap-2 font-medium [&::-webkit-details-marker]:hidden"
+          className="ogu-pressable rounded-control-sm bg-surface-sunken text-body-sm text-fg hover:bg-line relative ml-auto flex h-10 w-fit cursor-pointer list-none items-center gap-1.5 px-3.5 font-bold before:absolute before:inset-x-0 before:-inset-y-0.5 before:content-[''] [&::-webkit-details-marker]:hidden"
         >
           <SlidersHorizontal size={18} aria-hidden />
           필터
@@ -73,7 +71,7 @@ export function FeedControls({
             className="transition-transform group-open:rotate-180 motion-reduce:transition-none"
           />
         </summary>
-        <div className="mt-2 flex flex-col gap-3">
+        <div className="mt-4 flex flex-col gap-3">
           <ChipGroup label="직군">
             {JOB_ROLES.map((jobRole) => (
               <Chip

@@ -34,6 +34,9 @@ const NAVIGATION = [
   { href: "/my", label: "내 마음 기록", shortLabel: "기록", icon: User },
 ];
 
+/** 글 상세의 주소. 글 고치기(`/post/1/edit`)는 들지 않는다. */
+const POST_DETAIL = /^\/post\/\d+$/;
+
 export function AppShell({
   children,
   authenticated,
@@ -64,6 +67,8 @@ function ShellContents({
   const pathname = usePathname();
   const { requestLogin } = useGuestAccess();
   const showNavigation = authenticated || pathname === "/home";
+  // 글 상세는 좁은 화면에서 아래 자리를 댓글 입력줄이 쓴다. 하단 메뉴를 그리지 않는다.
+  const showMobileNavigation = showNavigation && !POST_DETAIL.test(pathname);
   const guestNavigation = (href: string) =>
     !authenticated && href !== "/home"
       ? {
@@ -90,7 +95,7 @@ function ShellContents({
       </a>
       <header className="border-line sticky top-0 isolate z-30 border-b">
         <div aria-hidden className="bg-surface/95 absolute inset-0 -z-10" />
-        <div className="mx-auto flex h-16 max-w-[1120px] items-center justify-between px-5 sm:h-18 sm:px-8">
+        <div className="mx-auto flex h-14 max-w-[1120px] items-center justify-between px-5 sm:h-18 sm:px-8">
           <Link
             href={showNavigation ? "/home" : "/login"}
             aria-label="오구오구 홈"
@@ -119,7 +124,7 @@ function ShellContents({
         좁은 화면의 메뉴는 화면 아래에 붙어 있지만 DOM에서는 본문보다 앞에 둔다. 뒤에 두면 Tab으로는
         끝없이 늘어나는 피드를 다 지나야 메뉴에 닿는다.
       */}
-      {showNavigation ? (
+      {showMobileNavigation ? (
         <nav
           aria-label="모바일 주요 메뉴"
           className="border-line bg-surface rounded-t-surface fixed right-0 bottom-0 left-0 z-30 grid grid-cols-5 border border-b-0 px-3 pt-2 pb-[max(8px,env(safe-area-inset-bottom))] md:hidden"
@@ -140,7 +145,8 @@ function ShellContents({
         className={cn(
           "mx-auto flex w-full max-w-[1120px] flex-1 gap-12 px-5 sm:px-8",
           showNavigation
-            ? "py-6 pb-[calc(104px+env(safe-area-inset-bottom))] md:py-10"
+            ? // 아래 여백은 하단 메뉴(104px)와 글 상세의 댓글 입력줄 가운데 높은 쪽이다.
+              "py-6 pb-[max(calc(104px+env(safe-area-inset-bottom)),calc(var(--comment-dock-height,0px)+24px))] md:py-10"
             : "py-8 sm:py-14",
         )}
       >

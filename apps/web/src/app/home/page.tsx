@@ -6,8 +6,6 @@ import { Suspense } from "react";
 
 import { useMeQuery } from "@/entities/member";
 import { useGuestAccess } from "@/features/auth/guest-access";
-import { LogoutButton } from "@/features/auth/logout";
-import { stopNotificationStream } from "@/features/notification-stream";
 import { HomeInstall } from "@/features/install-app";
 import { Button, ListSkeleton } from "@/shared/ui";
 import { FeedList } from "@/widgets/feed-list";
@@ -42,23 +40,22 @@ function MemberHome() {
             </p>
           ) : null}
         </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <LogoutButton onLoggedOut={stopNotificationStream} />
-          <Button asChild className="px-3">
-            <Link href="/write">
-              <PencilSimpleLine size={18} aria-hidden />
-              고민 쓰기
-            </Link>
-          </Button>
-        </div>
+        {/* 좁은 화면에는 하단 메뉴 가운데에 같은 것이 있다. 로그아웃은 기록 화면에 있다. */}
+        <Button asChild className="hidden shrink-0 px-3 md:inline-flex">
+          <Link href="/write">
+            <PencilSimpleLine size={18} aria-hidden />
+            고민 쓰기
+          </Link>
+        </Button>
       </header>
       {/* 살아 있는 보스가 있으면 레이드로 가는 안내를 보인다(006 US5-AC7). */}
       <BossBanner />
-      <HomeInstall />
       {/* 정렬과 필터를 주소 검색어에서 읽는다(useSearchParams). */}
       <Suspense fallback={<ListSkeleton label="피드" />}>
         <FeedList />
       </Suspense>
+      {/* 설치 안내는 글보다 앞에 두지 않는다. 첫 글이 화면 위쪽에 오게 한다. */}
+      <HomeInstall />
     </div>
   );
 }

@@ -82,6 +82,8 @@ test("US2-AC5 로그아웃하면 로그인 화면으로 이동하고, 뒤로 가
     page.getByText(`${nickname}님, 반가워요`, { exact: true }),
   ).toBeVisible();
 
+  // 로그아웃은 기록 화면에 있다(홈에서는 뺐다).
+  await page.goto("/my");
   await page.getByRole("button", { name: "로그아웃" }).click();
   await page.waitForURL("**/login");
 

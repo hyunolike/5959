@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen, within } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -111,6 +111,11 @@ describe("PostDetail", () => {
     expect(
       await screen.findByRole("heading", { level: 1, name: "오구님의 고민" }),
     ).toHaveClass("sr-only");
+    // POLISH-AC16: 머리말은 뒤로 가기이고 화면의 h1은 그 하나다.
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(
+      screen.getByRole("link", { name: "마음 이야기로 돌아가기" }),
+    ).toHaveAttribute("href", "/home");
     // 이름은 역할이 있는 요소에만 붙일 수 있다.
     expect(screen.getByRole("group", { name: "몬스터" })).toHaveTextContent(
       "분석 중",
@@ -181,16 +186,17 @@ describe("PostDetail", () => {
         500,
       ),
     );
-    expect(
-      await screen.findByRole("heading", { level: 1, name: "고민 글" }),
-    ).toHaveClass("sr-only");
     // 화면이 바뀐 까닭이 alert로 읽히고 돌아갈 곳이 있다.
-    expect(screen.getByRole("alert")).toHaveTextContent(
+    expect(await screen.findByRole("alert")).toHaveTextContent(
       "글을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.",
     );
     expect(
       screen.getByRole("link", { name: "마음 이야기로 돌아가기" }),
     ).toHaveAttribute("href", "/home");
+    expect(
+      screen.getByRole("heading", { level: 1, name: "고민 글" }),
+    ).toHaveClass("sr-only");
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   });
 
   it("404 POST_NOT_FOUND면 삭제된 글이라고 안내한다", async () => {
@@ -344,6 +350,65 @@ describe("PostDetail 공감과 댓글", () => {
         "before:-inset-y-[3px]",
       );
     }
+  });
+
+  it("POLISH-AC17 댓글 입력줄은 좁은 화면에서 화면 아래에 붙고 넓은 화면에서는 제자리다", async () => {
+    renderDetailWithComments(detail({ ...ANALYZED, mine: false }));
+    const input = await screen.findByLabelText("댓글");
+    const dock = input.closest("[data-comment-dock]");
+    expect(dock).toHaveClass(
+      "fixed",
+      "inset-x-0",
+      "bottom-0",
+      "border-t",
+      "bg-surface",
+      "md:static",
+    );
+    // 홈 표시줄이 있는 기기에서 입력줄이 그 위에 놓인다.
+    expect(dock!.className).toContain("env(safe-area-inset-bottom)");
+  });
+
+  it("POLISH-AC17 입력줄의 높이를 화면 틀에 알려 아래 여백이 따라가게 하고, 떠나면 지운다", async () => {
+    let report: ((height: number) => void) | undefined;
+    const disconnect = vi.fn();
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(callback: (entries: unknown[]) => void) {
+          report = (height) => callback([{ target: { offsetHeight: height } }]);
+        }
+        observe() {}
+        disconnect = disconnect;
+      },
+    );
+    const root = document.documentElement;
+
+    renderDetailWithComments(detail({ ...ANALYZED, mine: false }));
+    await screen.findByLabelText("댓글");
+    act(() => report!(149));
+    expect(root.style.getPropertyValue("--comment-dock-height")).toBe("149px");
+
+    cleanup();
+    expect(root.style.getPropertyValue("--comment-dock-height")).toBe("");
+    expect(disconnect).toHaveBeenCalled();
+  });
+
+  it("POLISH-AC16 불러오는 중에도 뒤로 가기와 화면의 제목이 있다", () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise(() => {})),
+    );
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <PostDetail postId={7} />
+      </QueryClientProvider>,
+    );
+    expect(
+      screen.getByRole("heading", { level: 1, name: "고민 글" }),
+    ).toHaveClass("sr-only");
+    expect(
+      screen.getByRole("link", { name: "마음 이야기로 돌아가기" }),
+    ).toHaveAttribute("href", "/home");
   });
 
   it("댓글 목록 구역은 초점을 받아도 외곽선을 그리지 않는다", async () => {

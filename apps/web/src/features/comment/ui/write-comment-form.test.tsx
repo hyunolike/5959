@@ -133,9 +133,14 @@ describe("WriteCommentForm", () => {
     vi.stubGlobal("fetch", fetchMock);
     renderForm({});
 
-    expect(screen.getByText("0/300")).toBeInTheDocument();
+    // POLISH-AC15: 글자 수는 남은 글자가 50자 아래일 때만 보인다.
+    expect(screen.queryByText("0/300")).not.toBeInTheDocument();
     await user.click(screen.getByLabelText("댓글"));
-    await user.paste("가".repeat(301));
+    await user.paste("가".repeat(250));
+    expect(screen.queryByText("250/300")).not.toBeInTheDocument();
+    await user.paste("가");
+    expect(screen.getByText("251/300")).toBeInTheDocument();
+    await user.paste("가".repeat(50));
     expect(screen.getByText("301/300")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "등록" }));
 
@@ -143,6 +148,17 @@ describe("WriteCommentForm", () => {
       await screen.findByText("300자 이하로 적어 주세요."),
     ).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("POLISH-AC15 입력 칸과 등록 버튼이 한 줄에 있고 입력 칸은 한 줄에서 시작한다", () => {
+    vi.stubGlobal("fetch", vi.fn());
+    renderForm({});
+    const input = screen.getByLabelText("댓글");
+    const submit = screen.getByRole("button", { name: "등록" });
+    expect(input.parentElement).toBe(submit.parentElement);
+    expect(input.parentElement).toHaveClass("flex", "items-end");
+    expect(input).toHaveAttribute("rows", "1");
+    expect(input).toHaveClass("min-h-12", "max-h-32", "resize-none");
   });
 
   it("US3-AC3 답글 대상이 있으면 누구에게 다는 답글인지 보여 주고 parentId를 함께 보낸다", async () => {

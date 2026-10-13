@@ -100,7 +100,8 @@ export function NotificationBell() {
       <Toaster
         toasts={toasts}
         onDismiss={dismiss}
-        className="bottom-[calc(6rem+env(safe-area-inset-bottom))] md:bottom-4"
+        // 하단 메뉴 위에 띄운다. 글 상세의 댓글 입력줄이 더 높으면 그 위다.
+        className="bottom-[max(calc(6rem+env(safe-area-inset-bottom)),calc(var(--comment-dock-height,0px)+12px))] md:bottom-4"
       />
     </>
   );

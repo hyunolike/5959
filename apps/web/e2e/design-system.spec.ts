@@ -218,7 +218,8 @@ for (const viewport of [
     await expect(page).toHaveURL(/\/post\/42$/);
     expect(postRequests).toBe(2);
     feedUnavailable = true;
-    await nav.getByRole("link", { name: "마음 이야기" }).click();
+    // 글 상세에는 좁은 화면의 하단 메뉴가 없다. 머리말의 뒤로 가기로 돌아간다.
+    await page.getByRole("link", { name: "마음 이야기로 돌아가기" }).click();
     await expect(page.getByRole("main").getByRole("alert")).toContainText(
       "피드를 불러오지 못했습니다",
     );

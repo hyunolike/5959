@@ -1,7 +1,6 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { CaretLeft } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -19,28 +18,17 @@ import { ReportButton } from "@/features/report-content";
 import { RequestReviewButton } from "@/features/request-review";
 import { ApiError } from "@/shared/api";
 import { QUERY_KEYS } from "@/shared/config";
-import { Button, Card, EmptyState, Spinner } from "@/shared/ui";
+import { Button, Card, EmptyState, PageHeader, Spinner } from "@/shared/ui";
 
 import { PostComments } from "./post-comments";
 import { SafetyNotice } from "./safety-notice";
 import { SimilarPosts } from "./similar-posts";
 
-function BackToFeed() {
-  return (
-    <Link
-      href="/home"
-      className="text-label text-fg-subtle hover:text-fg rounded-inline -ml-1 inline-flex min-h-11 items-center gap-1 self-start font-medium"
-    >
-      <CaretLeft size={18} aria-hidden />
-      마음 이야기
-    </Link>
-  );
-}
-
 /** 글을 보여 주지 못할 때의 안내. 오구와 함께 돌아갈 곳을 준다. */
 function Unavailable({ message }: { message: string }) {
   return (
     <div className="w-full max-w-xl">
+      {/* 돌아갈 길은 아래의 버튼이다. 머리말의 뒤로 가기를 또 두면 같은 이름의 링크가 둘이 된다. */}
       <h1 className="sr-only">고민 글</h1>
       {/* 지워진 글도 오류도 화면이 바뀐 까닭이라 alert로 읽힌다. */}
       <EmptyState
@@ -79,9 +67,19 @@ export function PostDetail({ postId }: { postId: number }) {
 
   if (isPending) {
     return (
-      <Card className="flex w-full max-w-xl items-center justify-center py-12 sm:py-12">
-        <Spinner label="글을 불러오는 중" />
-      </Card>
+      // 좁은 화면에는 하단 메뉴가 없다. 불러오는 동안에도 돌아갈 길과 화면의 제목을 둔다.
+      <div className="flex w-full max-w-xl flex-col gap-4">
+        <PageHeader
+          title="고민 글"
+          hideTitle
+          backHref="/home"
+          backLabel="마음 이야기로 돌아가기"
+          className="-my-2"
+        />
+        <Card className="flex w-full items-center justify-center py-12 sm:py-12">
+          <Spinner label="글을 불러오는 중" />
+        </Card>
+      </div>
     );
   }
 
@@ -106,10 +104,18 @@ function PostDetailContent({ detail }: { detail: PostDetailData }) {
 
   return (
     <div className="flex w-full max-w-xl flex-col gap-4">
-      <BackToFeed />
+      {/*
+        좁은 화면에서는 하단 메뉴 자리를 댓글 입력줄이 쓴다. 돌아가는 길은 이 머리말이다.
+        제목은 보이지 않게 두어, 화면 낭독기로는 누구의 글인지부터 듣게 한다.
+      */}
+      <PageHeader
+        title={`${author.nickname}님의 고민`}
+        hideTitle
+        backHref="/home"
+        backLabel="마음 이야기로 돌아가기"
+        className="-my-2"
+      />
       <article aria-label="고민 글" className="flex flex-col gap-5">
-        {/* 무대가 본문보다 먼저 와서, 화면 낭독기로는 누구의 글인지부터 듣게 한다. */}
-        <h1 className="sr-only">{author.nickname}님의 고민</h1>
         {/* 내 글이 우려나 위기로 판정됐거나 숨겨졌을 때만 보인다(005 US1). 화면 맨 위에 둔다. */}
         <SafetyNotice
           safety={detail.safety}
@@ -194,7 +200,8 @@ function PostDetailContent({ detail }: { detail: PostDetailData }) {
           </p>
         </div>
 
-        <div className="border-line flex flex-col gap-4 border-t pt-5">
+        {/* 본문과 댓글은 선이 아니라 옅은 면의 띠로 나눈다. 띠는 화면 옆 여백까지 닿는다. */}
+        <div className="border-surface-sunken -mx-5 flex flex-col gap-4 border-t-8 px-5 pt-5 sm:mx-0 sm:px-0">
           <div className="flex flex-col gap-2">
             <h2 className="text-title text-fg font-bold">
               이 고민에 달린 댓글
