@@ -69,4 +69,11 @@ class SseTicketRepository(
             .sql("delete from sse_ticket where expires_at < :before")
             .param("before", Timestamp.from(before))
             .update()
+
+    /** 회원의 표를 모두 지운다(013 research R1). 탈퇴한 회원이 아직 쓰지 않은 표로 스트림에 붙지 못한다. */
+    fun deleteAllByMember(memberId: Long): Int =
+        jdbcClient
+            .sql("delete from sse_ticket where member_id = :memberId")
+            .param("memberId", memberId)
+            .update()
 }

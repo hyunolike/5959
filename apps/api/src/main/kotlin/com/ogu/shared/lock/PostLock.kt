@@ -28,6 +28,32 @@ class PostLock(
             .query(RowCallbackHandler { })
     }
 
+    /**
+     * 여러 글의 잠금을 한 문장으로 잡는다(013 research R2). 탈퇴가 그 회원의 글을 한꺼번에 지울 때 쓴다. 키 순서로 잡아
+     * 같은 글들을 함께 잡는 다른 트랜잭션과 순서가 엇갈리지 않는다. 빈 목록이면 아무것도 하지 않는다.
+     */
+    fun lockAll(postIds: Collection<Long>) {
+        if (postIds.isEmpty()) return
+        check(TransactionSynchronizationManager.isActualTransactionActive()) {
+            "PostLock은 트랜잭션 안에서만 잡을 수 있습니다(${postIds.size}개)."
+        }
+        val keys =
+            postIds
+                .map(::key)
+                .distinct()
+                .sorted()
+                .toTypedArray()
+        jdbcClient
+            .sql(
+                """
+                select pg_advisory_xact_lock(:namespace, k)
+                from (select unnest(cast(:keys as int[])) as k order by k) as ordered
+                """.trimIndent(),
+            ).param("namespace", NAMESPACE)
+            .param("keys", keys)
+            .query(RowCallbackHandler { })
+    }
+
     companion object {
         /** 이 잠금만 쓰는 키 공간("plck"). 작성 제한(PostRateLimit, "post")과 이메일 가입 잠금(bigint 키 하나)과 겹치지 않는다. */
         const val NAMESPACE = 0x706c636b

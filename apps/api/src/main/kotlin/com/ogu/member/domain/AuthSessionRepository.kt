@@ -3,6 +3,7 @@ package com.ogu.member.domain
 import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Lock
+import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import java.util.UUID
@@ -20,4 +21,11 @@ interface AuthSessionRepository : JpaRepository<AuthSession, UUID> {
     fun findByRefreshTokenHashForUpdate(
         @Param("hash") hash: String,
     ): AuthSession?
+
+    /** 회원의 모든 세션을 지운다(013 research R1). 세션 행이 없으면 이미 받은 access 토큰도 401이다. */
+    @Modifying
+    @Query("delete from AuthSession s where s.memberId = :memberId")
+    fun deleteAllByMemberId(
+        @Param("memberId") memberId: Long,
+    ): Int
 }

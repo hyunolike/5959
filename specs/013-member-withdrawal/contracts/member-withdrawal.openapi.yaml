@@ -73,7 +73,8 @@ paths:
                   data: { $ref: '#/components/schemas/WithdrawalCleanupStatus' }
                   error: { type: 'null' }
         '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { $ref: '#/components/responses/NotFound' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/OperatorOnly' }
 components:
   schemas:
     WithdrawalRequest:

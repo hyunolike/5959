@@ -157,6 +157,13 @@ class WeeklyReportRepository(
             .param("limit", limit)
             .update()
 
+    /** 회원의 리포트와 편지를 모두 지운다(013 FR-008). 지운 수를 돌려준다. */
+    fun deleteAllOfMember(memberId: Long): Int =
+        jdbcClient
+            .sql("delete from weekly_report where member_id = :memberId")
+            .param("memberId", memberId)
+            .update()
+
     private val rowMapper =
         RowMapper { rs, _ ->
             val counts = fromJson(rs.getString("emotion_counts"))

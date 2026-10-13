@@ -6,6 +6,7 @@ package com.ogu.notification.stream
  *
  * - [New]: `{memberId}:n:{seq}`. 그 회원에게 [seq]번 알림이 커밋됐다. 번호는 따라잡기를 건너뛸지 판단하는 힌트다.
  * - [Read]: `{memberId}:r`. 그 회원의 읽음 상태가 바뀌었다(안 읽은 수를 다시 보낸다).
+ * - [Closed]: `{memberId}:x`. 그 회원이 탈퇴했다(013 research R7). 어느 인스턴스에 있든 그 회원의 연결을 닫는다.
  */
 sealed interface NotificationSignal {
     val memberId: Long
@@ -25,10 +26,17 @@ sealed interface NotificationSignal {
         override fun encode(): String = "$memberId:$READ"
     }
 
+    data class Closed(
+        override val memberId: Long,
+    ) : NotificationSignal {
+        override fun encode(): String = "$memberId:$CLOSED"
+    }
+
     companion object {
         const val CHANNEL = "ogu:notification"
         private const val NEW = "n"
         private const val READ = "r"
+        private const val CLOSED = "x"
 
         /** 형식이 맞지 않으면 null이다. 회원 ID와 번호는 0 이상의 10진수만 받는다. */
         fun parse(raw: String): NotificationSignal? {
@@ -36,6 +44,7 @@ sealed interface NotificationSignal {
             val memberId = parts.firstOrNull()?.toNonNegativeLong() ?: return null
             return when {
                 parts.size == 2 && parts[1] == READ -> Read(memberId)
+                parts.size == 2 && parts[1] == CLOSED -> Closed(memberId)
                 parts.size == 3 && parts[1] == NEW -> parts[2].toNonNegativeLong()?.let { New(memberId, it) }
                 else -> null
             }

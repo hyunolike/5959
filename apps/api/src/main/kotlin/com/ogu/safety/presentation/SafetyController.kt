@@ -18,6 +18,9 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
+import java.sql.Timestamp
+import java.time.Clock
+import java.time.Duration
 import io.swagger.v3.oas.annotations.responses.ApiResponse as DocResponse
 
 /** 계약의 `SupportResource`. */
@@ -26,6 +29,11 @@ data class SupportResourceResponse(
     val phone: String,
     val hours: String,
     val description: String,
+)
+
+/** 계약의 `WithdrawalNotice`(013). */
+data class WithdrawalNoticeResponse(
+    val recentCrisis: Boolean,
 )
 
 /** 계약의 `ReportRequest`. 필드가 빠지면 null로 받아 400으로 거절한다. */
@@ -58,6 +66,7 @@ class SafetyController(
     private val jdbcClient: JdbcClient,
     private val reportService: ReportService,
     private val reviewRequestService: ReviewRequestService,
+    private val clock: Clock,
 ) {
     @Operation(
         operationId = "reportContent",
@@ -135,4 +144,39 @@ class SafetyController(
                     )
                 }.list(),
         )
+
+    /**
+     * 탈퇴 화면에 도움받을 곳을 함께 보일지(013 FR-019, research R10). 최근 [CRISIS_WINDOW] 안에 내 글이나 댓글이 위기로
+     * 판정된 적이 있으면 true다. 판정 기록은 `safety`의 것이라 여기서 답한다. 탈퇴를 막는 데 쓰지 않는다.
+     */
+    @Operation(
+        operationId = "getWithdrawalNotice",
+        summary = "탈퇴 화면에 도움받을 곳을 보일지 (013 US1-AC10)",
+        responses = [
+            DocResponse(responseCode = "200", description = "최근 30일에 위기로 판정된 내 글이나 댓글이 있었는지"),
+            DocResponse(responseCode = "401", description = "인증 없음 또는 세션 만료"),
+            DocResponse(responseCode = "403", description = "온보딩 전 (ONBOARDING_REQUIRED)"),
+        ],
+    )
+    @GetMapping("/api/v1/safety/withdrawal-notice")
+    fun getWithdrawalNotice(member: AuthenticatedMember): ApiResponse<WithdrawalNoticeResponse> {
+        val recentCrisis =
+            jdbcClient
+                .sql(
+                    """
+                    select exists(
+                      select 1 from risk_assessment
+                      where author_id = :authorId and level = 'CRISIS' and created_at >= :since
+                    )
+                    """.trimIndent(),
+                ).param("authorId", member.memberId)
+                .param("since", Timestamp.from(clock.instant().minus(CRISIS_WINDOW)))
+                .query(Boolean::class.java)
+                .single()
+        return ApiResponse.success(WithdrawalNoticeResponse(recentCrisis))
+    }
+
+    private companion object {
+        val CRISIS_WINDOW: Duration = Duration.ofDays(30)
+    }
 }

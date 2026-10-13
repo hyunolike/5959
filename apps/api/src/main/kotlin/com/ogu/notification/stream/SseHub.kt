@@ -73,13 +73,17 @@ class SseHub(
         return emitter
     }
 
-    /** 신호를 받았다. 새 알림이면 그 번호까지 아직 보내지 않은 연결만 따라잡는다. 읽음이면 안 읽은 수를 보낸다. */
+    /**
+     * 신호를 받았다. 새 알림이면 그 번호까지 아직 보내지 않은 연결만 따라잡는다. 읽음이면 안 읽은 수를 보낸다. 탈퇴면 그
+     * 회원의 연결을 닫는다(013 US1-AC6).
+     */
     override fun onSignal(signal: NotificationSignal) {
         val targets = connections.of(signal.memberId)
         when (signal) {
             is NotificationSignal.New ->
                 targets.filter { signal.seq > it.lastSentSeq }.forEach { writer.request(it, StreamTask.DRAIN) }
             is NotificationSignal.Read -> targets.forEach { writer.request(it, StreamTask.UNREAD_COUNT) }
+            is NotificationSignal.Closed -> targets.forEach(::close)
         }
     }
 

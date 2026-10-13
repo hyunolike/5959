@@ -46,6 +46,8 @@ object SecurityPaths {
             null to "/api/v1/members/nickname-availability",
             null to "/api/v1/members/me/onboarding",
             null to "/api/v1/auth/logout",
+            // 013: 가입만 하고 그만두는 회원도 탈퇴할 수 있다(US1-AC9)
+            HttpMethod.POST to "/api/v1/members/me/withdrawal",
         )
 
     fun publicMatcher(apiDocsEnabled: Boolean): RequestMatcher {
