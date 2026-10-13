@@ -1,9 +1,12 @@
 package com.ogu.feed.presentation
 
+import com.ogu.emotion.EmotionType
 import com.ogu.feed.application.EmotionStatsQuery
+import com.ogu.feed.application.MonsterCardQuery
 import com.ogu.feed.application.MyPageQuery
 import com.ogu.feed.presentation.dto.EmotionStatsResponse
 import com.ogu.feed.presentation.dto.FeedPageResponse
+import com.ogu.feed.presentation.dto.MonsterCardPageResponse
 import com.ogu.member.AuthenticatedMember
 import com.ogu.post.MyCommentPage
 import com.ogu.shared.response.ApiResponse
@@ -25,6 +28,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse as DocResponse
 class MyPageController(
     private val myPageQuery: MyPageQuery,
     private val emotionStatsQuery: EmotionStatsQuery,
+    private val monsterCardQuery: MonsterCardQuery,
 ) {
     @Operation(
         operationId = "getMyPosts",
@@ -89,4 +93,25 @@ class MyPageController(
     @GetMapping("/api/v1/members/me/emotion-stats")
     fun getMyEmotionStats(member: AuthenticatedMember): ApiResponse<EmotionStatsResponse> =
         ApiResponse.success(emotionStatsQuery.get(member.memberId))
+
+    @Operation(
+        operationId = "getMyMonsterCards",
+        summary = "내 몬스터 카드, 최근에 물리친 것부터 (010 US1, US2, US4)",
+        responses = [
+            DocResponse(responseCode = "200", description = "카드가 없으면 빈 목록이고 요약의 수는 모두 0이다"),
+            DocResponse(responseCode = "400", description = "size가 1~50 밖이거나 커서나 감정이 틀림 (INVALID_REQUEST)"),
+            DocResponse(responseCode = "401", description = "인증 없음 또는 세션 만료"),
+            DocResponse(responseCode = "403", description = "온보딩 전 (ONBOARDING_REQUIRED)"),
+        ],
+    )
+    @GetMapping("/api/v1/members/me/monster-cards")
+    fun getMyMonsterCards(
+        member: AuthenticatedMember,
+        @RequestParam(required = false) cursor: String?,
+        @RequestParam(defaultValue = "20") size: Int,
+        @RequestParam(required = false) emotion: EmotionType?,
+    ): ApiResponse<MonsterCardPageResponse> {
+        val page = monsterCardQuery.page(member.memberId, cursor, size, emotion)
+        return ApiResponse.success(page)
+    }
 }

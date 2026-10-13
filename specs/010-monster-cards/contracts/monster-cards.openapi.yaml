@@ -68,6 +68,12 @@ components:
           minimum: 1
           description: HP를 줄인 회원 수. MINE일 때만 있다
         postId: { type: integer, format: int64, description: 이 몬스터의 글. 지금 보이는 글이다 }
+    MonsterCardEmotionCount:
+      type: object
+      required: [emotion, count]
+      properties:
+        emotion: { $ref: '#/components/schemas/EmotionType' }
+        count: { type: integer, minimum: 0 }
     MonsterCardSummary:
       type: object
       required: [total, byEmotion]
@@ -76,7 +82,7 @@ components:
         byEmotion:
           type: array
           description: 모든 감정이 정해진 순서로 들어 있다. 없는 감정은 0이다
-          items: { $ref: '#/components/schemas/EmotionCount' }
+          items: { $ref: '#/components/schemas/MonsterCardEmotionCount' }
     MonsterCardPage:
       type: object
       required: [items, nextCursor, summary]

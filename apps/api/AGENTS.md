@@ -189,6 +189,12 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   커서는 피드와 같은 `PostCursor`), `MyCommentsReader`(`id DESC`, 살아 있는 글의 살아 있는 댓글, 글 앞 50글자),
   `LikedPostsReader`(`(created_at DESC, post_id DESC)`, 커서는 공감 시각의 마이크로초와 글 ID)다. size는 1~50이고
   벗어나거나 커서가 틀리면 `400 INVALID_REQUEST`다.
+- **몬스터 도감(010, research R1~R6).** `GET /api/v1/members/me/monster-cards`는 `feed/application/MonsterCardQuery`가
+  파사드 세 번(`PostActivityApi.liveRefsByAuthor`, `MonsterApi.cardRows`, `PostSelectionApi.visibleIds`)으로 읽어 메모리에서
+  정렬하고 자른다. 카드는 저장하지 않는다. 처치된 몬스터 가운데 내 글의 것과 내가 HP를 실제로 줄인 것이 카드다.
+  지웠거나 숨긴 글의 몬스터는 `visibleIds`에서 빠진다(내 글이 숨겨져도 같다). 응답에는 본문, 미리보기, 닉네임이 들어갈
+  자리가 없다. 그래서 `FeedAssembler`를 쓰지 않는다. 등급은 `max_hp`로 정하고(10, 20, 30이 일반, 희귀, 전설) 무작위가 없다.
+  `visibleIds`의 작성자 인자는 없어도 된다(주면 추천처럼 그 회원의 글을 뺀다).
 - **감정 통계(004 US4, research R12).** `GET /api/v1/members/me/emotion-stats`는 `feed/application/EmotionStatsQuery`가
   파사드 네 번(`PostActivityApi.liveRefsByAuthor`, `MonsterApi.statRows`, `MonsterApi.defeatedPostIdsDamagedBy`,
   `PostActivityApi.liveIds`)으로 읽어 메모리에서 센다. `posts`와 `monsters`는 소유 모듈이 달라 SQL로 조인하지 않는다.
