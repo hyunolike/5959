@@ -13,6 +13,8 @@ export function NavigationItem({
   icon,
   current,
   mobile = false,
+  primary = false,
+  wide = false,
   locked = false,
   onClick,
   prefetch,
@@ -23,12 +25,17 @@ export function NavigationItem({
   icon: Icon;
   current?: "page" | "location";
   mobile?: boolean;
+  /** 좁은 화면의 메뉴에서 막대 위로 올라온 둥근 버튼으로 보이는 메뉴. 넓은 화면에서는 다른 메뉴와 같다. */
+  primary?: boolean;
+  /** 좁은 화면의 메뉴에서 두 칸을 쓴다. */
+  wide?: boolean;
   /** 익명에게 로그인 안내를 먼저 여는 메뉴. 이름은 그대로 두고 설명으로만 알린다. */
   locked?: boolean;
   onClick?: MouseEventHandler<HTMLAnchorElement>;
   prefetch?: boolean;
 }) {
   const lockedId = useId();
+  const filled = mobile && primary;
   return (
     <Link
       href={href}
@@ -39,10 +46,14 @@ export function NavigationItem({
       aria-describedby={locked ? lockedId : undefined}
       className={cn(
         "ogu-pressable group rounded-control relative",
-        mobile ? "min-h-16 min-w-0 flex-1" : "min-h-12",
-        current
+        mobile ? "min-h-16 min-w-0" : "min-h-12",
+        mobile && wide && "col-span-2",
+        // 둥근 버튼은 칸 밖으로 올라와 있어 칸의 바탕을 바꾸지 않는다.
+        filled
           ? "text-fg"
-          : "text-fg-subtle hover:bg-surface-sunken active:bg-line",
+          : current
+            ? "text-fg"
+            : "text-fg-subtle hover:bg-surface-sunken active:bg-line",
       )}
     >
       <NavigationContents
@@ -51,6 +62,7 @@ export function NavigationItem({
         icon={icon}
         selected={!!current}
         mobile={mobile}
+        filled={filled}
         locked={locked}
       />
       {locked ? (
@@ -69,6 +81,7 @@ function NavigationContents({
   icon: NavIcon,
   selected,
   mobile,
+  filled,
   locked,
 }: {
   label: string;
@@ -76,6 +89,7 @@ function NavigationContents({
   icon: Icon;
   selected: boolean;
   mobile: boolean;
+  filled: boolean;
   locked: boolean;
 }) {
   const { pending } = useLinkStatus();
@@ -98,7 +112,16 @@ function NavigationContents({
           mobile ? "flex-col gap-0.5" : "gap-3",
         )}
       >
-        <span className="relative flex size-8 shrink-0 items-center justify-center">
+        <span
+          data-navigation-primary={filled ? "" : undefined}
+          className={cn(
+            "relative flex shrink-0 items-center justify-center",
+            // 56px 원을 24px 올려 흐름에서는 다른 아이콘과 같은 32px만 차지한다. 글자의 줄이 맞는다.
+            filled
+              ? "border-surface bg-action text-on-action group-hover:bg-action-hover -mt-6 size-14 rounded-full border-4"
+              : "size-8",
+          )}
+        >
           {/* 선택은 채운 아이콘으로, 이동 대기는 돌아가는 표시로 구분한다. */}
           <NavIcon
             aria-hidden
@@ -117,7 +140,11 @@ function NavigationContents({
           {locked && !pending ? (
             <span
               aria-hidden
-              className="bg-surface text-fg-subtle absolute -top-0.5 -right-1 flex size-4 items-center justify-center rounded-full"
+              data-navigation-lock
+              className={cn(
+                "bg-surface absolute -top-0.5 -right-1 flex size-4 items-center justify-center rounded-full",
+                filled ? "text-fg" : "text-fg-subtle",
+              )}
             >
               <LockSimple size={11} weight="fill" />
             </span>
@@ -127,7 +154,7 @@ function NavigationContents({
           className={cn(
             "relative whitespace-nowrap",
             mobile ? "text-caption" : "text-body-sm",
-            selected ? "font-bold" : "font-medium",
+            selected || filled ? "font-bold" : "font-medium",
           )}
         >
           {mobile ? shortLabel : label}
