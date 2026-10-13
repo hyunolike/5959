@@ -233,4 +233,12 @@ describe("ProfileForm", () => {
       expect(select).toHaveValue(value);
     }
   });
+
+  it("DS-US2-AC2 저장과 취소는 다른 폼의 제출 버튼처럼 52px이다", () => {
+    renderForm();
+    expect(screen.getByRole("button", { name: "저장" })).toHaveClass(
+      "min-h-13",
+    );
+    expect(screen.getByRole("link", { name: "취소" })).toHaveClass("min-h-13");
+  });
 });

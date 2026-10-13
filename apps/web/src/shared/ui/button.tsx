@@ -5,7 +5,7 @@ import type { ComponentProps } from "react";
 import { cn } from "@/shared/lib";
 
 const buttonVariants = cva(
-  "ogu-pressable rounded-control text-body-sm disabled:bg-surface-sunken disabled:text-fg-subtle inline-flex items-center justify-center gap-2 text-center font-bold disabled:cursor-not-allowed disabled:border-transparent aria-disabled:cursor-not-allowed aria-disabled:opacity-60",
+  "ogu-pressable rounded-control text-body-sm disabled:bg-surface-sunken disabled:text-fg-subtle inline-flex items-center justify-center gap-2 text-center font-bold disabled:cursor-not-allowed disabled:border-transparent aria-disabled:cursor-not-allowed aria-disabled:opacity-60 break-keep",
   {
     variants: {
       variant: {

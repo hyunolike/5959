@@ -83,6 +83,18 @@ for (const width of [320, 390, 1440]) {
         () => document.documentElement.scrollWidth > innerWidth,
       ),
     ).toBe(false);
+    // DS-US3-AC5: 다섯 감정의 몬스터 그림이 실제로 그려지고, 보호된 API는 부르지 않는다.
+    const monsters = page.getByRole("img", { name: /몬스터, 멀쩡함$/ });
+    await expect(monsters).toHaveCount(5);
+    await expect
+      .poll(() =>
+        monsters.evaluateAll((images) =>
+          (images as HTMLImageElement[]).every(
+            (image) => image.complete && image.naturalWidth > 0,
+          ),
+        ),
+      )
+      .toBe(true);
     await page.screenshot({
       path: testInfo.outputPath(`guest-home-${width}.png`),
       fullPage: true,

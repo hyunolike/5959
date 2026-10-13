@@ -30,8 +30,9 @@ export function BossBanner() {
           {EMOTION_LABELS[boss.emotion]} 보스가 나타났어요
         </span>
         <span className="text-caption text-emotion-fg font-medium tabular-nums">
-          HP {boss.hp}/{boss.maxHp} · {boss.participantCount}명이 함께하고
-          있어요
+          HP {boss.hp.toLocaleString("ko-KR")}/
+          {boss.maxHp.toLocaleString("ko-KR")} · {boss.participantCount}명이
+          함께하고 있어요
         </span>
       </span>
       <span className="text-label text-fg ml-auto shrink-0 font-bold">

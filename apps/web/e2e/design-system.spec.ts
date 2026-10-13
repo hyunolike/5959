@@ -150,7 +150,11 @@ for (const viewport of [
       "aria-pressed",
       "true",
     );
-    await page.getByText("필터", { exact: true }).click();
+    // 주소의 검색어가 바뀌면 Next가 이전 화면을 숨긴 채 잠깐 남겨 둔다. 보이는 쪽만 누른다.
+    await page
+      .getByText("필터", { exact: true })
+      .filter({ visible: true })
+      .click();
     await page.getByRole("button", { name: "개발", exact: true }).click();
     await expect(page).toHaveURL(/jobRole=DEVELOPMENT/);
     await page.getByRole("button", { name: "필터 지우기" }).click();

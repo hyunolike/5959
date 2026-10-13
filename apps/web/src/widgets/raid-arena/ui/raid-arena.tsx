@@ -76,9 +76,15 @@ function Battle({ state, boss }: { state: RaidState; boss: RaidBoss }) {
       aria-label="보스"
       className="rounded-surface flex flex-col items-center gap-4 p-5"
     >
-      <p className="text-body-sm text-emotion-fg text-center font-medium break-keep">
-        요즘 가장 많이 나타난 감정이 보스가 됐어요. 함께 물리쳐요.
-      </p>
+      <div className="flex w-full flex-col gap-1">
+        <p className="text-label text-emotion-fg font-bold">오늘의 보스</p>
+        <h2 className="text-display text-fg font-extrabold">
+          {EMOTION_LABELS[boss.emotion]}
+        </h2>
+        <p className="text-body-sm text-emotion-fg font-medium break-keep">
+          요즘 가장 많이 나타난 감정이 보스가 됐어요. 함께 물리쳐요.
+        </p>
+      </div>
       <MonsterDisplay
         monster={{
           emotion: boss.emotion,

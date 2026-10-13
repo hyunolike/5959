@@ -86,7 +86,7 @@ export function FeedControls({
             <Button
               variant="ghost"
               size="sm"
-              className="self-start underline underline-offset-4"
+              className="-ml-3 self-start underline underline-offset-4"
               onClick={() =>
                 onChange({ ...DEFAULT_FEED_FILTER, order: filter.order })
               }

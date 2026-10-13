@@ -92,4 +92,15 @@ describe("WeeklyChart", () => {
       screen.getAllByTestId("weekly-bar").map((bar) => bar.style.height),
     ).toEqual(Array(8).fill("0%"));
   });
+
+  it("DS-US1-AC3 주별 감정 수를 화면에서도 펼쳐 볼 수 있다", () => {
+    render(<WeeklyChart weekly={WEEKLY} labels={LABELS} />);
+    const summary = screen.getByText("주별 수 보기");
+    expect(summary.tagName).toBe("SUMMARY");
+    const list = summary.parentElement?.querySelector("ul");
+    expect(list?.querySelectorAll("li")).toHaveLength(8);
+    expect(list).toHaveTextContent("10.05 주: 불안 2, 외로움 1, 짜증 1");
+    expect(list).toHaveTextContent("8.17 주: 없음");
+    expect(list?.closest("[aria-hidden]")).toBeNull();
+  });
 });

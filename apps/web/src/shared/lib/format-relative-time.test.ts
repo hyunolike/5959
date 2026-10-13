@@ -30,4 +30,10 @@ describe("formatRelativeTime", () => {
   it("읽을 수 없는 값은 빈 문자열이다", () => {
     expect(formatRelativeTime("not-a-date", NOW)).toBe("");
   });
+
+  it("DS-US3-AC1 빈 값은 방금이 아니라 빈 문자열이다", () => {
+    expect(formatRelativeTime(undefined as never, NOW)).toBe("");
+    expect(formatRelativeTime(null as never, NOW)).toBe("");
+    expect(formatRelativeTime("", NOW)).toBe("");
+  });
 });

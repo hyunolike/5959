@@ -119,4 +119,22 @@ describe("MonsterStage", () => {
       "IRRITATION",
     );
   });
+
+  it("DS-US1-AC3 계약에 없는 감정 값이 와도 태그에 이름이 비지 않는다", () => {
+    render(<EmotionTag emotion={"UNKNOWN" as never} />);
+    expect(screen.getByText("감정")).toHaveAttribute("data-emotion", "UNKNOWN");
+  });
+
+  it("DS-US1-AC2 작은 HP 막대는 채움의 끝에 글자 색 선을 둬 옅은 감정 색에서도 남은 양이 보인다", () => {
+    const { rerender } = render(
+      <HpBar emotion="LONELINESS" hp={6} maxHp={10} />,
+    );
+    const fill = () => screen.getByRole("progressbar").firstElementChild;
+    expect(fill()).toHaveClass("border-r-2", "border-emotion-fg");
+
+    rerender(<HpBar emotion="LONELINESS" hp={10} maxHp={10} />);
+    expect(fill()).not.toHaveClass("border-r-2");
+    rerender(<HpBar emotion="LONELINESS" hp={0} maxHp={10} />);
+    expect(fill()).not.toHaveClass("border-r-2");
+  });
 });

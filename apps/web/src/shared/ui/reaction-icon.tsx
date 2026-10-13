@@ -23,7 +23,7 @@ export function ReactionIcon({
     if (confirmation > 0)
       void controls.start({
         scale: [1, 1.18, 1],
-        transition: { duration: 0.22 },
+        transition: { duration: 0.2 },
       });
   }, [confirmation, controls, reduce]);
   return (

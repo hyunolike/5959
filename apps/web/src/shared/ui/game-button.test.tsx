@@ -68,4 +68,11 @@ describe("GameButton", () => {
       "motion-reduce:aria-pressed:translate-y-0",
     );
   });
+
+  it("DS-US3-AC6 한국어 문구는 단어 단위로 줄바꿈한다", () => {
+    render(<GameButton>공감 보내기</GameButton>);
+    expect(screen.getByRole("button", { name: "공감 보내기" })).toHaveClass(
+      "break-keep",
+    );
+  });
 });

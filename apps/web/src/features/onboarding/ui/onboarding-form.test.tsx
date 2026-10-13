@@ -273,4 +273,25 @@ describe("OnboardingForm 완료 뒤 이동", () => {
       "text-danger",
     );
   });
+
+  it("DS-US2-AC1 쓸 수 없는 닉네임 안내는 오류 색으로 쓸 수 있는 안내보다 눈에 띈다", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockImplementation(async (input: RequestInfo | URL) =>
+          nicknameAvailability(
+            new URL(String(input), "http://localhost").searchParams.get(
+              "nickname",
+            ) ?? "",
+          ),
+        ),
+    );
+    const user = userEvent.setup();
+    renderForm();
+    await user.type(screen.getByLabelText("닉네임"), "dupName");
+    expect(await screen.findByText("이미 사용 중인 닉네임입니다.")).toHaveClass(
+      "text-danger",
+    );
+  });
 });

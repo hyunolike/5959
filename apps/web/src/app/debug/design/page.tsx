@@ -190,6 +190,24 @@ export default function DesignCatalogPage() {
           </Select>
         </label>
         <label className="flex flex-col gap-2">
+          <span className="text-label text-fg-muted font-medium">
+            잠긴 선택
+          </span>
+          <Select defaultValue="DEVELOPMENT" disabled>
+            <option value="DEVELOPMENT">개발</option>
+          </Select>
+        </label>
+        <label className="flex flex-col gap-2">
+          <span className="text-label text-fg-muted font-medium">
+            잘못된 선택
+          </span>
+          <Select defaultValue="" aria-invalid>
+            <option value="" disabled>
+              경력을 선택하세요
+            </option>
+          </Select>
+        </label>
+        <label className="flex flex-col gap-2">
           <span className="text-label text-fg-muted font-medium">고민</span>
           <Textarea placeholder="요즘 마음을 무겁게 하는 일을 적어 주세요" />
         </label>

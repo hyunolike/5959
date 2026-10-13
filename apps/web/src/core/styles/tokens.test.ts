@@ -112,6 +112,14 @@ describe("색 토큰", () => {
   });
 });
 
+describe("옛 토큰", () => {
+  it("DS-US1-AC1 옛 토큰 이름이 globals.css에 남아 있지 않다", () => {
+    expect(css).not.toMatch(
+      /--color-(?:brand|neutral|leaf|background|foreground)\b|--shadow-surface/,
+    );
+  });
+});
+
 describe("차트의 감정 색", () => {
   it("DS-US1-AC3 감정의 진한 색은 차트 검증을 통과한 값이다", () => {
     // dataviz 검증기(validate_palette.js)를 이 순서로 통과한 값이다: 색각 이상 ΔE 14.5, 일반 시야 17.4.
@@ -147,5 +155,14 @@ describe("DESIGN_SYSTEM.md", () => {
     expect(
       documented.filter((hex) => !known.includes(hex.toLowerCase())),
     ).toEqual([]);
+  });
+
+  it("DS-US4-AC3 움직임의 시간은 세 단계이고 누르는 요소는 가장 짧은 단계를 쓴다", () => {
+    expect(css).toMatch(/--duration-fast:\s*120ms;/);
+    expect(css).toMatch(/--duration-base:\s*200ms;/);
+    expect(css).toMatch(/--duration-slow:\s*320ms;/);
+    const pressable = css.match(/\.ogu-pressable\s*\{([^}]*)\}/);
+    expect(pressable?.[1]).toContain("var(--duration-fast)");
+    expect(css).not.toMatch(/\b150ms\b/);
   });
 });

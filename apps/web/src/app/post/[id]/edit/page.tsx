@@ -1,5 +1,5 @@
 import { PostNotFound } from "@/widgets/post-detail";
-import { PostEditorCard } from "@/widgets/post-editor";
+import { PostEditorScreen } from "@/widgets/post-editor";
 
 import { parsePostId } from "../post-id";
 
@@ -15,6 +15,6 @@ export default async function EditPostPage({
   return postId === null ? (
     <PostNotFound />
   ) : (
-    <PostEditorCard postId={postId} />
+    <PostEditorScreen postId={postId} />
   );
 }

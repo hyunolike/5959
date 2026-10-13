@@ -2,7 +2,7 @@
 
 직장인의 고민을 나누고 공감으로 감정 몬스터를 함께 물리치는 커뮤니티다. 피드는 글을 읽기 좋게, 글 상세와 레이드는 몬스터가 주인공이 되게 한다. 브랜드 색은 두지 않는다. 화면의 색은 다섯 감정에서만 나온다.
 
-설계와 결정의 까닭은 `docs/superpowers/specs/2026-10-13-design-system-overhaul-design.md`에 있다. 토큰과 컴포넌트는 `ENABLE_DESIGN_CATALOG=1`로 띄운 `/debug/design`에서 한 화면으로 본다.
+설계와 결정의 까닭은 저장소 루트의 `docs/superpowers/specs/2026-10-13-design-system-overhaul-design.md`에 있다. 토큰과 컴포넌트는 `ENABLE_DESIGN_CATALOG=1`로 띄운 `/debug/design`에서 한 화면으로 본다.
 
 ## 토큰
 
@@ -45,17 +45,17 @@
 
 Pretendard 가변 글꼴이다. 굵기는 400, 500, 700, 800만 쓴다.
 
-| 유틸리티       | 크기 / 줄 높이 | 쓰임               |
-| -------------- | -------------- | ------------------ |
-| `text-caption` | 12 / 16        | 감정 태그, HP 숫자 |
-| `text-label`   | 13 / 18        | 작성자 정보, 시각  |
-| `text-body-sm` | 15 / 24        | 댓글, 버튼         |
-| `text-body`    | 16 / 26        | 피드 본문, 입력    |
-| `text-body-lg` | 17 / 29        | 글 상세 본문       |
-| `text-title`   | 20 / 28        | 구역 제목          |
-| `text-heading` | 24 / 32        | 화면 제목          |
-| `text-display` | 32 / 40        | 레이드 보스 이름   |
-| `text-numeric` | 36 / 40        | 레이드 HP          |
+| 유틸리티       | 크기 / 줄 높이 | 쓰임                             |
+| -------------- | -------------- | -------------------------------- |
+| `text-caption` | 12 / 16        | 감정 태그, HP 숫자               |
+| `text-label`   | 13 / 18        | 작성자 정보, 시각                |
+| `text-body-sm` | 15 / 24        | 댓글, 버튼                       |
+| `text-body`    | 16 / 26        | 피드 본문, 입력                  |
+| `text-body-lg` | 17 / 29        | 글 상세 본문                     |
+| `text-title`   | 20 / 28        | 구역 제목                        |
+| `text-heading` | 24 / 32        | 화면 제목                        |
+| `text-display` | 32 / 40        | 레이드 보스 이름, 로그인 소개 글 |
+| `text-numeric` | 36 / 40        | 레이드 HP                        |
 
 숫자는 `tabular-nums`로 쓴다. 작성 시각은 `formatRelativeTime`으로 "12분 전"처럼 쓰고, 일주일이 지나면 날짜로 쓴다.
 
@@ -64,35 +64,40 @@ Pretendard 가변 글꼴이다. 굵기는 400, 500, 700, 800만 쓴다.
 - 모서리: `rounded-inline` 8px, `rounded-control` 14px(버튼, 입력, 썸네일), `rounded-surface` 20px(시트, 큰 면), `rounded-full`(칩, 태그).
 - 높이: 칩 36px, 버튼 44px, 입력과 큰 버튼 52px, 게임 버튼 56px. 누르는 영역은 44px 이상이다.
 - 기본은 1px 테두리이고 그림자는 쓰지 않는다. 게임 요소만 2px 외곽선과 `shadow-game`을 쓴다.
-- 몬스터의 대기 움직임은 `monster-idle-*`다(ADR-0006). `prefers-reduced-motion`이면 움직이지 않는다.
+- 움직임의 시간은 세 단계다: `--duration-fast` 120ms(누름과 hover), `--duration-base` 200ms(값이 바뀌는 막대와 반응), `--duration-slow` 320ms(화면이 바뀌는 것).
+- 몬스터의 대기 움직임은 `monster-idle-*`다(ADR-0006). `prefers-reduced-motion`이면 움직이지 않고, 눌린 게임 버튼도 자리를 옮기지 않는다.
 - 아이콘은 Phosphor다. 기본은 선, 선택된 메뉴와 누른 공감은 `weight="fill"`이다. 글자와 함께 있는 아이콘은 `aria-hidden`으로 둔다.
 
 ## 컴포넌트
 
-| 컴포넌트                                  | 위치               | 쓰임                                                |
-| ----------------------------------------- | ------------------ | --------------------------------------------------- |
-| `Button`                                  | `shared/ui`        | `primary`, `secondary`, `subtle`, `ghost`, `danger` |
-| `GameButton`                              | `shared/ui`        | 글 상세의 공감 보내기, 레이드의 공격하기에만        |
-| `IconButton`                              | `shared/ui`        | 아이콘만 있는 버튼. `aria-label` 필수               |
-| `Chip`                                    | `shared/ui`        | 필터와 선택. `pressed`로 상태를 전한다              |
-| `TextField`, `Textarea`, `Input`, `Label` | `shared/ui`        | 입력                                                |
-| `ConfirmDialog`, `Toaster`                | `shared/ui`        | 대화상자와 알림 토스트                              |
-| `EmotionTag`                              | `entities/monster` | 점과 감정 이름                                      |
-| `HpBar`                                   | `entities/monster` | `sm`(피드), `lg`(글 상세와 레이드)                  |
-| `MonsterThumb`                            | `entities/monster` | 피드의 48px 몬스터                                  |
-| `MonsterStage`                            | `entities/monster` | 감정 색으로 채운 무대                               |
+| 컴포넌트                                            | 위치               | 쓰임                                                                   |
+| --------------------------------------------------- | ------------------ | ---------------------------------------------------------------------- |
+| `Button`                                            | `shared/ui`        | `primary`, `secondary`, `subtle`, `ghost`, `danger`                    |
+| `GameButton`                                        | `shared/ui`        | 글 상세의 공감 보내기, 레이드의 공격하기에만                           |
+| `IconButton`                                        | `shared/ui`        | 아이콘만 있는 버튼. `aria-label` 필수                                  |
+| `Chip`                                              | `shared/ui`        | 필터와 선택. `pressed`로 상태를 전한다                                 |
+| `TextField`, `Textarea`, `Input`, `Select`, `Label` | `shared/ui`        | 입력. 모두 52px이고 오류가 난 칸은 `aria-invalid`로 빨간 테두리가 된다 |
+| `ConfirmDialog`, `Toaster`                          | `shared/ui`        | 대화상자와 알림 토스트                                                 |
+| `EmotionTag`                                        | `entities/monster` | 점과 감정 이름                                                         |
+| `HpBar`                                             | `entities/monster` | `sm`(피드), `lg`(글 상세와 레이드)                                     |
+| `MonsterThumb`                                      | `entities/monster` | 48px 몬스터                                                            |
+| `MonsterSummary`                                    | `entities/monster` | 목록용 요약: 썸네일, HP 숫자, 작은 HP 막대                             |
+| `MonsterDisplay`                                    | `entities/monster` | 무대에 올리는 큰 몬스터. `detail`(글 상세), `boss`(레이드)             |
+| `MonsterStage`                                      | `entities/monster` | 감정 색으로 채운 무대                                                  |
 
 ## 게임 요소를 쓰는 곳
 
 `GameButton`과 큰 `HpBar`는 글 상세의 몬스터 무대와 레이드에만 쓴다. 위기 안내, 숨김 표시, 신고, 재검토 요청에는 게임 요소와 감정 색을 쓰지 않는다.
 
-## 옮기는 중
+## 지키는 검사
 
-화면은 아직 옛 이름(`neutral-*`, `brand-*`)을 쓰는 곳이 있다. `globals.css`가 옛 이름을 새 값에 이어 두었고, 아직 안 옮긴 파일은 `src/core/styles/legacy-style-files.json`에 있다. 파일을 옮기면 아래 명령으로 목록에서 뺀다.
+화면을 모두 옮겼다. 아래는 테스트가 지킨다.
 
-```bash
-UPDATE_LEGACY_BASELINE=1 pnpm --filter web exec vitest run src/core/styles/token-usage.test.ts
-```
+- 소스에 옛 토큰 이름, Tailwind 기본 색, 색을 직접 적은 임의 값, Lucide가 없다(`src/core/styles/token-usage.test.ts`).
+- 글자와 바탕으로 함께 쓰는 토큰 쌍의 대비가 4.5:1 이상이다(`src/core/styles/tokens.test.ts`).
+- 이 문서에 적힌 색 값이 `globals.css`에 있다.
+- `GameButton`은 글 상세의 공감, 레이드의 공격, 카탈로그에서만 쓴다. 위기 안내와 신고, 재검토 요청은 게임 요소와 감정 색을 쓰지 않는다.
+- 차트의 감정 색(`EMOTION_COLORS`)이 `globals.css`의 감정 색과 같다.
 
 ## 에셋과 출처
 

@@ -19,7 +19,8 @@ export function EmotionTag({
       )}
     >
       <span aria-hidden className="bg-emotion size-1.5 rounded-full" />
-      {EMOTION_LABELS[emotion]}
+      {/* 계약에 없는 값이 와도 이름이 비지 않게 한다. */}
+      {EMOTION_LABELS[emotion] ?? "감정"}
     </span>
   );
 }

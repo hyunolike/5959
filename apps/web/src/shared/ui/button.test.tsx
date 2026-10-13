@@ -47,4 +47,11 @@ describe("Button", () => {
       screen.getByRole("button", { name: "로그인하고 이야기 보기" }),
     ).not.toHaveClass("whitespace-nowrap");
   });
+
+  it("DS-US3-AC6 한국어 문구는 단어 단위로 줄바꿈한다", () => {
+    render(<Button>로그인하고 이야기 보기</Button>);
+    expect(
+      screen.getByRole("button", { name: "로그인하고 이야기 보기" }),
+    ).toHaveClass("break-keep");
+  });
 });

@@ -5,7 +5,7 @@ export function AuthWelcome({ children }: { children: ReactNode }) {
   return (
     <div className="grid w-full max-w-[900px] items-center gap-12 md:grid-cols-[1fr_384px] lg:gap-20">
       <section aria-label="오구오구 소개" className="hidden md:block">
-        <h2 className="text-fg text-[28px] leading-[1.5] font-bold tracking-[-0.04em]">
+        <h2 className="text-display text-fg font-bold break-keep">
           마음을 나누는
           <br />
           오구오구
