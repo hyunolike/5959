@@ -18,6 +18,8 @@ const APP_ORIGIN = "http://localhost:3000";
 const PASSWORD = "abcd1234";
 /** 기다리는 시간(5초), 위험 분류, 주기(2초)를 넉넉히 덮는다. */
 const REACTION_TIMEOUT = 45_000;
+/** 친구 셋이 차례로 답하는 시나리오는 가입, 첫 반응, 뒤따르는 반응 둘을 다 기다려 기본 30초로는 모자란다. */
+const MULTI_REACTION_TEST_TIMEOUT = 90_000;
 
 interface Member {
   context: BrowserContext;
@@ -30,8 +32,15 @@ interface CommentNode {
   content: string | null;
 }
 
+/**
+ * 뒤에 붙는 글자는 영문 소문자만 쓴다. `ai` 옆에 숫자가 오면 AI 친구와 헷갈리는 닉네임으로 막혀(US2-AC5)
+ * 온보딩이 끝나지 않는다.
+ */
 function unique(prefix: string): string {
-  return `${prefix}${Math.random().toString(36).slice(2, 6)}`.slice(0, 10);
+  const letters = Array.from({ length: 4 }, () =>
+    String.fromCharCode(97 + Math.floor(Math.random() * 26)),
+  ).join("");
+  return `${prefix}${letters}`.slice(0, 10);
 }
 
 /** 새 컨텍스트에서 가입과 온보딩을 마친 회원. */
@@ -192,6 +201,7 @@ test("US1-AC2, US3-AC1 다른 회원이 먼저 댓글을 단 글과 우려로 �
 test("012 US1-AC5 수가 3으로 정해진 글에 서로 다른 AI 친구 셋이 차례로 답한다", async ({
   browser,
 }) => {
+  test.setTimeout(MULTI_REACTION_TEST_TIMEOUT);
   const author = await newMember(browser, "ai");
   members.push(author);
   const postId = await writePost(
@@ -215,6 +225,7 @@ test("012 US1-AC5 수가 3으로 정해진 글에 서로 다른 AI 친구 셋이
 test("012 US2-AC1 첫 AI 친구가 답한 뒤 사람이 댓글을 달면 남은 AI 친구는 답하지 않는다", async ({
   browser,
 }) => {
+  test.setTimeout(MULTI_REACTION_TEST_TIMEOUT);
   const author = await newMember(browser, "ai");
   const other = await newMember(browser, "hu");
   members.push(author, other);
