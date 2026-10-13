@@ -118,10 +118,11 @@ Pretendard 가변 글꼴이다. 굵기는 400, 500, 700, 800만 쓴다.
 
 ## 에셋과 출처
 
-| 에셋          | 위치                             | 출처 / 라이선스                                                                                         |
-| ------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| 감정 몬스터   | `public/monsters`                | 이 서비스를 위해 만든 그림(ADR-0006)                                                                    |
-| 오구 캐릭터   | `public/brand/ogu-companion.png` | 이 서비스를 위해 만든 그림                                                                              |
-| 한글 글꼴     | npm `pretendard`                 | [Pretendard](https://github.com/orioncactus/pretendard), SIL Open Font License 1.1                      |
-| 아이콘        | npm `@phosphor-icons/react`      | [Phosphor](https://phosphoricons.com), MIT                                                              |
-| 구글 로그인 G | `public/brand/google.png`        | [Google 로그인 브랜딩](https://developers.google.com/identity/branding-guidelines). 원본 색과 비율 유지 |
+| 에셋          | 위치                                                             | 출처 / 라이선스                                                                                          |
+| ------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| 감정 몬스터   | `public/monsters`                                                | 이 서비스를 위해 만든 그림(ADR-0006)                                                                     |
+| 오구 캐릭터   | `public/brand/ogu-*.webp`                                        | 이 서비스를 위해 만든 그림. 몬스터와 같은 굵은 외곽선과 평평한 채색이고, 보라색은 쓰지 않는다(불안의 색) |
+| 로고와 아이콘 | `public/brand/ogu-symbol.webp`, `public/pwa`, `src/app/icon.png` | 오구의 얼굴. 아이콘은 먹색(#17171c) 타일 위에 둔다                                                       |
+| 한글 글꼴     | npm `pretendard`                                                 | [Pretendard](https://github.com/orioncactus/pretendard), SIL Open Font License 1.1                       |
+| 아이콘        | npm `@phosphor-icons/react`                                      | [Phosphor](https://phosphoricons.com), MIT                                                               |
+| 구글 로그인 G | `public/brand/google.png`                                        | [Google 로그인 브랜딩](https://developers.google.com/identity/branding-guidelines). 원본 색과 비율 유지  |

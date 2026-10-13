@@ -84,7 +84,7 @@ function ShellContents({
         <div className="mx-auto flex h-16 max-w-[1120px] items-center justify-between px-5 sm:h-18 sm:px-8">
           <Link
             href={showNavigation ? "/home" : "/login"}
-            aria-label="5959 오구오구 홈"
+            aria-label="오구오구 홈"
           >
             <BrandMark />
           </Link>

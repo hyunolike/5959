@@ -11,7 +11,7 @@ test("US1-AC1 첫 접속 시 로그인 화면에서 서비스를 시작할 수 �
   await expect(
     page.getByRole("link", { name: "구글로 계속하기" }),
   ).toBeVisible();
-  await expect(page.locator('link[rel="icon"][href^="/icon.svg"]')).toHaveCount(
+  await expect(page.locator('link[rel="icon"][href^="/icon.png"]')).toHaveCount(
     1,
   );
   await expect(

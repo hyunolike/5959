@@ -50,11 +50,11 @@ function Unavailable({
     <Card className="w-full max-w-xl py-10 text-center sm:py-10">
       <h1 className="sr-only">고민 글</h1>
       <Image
-        src="/brand/ogu-companion.png"
+        src="/brand/ogu-listen.webp"
         alt=""
-        width={96}
-        height={79}
-        className="mx-auto mb-4 h-auto w-16 object-contain"
+        width={80}
+        height={80}
+        className="mx-auto mb-4 size-20"
       />
       <p
         role="alert"
