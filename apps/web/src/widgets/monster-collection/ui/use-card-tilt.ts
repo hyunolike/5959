@@ -4,7 +4,7 @@ import type { PointerEvent } from "react";
 
 /** 카드가 기우는 가장 큰 각도. */
 const MAX_TILT_DEG = 12;
-const TILT_PROPERTIES = ["--card-x", "--card-y", "--card-rx", "--card-ry"];
+const TILT_PROPERTIES = ["--card-x", "--card-rx", "--card-ry"];
 
 function prefersReducedMotion(): boolean {
   return (
@@ -28,7 +28,6 @@ export function useCardTilt() {
       const x = clamp((event.clientX - rect.left) / rect.width);
       const y = clamp((event.clientY - rect.top) / rect.height);
       target.style.setProperty("--card-x", `${Math.round(x * 100)}%`);
-      target.style.setProperty("--card-y", `${Math.round(y * 100)}%`);
       // 포인터가 있는 쪽이 눌려 들어가 보이게 기울인다.
       target.style.setProperty(
         "--card-rx",

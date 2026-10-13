@@ -3,6 +3,7 @@ package com.ogu.feed.presentation
 import com.ogu.TestcontainersConfiguration
 import com.ogu.feed.application.MonsterCardQuery
 import com.ogu.monster.MonsterApi
+import com.ogu.post.PostSelectionApi
 import com.ogu.support.CoreLoopFixture
 import com.ogu.support.MemberFixture
 import com.ogu.support.QueryCounter
@@ -45,6 +46,9 @@ class MonsterCardApiTests {
 
     @Autowired
     lateinit var monsterCardQuery: MonsterCardQuery
+
+    @Autowired
+    lateinit var postSelectionApi: PostSelectionApi
 
     private val jsonMapper = JsonMapper.builder().build()
     private lateinit var mockMvc: MockMvc
@@ -317,6 +321,80 @@ class MonsterCardApiTests {
         assertThat(page.get("items").toList().map { it.get("emotion").asString() }).containsExactly("IRRITATION")
         assertThat(page.get("summary").get("total").asInt()).isEqualTo(3)
         assertThat(cards(helper, emotion = "LETHARGY").get("items")).isEmpty()
+    }
+
+    @Test
+    fun `US1-AC5 남은 카드가 size와 같으면 다음 쪽이 없고 커서와 감정을 함께 쓸 수 있다`() {
+        val author = members.onboarded()
+        val helper = members.onboarded()
+        val posts = listOf("불안", "짜증", "불안", "불안").map { post(author, it) }
+        posts.forEach { defeat(it, helper) }
+
+        val exact = cards(helper, size = 4)
+        val first = cards(helper, size = 2, emotion = "ANXIETY")
+        val second = cards(helper, size = 2, emotion = "ANXIETY", cursor = first.get("nextCursor").asString())
+
+        assertThat(exact.get("items")).hasSize(4)
+        assertThat(exact.get("nextCursor").isNull).isTrue()
+        assertThat(first.get("items").toList().map { it.get("postId").asLong() }).containsExactly(posts[3], posts[2])
+        assertThat(second.get("items").toList().map { it.get("postId").asLong() }).containsExactly(posts[0])
+        assertThat(second.get("nextCursor").isNull).isTrue()
+    }
+
+    @Test
+    fun `US1-AC5 처치된 때가 같은 카드는 번호가 큰 것부터이고 쪽 사이에서 빠지거나 겹치지 않는다`() {
+        val author = members.onboarded()
+        val helper = members.onboarded()
+        val posts = listOf("불안", "짜증", "외로움").map { post(author, it) }
+        posts.forEach { defeat(it, helper) }
+        jdbcTemplate.update(
+            "update monsters set defeated_at = '2026-10-01T00:00:00Z' where post_id in (?, ?, ?)",
+            posts[0],
+            posts[1],
+            posts[2],
+        )
+
+        val first = cards(helper, size = 2)
+        val second = cards(helper, size = 2, cursor = first.get("nextCursor").asString())
+
+        val seen = (first.get("items").toList() + second.get("items").toList()).map { it.get("cardNo").asLong() }
+        assertThat(seen).containsExactlyElementsOf(posts.map(::monsterId).sortedDescending())
+    }
+
+    @Test
+    fun `공감을 취소하거나 댓글을 지워도 카드는 남는다`() {
+        val author = members.onboarded()
+        val helper = members.onboarded()
+        val postId = post(author, "불안")
+        weaken(postId, hp = 4)
+        coreLoop.likePost(helper, postId).andExpect(status().isOk)
+        val commentId = coreLoop.comment(helper, postId)
+
+        coreLoop.unlikePost(helper, postId).andExpect(status().isOk)
+        coreLoop.removeComment(helper, commentId).andExpect(status().isNoContent)
+
+        assertThat(cards(helper).get("items")).hasSize(1)
+        assertThat(
+            cards(helper)
+                .get("items")
+                .single()
+                .get("myDamage")
+                .asInt(),
+        ).isEqualTo(4)
+    }
+
+    @Test
+    fun `보이는 글 고르기는 작성자를 주지 않으면 내 글도 넣고 주면 뺀다`() {
+        val author = members.onboarded()
+        val visible = post(author, "불안")
+        val hidden = post(author, "짜증")
+        val deleted = post(author, "외로움")
+        jdbcTemplate.update("update posts set hidden_at = now(), hidden_reason = 'RISK' where id = ?", hidden)
+        coreLoop.deletePost(deleted)
+        val ids = listOf(visible, hidden, deleted)
+
+        assertThat(postSelectionApi.visibleIds(ids)).containsExactly(visible)
+        assertThat(postSelectionApi.visibleIds(ids, exceptAuthorId = author.id)).isEmpty()
     }
 
     @Test

@@ -62,6 +62,10 @@ describe("CardDialog", () => {
 
     const dialog = screen.getByRole("dialog", { name: "불안 카드 No.128" });
     expect(dialog).toHaveAttribute("aria-modal", "true");
+    // 초점은 닫기로 가지만 카드의 내용을 설명으로 이어 화면 낭독기가 함께 읽는다.
+    expect(dialog).toHaveAccessibleDescription(
+      /전설.*함께 물리침.*내가 준 피해/,
+    );
     for (const text of [
       "전설",
       "함께 물리침",
@@ -70,6 +74,18 @@ describe("CardDialog", () => {
     ]) {
       expect(within(dialog).getByText(text)).toBeInTheDocument();
     }
+  });
+
+  it("US3-AC6 화면이 카드보다 낮아도 위쪽이 잘리지 않게 가운데 정렬을 여백으로 한다", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(screen.getByRole("button", { name: "카드 열기" }));
+
+    // items-center는 넘친 내용의 위쪽을 스크롤로도 닿지 못하게 자른다.
+    expect(screen.getByTestId("card-dialog-backdrop")).not.toHaveClass(
+      "items-center",
+    );
+    expect(screen.getByRole("dialog")).toHaveClass("m-auto");
   });
 
   it("US2-AC6 크게 본 카드에 그 글로 가는 링크가 있다", async () => {
@@ -125,7 +141,6 @@ describe("CardDialog", () => {
     fireEvent.pointerMove(target, { clientX: 280, clientY: 128 });
 
     expect(target.style.getPropertyValue("--card-x")).toBe("90%");
-    expect(target.style.getPropertyValue("--card-y")).toBe("10%");
     expect(
       parseFloat(target.style.getPropertyValue("--card-ry")),
     ).toBeGreaterThan(0);

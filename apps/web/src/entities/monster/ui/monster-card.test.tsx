@@ -94,6 +94,17 @@ describe("MonsterCard", () => {
     }
   });
 
+  it("US3-AC6 이름과 번호가 좁은 카드에서 넘치지 않게 줄을 바꿀 수 있다", () => {
+    render(
+      <MonsterCard
+        card={card({ emotion: "SELF_DEPRECATION", cardNo: 123456 })}
+      />,
+    );
+
+    expect(screen.getByText("자기비하").parentElement).toHaveClass("flex-wrap");
+    expect(screen.getByText("No.123456")).toBeInTheDocument();
+  });
+
   it("US3-AC3 반짝임은 장식이라 낭독하지 않는다", () => {
     const { container } = render(<MonsterCard card={card()} />);
 

@@ -188,6 +188,10 @@ test("US3-AC2, US3-AC3 크게 본 카드는 포인터를 따라 기울고 등급
 
   await buttons.first().click();
   const card = page.locator(".ogu-card-tilt");
+  // 손가락을 움직일 때 브라우저가 스크롤로 가져가 기울기가 끊기지 않게 한다.
+  expect(
+    await card.evaluate((element) => getComputedStyle(element).touchAction),
+  ).toBe("none");
   const box = (await card.boundingBox())!;
   await page.mouse.move(box.x + box.width * 0.9, box.y + box.height * 0.1);
 

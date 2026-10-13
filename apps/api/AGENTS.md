@@ -175,7 +175,7 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
 | `post` | `PostApi`(`find`, `page`, `likedPostIds`, `attacksSoFar`, `findComment`, `previews`), `PostActivityApi`(`pageByAuthor`, `pageCommentsByAuthor`, `pageLikedBy`, `liveRefsByAuthor`, `liveIds`), `PostSummary`, `PostPage`, `MyCommentPage`, `Attack`, `AttackAction`, `CommentSummary` | `PostCreated`(커밋 후), `PostLiked`, `CommentCreated`, `CommentLiked`(같은 트랜잭션) | - |
 | `ai` | `EmotionAnalyzer`, `EmotionClassification`, `EmotionAnalysisFailed` | - | - |
 | `emotion` | `EmotionApi`(`findByPostIds`), `EmotionView`, `AnalysisStatus` | `EmotionAnalyzed` | `PostCreated` |
-| `monster` | `MonsterApi`(`findByPostIds`, `hasCountedComment`, `damagerIds`, `statRows`, `defeatedPostIdsDamagedBy`), `MonsterView`, `MonsterStatRow` | `MonsterSpawned`, `MonsterDefeated` | `EmotionAnalyzed`, `PostLiked`, `CommentCreated`, `CommentLiked` |
+| `monster` | `MonsterApi`(`findByPostIds`, `hasCountedComment`, `damagerIds`, `statRows`, `defeatedPostIdsDamagedBy`, `cardRows`), `MonsterView`, `MonsterStatRow`, `MonsterCardRow` | `MonsterSpawned`, `MonsterDefeated` | `EmotionAnalyzed`, `PostLiked`, `CommentCreated`, `CommentLiked` |
 | `feed` | 없음(HTTP API만) | - | - |
 
 `post`는 몬스터를 모른다. 글에 감정과 몬스터를 붙여 보여 주는 일은 `feed`가

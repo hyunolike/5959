@@ -112,17 +112,20 @@ class MonsterHpLogRepository(
                 .sql(
                     """
                     with picked as (
-                        select m.id from monsters m where m.status = 'DEFEATED' and $owned
+                        select m.id from monsters m
+                        where m.status = 'DEFEATED' and m.defeated_at is not null and $owned
                         union
                         select l.monster_id from monster_hp_log l join monsters m on m.id = l.monster_id
-                        where l.member_id = :memberId and l.hp_after < l.hp_before and m.status = 'DEFEATED'
+                        where l.member_id = :memberId and l.hp_after < l.hp_before
+                          and m.status = 'DEFEATED' and m.defeated_at is not null
                     )
                     select m.id, m.post_id, m.emotion, m.max_hp, m.defeated_at,
                            coalesce(sum(l.hp_before - l.hp_after) filter (where l.member_id = :memberId), 0) as damage_by,
-                           count(distinct l.member_id) filter (where l.hp_after < l.hp_before) as damager_count
+                           count(distinct l.member_id) as damager_count
                     from picked
                     join monsters m on m.id = picked.id
-                    left join monster_hp_log l on l.monster_id = m.id
+                    -- 처치된 뒤의 응원(0에서 0)은 읽지 않는다. 공감이 아주 많은 글에서 읽는 행이 준다
+                    left join monster_hp_log l on l.monster_id = m.id and l.hp_after < l.hp_before
                     group by m.id
                     """.trimIndent(),
                 ).param("memberId", memberId)

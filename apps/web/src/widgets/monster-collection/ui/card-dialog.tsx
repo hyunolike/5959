@@ -28,6 +28,7 @@ export function CardDialog({
   onClose: () => void;
 }) {
   const titleId = useId();
+  const cardId = useId();
   const overlayRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -92,7 +93,7 @@ export function CardDialog({
     <div
       ref={overlayRef}
       data-testid="card-dialog-backdrop"
-      className="bg-scrim fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4"
+      className="bg-scrim fixed inset-0 z-50 flex overflow-y-auto p-4"
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -102,12 +103,15 @@ export function CardDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="flex w-full max-w-[18rem] flex-col gap-4"
+        aria-describedby={cardId}
+        // 가운데 정렬은 여백으로 한다. items-center는 화면보다 긴 내용의 위쪽을 스크롤로도 닿지 못하게 자른다.
+        className="m-auto flex w-full max-w-[18rem] flex-col gap-4"
       >
         <h2 id={titleId} className="sr-only">
           {cardTitle(card)}
         </h2>
         <MonsterCard
+          id={cardId}
           card={card}
           size="lg"
           className="ogu-card-tilt"

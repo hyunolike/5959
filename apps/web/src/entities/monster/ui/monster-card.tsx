@@ -46,7 +46,7 @@ export function MonsterCard({
           large ? "rounded-control gap-2.5 p-3" : "rounded-inline gap-1.5 p-2",
         )}
       >
-        <div className="ogu-card-text flex items-baseline justify-between gap-2">
+        <div className="ogu-card-text flex flex-wrap items-baseline justify-between gap-x-2">
           <span
             className={cn(
               "font-extrabold break-keep",

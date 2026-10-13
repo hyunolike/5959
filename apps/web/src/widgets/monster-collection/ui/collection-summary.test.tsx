@@ -86,6 +86,23 @@ describe("CollectionSummary", () => {
     expect(onSelect).toHaveBeenLastCalledWith(null);
   });
 
+  it("US4-AC3 고른 감정의 카드가 모두 사라져도 눌러서 풀 수 있다", async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    render(
+      <CollectionSummary
+        summary={SUMMARY}
+        selected="LETHARGY"
+        onSelect={onSelect}
+      />,
+    );
+
+    const pressed = screen.getByRole("button", { name: "무기력 0" });
+    expect(pressed).toHaveAttribute("aria-pressed", "true");
+    await user.click(pressed);
+    expect(onSelect).toHaveBeenLastCalledWith(null);
+  });
+
   it("US4-AC4 감정의 이름과 숫자가 글자로 읽히고 색 점은 낭독하지 않는다", () => {
     render(
       <CollectionSummary

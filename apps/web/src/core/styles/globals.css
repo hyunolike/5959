@@ -206,12 +206,11 @@ body {
 
 /*
  * 도감의 카드(010 research R7). 반짝임은 등급(`data-grade`)에 따라 다르다. 일반은 없고, 희귀는 은빛 줄기 하나,
- * 전설은 무지갯빛 줄무늬다. 빛의 자리(--card-x, --card-y)와 기울기(--card-rx, --card-ry)는 크게 본 카드에서만
+ * 전설은 무지갯빛 줄무늬다. 빛의 자리(--card-x)와 기울기(--card-rx, --card-ry)는 크게 본 카드에서만
  * 포인터를 따라 바뀐다. 움직임 줄이기가 켜져 있으면 기울지 않고 빛도 가운데에 멈춘다.
  */
 .ogu-card {
   --card-x: 50%;
-  --card-y: 50%;
   --card-rx: 0deg;
   --card-ry: 0deg;
   position: relative;
@@ -254,6 +253,10 @@ body {
     var(--holo-blue) calc(var(--card-x) + 36%),
     transparent calc(var(--card-x) + 60%)
   );
+}
+/* 손가락을 움직일 때 브라우저가 스크롤로 가져가면 포인터 이벤트가 끊긴다. 카드 위에서는 넘기지 않는다. */
+.ogu-card-tilt {
+  touch-action: none;
 }
 @media (prefers-reduced-motion: no-preference) {
   .ogu-card-tilt {

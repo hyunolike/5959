@@ -14,6 +14,7 @@ const PROTECTED_PATHS = [
   "/notifications",
   "/raid",
   "/report/2026-10-05",
+  "/cards",
 ];
 
 /**

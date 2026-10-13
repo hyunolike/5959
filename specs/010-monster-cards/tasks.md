@@ -18,7 +18,7 @@ description: "Task list for 010-monster-cards (몬스터 도감)"
 ## Phase 2: API US1, US2, US4 (묶음 2)
 
 - [x] T002 [US1] `apps/api/src/test/kotlin/com/ogu/feed/MonsterCardApiTests.kt`를 먼저 쓴다(MockMvc, 실제 API로 글을 쓰고 처치): `US1-AC1 내 글의 몬스터가 처치되면 MINE 카드가 한 장 있다`, `US1-AC2 함께 물리친 몬스터는 TOGETHER 카드다`, `US1-AC3 살아 있는 몬스터는 카드가 아니다`, `US1-AC4 처치된 뒤에만 반응한 회원에게는 카드가 없다`, `US1-AC5 최근에 물리친 것부터이고 커서로 이어서 본다`, `US1-AC6 카드가 없으면 빈 목록이고 요약은 모두 0이다`, `US1-AC7 지운 글과 숨긴 글의 몬스터는 카드가 아니고 숨김이 풀리면 돌아온다`, `US1-AC8 로그인하지 않으면 401이고 온보딩 전이면 403이다`, `US1-AC9 공감도 하고 댓글도 단 몬스터의 카드는 한 장이다`, `US2-AC2 세기 낮음, 보통, 높음은 COMMON, RARE, LEGENDARY다`, `US2-AC3 TOGETHER 카드는 내가 줄인 HP가 있고 helperCount가 null이다`, `US2-AC4 MINE 카드는 함께한 회원 수가 있고 myDamage가 0이다`, `US2-AC5 응답 원문에 다른 회원의 글의 본문과 닉네임이 없다`, `US2-AC7 다시 읽어도 카드 번호와 등급이 같다`, `US4-AC1 요약은 모은 수와 다섯 감정의 장수다`, `US4-AC3 감정으로 거르면 그 감정의 카드만 오고 요약은 그대로다`, size가 0이거나 51이거나 커서나 감정이 틀리면 400 `INVALID_REQUEST`, 쿼리는 3개다 **구현 메모**: 테스트는 `feed/presentation/MonsterCardApiTests.kt`에 두었다(다른 마이페이지 API 테스트와 같은 자리). 처치는 남은 HP를 SQL로 낮춘 뒤 실제 공감과 댓글로 한다. 회원 한 명이 줄이는 HP가 4라 세기 20, 30의 몬스터를 회원 여덟 명 없이 처치하려는 것이다.
-- [x] T003 [P] [US1] `monster`: `MonsterCardRow.kt`, `MonsterApi.cardRows(memberId, ownPostIds)`, `MonsterHpLogRepository`의 쿼리(처치된 몬스터 가운데 `post_id`가 내 글이거나 내 기록 가운데 `hp_after < hp_before`인 것이 있는 몬스터. 내가 줄인 HP의 합과 HP를 줄인 회원 수를 함께). `ownPostIds`가 비어도 돈다 **구현 메모**: `monster_hp_log (member_id, monster_id)` 색인은 더하지 않았다. 마이그레이션 번호(V9)가 009와 겹치고, 같은 길을 마이페이지 통계가 이미 쓰고 있다. 느려지면 그때 더한다.
+- [x] T003 [P] [US1] `monster`: `MonsterCardRow.kt`, `MonsterApi.cardRows(memberId, ownPostIds)`, `MonsterHpLogRepository`의 쿼리(처치된 몬스터 가운데 `post_id`가 내 글이거나 내 기록 가운데 `hp_after < hp_before`인 것이 있는 몬스터. 내가 줄인 HP의 합과 HP를 줄인 회원 수를 함께). `ownPostIds`가 비어도 돈다 **구현 메모**: 색인은 더할 필요가 없었다. `monster_hp_log_member_monster_idx`가 004(V4)부터 있다. 처치된 뒤의 응원(0에서 0)은 조인에서 빼 읽는 행을 줄였다.
 - [x] T004 [P] [US1] `post`: `PostSelectionApi.visibleIds(postIds, exceptAuthorId: Long? = null)`와 `PostSelectionReader`. 이미 있는 호출부(추천)는 그대로 돈다. 테스트: 작성자를 주지 않으면 내 글도 든다, 숨긴 글과 지운 글은 빠진다 **구현 메모**: 작성자를 주지 않으면 없는 회원 번호(0)로 같은 쿼리를 돌린다. 쿼리를 둘로 나누지 않았다.
 - [x] T005 [US1] `feed`: `application/MonsterCardQuery.kt`(파사드 셋으로 읽어 조립, 정렬 `defeatedAt DESC, cardNo DESC`, 감정 거르기, 요약), `application/MonsterCardCursor.kt`, `presentation/dto/MonsterCardResponses.kt`, `MyPageController.getMyMonsterCards`. `ContractTests`가 새 경로를 본다
 
@@ -43,8 +43,8 @@ description: "Task list for 010-monster-cards (몬스터 도감)"
 
 - [x] T014 [P] 인수 조건 30개가 모두 테스트 이름이나 quickstart에 있는지 확인한다
 - [x] T015 [P] 문서: `apps/web/docs/DESIGN_SYSTEM.md`(카드와 반짝임, 쓰는 곳), `apps/api/AGENTS.md`(마이페이지 목록에 도감)
-- [ ] T016 `cd apps/api && ./gradlew clean build`, 웹의 `typecheck`, `lint`, `lint:fsd`, `format:check`, `test`, `test:e2e`. 320과 390px의 화면을 눈으로 본다. SC-004를 재어 quickstart.md에 적는다
-- [ ] T017 별도 검토자가 브랜치 전체를 본다. 지적을 고친 뒤 `main`으로 PR을 연다
+- [x] T016 `cd apps/api && ./gradlew clean build`, 웹의 `typecheck`, `lint`, `lint:fsd`, `format:check`, `test`, `test:e2e`. 320과 390px의 화면을 눈으로 본다. SC-004를 재어 quickstart.md에 적는다 **구현 메모**: 웹의 검사와 e2e(가짜 API)는 모두 통과했다. API는 도감, 모듈 경계, 계약, 추천, 피드 테스트(90개)만 로컬에서 돌렸다. 전체 빌드는 같은 기기에서 다른 작업과 테스트 컨테이너가 겹쳐 DB 연결을 기다리다 멈춰 끊었고, PR의 CI가 돌린다. SC-004(카드 100장)는 재지 않았다. 쿼리가 카드 수와 상관없이 3개인 것만 테스트로 본다.
+- [x] T017 별도 검토자가 브랜치 전체를 본다. 지적을 고친 뒤 `main`으로 PR을 연다 **구현 메모**: 검토의 판정은 ready with fixes였다. 고친 것: `/cards`를 라우트 가드의 보호 경로에 더했다(목록에 없으면 그냥 통과한다. R9가 반대로 적혀 있었다), 카드에 `touch-action: none`, 화면보다 긴 대화상자의 위쪽 잘림, 고른 감정이 0장이 됐을 때 풀기, 좁은 카드의 윗줄 줄바꿈, 대화상자의 설명과 `aria-haspopup`, 쓰지 않던 `--card-y`, 쿼리의 `defeated_at` 방어와 조인 조건, 빠진 테스트(커서의 같은 시각, 딱 맞는 쪽, 커서와 감정, 공감 취소 뒤, `visibleIds`). 미룬 것: 안드로이드 뒤로 가기로 대화상자 닫기, 초점 가두기 로직의 중복, Safari에서 마우스로 연 뒤의 초점 복귀, 더 보기마다 쿼리 3개를 다시 도는 것, 버튼 안의 블록 요소.
 
 ## Dependencies
 

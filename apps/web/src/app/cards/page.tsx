@@ -4,7 +4,7 @@ import { MonsterCollection } from "@/widgets/monster-collection";
 
 export const metadata: Metadata = { title: "몬스터 도감" };
 
-/** 몬스터 도감(010). 로그인과 온보딩은 proxy.ts의 라우트 가드가 먼저 확인한다(US1-AC8). */
+/** 몬스터 도감(010). `/cards`는 라우트 가드의 보호 경로라 로그인과 온보딩을 proxy.ts가 먼저 확인한다(US1-AC8). */
 export default function CardsPage() {
   return (
     <div className="flex w-full max-w-xl flex-col gap-6">

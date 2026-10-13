@@ -96,6 +96,8 @@ describe("MonsterCollection", () => {
     const list = await screen.findByRole("list", { name: "모은 카드 목록" });
     const cards = within(list).getAllByRole("button");
     expect(cards).toHaveLength(2);
+    // 누르면 대화상자가 열린다는 것을 미리 알린다.
+    expect(cards[0]).toHaveAttribute("aria-haspopup", "dialog");
     expect(cards[0]).toHaveTextContent("No.2");
     expect(cards[0]).toHaveTextContent("내 몬스터");
     expect(cards[1]).toHaveTextContent("짜증");

@@ -74,6 +74,7 @@ export function MonsterCollection() {
           <li key={card.cardNo}>
             <button
               type="button"
+              aria-haspopup="dialog"
               className="ogu-pressable rounded-control block w-full"
               onClick={() => setOpened(card)}
             >

@@ -8,6 +8,7 @@ import { Chip } from "@/shared/ui";
 /**
  * 도감의 요약(010 US4). 모은 수와 다섯 감정마다의 장수를 보이고, 감정을 눌러 그 감정의 카드만 본다.
  * 한 장도 없는 감정은 누를 수 없는 빈 자리로 두고, 어떤 몬스터를 아직 못 만났는지 글로도 적는다.
+ * 고른 감정의 카드가 그사이 모두 사라지면(글이 지워지거나 숨겨짐) 그 칩은 풀 수 있게 버튼으로 남긴다.
  * 숫자는 감정으로 거르기 전의 전체라 감정을 골라도 바뀌지 않는다.
  */
 export function CollectionSummary({
@@ -31,7 +32,7 @@ export function CollectionSummary({
         className="flex flex-wrap gap-2"
       >
         {summary.byEmotion.map(({ emotion, count }) =>
-          count > 0 ? (
+          count > 0 || selected === emotion ? (
             <Chip
               key={emotion}
               data-emotion={emotion}
