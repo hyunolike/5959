@@ -262,6 +262,54 @@ describe("NotificationBell", () => {
     );
   });
 
+  it("005 US1-AC2 도움 안내 토스트는 닫을 때까지 남지만 하나만 둔다", async () => {
+    stubApi({ count: 0, latestSeq: 17 });
+    renderBell();
+    const source = await openedStream();
+    const NOTICE =
+      "마음이 많이 힘드신가요? 도움받을 수 있는 곳을 안내해 드려요";
+
+    emitNotification(
+      source,
+      notificationEvent({ notificationId: 5, seq: 18, type: "SUPPORT_NOTICE" }),
+    );
+    emitNotification(
+      source,
+      notificationEvent(
+        { notificationId: 6, seq: 19, type: "SUPPORT_NOTICE", postId: 11 },
+        2,
+      ),
+    );
+
+    // 같은 안내가 쌓이면 화면 아래의 버튼을 가린다. 새 안내가 오면 앞의 것을 닫는다.
+    const toasts = screen.getAllByRole("button", { name: NOTICE });
+    expect(toasts).toHaveLength(1);
+
+    // 남은 것은 가장 최근 안내다.
+    await userEvent.setup().click(toasts[0]);
+    expect(pushMock).toHaveBeenCalledWith("/post/11");
+  });
+
+  it("005 US1-AC2 도움 안내가 새로 와도 다른 알림의 토스트는 닫지 않는다", async () => {
+    stubApi({ count: 0, latestSeq: 17 });
+    renderBell();
+    const source = await openedStream();
+
+    emitNotification(source, notificationEvent({ notificationId: 4, seq: 18 }));
+    emitNotification(
+      source,
+      notificationEvent({ notificationId: 5, seq: 19, type: "SUPPORT_NOTICE" }),
+    );
+    emitNotification(
+      source,
+      notificationEvent({ notificationId: 6, seq: 20, type: "SUPPORT_NOTICE" }),
+    );
+
+    expect(
+      screen.getByRole("button", { name: "오구 님이 내 글에 댓글을 남겼어요" }),
+    ).toBeInTheDocument();
+  });
+
   it("지워진 글의 알림 토스트는 눌러도 이동하지 않고 닫히기만 한다", async () => {
     stubApi({ count: 0, latestSeq: 17 });
     renderBell();

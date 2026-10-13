@@ -90,4 +90,22 @@ describe("SupportResourceList", () => {
       }),
     ).toHaveAttribute("href", "tel:109");
   });
+
+  it("005 US1-AC1 목록이 비어서 와도 가장 중요한 번호는 보인다", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(respond({ success: true, data: [], error: null })),
+    );
+    renderList();
+
+    const link = await screen.findByRole("link", {
+      name: "자살예방상담전화 109 전화 걸기",
+    });
+    // 빈 목록을 받은 뒤에도 남아 있다.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(link).toBeInTheDocument();
+    expect(screen.queryByRole("list")).not.toBeInTheDocument();
+  });
 });

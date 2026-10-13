@@ -32,7 +32,8 @@ export function SupportResourceList({ enabled = true }: { enabled?: boolean }) {
   if (!enabled) {
     return null;
   }
-  if (resources) {
+  // 빈 목록이 와도 번호 하나는 보여야 한다.
+  if (resources && resources.length > 0) {
     return (
       <ul aria-label="도움받을 수 있는 곳" className="flex flex-col gap-2">
         {resources.map((resource) => (

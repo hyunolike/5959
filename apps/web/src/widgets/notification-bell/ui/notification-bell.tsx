@@ -39,16 +39,23 @@ export function NotificationBell() {
     pathnameRef.current = pathname;
   });
 
+  // 닫을 때까지 남는 도움 안내는 하나만 둔다. 쌓이면 화면 아래의 버튼을 가린다.
+  const supportToastId = useRef<string | null>(null);
+
   const status = useNotificationStream((notification: Notification) => {
     if (notification.read || pathnameRef.current === NOTIFICATIONS_PATH) {
       return;
     }
     const href = notificationHref(notification);
-    show({
+    const support = notification.type === "SUPPORT_NOTICE";
+    if (support && supportToastId.current !== null) {
+      dismiss(supportToastId.current);
+    }
+    const id = show({
       message: notificationMessage(notification),
       // 도움 안내는 놓치면 안 된다. 키보드나 화면 낭독기로는 몇 초 안에 닿기 어려워 닫을 때까지 둔다
       // (005 research R16).
-      durationMs: notification.type === "SUPPORT_NOTICE" ? null : undefined,
+      durationMs: support ? null : undefined,
       // 그 사이 글이 지워졌으면 갈 곳이 없다. 누르면 닫히기만 한다(US2-AC5의 "삭제된 글" 안내는 목록이 맡는다).
       onClick:
         href === null
@@ -59,6 +66,9 @@ export function NotificationBell() {
               router.push(href);
             },
     });
+    if (support) {
+      supportToastId.current = id;
+    }
   });
 
   // 연결을 닫았거나(로그아웃) 세션이 끝났으면(401) 안 읽은 수도 다시 묻지 않는다. 로그아웃이 쿼리
