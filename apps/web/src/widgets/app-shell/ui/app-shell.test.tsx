@@ -199,6 +199,14 @@ describe("AppShell", () => {
     ).toBeInTheDocument();
   });
 
+  it("POLISH-AC17 본문 아래의 여백은 하단 메뉴와 댓글 입력줄 가운데 높은 쪽을 따른다", () => {
+    route.pathname = "/post/42";
+    render(<AppShell authenticated>{null}</AppShell>);
+    const padded = screen.getByRole("main").parentElement!;
+    expect(padded.className).toContain("var(--comment-dock-height,0px)");
+    expect(padded.className).toContain("104px");
+  });
+
   it("POLISH-AC12 좁은 화면의 머리말은 56px이다", () => {
     render(<AppShell authenticated>{null}</AppShell>);
     expect(

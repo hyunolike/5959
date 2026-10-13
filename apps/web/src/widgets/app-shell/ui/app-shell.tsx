@@ -145,7 +145,8 @@ function ShellContents({
         className={cn(
           "mx-auto flex w-full max-w-[1120px] flex-1 gap-12 px-5 sm:px-8",
           showNavigation
-            ? "py-6 pb-[calc(104px+env(safe-area-inset-bottom))] md:py-10"
+            ? // 아래 여백은 하단 메뉴(104px)와 글 상세의 댓글 입력줄 가운데 높은 쪽이다.
+              "py-6 pb-[max(calc(104px+env(safe-area-inset-bottom)),calc(var(--comment-dock-height,0px)+24px))] md:py-10"
             : "py-8 sm:py-14",
         )}
       >

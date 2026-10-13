@@ -28,6 +28,7 @@ import { SimilarPosts } from "./similar-posts";
 function Unavailable({ message }: { message: string }) {
   return (
     <div className="w-full max-w-xl">
+      {/* 돌아갈 길은 아래의 버튼이다. 머리말의 뒤로 가기를 또 두면 같은 이름의 링크가 둘이 된다. */}
       <h1 className="sr-only">고민 글</h1>
       {/* 지워진 글도 오류도 화면이 바뀐 까닭이라 alert로 읽힌다. */}
       <EmptyState
@@ -66,9 +67,19 @@ export function PostDetail({ postId }: { postId: number }) {
 
   if (isPending) {
     return (
-      <Card className="flex w-full max-w-xl items-center justify-center py-12 sm:py-12">
-        <Spinner label="글을 불러오는 중" />
-      </Card>
+      // 좁은 화면에는 하단 메뉴가 없다. 불러오는 동안에도 돌아갈 길과 화면의 제목을 둔다.
+      <div className="flex w-full max-w-xl flex-col gap-4">
+        <PageHeader
+          title="고민 글"
+          hideTitle
+          backHref="/home"
+          backLabel="마음 이야기로 돌아가기"
+          className="-my-2"
+        />
+        <Card className="flex w-full items-center justify-center py-12 sm:py-12">
+          <Spinner label="글을 불러오는 중" />
+        </Card>
+      </div>
     );
   }
 

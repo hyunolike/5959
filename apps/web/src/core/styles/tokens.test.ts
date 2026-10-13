@@ -207,8 +207,9 @@ describe("DESIGN_SYSTEM.md", () => {
 
   it("DS-US4-AC1 초점이 간 요소가 고정된 머리말과 하단 메뉴에 가리지 않게 스크롤 여백을 둔다", () => {
     expect(css).toMatch(/html\s*{[^}]*scroll-padding-top:\s*5\.5rem;/);
+    // 하단 메뉴와 글 상세의 댓글 입력줄 가운데 높은 쪽만큼 비운다(POLISH-AC17).
     expect(css).toMatch(
-      /html\s*{[^}]*scroll-padding-bottom:\s*calc\(6\.5rem \+ env\(safe-area-inset-bottom\)\);/,
+      /html\s*{[^}]*scroll-padding-bottom:\s*max\(\s*calc\(6\.5rem \+ env\(safe-area-inset-bottom\)\),\s*calc\(var\(--comment-dock-height, 0px\) \+ 1rem\)\s*\);/,
     );
   });
 

@@ -204,7 +204,11 @@ body {
    */
   html {
     scroll-padding-top: 5.5rem;
-    scroll-padding-bottom: calc(6.5rem + env(safe-area-inset-bottom));
+    /* 글 상세에서는 아래에 붙은 댓글 입력줄(--comment-dock-height)이 더 높을 수 있다. */
+    scroll-padding-bottom: max(
+      calc(6.5rem + env(safe-area-inset-bottom)),
+      calc(var(--comment-dock-height, 0px) + 1rem)
+    );
   }
   @media (min-width: 48rem) {
     html {

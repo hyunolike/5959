@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   CommentItem,
@@ -54,11 +54,35 @@ export function worstSafetyOfMine(
  * 댓글 쓰기. 원 댓글은 50개씩 이어 불러온다. 답글에는 다시 답글을 달 수 없으므로
  * 답글 달기 버튼은 원 댓글에만 둔다. 수정과 삭제 메뉴는 내 댓글(`mine`)에만 둔다(US4-AC3, AC4).
  */
+/** 아래에 붙은 댓글 입력줄의 높이. `globals.css`와 화면 틀, 토스트가 읽는다. */
+const COMMENT_DOCK_HEIGHT = "--comment-dock-height";
+
 export function PostComments({ postId }: { postId: number }) {
   const queryClient = useQueryClient();
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
   // 내 댓글을 지우면 그 메뉴가 사라지므로 초점을 댓글 목록 영역으로 옮긴다.
   const sectionRef = useRef<HTMLElement>(null);
+  // 좁은 화면에서 아래에 붙는 입력줄은 답글 대상, 오류, 여러 줄 입력으로 높아진다. 그 높이를 CSS 변수로
+  // 알려, 본문 아래의 여백(화면 틀)과 스크롤 여백, 토스트의 자리가 따라가게 한다.
+  const dockRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const dock = dockRef.current;
+    if (!dock || typeof ResizeObserver === "undefined") {
+      return;
+    }
+    const root = document.documentElement;
+    const observer = new ResizeObserver((entries) => {
+      const target = entries[0]?.target as HTMLElement | undefined;
+      if (target) {
+        root.style.setProperty(COMMENT_DOCK_HEIGHT, `${target.offsetHeight}px`);
+      }
+    });
+    observer.observe(dock);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty(COMMENT_DOCK_HEIGHT);
+    };
+  }, []);
   const {
     data,
     isPending,
@@ -161,12 +185,13 @@ export function PostComments({ postId }: { postId: number }) {
 
       {/*
         좁은 화면에서는 입력줄을 화면 아래에 붙인다. 이 화면에는 하단 메뉴가 없다(화면 틀이 숨긴다).
-        본문 아래의 여백은 화면 틀이 두고 있어 마지막 댓글이 입력줄에 가리지 않는다.
+        입력줄의 높이를 위의 변수로 알려 두어, 화면 틀이 본문 아래를 그만큼 비운다.
         넓은 화면에서는 제자리(댓글 목록 아래)에 둔다.
       */}
       <div
+        ref={dockRef}
         data-comment-dock
-        className="border-line bg-surface fixed inset-x-0 bottom-0 z-30 border-t px-5 pt-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] md:static md:z-auto md:border-t-0 md:bg-transparent md:p-0"
+        className="border-line bg-surface fixed inset-x-0 bottom-0 z-30 border-t px-5 pt-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:px-8 md:static md:z-auto md:border-t-0 md:bg-transparent md:p-0"
       >
         <WriteCommentForm
           postId={postId}

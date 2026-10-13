@@ -161,6 +161,30 @@ for (const viewport of [
       path: testInfo.outputPath("feed-populated.png"),
       fullPage: true,
     });
+    // POLISH-AC14: 정렬과 필터 여닫이는 한 줄에 있고 가장 좁은 화면에서도 겹치지 않는다.
+    const sortBox = (await page
+      .getByRole("group", { name: "정렬" })
+      .boundingBox())!;
+    const filterBox = (await page
+      .locator("summary", { hasText: "필터" })
+      .boundingBox())!;
+    expect(Math.abs(sortBox.y - filterBox.y)).toBeLessThanOrEqual(1);
+    expect(sortBox.x + sortBox.width).toBeLessThanOrEqual(filterBox.x - 8);
+    // 고른 필터의 개수가 붙어 여닫이가 넓어져도 겹치지 않고, 펼친 칩은 그 아래에 놓인다.
+    await page.goto("/home?jobRole=DEVELOPMENT&jobRole=DESIGN");
+    const counted = page.locator("summary", { hasText: "필터 (2)" });
+    await expect(counted).toBeVisible();
+    const countedBox = (await counted.boundingBox())!;
+    const sortAgain = (await page
+      .getByRole("group", { name: "정렬" })
+      .boundingBox())!;
+    expect(sortAgain.x + sortAgain.width).toBeLessThanOrEqual(countedBox.x - 4);
+    const chips = (await page
+      .getByRole("group", { name: "직군" })
+      .boundingBox())!;
+    expect(chips.y).toBeGreaterThanOrEqual(sortAgain.y + sortAgain.height);
+    await page.goto("/home");
+    await waitForHomeLoaded(page);
     for (let i = 0; i < 2; i += 1) {
       await page.getByRole("button", { name: "인기순", exact: true }).click();
       await expect(page).toHaveURL(/order=POPULAR/);
@@ -220,6 +244,43 @@ for (const viewport of [
           expect(lastBottom).toBeLessThanOrEqual(
             (await dock.boundingBox())!.y + 1,
           );
+          // 여러 줄을 쓰면 입력 칸이 늘어나고(네 줄까지), 본문 아래의 여백이 따라가 끝이 가리지 않는다.
+          const input = page.getByLabel("댓글", { exact: true });
+          const oneLine = (await input.boundingBox())!.height;
+          expect(oneLine).toBe(48);
+          await input.fill(
+            "첫 줄\n둘째 줄\n셋째 줄\n넷째 줄\n다섯째 줄\n여섯째 줄",
+          );
+          await expect
+            .poll(async () => (await input.boundingBox())!.height)
+            .toBe(128);
+          await expect
+            .poll(() =>
+              page.evaluate(() =>
+                getComputedStyle(document.documentElement)
+                  .getPropertyValue("--comment-dock-height")
+                  .trim(),
+              ),
+            )
+            .toMatch(/^1[4-9]\dpx$/);
+          await page.evaluate(() =>
+            window.scrollTo(0, document.documentElement.scrollHeight),
+          );
+          const tallBottom = await page.getByRole("main").evaluate((main) => {
+            const flow = [...main.querySelectorAll("section, article")].filter(
+              (element) => !element.closest("[data-comment-dock]"),
+            );
+            return Math.max(
+              ...flow.map((element) => element.getBoundingClientRect().bottom),
+            );
+          });
+          expect(tallBottom).toBeLessThanOrEqual(
+            (await dock.boundingBox())!.y + 1,
+          );
+          await input.fill("");
+          await expect
+            .poll(async () => (await input.boundingBox())!.height)
+            .toBe(48);
           await page.evaluate(() => window.scrollTo(0, 0));
         } else {
           await expect(dock).toHaveCSS("position", "static");

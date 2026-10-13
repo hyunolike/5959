@@ -100,14 +100,25 @@ export function WriteCommentForm({
   const { ref: registerContent, ...contentField } = register("content");
   const contentRef = useRef<HTMLTextAreaElement | null>(null);
   useEffect(() => {
-    const element = contentRef.current;
-    // 그려지지 않은 곳(테스트 환경, 숨은 화면)에서는 높이를 알 수 없다. 건드리지 않는다.
-    if (!element || element.scrollHeight === 0) {
-      return;
-    }
-    const border = element.offsetHeight - element.clientHeight;
-    element.style.height = "auto";
-    element.style.height = `${element.scrollHeight + border}px`;
+    const fit = () => {
+      const element = contentRef.current;
+      // 그려지지 않은 곳(테스트 환경, 숨은 화면)에서는 높이를 알 수 없다. 건드리지 않는다.
+      if (!element || element.scrollHeight === 0) {
+        return;
+      }
+      // 비어 있으면 한 줄로 돌아간다. 좁은 화면에서 줄바꿈된 안내 글자가 높이를 늘리지 않게 한다.
+      if (element.value === "") {
+        element.style.height = "";
+        return;
+      }
+      const border = element.offsetHeight - element.clientHeight;
+      element.style.height = "auto";
+      element.style.height = `${element.scrollHeight + border}px`;
+    };
+    fit();
+    // 화면을 돌리거나 폭이 바뀌면 줄바꿈이 달라진다. 다시 잰다.
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
   }, [content]);
   const label = replyTo ? "답글" : "댓글";
 
@@ -194,7 +205,7 @@ export function WriteCommentForm({
           placeholder={
             replyTo ? "답글을 남겨 주세요." : "따뜻한 한마디를 남겨 주세요."
           }
-          className="max-h-32 min-h-12 flex-1 resize-none py-2.5"
+          className="max-h-32 min-h-12 flex-1 resize-none py-2.5 placeholder:truncate"
           {...contentField}
           ref={(element) => {
             registerContent(element);
