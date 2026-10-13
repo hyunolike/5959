@@ -3,6 +3,17 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import manifest from "./manifest";
 
+it("BRAND-US1-AC1 새 설치 아이콘은 이전 아이콘 캐시와 다른 공개 주소를 가진다", () => {
+  const previous = new Set([
+    "/pwa/icon-192.png",
+    "/pwa/icon-512.png",
+    "/pwa/icon-maskable-512.png",
+  ]);
+  for (const icon of manifest().icons ?? []) {
+    expect(previous.has(icon.src)).toBe(false);
+  }
+});
+
 it("개인 정보 없는 설치 manifest의 시작 경로와 공개 아이콘 크기가 정합하다", () => {
   const value = manifest();
   expect(value).toMatchObject({
