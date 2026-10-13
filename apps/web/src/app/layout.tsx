@@ -9,32 +9,11 @@ import { ONBOARDED_COOKIE, REFRESH_TOKEN_COOKIE } from "@/shared/server";
 import { AppShell } from "@/widgets/app-shell";
 import { NotificationBell } from "@/widgets/notification-bell";
 
-/**
- * 공유 이미지(`opengraph-image.png`)의 주소는 서비스 주소를 기준으로 절대 경로가 되어야 미리보기에 뜬다.
- * 서비스 주소는 배포마다 다르므로 요청을 받을 때 환경 변수에서 읽는다.
- */
+import { rootMetadata } from "./root-metadata";
+
+/** 서비스 주소는 배포마다 다르므로 요청을 받을 때 환경 변수에서 읽는다. 내용은 `root-metadata.ts`에 있다. */
 export function generateMetadata(): Metadata {
-  return {
-    metadataBase: new URL(env.APP_ORIGIN),
-    title: { default: "오구오구", template: "%s | 오구오구" },
-    description: "감정을 나누고 함께 이겨내는 서비스",
-    appleWebApp: {
-      capable: true,
-      title: "오구오구",
-      statusBarStyle: "default",
-    },
-    icons: {
-      icon: "/icon.png",
-      apple: "/brand/ogu-logo-v2-apple-touch-180.png",
-    },
-    openGraph: {
-      type: "website",
-      siteName: "오구오구",
-      locale: "ko_KR",
-      title: "오구오구",
-      description: "고민을 나누고 감정 몬스터를 함께 이겨내는 곳",
-    },
-  };
+  return rootMetadata(env.APP_ORIGIN);
 }
 
 export const viewport: Viewport = {

@@ -4,15 +4,18 @@
  * Playwright의 Chromium이 깔려 있어야 한다. 원격 요청을 하지 않는다.
  *
  * 원본은 codex가 그린 것이다(docs/DESIGN_SYSTEM.md "에셋과 출처").
- *   icon.svg               파비콘. 투명 바탕의 심볼
+ *   icon.svg               파비콘. 흰 둥근 타일 위의 심볼(어두운 탭에서도 보이게)
  *   app-icon.svg           설치 아이콘. 흰 바탕에 심볼
  *   app-icon-maskable.svg  가장자리가 잘려도 되는 설치 아이콘. 심볼이 가운데 안전 영역 안에 있다
  *   og-image.svg           공유 이미지(1200×630)
  *
- * 설치 아이콘의 모양을 바꾸면 파일 이름의 판(v2)을 올린다. 설치된 기기의 아이콘을 바꾸는 것은
+ * 만든 뒤 원본의 해시를 scripts/brand/sources.json에 적는다(brand-assets.test.ts가 견준다).
+ *
+ * 설치 아이콘의 모양을 바꾸면 파일 이름의 판(v2)을 올린다. 파비콘은 root-metadata.ts의 `?v=`를 올린다. 설치된 기기의 아이콘을 바꾸는 것은
  * 브라우저와 OS라서 바로 바뀐다고 장담할 수 없다.
  */
 import { chromium } from "@playwright/test";
+import { createHash } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
@@ -92,6 +95,17 @@ try {
       `${file}: ${width}x${height}${kind === "maskable" ? ", 안전 영역 확인" : ""}`,
     );
   }
+  // 그때의 원본 해시를 적어 둔다. 원본만 고치고 PNG를 다시 만들지 않으면 테스트가 알아챈다.
+  const sources = {};
+  for (const source of [...new Set(outputs.map(([name]) => name))].sort()) {
+    sources[source] = createHash("sha256")
+      .update(await readFile(`${web}scripts/brand/${source}`))
+      .digest("hex");
+  }
+  await writeFile(
+    `${web}scripts/brand/sources.json`,
+    `${JSON.stringify(sources, null, 2)}\n`,
+  );
 } finally {
   await browser.close();
 }

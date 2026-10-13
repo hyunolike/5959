@@ -25,6 +25,8 @@ describe("BrandMark", () => {
     const { container } = render(<BrandMark />);
     const image = container.querySelector("img")!;
     expect(image).toHaveClass("h-7", "w-auto", "sm:h-8");
+    // 머리말의 로고는 늘 첫 화면에 있다. 늦게 불러오지 않는다.
+    expect(image).toHaveAttribute("loading", "eager");
     // 가로형 원본은 304×64다.
     expect(image).toHaveAttribute("width", "304");
     expect(image).toHaveAttribute("height", "64");

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
@@ -100,6 +101,38 @@ describe("브랜드 그림과 아이콘", () => {
     expect(`${header.readUInt32BE(16)}x${header.readUInt32BE(20)}`).toBe(
       "1200x630",
     );
+  });
+
+  it("LOGO-AC2 파비콘은 96px, 애플 아이콘은 180px이다", () => {
+    for (const [file, size] of [
+      [join(SRC, "app", "icon.png"), "96x96"],
+      [join(PUBLIC, "brand", "ogu-logo-v2-apple-touch-180.png"), "180x180"],
+    ] as const) {
+      const header = readFileSync(file);
+      expect(`${header.readUInt32BE(16)}x${header.readUInt32BE(20)}`).toBe(
+        size,
+      );
+    }
+  });
+
+  it("LOGO-AC2 원본 SVG를 고쳤으면 PNG를 다시 만들어야 한다", () => {
+    // 만드는 스크립트가 그때의 원본 해시를 적어 둔다. 원본만 고치고 다시 만들지 않으면 여기서 걸린다.
+    const recorded = JSON.parse(
+      readFileSync(join(WEB, "scripts", "brand", "sources.json"), "utf8"),
+    ) as Record<string, string>;
+    const names = [
+      "app-icon-maskable.svg",
+      "app-icon.svg",
+      "icon.svg",
+      "og-image.svg",
+    ];
+    expect(Object.keys(recorded).sort()).toEqual(names);
+    for (const name of names) {
+      const hash = createHash("sha256")
+        .update(readFileSync(join(WEB, "scripts", "brand", name)))
+        .digest("hex");
+      expect(recorded[name], name).toBe(hash);
+    }
   });
 
   it("LOGO-AC2 아이콘의 원본 SVG는 scripts/brand에 있고 만드는 스크립트가 읽는다", () => {

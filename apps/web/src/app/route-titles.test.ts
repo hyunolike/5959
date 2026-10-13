@@ -34,7 +34,8 @@ function titleOf(page: string): string | null {
 
 describe("경로마다의 화면 제목", () => {
   it("DS-US4-AC1 루트는 경로의 제목 뒤에 서비스 이름을 붙인다", () => {
-    const root = readFileSync(join(APP, "layout.tsx"), "utf8");
+    // 루트의 메타데이터는 요청 때 만든다. 내용은 root-metadata.ts에 있다.
+    const root = readFileSync(join(APP, "root-metadata.ts"), "utf8");
     expect(root).toContain(
       'title: { default: "오구오구", template: "%s | 오구오구" }',
     );

@@ -19,7 +19,7 @@ export function BrandMark({ className }: { className?: string }) {
         width={304}
         height={64}
         unoptimized
-        priority
+        loading="eager"
         className="h-7 w-auto shrink-0 sm:h-8"
       />
       <span className="sr-only">오구오구</span>
