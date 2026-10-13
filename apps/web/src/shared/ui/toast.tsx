@@ -20,7 +20,8 @@ export interface ToastItem {
 }
 
 /**
- * 화면 오른쪽 아래에 쌓이는 짧은 알림. `toasts`는 최신이 앞이고 화면에서도 최신이 위에 온다.
+ * 화면 오른쪽 아래에 쌓이는 짧은 알림. 잉크 바탕의 띠이고 그림자로 떠 있다(그림자를 쓰는 드문 자리다).
+ * `toasts`는 최신이 앞이고 화면에서도 최신이 위에 온다.
  * 각 토스트는 뜬 지 4초 뒤 `onDismiss`로 닫히고(`durationMs`가 `null`이면 닫을 때까지 남는다), 누르면 `onClick`을 실행한 뒤 닫힌다. 마우스가 올라가 있거나
  * 초점이 안에 있는 동안은 시간이 멈춘다. 닫기 버튼("알림 닫기")이나 Escape로 바로 닫을 수 있다.
  * 읽어 주기 영역(`aria-live`)은 토스트가 없어도 남겨 두어 새 토스트를 화면 낭독기가 알린다.
@@ -90,7 +91,7 @@ function Toast({
 
   return (
     <div
-      className="rounded-surface border-line-strong bg-surface pointer-events-auto flex w-full items-start border"
+      className="rounded-control bg-action text-on-action shadow-float pointer-events-auto flex w-full items-start border border-transparent"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onFocus={() => setFocused(true)}
@@ -113,9 +114,10 @@ function Toast({
           onDismiss(toast.id);
         }}
         className={cn(
-          "ogu-pressable rounded-l-surface text-fg min-h-11 min-w-0 flex-1 px-4 py-3 text-left text-sm",
+          "ogu-pressable rounded-l-control text-body-sm min-h-13 min-w-0 flex-1 px-4 py-3 text-left font-medium",
           // 초점 표시는 공통 외곽선을 쓴다. 그림자로 그리면 고대비 모드에서 사라진다.
-          "hover:bg-surface-sunken focus-visible:-outline-offset-2",
+          // 잉크 바탕 위라 외곽선의 색만 글자 색으로 바꾼다.
+          "hover:bg-action-hover focus-visible:outline-on-action focus-visible:-outline-offset-2",
         )}
       >
         {toast.message}
@@ -124,7 +126,7 @@ function Toast({
         type="button"
         aria-label="알림 닫기"
         onClick={() => onDismiss(toast.id)}
-        className="ogu-pressable rounded-control text-fg-subtle hover:bg-surface-sunken hover:text-fg m-1 min-h-11 min-w-11 px-2 py-2 text-sm focus-visible:-outline-offset-2"
+        className="ogu-pressable rounded-control-sm hover:bg-action-hover focus-visible:outline-on-action m-1 min-h-11 min-w-11 px-2 py-2 text-sm focus-visible:-outline-offset-2"
       >
         <span aria-hidden="true">×</span>
       </button>

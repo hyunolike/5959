@@ -10,7 +10,7 @@ import {
   type WeeklyReport as WeeklyReportData,
 } from "@/entities/weekly-report";
 import { ApiError } from "@/shared/api";
-import { Button, Card, Spinner } from "@/shared/ui";
+import { Button, Card, EmptyState, Spinner } from "@/shared/ui";
 
 /** 편지를 쓰는 동안의 안내(008 US2-AC2). */
 export const LETTER_PENDING_NOTICE = "편지를 쓰고 있어요.";
@@ -40,23 +40,25 @@ export function WeeklyReport({ weekStart }: { weekStart: string }) {
   }
   if (isNotFound(error)) {
     return (
-      <Card className="flex w-full flex-col items-center gap-3 text-center">
-        <p role="alert" className="text-body-sm text-fg-subtle">
-          이 주의 리포트가 없어요.
-        </p>
-        <Button asChild variant="ghost" size="sm">
+      <EmptyState
+        tone="error"
+        imageSrc="/brand/ogu-listen.webp"
+        title="이 주의 리포트가 없어요."
+      >
+        <Button asChild variant="secondary">
           <Link href="/my?tab=reports">내 리포트 보기</Link>
         </Button>
-      </Card>
+      </EmptyState>
     );
   }
   if (!data) {
     return (
-      <Card className="w-full text-center">
-        <p role="alert" className="text-body-sm text-danger">
-          리포트를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
-        </p>
-      </Card>
+      <EmptyState
+        tone="error"
+        imageSrc="/brand/ogu-listen.webp"
+        title="리포트를 불러오지 못했습니다."
+        description="잠시 후 다시 시도해주세요."
+      />
     );
   }
   return <WeeklyReportContent report={data} />;

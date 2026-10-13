@@ -7,7 +7,7 @@ import { Textarea } from "./textarea";
 describe("TextField", () => {
   it("DS-US2-AC1 이름표가 입력에 이어진다", () => {
     render(<TextField label="닉네임" />);
-    expect(screen.getByLabelText("닉네임")).toHaveClass("h-13");
+    expect(screen.getByLabelText("닉네임")).toHaveClass("h-14");
   });
 
   it("도움말과 오류를 입력의 설명으로 잇는다", () => {
@@ -19,6 +19,26 @@ describe("TextField", () => {
     expect(input).toHaveAccessibleDescription("2~10자 이미 쓰는 닉네임이에요");
     expect(screen.getByRole("alert")).toHaveTextContent(
       "이미 쓰는 닉네임이에요",
+    );
+  });
+
+  it("POLISH-AC7 입력은 56px이고 테두리가 남아 있다", () => {
+    render(
+      <>
+        <TextField label="닉네임" />
+        <Textarea aria-label="고민" />
+      </>,
+    );
+    expect(screen.getByLabelText("닉네임")).toHaveClass(
+      "h-14",
+      "border",
+      "border-line-strong",
+      "focus-visible:border-fg",
+    );
+    expect(screen.getByLabelText("고민")).toHaveClass(
+      "border",
+      "border-line-strong",
+      "focus-visible:border-fg",
     );
   });
 

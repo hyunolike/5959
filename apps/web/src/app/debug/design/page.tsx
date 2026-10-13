@@ -25,16 +25,18 @@ import {
   Button,
   Card,
   Chip,
+  EmptyState,
   GameButton,
   IconButton,
   ListSkeleton,
+  PageHeader,
   Select,
   Spinner,
   TextField,
   Textarea,
 } from "@/shared/ui";
 
-import { CatalogOverlays } from "./catalog-overlays";
+import { CatalogOverlays, CatalogSegmented } from "./catalog-overlays";
 
 const EMOTIONS = Object.keys(EMOTION_LABELS) as EmotionType[];
 
@@ -124,8 +126,8 @@ export default function DesignCatalogPage() {
       <Section title="버튼">
         <div className="flex flex-wrap gap-2">
           <Button>주요 동작</Button>
-          <Button variant="secondary">테두리</Button>
-          <Button variant="subtle">가라앉은 면</Button>
+          <Button variant="secondary">보조</Button>
+          <Button variant="outline">테두리</Button>
           <Button variant="ghost">글자만</Button>
           <Button variant="danger">삭제</Button>
           <Button disabled>잠김</Button>
@@ -169,6 +171,10 @@ export default function DesignCatalogPage() {
           <Chip pressed={false}>디자인</Chip>
           <Chip pressed={false}>1~3년차</Chip>
         </div>
+      </Section>
+
+      <Section title="세그먼트">
+        <CatalogSegmented />
       </Section>
 
       <Section title="입력">
@@ -225,6 +231,35 @@ export default function DesignCatalogPage() {
 
       <Section title="대화상자와 토스트">
         <CatalogOverlays />
+      </Section>
+
+      <Section title="빈 화면과 오류">
+        <EmptyState
+          imageSrc="/brand/ogu-hello.webp"
+          title="아직 올라온 고민이 없어요."
+          description="첫 이야기를 들려주세요."
+        >
+          <Button>첫 고민 남기기</Button>
+        </EmptyState>
+        <EmptyState
+          tone="error"
+          imageSrc="/brand/ogu-listen.webp"
+          title="피드를 불러오지 못했습니다."
+          description="잠시 후 다시 시도해주세요."
+        >
+          <Button variant="secondary">다시 불러오기</Button>
+        </EmptyState>
+      </Section>
+
+      <Section title="안쪽 화면의 머리말">
+        {/* 카탈로그의 h1은 맨 위에 있다. 여기 것은 모양만 보인다. */}
+        <div data-testid="catalog-page-header" inert>
+          <PageHeader
+            title="알림"
+            backHref="/debug/design"
+            backLabel="카탈로그 맨 위로"
+          />
+        </div>
       </Section>
 
       <Section title="아이콘">

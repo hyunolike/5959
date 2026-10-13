@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -16,7 +17,7 @@ import {
   useMarkReadMutation,
 } from "@/features/read-notification";
 import { useInfiniteScroll } from "@/shared/lib";
-import { Button, Card, Spinner } from "@/shared/ui";
+import { Button, EmptyState, Spinner } from "@/shared/ui";
 
 const ALL_READ_NOTICE = "모든 알림을 읽음으로 표시했어요.";
 const ALL_READ_FAILED_NOTICE =
@@ -111,19 +112,35 @@ export function NotificationList() {
 
   if (isError && items.length === 0) {
     return (
-      <Card className="text-center">
-        <p role="alert" className="text-body-sm text-danger">
-          알림을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
-        </p>
-      </Card>
+      <EmptyState
+        tone="error"
+        imageSrc="/brand/ogu-listen.webp"
+        title="알림을 불러오지 못했습니다."
+        description="잠시 후 다시 시도해주세요."
+      >
+        <Button
+          variant="secondary"
+          disabled={isFetching}
+          aria-busy={isFetching}
+          onClick={() => void refetch()}
+        >
+          다시 불러오기
+        </Button>
+      </EmptyState>
     );
   }
 
   if (items.length === 0) {
     return (
-      <Card className="text-center">
-        <p className="text-body-sm text-fg-subtle">아직 받은 알림이 없어요.</p>
-      </Card>
+      <EmptyState
+        imageSrc="/brand/ogu-listen.webp"
+        title="아직 받은 알림이 없어요."
+        description="고민을 올리면 공감과 댓글이 여기에 모여요."
+      >
+        <Button asChild>
+          <Link href="/write">고민 쓰러 가기</Link>
+        </Button>
+      </EmptyState>
     );
   }
 

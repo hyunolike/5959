@@ -15,6 +15,8 @@
   --ink-100: #f5f5f7;
   --white: #ffffff;
   --game-yellow: #ffd60a;
+  /* 카카오 로그인 버튼의 바탕(카카오가 정한 색). 다른 곳에서는 쓰지 않는다. */
+  --kakao-yellow: #fee500;
   --danger-700: #b42318;
   --danger-50: #fef3f2;
   --warning-700: #b54708;
@@ -92,12 +94,18 @@
   --color-emotion-fg: var(--emotion-fg);
   --color-game: var(--game-yellow);
   --color-game-line: var(--ink-900);
+  --color-kakao: var(--kakao-yellow);
   --color-scrim: rgb(23 23 28 / 0.4);
 
+  /* 모서리는 네 단계다. 작은 표시, 40px 높이의 것, 버튼과 입력, 시트와 큰 면. */
   --radius-inline: 8px;
-  --radius-control: 14px;
-  --radius-surface: 20px;
+  --radius-control-sm: 12px;
+  --radius-control: 16px;
+  --radius-surface: 24px;
   --shadow-game: 0 4px 0 var(--ink-900);
+  /* 그림자는 떠 있는 것(토스트)과 세그먼트에서 고른 칸에만 쓴다. */
+  --shadow-float: 0 8px 24px rgb(23 23 28 / 0.18);
+  --shadow-raised: 0 1px 2px rgb(23 23 28 / 0.08);
 }
 
 @theme {
@@ -156,7 +164,19 @@ body {
       transform var(--duration-fast) ease;
   }
   .ogu-pressable:active:not(:disabled):not([aria-disabled="true"]) {
-    transform: scale(0.98);
+    transform: scale(0.97);
+  }
+}
+
+/*
+ * 칩과 세그먼트는 고른 것을 채움으로 알린다. 고대비 모드에서는 채움이 시스템 색으로 바뀌어 사라지므로
+ * 고른 것에 시스템의 강조색을 준다. 테두리는 부품이 가진 투명 테두리가 그대로 보인다.
+ */
+@media (forced-colors: active) {
+  .ogu-pressable[aria-pressed="true"] {
+    forced-color-adjust: none;
+    background-color: Highlight;
+    color: HighlightText;
   }
 }
 

@@ -261,8 +261,16 @@ export function ConfirmDialog({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
-        className={`bg-surface flex max-h-[85dvh] w-full max-w-sm flex-col gap-4 overflow-y-auto p-6 ${presentation === "sheet" ? "sm:rounded-surface rounded-t-2xl pb-[max(1.5rem,env(safe-area-inset-bottom))]" : "rounded-surface"}`}
+        className={`bg-surface flex max-h-[85dvh] w-full max-w-sm flex-col gap-4 overflow-y-auto p-6 ${presentation === "sheet" ? "sm:rounded-surface rounded-t-surface pb-[max(1.5rem,env(safe-area-inset-bottom))]" : "rounded-surface"}`}
       >
+        {/* 아래에서 올라온 면이라는 표시. 끌 수는 없어 장식으로만 둔다. 가운데 뜨는 넓은 화면에서는 뺀다. */}
+        {presentation === "sheet" ? (
+          <span
+            data-sheet-grabber
+            aria-hidden="true"
+            className="bg-line -mt-3 h-1 w-9 shrink-0 self-center rounded-full sm:hidden"
+          />
+        ) : null}
         <div className="flex flex-col gap-1">
           <h2 id={titleId} className="text-fg text-base font-bold">
             {title}
@@ -279,12 +287,18 @@ export function ConfirmDialog({
             {error}
           </p>
         ) : null}
-        <div className="flex justify-end gap-2">
+        <div
+          className={
+            presentation === "sheet"
+              ? "grid grid-cols-2 gap-2"
+              : "flex justify-end gap-2"
+          }
+        >
           <Button
             ref={cancelRef}
             type="button"
             variant="secondary"
-            size="sm"
+            size={presentation === "sheet" ? "md" : "sm"}
             disabled={pending}
             onClick={onCancel}
           >
@@ -293,7 +307,7 @@ export function ConfirmDialog({
           <Button
             type="button"
             variant={confirmVariant}
-            size="sm"
+            size={presentation === "sheet" ? "md" : "sm"}
             disabled={pending}
             onClick={onConfirm}
           >

@@ -30,7 +30,7 @@ for (const width of [320, 390, 1440]) {
 test("DS-US2-AC2 버튼의 누르는 영역이 44px 이상이다", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 });
   await page.goto("/debug/design");
-  for (const name of ["주요 동작", "테두리", "가라앉은 면", "글자만", "삭제"]) {
+  for (const name of ["주요 동작", "보조", "테두리", "글자만", "삭제"]) {
     const box = await page
       .getByRole("button", { name, exact: true })
       .boundingBox();
@@ -45,6 +45,35 @@ test("DS-US2-AC2 버튼의 누르는 영역이 44px 이상이다", async ({ page
     .getByRole("button", { name: "전체", exact: true })
     .evaluate((chip) => parseFloat(getComputedStyle(chip, "::before").height));
   expect(hitArea).toBeGreaterThanOrEqual(44);
+  // POLISH-AC4: 작은 버튼은 보이는 높이가 40px이고 누르는 영역은 44px이다.
+  const small = page.getByRole("button", { name: "작은 버튼" });
+  expect((await small.boundingBox())!.height).toBe(40);
+  expect(
+    await small.evaluate((button) =>
+      parseFloat(getComputedStyle(button, "::before").height),
+    ),
+  ).toBeGreaterThanOrEqual(44);
+});
+
+test("POLISH-AC6 세그먼트는 고른 칸만 흰 면으로 떠 있고 누르면 바뀐다", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto("/debug/design");
+  const group = page.getByRole("group", { name: "정렬 예시" });
+  const latest = group.getByRole("button", { name: "최신순" });
+  const popular = group.getByRole("button", { name: "인기순" });
+  await expect(latest).toHaveAttribute("aria-pressed", "true");
+  await expect(latest).toHaveCSS("background-color", "rgb(255, 255, 255)");
+  await expect(popular).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  expect(
+    await popular.evaluate((button) =>
+      parseFloat(getComputedStyle(button, "::before").height),
+    ),
+  ).toBeGreaterThanOrEqual(44);
+  await popular.click();
+  await expect(popular).toHaveAttribute("aria-pressed", "true");
+  await expect(latest).toHaveAttribute("aria-pressed", "false");
 });
 
 test("DS-US1-AC3 감정마다 태그의 점과 HP 막대가 그 감정의 색이다", async ({
@@ -93,12 +122,38 @@ test("DS-US2-AC4 대화상자와 토스트를 열어 볼 수 있다", async ({ p
   await page.getByRole("button", { name: "토스트 띄우기" }).click();
   const toast = page.getByText("새 댓글이 달렸어요");
   await expect(toast).toBeVisible();
-  const border = await toast.evaluate(
-    (element) =>
-      getComputedStyle(element.closest("div.pointer-events-auto")!)
-        .borderTopColor,
-  );
-  expect(border).toBe("rgb(138, 138, 149)");
+  // POLISH-AC10: 토스트는 잉크 바탕의 띠이고 그림자로 떠 있다.
+  const strip = await toast.evaluate((element) => {
+    const style = getComputedStyle(element.closest("div.pointer-events-auto")!);
+    return { background: style.backgroundColor, shadow: style.boxShadow };
+  });
+  expect(strip.background).toBe("rgb(23, 23, 28)");
+  expect(strip.shadow).not.toBe("none");
+  // 잉크 바탕 위에서는 초점 외곽선이 글자 색(흰색)이어야 보인다. 키보드로 초점을 옮겨 본다.
+  const toastButton = page.getByRole("button", { name: "새 댓글이 달렸어요" });
+  for (let step = 0; step < 6; step++) {
+    await page.keyboard.press("Tab");
+    if (await toastButton.evaluate((button) => button.matches(":focus"))) {
+      break;
+    }
+  }
+  await expect(toastButton).toBeFocused();
+  await expect(toastButton).toHaveCSS("outline-color", "rgb(255, 255, 255)");
+  await expect(toastButton).toHaveCSS("outline-style", "solid");
+
+  // POLISH-AC9: 시트는 손잡이가 있고 버튼 두 개의 너비가 같다.
+  await page.getByRole("button", { name: "시트 열기" }).click();
+  const sheet = page.getByRole("dialog", { name: "로그인이 필요해요" });
+  await expect(sheet).toBeVisible();
+  await expect(sheet.locator("[data-sheet-grabber]")).toBeVisible();
+  const [cancel, confirm] = await Promise.all([
+    sheet.getByRole("button", { name: "계속 둘러보기" }).boundingBox(),
+    sheet.getByRole("button", { name: "로그인하기" }).boundingBox(),
+  ]);
+  expect(Math.abs(cancel!.width - confirm!.width)).toBeLessThanOrEqual(1);
+  expect(cancel!.height).toBe(48);
+  await sheet.getByRole("button", { name: "계속 둘러보기" }).click();
+  await expect(sheet).toBeHidden();
 });
 
 test("DS-US2-AC4 나머지 공용 컴포넌트와 상태가 카탈로그에 있다", async ({

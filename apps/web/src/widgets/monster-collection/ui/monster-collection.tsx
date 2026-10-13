@@ -9,7 +9,7 @@ import {
   type EmotionType,
   type MonsterCardData,
 } from "@/entities/monster";
-import { Button, Card, ListSkeleton } from "@/shared/ui";
+import { Button, Card, EmptyState, ListSkeleton } from "@/shared/ui";
 
 import { CardDialog } from "./card-dialog";
 import { CollectionSummary } from "./collection-summary";
@@ -39,20 +39,21 @@ export function MonsterCollection() {
   const summary = data?.pages[0]?.summary;
   if (!summary) {
     return (
-      <Card className="text-center">
-        <p role="alert" className="text-body-sm text-danger">
-          도감을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
-        </p>
+      <EmptyState
+        tone="error"
+        imageSrc="/brand/ogu-listen.webp"
+        title="도감을 불러오지 못했습니다."
+        description="잠시 후 다시 시도해주세요."
+      >
         <Button
           variant="secondary"
-          className="mt-4"
           disabled={isFetching}
           aria-busy={isFetching}
           onClick={() => void refetch()}
         >
           다시 시도
         </Button>
-      </Card>
+      </EmptyState>
     );
   }
   if (summary.total === 0) {

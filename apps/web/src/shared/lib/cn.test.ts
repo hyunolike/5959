@@ -24,6 +24,14 @@ describe("cn", () => {
     expect(cn("rounded-control", "rounded-surface")).toBe("rounded-surface");
   });
 
+  it("POLISH-AC1 작은 모서리와 새 그림자 이름도 뒤의 것이 이긴다", () => {
+    expect(cn("rounded-control", "rounded-control-sm")).toBe(
+      "rounded-control-sm",
+    );
+    expect(cn("shadow-float", "shadow-raised")).toBe("shadow-raised");
+    expect(cn("shadow-raised", "shadow-none")).toBe("shadow-none");
+  });
+
   it("게임 그림자는 뒤에 온 그림자 없음에 진다", () => {
     expect(cn("shadow-game", "shadow-none")).toBe("shadow-none");
   });

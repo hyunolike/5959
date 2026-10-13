@@ -184,6 +184,13 @@ describe("PostDetail", () => {
     expect(
       await screen.findByRole("heading", { level: 1, name: "고민 글" }),
     ).toHaveClass("sr-only");
+    // 화면이 바뀐 까닭이 alert로 읽히고 돌아갈 곳이 있다.
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "글을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.",
+    );
+    expect(
+      screen.getByRole("link", { name: "마음 이야기로 돌아가기" }),
+    ).toHaveAttribute("href", "/home");
   });
 
   it("404 POST_NOT_FOUND면 삭제된 글이라고 안내한다", async () => {
@@ -198,7 +205,9 @@ describe("PostDetail", () => {
       ),
     );
 
-    expect(await screen.findByText("삭제된 글이에요.")).toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "삭제된 글이에요.",
+    );
     expect(
       screen.getByRole("link", { name: "마음 이야기로 돌아가기" }),
     ).toHaveAttribute("href", "/home");
@@ -328,9 +337,11 @@ describe("PostDetail 공감과 댓글", () => {
       name: "공감러의 댓글",
     });
     for (const name of ["답글 달기", "댓글 공감 1"]) {
+      // 보이는 높이는 40px이고 `::before`로 44px까지 넓힌다.
       expect(within(root).getAllByRole("button", { name })[0]).toHaveClass(
         "ogu-pressable",
-        "min-h-11",
+        "min-h-10",
+        "before:-inset-y-[3px]",
       );
     }
   });

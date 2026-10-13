@@ -9,13 +9,11 @@ describe("Button", () => {
     expect(screen.getByRole("button", { name: "올리기" })).toHaveClass(
       "bg-action",
       "text-on-action",
-      "min-h-11",
+      "min-h-12",
     );
   });
 
   it.each([
-    ["secondary", "border-line-strong"],
-    ["subtle", "bg-surface-sunken"],
     ["ghost", "text-fg-muted"],
     ["danger", "bg-danger"],
   ] as const)("DS-US2-AC1 %s 변형은 %s를 쓴다", (variant, className) => {
@@ -23,10 +21,59 @@ describe("Button", () => {
     expect(screen.getByRole("button", { name: "확인" })).toHaveClass(className);
   });
 
-  it("DS-US2-AC2 큰 버튼은 52px다", () => {
-    render(<Button size="lg">가입하기</Button>);
-    expect(screen.getByRole("button", { name: "가입하기" })).toHaveClass(
-      "min-h-13",
+  it("POLISH-AC3 보조 버튼은 테두리 없이 옅은 채움이다", () => {
+    render(<Button variant="secondary">취소</Button>);
+    const button = screen.getByRole("button", { name: "취소" });
+    expect(button).toHaveClass("bg-surface-sunken", "text-fg");
+    expect(button).not.toHaveClass("border-line-strong");
+  });
+
+  it("POLISH-AC3 잠긴 버튼은 흐려져 옅은 채움의 보조 버튼과 구분된다", () => {
+    render(
+      <>
+        <Button variant="secondary">취소</Button>
+        <Button disabled>저장</Button>
+      </>,
+    );
+    expect(screen.getByRole("button", { name: "저장" })).toHaveClass(
+      "disabled:opacity-60",
+    );
+    expect(screen.getByRole("button", { name: "취소" })).not.toBeDisabled();
+  });
+
+  it("POLISH-AC3 채움 버튼은 고대비 모드에서 보일 투명 테두리를 가진다", () => {
+    render(<Button variant="secondary">취소</Button>);
+    expect(screen.getByRole("button", { name: "취소" })).toHaveClass(
+      "border",
+      "border-transparent",
+    );
+  });
+
+  it("POLISH-AC3 테두리 버튼은 outline이다", () => {
+    render(<Button variant="outline">구글로 계속하기</Button>);
+    expect(screen.getByRole("button", { name: "구글로 계속하기" })).toHaveClass(
+      "border",
+      "border-line-strong",
+      "bg-surface",
+    );
+  });
+
+  it.each([
+    ["sm", "min-h-10"],
+    ["md", "min-h-12"],
+    ["lg", "min-h-14"],
+  ] as const)("POLISH-AC4 %s 크기는 %s다", (size, className) => {
+    render(<Button size={size}>확인</Button>);
+    expect(screen.getByRole("button", { name: "확인" })).toHaveClass(className);
+  });
+
+  it("POLISH-AC4 작은 버튼은 누르는 영역을 44px로 넓힌다", () => {
+    render(<Button size="sm">확인</Button>);
+    expect(screen.getByRole("button", { name: "확인" })).toHaveClass(
+      "relative",
+      "before:absolute",
+      "before:-inset-y-[3px]",
+      "rounded-control-sm",
     );
   });
 

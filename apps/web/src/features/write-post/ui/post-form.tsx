@@ -130,7 +130,7 @@ export function PostForm({
           control={control}
           name="commentTone"
           render={({ field }) => (
-            <div className="flex flex-wrap gap-x-2 gap-y-3">
+            <div className="flex flex-wrap gap-2">
               {COMMENT_TONES.map(([tone, label]) => {
                 const selected = field.value === tone;
                 return (

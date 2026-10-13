@@ -47,12 +47,32 @@ describe("Toast", () => {
     expect(region).toHaveTextContent("알림 1");
   });
 
-  it("DS-US1-AC2 토스트는 바탕과 구분되는 진한 테두리를 가진다", () => {
+  it("POLISH-AC10 토스트는 잉크 바탕의 띠이고 떠 있다", () => {
     render(<Harness />);
     showToast();
-    expect(
-      screen.getByText("알림 1").closest("div.pointer-events-auto"),
-    ).toHaveClass("border", "border-line-strong");
+    const toast = screen.getByText("알림 1").closest("div.pointer-events-auto");
+    expect(toast).toHaveClass(
+      "bg-action",
+      "text-on-action",
+      "shadow-float",
+      "rounded-control",
+    );
+    // 고대비 모드에서는 바탕과 그림자가 사라진다. 그때 보일 투명 테두리를 둔다.
+    expect(toast).toHaveClass("border", "border-transparent");
+  });
+
+  it("POLISH-AC10 잉크 바탕 위의 초점 표시는 글자 색 외곽선이다", () => {
+    render(<Harness />);
+    showToast();
+    for (const button of [
+      screen.getByRole("button", { name: "알림 1" }),
+      screen.getByRole("button", { name: "알림 닫기" }),
+    ]) {
+      expect(button).toHaveClass(
+        "focus-visible:outline-on-action",
+        "focus-visible:-outline-offset-2",
+      );
+    }
   });
 
   it("4초 뒤에 저절로 사라진다", () => {

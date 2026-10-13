@@ -6,6 +6,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Notification } from "@/entities/notification";
@@ -289,6 +290,41 @@ describe("NotificationList", () => {
     );
   });
 
+  it("POLISH-AC8 목록을 받지 못하면 alert로 알리고 다시 불러올 수 있다", async () => {
+    let listCalls = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (url === "/api/notifications/unread-count") {
+          return ok({ count: 0, latestSeq: 0 });
+        }
+        listCalls += 1;
+        return listCalls === 1
+          ? new Response(
+              JSON.stringify({
+                success: false,
+                data: null,
+                error: { code: "INTERNAL_ERROR", message: "실패" },
+              }),
+              { status: 500 },
+            )
+          : ok({ items: [], nextCursor: null });
+      }),
+    );
+    const user = userEvent.setup();
+
+    renderList();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "알림을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.",
+    );
+    await user.click(screen.getByRole("button", { name: "다시 불러오기" }));
+    expect(
+      await screen.findByText("아직 받은 알림이 없어요."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("알림이 하나도 없으면 안내를 보이고 모두 읽음 버튼은 없다", async () => {
     stubApi({ pages: [{ items: [], nextCursor: null }] });
 
@@ -297,6 +333,9 @@ describe("NotificationList", () => {
     expect(
       await screen.findByText("아직 받은 알림이 없어요."),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "고민 쓰러 가기" }),
+    ).toHaveAttribute("href", "/write");
     expect(
       screen.queryByRole("button", { name: "모두 읽음" }),
     ).not.toBeInTheDocument();

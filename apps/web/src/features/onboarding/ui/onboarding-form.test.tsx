@@ -220,17 +220,17 @@ describe("OnboardingForm 완료 뒤 이동", () => {
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith(expected));
   });
 
-  it("DS-US2-AC2 직군과 경력은 52px 공용 선택 상자이고 완료 버튼도 52px이다", () => {
+  it("DS-US2-AC2 직군과 경력은 56px 공용 선택 상자이고 완료 버튼도 56px이다", () => {
     vi.stubGlobal("fetch", vi.fn());
     renderForm();
     for (const name of ["직군", "경력"]) {
       expect(screen.getByLabelText(name)).toHaveClass(
-        "h-13",
+        "h-14",
         "border-line-strong",
       );
     }
     expect(screen.getByRole("button", { name: "완료" })).toHaveClass(
-      "min-h-13",
+      "min-h-14",
     );
   });
 

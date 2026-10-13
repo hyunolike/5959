@@ -20,8 +20,8 @@ const twMerge = extendTailwindMerge({
           ],
         },
       ],
-      rounded: [{ rounded: ["inline", "control", "surface"] }],
-      shadow: [{ shadow: ["game"] }],
+      rounded: [{ rounded: ["inline", "control-sm", "control", "surface"] }],
+      shadow: [{ shadow: ["game", "float", "raised"] }],
     },
   },
 });

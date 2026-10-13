@@ -18,11 +18,11 @@ function renderForm() {
 }
 
 describe("LoginForm 모양", () => {
-  it("DS-US2-AC2 입력과 제출 버튼은 52px이다", () => {
+  it("DS-US2-AC2 입력과 제출 버튼은 56px이다", () => {
     renderForm();
-    expect(screen.getByLabelText("이메일")).toHaveClass("h-13");
+    expect(screen.getByLabelText("이메일")).toHaveClass("h-14");
     expect(screen.getByRole("button", { name: "로그인" })).toHaveClass(
-      "min-h-13",
+      "min-h-14",
       "bg-action",
     );
   });

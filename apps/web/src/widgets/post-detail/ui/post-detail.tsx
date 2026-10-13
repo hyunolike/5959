@@ -2,7 +2,6 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { CaretLeft } from "@phosphor-icons/react";
-import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -20,7 +19,7 @@ import { ReportButton } from "@/features/report-content";
 import { RequestReviewButton } from "@/features/request-review";
 import { ApiError } from "@/shared/api";
 import { QUERY_KEYS } from "@/shared/config";
-import { Button, Card, Spinner } from "@/shared/ui";
+import { Button, Card, EmptyState, Spinner } from "@/shared/ui";
 
 import { PostComments } from "./post-comments";
 import { SafetyNotice } from "./safety-notice";
@@ -39,43 +38,27 @@ function BackToFeed() {
 }
 
 /** 글을 보여 주지 못할 때의 안내. 오구와 함께 돌아갈 곳을 준다. */
-function Unavailable({
-  message,
-  tone,
-}: {
-  message: string;
-  tone: "neutral" | "error";
-}) {
+function Unavailable({ message }: { message: string }) {
   return (
-    <Card className="w-full max-w-xl py-10 text-center sm:py-10">
+    <div className="w-full max-w-xl">
       <h1 className="sr-only">고민 글</h1>
-      <Image
-        src="/brand/ogu-listen.webp"
-        alt=""
-        width={80}
-        height={80}
-        className="mx-auto mb-4 size-20"
-      />
-      <p
-        role="alert"
-        className={
-          tone === "error"
-            ? "text-body-sm text-danger"
-            : "text-body-sm text-fg-subtle"
-        }
+      {/* 지워진 글도 오류도 화면이 바뀐 까닭이라 alert로 읽힌다. */}
+      <EmptyState
+        tone="error"
+        imageSrc="/brand/ogu-listen.webp"
+        title={message}
       >
-        {message}
-      </p>
-      <Button asChild variant="secondary" className="mt-5">
-        <Link href="/home">마음 이야기로 돌아가기</Link>
-      </Button>
-    </Card>
+        <Button asChild variant="secondary">
+          <Link href="/home">마음 이야기로 돌아가기</Link>
+        </Button>
+      </EmptyState>
+    </div>
   );
 }
 
 /** 없거나 지운 글(404), 숫자가 아닌 글 ID(400). */
 export function PostNotFound() {
-  return <Unavailable message={DELETED_POST_NOTICE} tone="neutral" />;
+  return <Unavailable message={DELETED_POST_NOTICE} />;
 }
 
 function isNotFound(error: unknown): boolean {
@@ -108,10 +91,7 @@ export function PostDetail({ postId }: { postId: number }) {
 
   if (!data) {
     return (
-      <Unavailable
-        message="글을 불러오지 못했습니다. 잠시 후 다시 시도해주세요."
-        tone="error"
-      />
+      <Unavailable message="글을 불러오지 못했습니다. 잠시 후 다시 시도해주세요." />
     );
   }
 
