@@ -80,6 +80,16 @@ variable "ai_companion_wait" {
   }
 }
 
+variable "web_domain" {
+  type        = string
+  description = "Custom domain for the web, e.g. new.example.com. Empty keeps the run.app URL. The deployer must be a verified owner of the domain."
+  default     = ""
+  validation {
+    condition     = var.web_domain == "" || can(regex("^([a-z0-9]([a-z0-9-]*[a-z0-9])?\\.)+[a-z]{2,}$", var.web_domain))
+    error_message = "Use a bare lowercase host name without scheme, port or path."
+  }
+}
+
 variable "kakao_client_id" {
   type    = string
   default = ""

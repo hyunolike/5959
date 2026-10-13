@@ -104,6 +104,24 @@ web_origin 출력으로 카카오/구글 개발자 콘솔의 redirect URI를 등
 `<web_origin>/api/auth/oauth/kakao/callback`, `<web_origin>/api/auth/oauth/google/callback`이다.
 terraform.tfvars의 kakao_client_id/google_client_id에도 실제 client ID를 넣는다(비밀 키가 아닌 공개 ID).
 
+### 웹에 도메인 붙이기
+
+`terraform.tfvars`의 `web_domain`에 호스트 이름(예: `new.5959.site`)을 넣으면 Cloud Run 도메인 매핑이 생기고
+web_origin이 그 주소로 바뀐다. 웹의 APP_ORIGIN, API의 SSE 허용 출처와 OAuth redirect URI가 함께 따라간다.
+run.app 주소는 계속 응답하지만 로그인과 실시간 알림은 web_origin에서만 된다.
+
+1. apply하는 구글 계정이 도메인의 확인된 소유자여야 한다. `gcloud domains list-user-verified`에 나오지 않으면
+   Search Console에서 그 계정으로 확인하거나 소유자로 추가한다.
+2. DNS에 `CNAME <호스트> ghs.googlehosted.com.`을 넣고, 개발자 콘솔에 새 redirect URI를 추가한다.
+3. 매핑만 먼저 만든다. 인증서가 나올 때까지(보통 15분에서 몇 시간) 출처는 바꾸지 않는다.
+   `-target`은 웹 서비스까지 함께 바꾸므로 쓰지 않는다.
+   `gcloud beta run domain-mappings create --service=ogu-web --domain=<호스트> --region=<리전> --project=<프로젝트>`
+4. `https://<호스트>/api/health`가 열리면 `web_domain`을 tfvars에 적고 매핑을 state로 가져온 뒤 전체를 apply하고
+   `deploy-api.sh`를 실행한다. tfvars에 적기 전에 가져오면 다음 apply가 매핑을 지운다.
+   `terraform import 'google_cloud_run_domain_mapping.web[0]' locations/<리전>/namespaces/<프로젝트>/domainmappings/<호스트>`
+5. 웹 트래픽은 릴리스가 이름으로 고정한 revision에 묶여 있다. apply가 만든 새 revision은 트래픽을 받지 않으므로
+   `gcloud run services update-traffic ogu-web --to-revisions=<새 revision>=100`으로 옮기거나 다음 main 릴리스를 기다린다.
+
 ## 4. 이미지 빌드와 앱 배포
 
 ```bash

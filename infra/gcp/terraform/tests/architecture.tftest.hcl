@@ -84,3 +84,41 @@ run "web_scales_to_zero" {
     error_message = "Web must use request-based CPU allocation."
   }
 }
+
+run "web_keeps_run_app_origin_without_a_domain" {
+  command = apply
+  variables {
+    web_image = "us-central1-docker.pkg.dev/ogu-test-project/ogu/web@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  }
+  assert {
+    condition     = length(google_cloud_run_domain_mapping.web) == 0 && endswith(output.web_origin, ".us-central1.run.app")
+    error_message = "Without a domain the web must keep its run.app origin and map nothing."
+  }
+}
+
+run "web_domain_becomes_the_origin_everywhere" {
+  command = apply
+  variables {
+    web_image  = "us-central1-docker.pkg.dev/ogu-test-project/ogu/web@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    web_domain = "new.example.com"
+  }
+  assert {
+    condition = jsondecode(google_compute_instance.api.metadata["deployment-config"]).web_origin == "https://new.example.com" && one([
+      for item in google_cloud_run_v2_service.web[0].template[0].containers[0].env : item.value
+      if item.name == "APP_ORIGIN"
+    ]) == "https://new.example.com"
+    error_message = "API and web must agree on the custom origin, or OAuth and SSE reject each other."
+  }
+  assert {
+    condition     = google_cloud_run_domain_mapping.web[0].name == "new.example.com" && google_cloud_run_domain_mapping.web[0].spec[0].route_name == "ogu-web"
+    error_message = "The domain must be mapped to the web service."
+  }
+}
+
+run "web_domain_rejects_a_url" {
+  command = plan
+  variables {
+    web_domain = "https://new.example.com"
+  }
+  expect_failures = [var.web_domain]
+}
