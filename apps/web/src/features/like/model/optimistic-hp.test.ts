@@ -23,6 +23,7 @@ function detail(overrides: Partial<PostDetail> = {}): PostDetail {
       nickname: "오구",
       jobRole: "DEVELOPMENT",
       careerYear: "YEAR_1",
+      ai: false,
     },
     content: "내일 발표가 걱정돼요",
     commentTone: "COMFORT_ME",

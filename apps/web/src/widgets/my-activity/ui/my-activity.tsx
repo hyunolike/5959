@@ -4,7 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { MyCommentItem, useMyCommentsQuery } from "@/entities/comment";
-import { CAREER_YEAR_LABELS, JOB_ROLE_LABELS } from "@/entities/member";
+import { authorMetaLabel } from "@/entities/member";
 import { EMOTION_LABELS, EmotionTag, MonsterSummary } from "@/entities/monster";
 import {
   PostCard,
@@ -126,7 +126,7 @@ function renderPost(item: FeedItem) {
     <PostCard
       item={item}
       showCreatedAt
-      authorMeta={`${JOB_ROLE_LABELS[item.author.jobRole]} · ${CAREER_YEAR_LABELS[item.author.careerYear]}`}
+      authorMeta={authorMetaLabel(item.author)}
       renderEmotion={(monster) => <EmotionTag emotion={monster.emotion} />}
       renderMonster={(monster) => <MonsterSummary monster={monster} />}
     />

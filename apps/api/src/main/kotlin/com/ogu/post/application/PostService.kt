@@ -54,6 +54,26 @@ class PostService(
     }
 
     /**
+     * AI 친구의 이름으로 글을 저장한다(012 research R11). 사람의 글과 같은 엔티티, 같은 이벤트다. 다른 것은 셋뿐이다.
+     * 직군과 경력을 남기지 않는다(AI 회원에게는 없다). 작성 제한을 타지 않는다(하루의 수는 companion이 센다). 글쓴이가
+     * AI 회원이 아니면 거절한다. 사람 회원이 이 길로 직군 없는 글을 쓰지 못한다.
+     */
+    @Transactional
+    fun createByAi(
+        authorId: Long,
+        content: String,
+        commentTone: CommentTone,
+    ): Long {
+        require(memberApi.getMember(authorId).ai) { "AI 회원의 이름으로만 쓴다" }
+        val now = clock.instant().truncatedTo(ChronoUnit.MICROS)
+        val post = postRepository.save(Post.writeByAi(authorId, content, commentTone, now))
+        events.publishEvent(PostCreated(post.id, authorId, post.createdAt))
+        // 사람의 글과 같이 저장과 같은 트랜잭션에서 키워드 규칙으로 판정한다
+        events.publishEvent(PostWritten(post.id, authorId, edited = false))
+        return post.id
+    }
+
+    /**
      * 본문이나 말투를 고친다(US4-AC1, FR-013). 작성 제한에 세지 않고, 몬스터와 감정은 그대로다. 둘 다 없으면 400,
      * 본문 규칙은 작성과 같다. 없거나 지운 글은 404 POST_NOT_FOUND, 남의 글은 403 NOT_AUTHOR.
      */

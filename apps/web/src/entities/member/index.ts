@@ -8,5 +8,10 @@ export {
   NICKNAME_REASON_LABEL,
 } from "./model/profile-schema";
 export type { MemberProfileFormValues } from "./model/profile-schema";
-export { CAREER_YEAR_LABELS, JOB_ROLE_LABELS } from "./model/types";
+export {
+  AI_FRIEND_LABEL,
+  authorMetaLabel,
+  CAREER_YEAR_LABELS,
+  JOB_ROLE_LABELS,
+} from "./model/types";
 export type { CareerYear, JobRole, MemberProfile } from "./model/types";

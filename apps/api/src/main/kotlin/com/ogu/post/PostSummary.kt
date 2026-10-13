@@ -4,12 +4,15 @@ import com.ogu.member.CareerYear
 import com.ogu.member.JobRole
 import java.time.Instant
 
-/** 다른 모듈에 보여 주는 살아 있는 글. 작성자 직군과 경력은 작성 시점 스냅숏이다(research R7). */
+/**
+ * 다른 모듈에 보여 주는 살아 있는 글. 작성자 직군과 경력은 작성 시점 스냅숏이다(research R7). AI 친구가 쓴 글은
+ * [authorAi]가 true이고 직군과 경력이 null이다(012 research R10, R17).
+ */
 data class PostSummary(
     val postId: Long,
     val authorId: Long,
-    val authorJobRole: JobRole,
-    val authorCareerYear: CareerYear,
+    val authorJobRole: JobRole?,
+    val authorCareerYear: CareerYear?,
     val content: String,
     val commentTone: CommentTone,
     val likeCount: Int,
@@ -20,4 +23,6 @@ data class PostSummary(
     /** 가장 최근 위험 판정의 단계 이름(`NONE`, `CONCERN`, `CRISIS`). 작성자에게만 응답에 싣는다(005 research R7). */
     val riskLevel: String = "NONE",
     val reviewRequested: Boolean = false,
+    /** AI 친구가 쓴 글이면 true. 글을 쓸 때의 글쓴이 종류다. 닉네임이나 직군이 나가는 응답에 함께 싣는다. */
+    val authorAi: Boolean = false,
 )

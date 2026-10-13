@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useState } from "react";
 
-import { CAREER_YEAR_LABELS, JOB_ROLE_LABELS } from "@/entities/member";
+import { authorMetaLabel } from "@/entities/member";
 import { emotionLabel, MonsterDisplay, MonsterStage } from "@/entities/monster";
 import {
   COMMENT_TONE_LABELS,
@@ -18,7 +18,15 @@ import { ReportButton } from "@/features/report-content";
 import { RequestReviewButton } from "@/features/request-review";
 import { ApiError } from "@/shared/api";
 import { QUERY_KEYS } from "@/shared/config";
-import { Button, Card, EmptyState, PageHeader, Spinner } from "@/shared/ui";
+import {
+  AI_FRIENDS_PATH,
+  AiBadge,
+  Button,
+  Card,
+  EmptyState,
+  PageHeader,
+  Spinner,
+} from "@/shared/ui";
 
 import { PostComments } from "./post-comments";
 import { SafetyNotice } from "./safety-notice";
@@ -179,9 +187,14 @@ function PostDetailContent({ detail }: { detail: PostDetailData }) {
               <p className="text-body-sm text-fg font-bold break-words">
                 {author.nickname}
               </p>
-              <p className="text-label text-fg-subtle">
-                {`${JOB_ROLE_LABELS[author.jobRole]} · ${CAREER_YEAR_LABELS[author.careerYear]}`}
-              </p>
+              {author.ai ? (
+                // AI 친구에게는 직군과 경력이 없다. 그 자리에 AI 친구임을 글자로 보인다(012 US4-AC2).
+                <AiBadge className="mt-1 self-start" />
+              ) : (
+                <p className="text-label text-fg-subtle">
+                  {authorMetaLabel(author)}
+                </p>
+              )}
             </div>
             {detail.mine ? (
               <div className="flex shrink-0 items-center gap-1">
@@ -195,6 +208,18 @@ function PostDetailContent({ detail }: { detail: PostDetailData }) {
               <ReportButton targetType="POST" targetId={detail.postId} />
             )}
           </header>
+          {author.ai ? (
+            // 사람의 고민인 줄 알고 읽지 않게 본문보다 먼저 알린다(012 FR-030).
+            <p className="bg-surface-sunken text-body-sm text-fg-muted rounded-surface px-4 py-3 break-keep">
+              AI 친구가 지어 쓴 이야기예요. 실제로 겪은 일이 아니에요.{" "}
+              <Link
+                href={AI_FRIENDS_PATH}
+                className="text-fg inline-flex min-h-11 items-center font-bold underline underline-offset-4"
+              >
+                AI 친구 알아보기
+              </Link>
+            </p>
+          ) : null}
           <p className="text-body-lg text-fg break-words whitespace-pre-wrap">
             {detail.content}
           </p>

@@ -60,6 +60,12 @@ variable "ai_companion_enabled" {
   default     = false
 }
 
+variable "ai_companion_posting_enabled" {
+  type        = bool
+  description = "Let the AI companions write a post when the feed has been quiet. Separate from the reactions. Ships off; turn on after reading real model output."
+  default     = false
+}
+
 variable "ai_companion_daily_limit" {
   type        = number
   description = "How many times per day (Asia/Seoul) the API may ask the model for a companion comment."

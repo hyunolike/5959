@@ -21,34 +21,6 @@ object CompanionCommentValidator {
     /** 사람의 댓글과 같은 상한(post의 `Comment.CONTENT_MAX_LENGTH`). ai 모듈은 post를 모르므로 여기에 적는다. */
     const val MAX_LENGTH = 300
 
-    private const val MIN_HANGUL_RATIO = 0.5
-    private val HANGUL = Regex("[가-힣ㄱ-ㅎㅏ-ㅣ]")
-    private val WRAPPED = Regex("^[\"'“”‘’「『].*[\"'“”‘’」』]$", RegexOption.DOT_MATCHES_ALL)
-    private val HEADER = Regex("^[가-힣A-Za-z ]{1,12}[:：]\\s*\\S")
-
-    private val CONTACT =
-        listOf(
-            Regex("https?://", RegexOption.IGNORE_CASE),
-            Regex("www\\.", RegexOption.IGNORE_CASE),
-            Regex("[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+\\.[A-Za-z]{2,}"),
-            Regex("\\b[A-Za-z0-9-]+\\.(com|net|org|io|kr|co\\.kr)\\b", RegexOption.IGNORE_CASE),
-            Regex("\\d{2,4}[-.\\s]\\d{3,4}[-.\\s]\\d{4}"),
-            // 구분자 없이 이어 쓴 번호와 대표 번호(1588-0000)
-            Regex("\\d{9,}"),
-            Regex("\\b1[5-9]\\d{2}[-.\\s]?\\d{4}\\b"),
-            // 목록에 없는 최상위 도메인의 짧은 주소(bit.ly/x, t.me/x)
-            Regex("\\b[A-Za-z0-9-]+\\.[A-Za-z]{2,}/\\S"),
-            Regex("오픈\\s*채팅|카톡|카카오톡|연락처|전화번호|디엠|\\bDM\\b", RegexOption.IGNORE_CASE),
-        )
-
-    /** 진단과 처방, 약과 치료의 권유. "약속"처럼 다른 낱말의 일부는 걸리지 않게 조사를 붙여 적는다. */
-    private val MEDICAL =
-        Regex(
-            "우울증|조울증|공황장애|불안장애|증후군|ADHD|진단|처방|복용|항우울제|수면제|안정제|약물|" +
-                "약[을이도]\\s|약\\s*(먹|드시|드세)|병원|정신과|치료|상담\\s*센터|상담을\\s*받|상담\\s*받",
-            RegexOption.IGNORE_CASE,
-        )
-
     /** 사람인 척 지어낸 경험. AI 친구는 겪은 일이 없다. */
     private val PERSONAL =
         Regex(
@@ -64,20 +36,14 @@ object CompanionCommentValidator {
         val broken =
             comment.isEmpty() ||
                 Grapheme.count(comment, MAX_LENGTH + 1) > MAX_LENGTH ||
-                !mostlyHangul(comment) ||
-                WRAPPED.matches(comment) ||
-                HEADER.containsMatchIn(comment) ||
-                CONTACT.any { it.containsMatchIn(comment) } ||
-                MEDICAL.containsMatchIn(comment) ||
+                !GeneratedTextRules.mostlyHangul(comment) ||
+                GeneratedTextRules.WRAPPED.matches(comment) ||
+                GeneratedTextRules.HEADER.containsMatchIn(comment) ||
+                GeneratedTextRules.hasContact(comment) ||
+                GeneratedTextRules.MEDICAL.containsMatchIn(comment) ||
                 PERSONAL.containsMatchIn(comment) ||
                 PROBING.containsMatchIn(comment)
         if (broken) throw CompanionCommentFailed(INVALID_RESPONSE)
         return comment
-    }
-
-    private fun mostlyHangul(comment: String): Boolean {
-        val letters = comment.count { it.isLetter() }
-        if (letters == 0) return false
-        return HANGUL.findAll(comment).count().toDouble() / letters > MIN_HANGUL_RATIO
     }
 }

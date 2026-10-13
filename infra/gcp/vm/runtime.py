@@ -148,7 +148,7 @@ def configuration():
 
 
 def companion_settings(config):
-    """AI companion switches (009). Off unless the deployment config turns it on."""
+    """AI companion switches (009, 012). Each is off unless the deployment config turns it on."""
     limit = config.get("ai_companion_daily_limit", 45)
     if isinstance(limit, bool) or not isinstance(limit, int) or limit < 0:
         raise ValueError("ai_companion_daily_limit must be a non-negative integer")
@@ -157,6 +157,9 @@ def companion_settings(config):
         raise ValueError("ai_companion_wait must look like 10m, 30s or 1h")
     return {
         "AI_COMPANION_ENABLED": "true" if config.get("ai_companion_enabled", False) is True else "false",
+        # 012: writing posts is a separate, riskier switch. A truthy string does not turn it on either.
+        "AI_COMPANION_POSTING_ENABLED":
+            "true" if config.get("ai_companion_posting_enabled", False) is True else "false",
         "AI_COMPANION_DAILY_LIMIT": str(limit),
         "AI_COMPANION_WAIT": wait,
     }

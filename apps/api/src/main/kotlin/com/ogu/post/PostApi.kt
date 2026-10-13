@@ -59,8 +59,8 @@ interface PostApi {
     ): Map<Long, PostPreview>
 
     /**
-     * [since] 뒤에 쓰인, 다른 회원에게 보이는 글의 ID. 최근 것부터 [limit]개까지다. 레이드 보스의 감정을 정할 때 쓴다
-     * (006 research R9). 숨겼거나 지운 글은 빠진다.
+     * [since] 뒤에 사람이 쓴, 다른 회원에게 보이는 글의 ID. 최근 것부터 [limit]개까지다. 레이드 보스의 감정을 정할 때 쓴다
+     * (006 research R9). 숨겼거나 지운 글은 빠진다. AI 친구가 지어 쓴 글도 빠진다. 회원들의 마음이 아니다(012 FR-033).
      */
     fun visibleIdsSince(
         since: Instant,

@@ -37,6 +37,8 @@ data class AiProperties(
     val companionMaxTokens: Int = 900,
     /** AI 친구의 댓글은 글을 쓰는 일이라 분류보다 높게 둔다. 낮으면 다시 청해도 같은 답이 온다. */
     val companionTemperature: Double = 0.8,
+    /** AI 친구의 글(012)의 토큰 상한. 답은 500자 이하지만 추론 토큰이 함께 든다. */
+    val companionPostMaxTokens: Int = 1200,
     /**
      * 모델이 추론에 들이는 정도(`low`, `medium`, `high`). 비우면 보내지 않는다. 분류는 짧은 판단이라 낮게 둬도 되고,
      * 낮을수록 빠르고 토큰이 덜 든다.

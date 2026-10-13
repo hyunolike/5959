@@ -98,12 +98,24 @@ resilience4j:
         wait-duration-in-open-state: 60s
         permitted-number-of-calls-in-half-open-state: 2
         automatic-transition-from-open-to-half-open-enabled: true
+      # 012: AI 친구의 글쓰기도 따로 연다. 글쓰기가 흔들려도 댓글 쓰기의 회로는 열리지 않는다
+      companionPost:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 60s
+        permitted-number-of-calls-in-half-open-state: 2
+        automatic-transition-from-open-to-half-open-enabled: true
   timelimiter:
     instances:
       weeklyLetter:
         timeout-duration: ${ogu.ai.timeout}
         cancel-running-future: true
       companionComment:
+        timeout-duration: ${ogu.ai.timeout}
+        cancel-running-future: true
+      companionPost:
         timeout-duration: ${ogu.ai.timeout}
         cancel-running-future: true
       emotionAnalyzer:
@@ -164,6 +176,8 @@ ogu:
     # 009 AI 친구의 댓글. 답은 300자 이하지만 추론 토큰이 함께 든다
     companion-max-tokens: 900
     companion-temperature: 0.8
+    # 012 AI 친구의 글. 답은 500자 이하지만 추론 토큰이 함께 든다
+    companion-post-max-tokens: 1200
     # low, medium, high. 비우면 보내지 않는다
     reasoning-effort: ${AI_REASONING_EFFORT:low}
     # 007 추천의 임베딩. 차원은 post_embedding.embedding 열과 같아야 한다
@@ -257,6 +271,21 @@ ogu:
     follow-up:
       min-gap: ${AI_COMPANION_FOLLOW_UP_MIN:3m}
       max-gap: ${AI_COMPANION_FOLLOW_UP_MAX:10m}
+    # 012: 조용할 때 AI 친구가 고민 글을 쓴다. 반응과 따로 켜고, 꺼진 채로 나간다(research R12)
+    posting:
+      enabled: ${AI_COMPANION_POSTING_ENABLED:false}
+      # 이 동안 회원에게 보이는 새 글(사람의 것이든 AI 친구의 것이든)이 없어야 쓴다
+      quiet: ${AI_COMPANION_POSTING_QUIET:6h}
+      # 하루(한국 시간)에 올리는 글 수. 친구마다 하루 하나까지라 친구의 수(3)보다 크게 둬도 셋이다
+      daily-posts: ${AI_COMPANION_POSTING_DAILY_POSTS:3}
+      # 하루에 AI에 글을 청하는 횟수. 실패한 시도도 든다
+      daily-requests: 9
+      max-attempts: 3
+      # 한국 시간. active-from부터 active-until 전까지만 쓴다
+      active-from: "08:00"
+      active-until: "23:00"
+      recent-topics: 10
+      poll-interval: 1m
   # 006 레이드(data-model.md "설정"). 바꾸면 다음에 나오는 보스부터 적용된다
   raid:
     cooldown: 1s

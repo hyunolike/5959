@@ -41,4 +41,8 @@ class ComposeTests(unittest.TestCase):
         self.assertEqual(api["AI_COMPANION_COUNT_WEIGHTS"], "60,30,10")
         self.assertEqual(api["AI_COMPANION_FOLLOW_UP_MIN"], "3m")
         self.assertEqual(api["AI_COMPANION_FOLLOW_UP_MAX"], "10m")
+        # 012: the companions' posting has its own switch and also ships off.
+        self.assertEqual(api["AI_COMPANION_POSTING_ENABLED"], "false")
+        self.assertEqual(api["AI_COMPANION_POSTING_QUIET"], "6h")
+        self.assertEqual(api["AI_COMPANION_POSTING_DAILY_POSTS"], "3")
         self.assertEqual(services["redis"]["command"][2], credential)

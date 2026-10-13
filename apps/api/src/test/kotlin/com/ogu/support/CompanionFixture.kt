@@ -24,6 +24,10 @@ object CompanionSettings {
     /** 컨텍스트들이 DB를 함께 써서 하루의 몫도 함께 쓴다. 몫을 보지 않는 테스트는 넉넉히 둔다. */
     const val NO_LIMIT = "ogu.companion.daily-limit=100000"
 
+    /** 글쓰기도 켠다(012). 주기 작업은 끄고 테스트가 실행기를 직접 부른다. 켜 두면 조용한 시간마다 글이 올라온다. */
+    const val POSTING = "ogu.companion.posting.enabled=true"
+    const val NO_POSTING_SCHEDULER = "ogu.companion.posting.scheduler-enabled=false"
+
     /** 시계를 하루 넘게 움직여도 테스트 회원의 access 토큰(기본 15분)이 만료되지 않게 한다. */
     const val LONG_TOKEN = "ogu.auth.jwt.access-token-ttl=10d"
 }
@@ -55,6 +59,12 @@ class CompanionFixture(
 
     fun reaction(postId: Long): Map<String, Any?>? =
         jdbcTemplate.queryForList("select * from companion_reaction where post_id = ?", postId).firstOrNull()
+
+    /** 회원이 받은 알림의 수. AI 회원은 언제나 0이어야 한다(009 FR-017). */
+    fun notificationCount(memberId: Long): Int {
+        val sql = "select count(*) from notification where receiver_id = ?"
+        return jdbcTemplate.queryForObject(sql, Int::class.java, memberId)!!
+    }
 
     /** 이 글에 AI 친구가 남긴 반응의 기록(남긴 순). 친구 한 명에 한 행이다(012). */
     fun entries(postId: Long): List<Map<String, Any?>> =
@@ -140,6 +150,41 @@ class CompanionFixture(
                 .toInstant(),
         )
     }
+
+    /**
+     * 시계를 아직 아무도 글을 쓰지 않은 날의 [hour]시(한국 시간)로 옮긴다(012 research R20). 컨텍스트들이 DB를 함께 쓰고
+     * 시계를 앞으로 움직이는 테스트가 있어, "한동안 새 글이 없었다"를 만들려면 가장 새 글보다 뒤로 가야 한다. 그날은
+     * AI 친구의 글 기록도 없다.
+     */
+    fun quietDay(hour: Int = 8) {
+        val mutable = checkNotNull(clock) { "시계를 움직이는 컨텍스트가 아닙니다" }
+        val newest = jdbcTemplate.queryForObject("select max(created_at) from posts", Timestamp::class.java)
+        val latestPost = newest?.toInstant()
+        val latest = listOfNotNull(latestPost, mutable.instant()).max()
+        mutable.moveTo(
+            latest
+                .atZone(SEOUL)
+                .toLocalDate()
+                .plusDays(2)
+                .atTime(hour, 0)
+                .atZone(SEOUL)
+                .toInstant(),
+        )
+    }
+
+    /** AI 친구의 글 기록(만든 순). [since]부터 만든 것만 본다. */
+    fun postAttempts(since: Instant): List<Map<String, Any?>> =
+        jdbcTemplate.queryForList(
+            "select * from companion_post where created_at >= ? order by id",
+            Timestamp.from(since),
+        )
+
+    /** AI 친구가 [since]부터 쓴 글(쓴 순). */
+    fun aiPosts(since: Instant): List<Map<String, Any?>> =
+        jdbcTemplate.queryForList(
+            "select * from posts where author_kind = 'AI' and created_at >= ? order by id",
+            Timestamp.from(since),
+        )
 
     /** 지금 날(한국 시간)에 쓴 몫. 기록이 없으면 0이다. */
     fun usedToday(): Int {

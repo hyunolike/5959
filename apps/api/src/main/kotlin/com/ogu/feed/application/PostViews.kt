@@ -14,6 +14,7 @@ internal fun PostSummary.author(members: Map<Long, MemberInfo>): AuthorResponse 
         nickname = members[authorId]?.nickname.orEmpty(),
         jobRole = authorJobRole,
         careerYear = authorCareerYear,
+        ai = authorAi,
     )
 
 /** 분석 행은 글 커밋 뒤 비동기로 생기므로, 아직 없으면 `PENDING`이다. */

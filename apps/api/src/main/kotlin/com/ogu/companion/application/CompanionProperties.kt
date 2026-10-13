@@ -4,6 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Configuration
 import java.time.Duration
+import java.time.LocalTime
 import java.util.random.RandomGenerator
 
 /** `ogu.companion` 설정(009 data-model.md "설정"). */
@@ -27,7 +28,33 @@ data class CompanionProperties(
     /** 한 글에 반응할 AI 친구의 수를 뽑는 무게. 차례대로 1명, 2명, 3명이다(012 research R2). */
     val countWeights: List<Int> = listOf(60, 30, 10),
     val followUp: FollowUp = FollowUp(),
+    val posting: Posting = Posting(),
 ) {
+    /**
+     * AI 친구의 글쓰기(012 data-model.md "설정 (PR 2)"). 반응과 따로 켜고 끈다. 꺼진 채로 나간다.
+     */
+    data class Posting(
+        /** 꺼져 있으면 글 쓰는 주기 작업이 DB를 읽지도 않는다. */
+        val enabled: Boolean = false,
+        /** 이 동안 회원에게 보이는 새 글이 없어야 쓴다. */
+        val quiet: Duration = Duration.ofHours(6),
+        /** 하루(한국 시간)에 올리는 글 수. */
+        val dailyPosts: Int = 3,
+        /** 하루에 AI에 글을 청하는 횟수. 실패한 시도도 든다. */
+        val dailyRequests: Int = 9,
+        /** 글 하나에 청하는 횟수. */
+        val maxAttempts: Int = 3,
+        /** 한국 시간으로 이때부터 쓴다. */
+        val activeFrom: LocalTime = LocalTime.of(8, 0),
+        /** 한국 시간으로 이때부터는 쓰지 않는다. */
+        val activeUntil: LocalTime = LocalTime.of(23, 0),
+        /** 이만큼의 최근 소재는 다시 고르지 않는다. */
+        val recentTopics: Int = 10,
+    ) {
+        /** [time](한국 시간)이 글 쓰는 시간대 안인가. 시작과 끝이 같거나 뒤집혀 있으면 쓰지 않는다. */
+        fun activeAt(time: LocalTime): Boolean = !time.isBefore(activeFrom) && time.isBefore(activeUntil)
+    }
+
     /** 앞 친구의 댓글이 올라간 뒤 다음 친구가 반응하기까지의 간격(012 research R3). */
     data class FollowUp(
         val minGap: Duration = Duration.ofMinutes(3),

@@ -1,6 +1,6 @@
 "use client";
 
-import { CAREER_YEAR_LABELS, JOB_ROLE_LABELS } from "@/entities/member";
+import { authorMetaLabel } from "@/entities/member";
 import { EmotionTag, MonsterSummary } from "@/entities/monster";
 import {
   PostCard,
@@ -36,7 +36,7 @@ export function SimilarPosts({ postId }: { postId: number }) {
           <li key={item.postId}>
             <PostCard
               item={item}
-              authorMeta={`${JOB_ROLE_LABELS[item.author.jobRole]} · ${CAREER_YEAR_LABELS[item.author.careerYear]}`}
+              authorMeta={authorMetaLabel(item.author)}
               renderEmotion={(monster) => (
                 <EmotionTag emotion={monster.emotion} />
               )}

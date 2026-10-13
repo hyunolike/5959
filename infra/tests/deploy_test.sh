@@ -178,6 +178,12 @@ assert "운영 compose가 AI 친구의 수의 무게와 뒤따르는 간격을 a
     && grep -qF "AI_COMPANION_FOLLOW_UP_MIN: \${AI_COMPANION_FOLLOW_UP_MIN:-3m}" <<< "$api_block" \
     && grep -qF "AI_COMPANION_FOLLOW_UP_MAX: \${AI_COMPANION_FOLLOW_UP_MAX:-10m}" <<< "$api_block"'
 
+# 012: AI 친구의 글쓰기는 반응과 따로 켠다. 스위치가 빠지면 서버에서 켤 수 없다
+assert "운영 compose가 AI 친구의 글쓰기 설정을 api에 넘기고 기본은 꺼짐이다" \
+  'grep -qF "AI_COMPANION_POSTING_ENABLED: \${AI_COMPANION_POSTING_ENABLED:-false}" <<< "$api_block" \
+    && grep -qF "AI_COMPANION_POSTING_QUIET: \${AI_COMPANION_POSTING_QUIET:-6h}" <<< "$api_block" \
+    && grep -qF "AI_COMPANION_POSTING_DAILY_POSTS: \${AI_COMPANION_POSTING_DAILY_POSTS:-3}" <<< "$api_block"'
+
 assert "Caddyfile은 알림 스트림 경로를 압축에서 뺀다" \
   'grep -qE "^[[:space:]]*@compressible not path /api/v1/notifications/stream$" "$CADDYFILE" \
     && grep -qE "^[[:space:]]*encode @compressible " "$CADDYFILE" \

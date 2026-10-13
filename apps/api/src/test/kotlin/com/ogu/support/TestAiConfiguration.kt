@@ -4,6 +4,9 @@ import com.ogu.ai.ClassifiedRisk
 import com.ogu.ai.CompanionCommentFailed
 import com.ogu.ai.CompanionCommentInput
 import com.ogu.ai.CompanionCommentWriter
+import com.ogu.ai.CompanionPostFailed
+import com.ogu.ai.CompanionPostInput
+import com.ogu.ai.CompanionPostWriter
 import com.ogu.ai.Embedder
 import com.ogu.ai.EmotionAnalysisFailed
 import com.ogu.ai.EmotionAnalyzer
@@ -13,6 +16,7 @@ import com.ogu.ai.WeeklyLetterInput
 import com.ogu.ai.WeeklyLetterWriter
 import com.ogu.ai.infrastructure.EmotionResponseParser
 import com.ogu.ai.infrastructure.FakeCompanionCommentWriter
+import com.ogu.ai.infrastructure.FakeCompanionPostWriter
 import com.ogu.ai.infrastructure.FakeEmbedder
 import com.ogu.ai.infrastructure.FakeEmotionAnalyzer
 import com.ogu.ai.infrastructure.FakeRiskClassifier
@@ -22,6 +26,7 @@ import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Primary
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
@@ -56,10 +61,56 @@ class TestAiConfiguration {
         return ScriptedCompanionCommentWriter(fake)
     }
 
+    /** AI 친구의 글도 가짜가 쓴다(012 research R15). 테스트가 답과 실패를 정할 수 있다. */
+    @Bean
+    @Primary
+    fun scriptedCompanionPostWriter(): ScriptedCompanionPostWriter {
+        val fake = FakeCompanionPostWriter()
+        return ScriptedCompanionPostWriter(fake)
+    }
+
     /** 한 글에 반응할 AI 친구의 수를 테스트가 정한다(012 research R20). 정하지 않으면 한 명이라 009의 테스트가 그대로다. */
     @Bean
     @Primary
     fun scriptedReactionCountPicker(): ScriptedReactionCountPicker = ScriptedReactionCountPicker()
+}
+
+/**
+ * [FakeCompanionPostWriter]에 테스트용 손잡이를 단 것. 쓰는 중인 글 기록은 한 번에 하나라 손잡이도 하나씩이다. [answer]를
+ * 정해 두면 검사 없이 그 글을 그대로 돌려주고(올리기 전 검사를 시험할 때), [failure]를 정해 두면 그 분류로 실패한다.
+ * 쓴 테스트가 끝에 [reset]으로 되돌린다.
+ */
+class ScriptedCompanionPostWriter(
+    private val delegate: CompanionPostWriter,
+) : CompanionPostWriter {
+    @Volatile
+    var answer: String? = null
+
+    @Volatile
+    var failure: EmotionAnalysisFailed.Kind? = null
+
+    @Volatile
+    var beforeAnswer: (() -> Unit)? = null
+    val inputs = CopyOnWriteArrayList<CompanionPostInput>()
+
+    override fun write(
+        key: String,
+        input: CompanionPostInput,
+    ): String {
+        inputs += input
+        beforeAnswer?.also { beforeAnswer = null }?.invoke()
+        failure?.let { throw CompanionPostFailed(it) }
+        return answer ?: delegate.write(key, input)
+    }
+
+    val calls: Int get() = inputs.size
+
+    fun reset() {
+        answer = null
+        failure = null
+        beforeAnswer = null
+        inputs.clear()
+    }
 }
 
 /**
