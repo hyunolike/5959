@@ -56,7 +56,11 @@ export function NotificationItem({
       <span
         className={cn(
           "text-body-sm break-words",
-          href === null ? "text-fg-subtle italic" : "text-fg-muted",
+          href === null
+            ? "text-fg-subtle italic"
+            : read
+              ? "text-fg-subtle"
+              : "text-fg-muted",
         )}
       >
         {post

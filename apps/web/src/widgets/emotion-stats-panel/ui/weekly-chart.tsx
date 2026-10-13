@@ -76,6 +76,20 @@ export function WeeklyChart({
           );
         })}
       </ol>
+      {/*
+        막대의 색만으로는 감정별 수를 읽기 어렵고(밝은 색은 바탕과 3:1에 못 미친다) title은 마우스에서만 보인다.
+        터치와 저시력 사용자가 값을 볼 수 있게 주별 수를 글자로 펼쳐 볼 수 있게 한다.
+      */}
+      <details className="mt-3">
+        <summary className="rounded-inline text-label text-fg-muted inline-flex min-h-11 cursor-pointer items-center font-medium">
+          주별 수 보기
+        </summary>
+        <ul className="text-label text-fg-muted mt-1 flex flex-col gap-1 tabular-nums">
+          {weekly.map((week) => (
+            <li key={week.weekStart}>{weekSummary(week, labels)}</li>
+          ))}
+        </ul>
+      </details>
       {/* 표의 최소 콘텐츠 폭이 숨김 영역 밖에서 페이지를 넓히지 않도록 컨테이너를 자른다. */}
       <div className="sr-only">
         <table>

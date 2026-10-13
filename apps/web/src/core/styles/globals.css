@@ -30,7 +30,10 @@
   color-scheme: light;
 }
 
-/* 감정 색. 몬스터 그림에서 뽑았다. 이 속성이 붙은 요소 안에서 emotion 유틸리티가 이 값이 된다. */
+/*
+ * 감정 색. 몬스터 그림의 색에서 출발했고, 진한 색은 차트에서 나란히 놓여도 색각 이상에서 구분되게
+ * 밝기를 벌렸다(DESIGN_SYSTEM.md). 이 속성이 붙은 요소 안에서 emotion 유틸리티가 이 값이 된다.
+ */
 [data-emotion="ANXIETY"] {
   --emotion: #6d28d9;
   --emotion-tint: #f1ebff;

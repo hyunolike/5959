@@ -118,4 +118,16 @@ describe("NotificationItem", () => {
       vi.useRealTimers();
     }
   });
+
+  it("DS-US3-AC1 읽은 알림은 글 앞부분도 제목보다 진하지 않다", () => {
+    render(
+      <NotificationItem
+        notification={notification({ read: true })}
+        onSelect={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("내일 발표가 걱정돼요")).toHaveClass(
+      "text-fg-subtle",
+    );
+  });
 });

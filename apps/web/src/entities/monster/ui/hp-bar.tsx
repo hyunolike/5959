@@ -56,10 +56,13 @@ export function HpBar({
       <div
         className={cn(
           "bg-emotion h-full transition-[width] duration-200 motion-reduce:transition-none",
-          size === "lg" &&
-            percent > 0 &&
+          // 채움의 끝에 선을 둔다. 작은 막대는 감정의 글자 색이라, 옅은 감정 색(외로움, 자기비하)이
+          // 회색 트랙과 잘 구분되지 않아도 남은 양이 보인다.
+          percent > 0 &&
             percent < 100 &&
-            "border-game-line border-r-2",
+            (size === "lg"
+              ? "border-game-line border-r-2"
+              : "border-emotion-fg border-r-2"),
         )}
         style={{ width: `${percent}%` }}
       />

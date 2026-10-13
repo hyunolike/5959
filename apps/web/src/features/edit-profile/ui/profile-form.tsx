@@ -136,7 +136,7 @@ export function ProfileForm({ member }: { member: MemberProfile }) {
                 "text-body-sm",
                 settledNicknameResult?.available
                   ? "text-fg font-medium"
-                  : "text-fg-subtle",
+                  : "text-danger",
               )}
             >
               {nicknameHint}
@@ -186,11 +186,12 @@ export function ProfileForm({ member }: { member: MemberProfile }) {
           </p>
         ) : null}
         <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
-          <Button asChild variant="secondary">
+          <Button asChild variant="secondary" size="lg">
             <Link href={MY_PAGE}>취소</Link>
           </Button>
           <Button
             type="submit"
+            size="lg"
             disabled={!changed || isSubmitting}
             aria-busy={isSubmitting}
             aria-describedby={!changed ? "profile-save-hint" : undefined}

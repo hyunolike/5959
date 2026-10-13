@@ -130,7 +130,7 @@ export function OnboardingForm({ next }: OnboardingFormProps) {
                 "text-label",
                 settledNicknameResult?.available
                   ? "text-fg font-medium"
-                  : "text-fg-subtle",
+                  : "text-danger",
               )}
             >
               {nicknameHint}

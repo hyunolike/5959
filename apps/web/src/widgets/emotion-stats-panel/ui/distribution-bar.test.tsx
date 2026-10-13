@@ -138,4 +138,27 @@ describe("DistributionBar", () => {
       .parentElement as HTMLElement;
     expect(bar).toHaveClass("gap-0.5", "rounded-full", "overflow-hidden");
   });
+
+  it("US4-AC1 한 감정만 있어도 막대가 그 한 조각으로 그려진다", () => {
+    render(
+      <DistributionBar
+        distribution={distribution([
+          [4, 100],
+          [0, 0],
+          [0, 0],
+          [0, 0],
+          [0, 0],
+        ])}
+        labels={LABELS}
+      />,
+    );
+    const segments = screen.getAllByTestId("distribution-segment");
+    expect(segments).toHaveLength(1);
+    expect(segments[0]).toHaveStyle({ width: "100%" });
+    expect(
+      within(screen.getByRole("list", { name: "감정 분포" })).getAllByRole(
+        "listitem",
+      )[0],
+    ).toHaveTextContent("불안4마리100%");
+  });
 });
