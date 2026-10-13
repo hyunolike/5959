@@ -28,6 +28,7 @@ import {
   GameButton,
   IconButton,
   ListSkeleton,
+  Select,
   Spinner,
   TextField,
   Textarea,
@@ -178,6 +179,16 @@ export default function DesignCatalogPage() {
           error="이메일 형식이 아니에요"
         />
         <TextField label="잠긴 입력" defaultValue="바꿀 수 없어요" disabled />
+        <label className="flex flex-col gap-2">
+          <span className="text-label text-fg-muted font-medium">직군</span>
+          <Select defaultValue="">
+            <option value="" disabled>
+              직군을 선택하세요
+            </option>
+            <option value="DEVELOPMENT">개발</option>
+            <option value="DESIGN">디자인</option>
+          </Select>
+        </label>
         <label className="flex flex-col gap-2">
           <span className="text-label text-fg-muted font-medium">고민</span>
           <Textarea placeholder="요즘 마음을 무겁게 하는 일을 적어 주세요" />
