@@ -67,7 +67,7 @@ description: "Task list for 009-ai-companions (AI 친구)"
 
 - [x] T029 [P] 인수 조건 31개가 모두 테스트 이름이나 quickstart에 있는지 확인한다 **구현 메모**: 31개 모두 테스트 이름에 있다(API 테스트, 웹 단위 테스트, e2e 스펙). `US3-AC8`과 `US4-AC4`의 실제 문장은 `CompanionCommentLiveTest`의 출력을 사람이 읽어 확인한다.
 - [x] T030 [P] 문서: `apps/api/AGENTS.md`(Companion 절, `member`의 AI 회원), `docs/architecture/overview.md`(5.1의 표와 그래프, AI 친구 절), `apps/web/docs/DESIGN_SYSTEM.md`(AI 친구 표시) **구현 메모**: `docs/architecture/overview.md`는 5.1의 표와 그래프, 5.10을 고쳤다. `apps/web/docs/DESIGN_SYSTEM.md`는 고치지 않았다(웹은 이 작업의 범위 밖이다).
-- [ ] T031 `cd apps/api && ./gradlew clean build`, 웹의 `typecheck`, `lint`, `lint:fsd`, `format:check`, `test`, e2e. quickstart의 수동 시나리오 24개를 로컬에서 실행한다
+- [ ] T031 `cd apps/api && ./gradlew clean build`, 웹의 `typecheck`, `lint`, `lint:fsd`, `format:check`, `test`, e2e. quickstart의 수동 시나리오 24개를 로컬에서 실행한다 **구현 메모(진행 중)**: `./gradlew clean build`는 통과한다(테스트 1,209개, 실패 0, 건너뜀 6. 건너뛴 것은 `OGU_RUN_AI_EVAL`로 켜는 실제 모델 테스트다). 웹의 `typecheck`, `lint`, `lint:fsd`, `format:check`도 통과한다. 인프라 테스트(`infra/gcp/tests`, `infra/tests/deploy_test.sh`, `terraform test`)도 통과한다. e2e(`ai-companions.spec.ts`)와 quickstart의 수동 시나리오는 아직 돌리지 않았다. 같은 기기에서 다른 컨테이너가 많이 떠 있으면 전체 테스트의 뒤쪽 컨텍스트에서 Postgres 컨테이너가 뜨지 못하는 일이 있었다(코드와 무관, 따로 돌리면 통과).
 - [ ] T032 별도 검토자가 브랜치 전체를 본다. 지적을 고친 뒤 `main`으로 PR을 연다(저장소 소유자 확인 뒤)
 
 ## Dependencies
