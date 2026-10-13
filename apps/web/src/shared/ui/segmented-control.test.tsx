@@ -42,9 +42,11 @@ describe("SegmentedControl", () => {
     );
     expect(screen.getByRole("button", { name: "최신순" })).toHaveClass(
       "h-8",
-      "before:-inset-y-1.5",
+      "before:-inset-y-[7px]",
       "aria-pressed:bg-surface",
       "aria-pressed:shadow-raised",
+      "border",
+      "border-transparent",
     );
   });
 

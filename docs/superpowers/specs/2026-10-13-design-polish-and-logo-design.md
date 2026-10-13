@@ -12,13 +12,13 @@
 
 GitHub의 Nexters, depromeet, YAPP-Github, dnd-side-project, sopt-makers에서 2024~2026년의 웹 저장소 13개를 읽었다. 디자인 시스템 전용 저장소는 없고 토큰과 부품은 서비스 저장소 안에 있다.
 
-| 저장소 | 본 것 |
-| --- | --- |
-| `Nexters/pallang-client` | Next 16과 Tailwind v4, 댓글과 공감이 있는 커뮤니티에 마스코트. 토큰, 움직임, 하단 메뉴, 시트, 빈 화면 부품 |
-| `Nexters/yogieat` | 색, 모서리, 간격, 그림자, 글자를 파일로 나눈 토큰 |
-| `Nexters/PomoNyang-fe` | 캐릭터를 상태별로 나눠 쓰는 방식 |
-| `depromeet/18th-team2-web` | 캐릭터 그림의 이름 규칙, 캐릭터가 든 빈 화면 |
-| `depromeet/layer` | 공용 부품의 구성 |
+| 저장소                     | 본 것                                                                                                      |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `Nexters/pallang-client`   | Next 16과 Tailwind v4, 댓글과 공감이 있는 커뮤니티에 마스코트. 토큰, 움직임, 하단 메뉴, 시트, 빈 화면 부품 |
+| `Nexters/yogieat`          | 색, 모서리, 간격, 그림자, 글자를 파일로 나눈 토큰                                                          |
+| `Nexters/PomoNyang-fe`     | 캐릭터를 상태별로 나눠 쓰는 방식                                                                           |
+| `depromeet/18th-team2-web` | 캐릭터 그림의 이름 규칙, 캐릭터가 든 빈 화면                                                               |
+| `depromeet/layer`          | 공용 부품의 구성                                                                                           |
 
 여러 저장소에서 되풀이되는 것만 가져온다.
 
@@ -51,32 +51,32 @@ GitHub의 Nexters, depromeet, YAPP-Github, dnd-side-project, sopt-makers에서 2
 
 정본은 `apps/web/src/core/styles/globals.css`다.
 
-| 이름 | 지금 | 바뀐 뒤 | 쓰임 |
-| --- | --- | --- | --- |
-| `radius-inline` | 8px | 8px | 작은 표시 |
-| `radius-control-sm` | 없음 | 12px | 세그먼트, 40px 높이의 버튼 |
-| `radius-control` | 14px | 16px | 버튼, 입력, 썸네일 |
-| `radius-surface` | 20px | 24px | 시트, 무대, 하단 메뉴 |
-| `shadow-float` | 없음 | `0 8px 24px rgb(23 23 28 / 0.18)` | 토스트 |
-| `shadow-raised` | 없음 | `0 1px 2px rgb(23 23 28 / 0.08)` | 세그먼트에서 고른 칸 |
-| `color-kakao` | 없음 | `#fee500` | 카카오 로그인 버튼의 바탕(카카오 지정 색). 다른 곳에 쓰지 않는다 |
+| 이름                | 지금 | 바뀐 뒤                           | 쓰임                                                             |
+| ------------------- | ---- | --------------------------------- | ---------------------------------------------------------------- |
+| `radius-inline`     | 8px  | 8px                               | 작은 표시                                                        |
+| `radius-control-sm` | 없음 | 12px                              | 세그먼트, 40px 높이의 버튼                                       |
+| `radius-control`    | 14px | 16px                              | 버튼, 입력, 썸네일                                               |
+| `radius-surface`    | 20px | 24px                              | 시트, 무대, 하단 메뉴                                            |
+| `shadow-float`      | 없음 | `0 8px 24px rgb(23 23 28 / 0.18)` | 토스트                                                           |
+| `shadow-raised`     | 없음 | `0 1px 2px rgb(23 23 28 / 0.08)`  | 세그먼트에서 고른 칸                                             |
+| `color-kakao`       | 없음 | `#fee500`                         | 카카오 로그인 버튼의 바탕(카카오 지정 색). 다른 곳에 쓰지 않는다 |
 
 - 누름: `.ogu-pressable`에 `transform: scale(0.97)`을 `--duration-fast`로 더한다. `prefers-reduced-motion`이면 크기를 바꾸지 않는다. 게임 버튼은 지금의 눌림(아래로 내려감)을 유지한다.
 - 높이: 작은 것 40px(`h-10`), 기본 48px(`h-12`), 큰 것 56px(`h-14`). 지금의 44px과 52px을 이 세 단계로 옮긴다. 보이는 높이가 40px인 것은 `::before`로 누르는 영역을 44px로 넓힌다.
 
 ## 공용 부품
 
-| 부품 | 바뀌는 것 |
-| --- | --- |
-| `Button` | `secondary`를 옅은 채움(`bg-surface-sunken`)으로 바꾼다. 지금의 `subtle`과 같아지므로 `subtle`을 없애고 쓰던 곳을 `secondary`로 옮긴다. 테두리가 꼭 필요한 곳(구글 로그인)에는 `outline`을 둔다. 크기는 `sm` 40, `md` 48, `lg` 56 |
-| `Chip` | 고르지 않은 것은 옅은 채움, 고른 것은 잉크 채움. 테두리를 없앤다. 높이 40px |
-| `SegmentedControl` (새로) | 둘이나 셋 가운데 하나를 고른다(정렬). 옅은 바탕 안에서 고른 칸만 흰 면과 `shadow-raised`. `role="group"`과 `aria-pressed` |
-| `Input`, `Textarea`, `Select` | **테두리를 유지한다.** 시안은 채움만 그렸지만, 입력란의 경계는 흰 바탕과 3:1이 넘어야 한다(WCAG 1.4.11). 지금의 `line-strong`(3.4:1) 테두리를 두고 모서리와 높이(56px)만 맞춘다. 초점에서는 테두리가 잉크 2px이 된다 |
-| `EmptyState` (새로) | 그림(132px), 제목, 설명, 버튼 하나. 피드, 알림, 도감, 내 활동, 글 상세의 빈 화면과 오류가 이것을 쓴다. 오류일 때 문구는 `role="alert"` |
-| `ConfirmDialog` | 시트일 때 위쪽 모서리 24px과 손잡이(장식, `aria-hidden`). 버튼 두 개는 같은 너비로 나란히 |
-| `Toaster` | 잉크 바탕의 띠. 하단 메뉴 위 16px에 뜨고 `shadow-float`. 되돌리기 같은 버튼은 띠 안 오른쪽 |
-| `PageHeader` (새로) | 안쪽 화면의 머리말. 왼쪽 뒤로 가기(44px), 가운데 제목(17px 굵게). 글 상세, 알림, 글쓰기, AI 친구 안내가 쓴다 |
-| `BrandMark` | 새 로고의 가로형 SVG 하나로 바꾼다. 아래 "로고" 참고 |
+| 부품                          | 바뀌는 것                                                                                                                                                                                                                         |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Button`                      | `secondary`를 옅은 채움(`bg-surface-sunken`)으로 바꾼다. 지금의 `subtle`과 같아지므로 `subtle`을 없애고 쓰던 곳을 `secondary`로 옮긴다. 테두리가 꼭 필요한 곳(구글 로그인)에는 `outline`을 둔다. 크기는 `sm` 40, `md` 48, `lg` 56 |
+| `Chip`                        | 고르지 않은 것은 옅은 채움, 고른 것은 잉크 채움. 테두리를 없앤다. 높이 40px                                                                                                                                                       |
+| `SegmentedControl` (새로)     | 둘이나 셋 가운데 하나를 고른다(정렬). 옅은 바탕 안에서 고른 칸만 흰 면과 `shadow-raised`. `role="group"`과 `aria-pressed`                                                                                                         |
+| `Input`, `Textarea`, `Select` | **테두리를 유지한다.** 시안은 채움만 그렸지만, 입력란의 경계는 흰 바탕과 3:1이 넘어야 한다(WCAG 1.4.11). 지금의 `line-strong`(3.4:1) 테두리를 두고 모서리와 높이(56px)만 맞춘다. 초점에서는 테두리가 잉크 2px이 된다              |
+| `EmptyState` (새로)           | 그림(132px), 제목, 설명, 버튼 하나. 피드, 알림, 도감, 내 활동, 글 상세의 빈 화면과 오류가 이것을 쓴다. 오류일 때 문구는 `role="alert"`                                                                                            |
+| `ConfirmDialog`               | 시트일 때 위쪽 모서리 24px과 손잡이(장식, `aria-hidden`). 버튼 두 개는 같은 너비로 나란히                                                                                                                                         |
+| `Toaster`                     | 잉크 바탕의 띠. 하단 메뉴 위에 뜨고 `shadow-float`. 시안에 그린 되돌리기 버튼은 넣지 않는다(되돌릴 동작이 없다)                                                                                                                   |
+| `PageHeader` (새로)           | 안쪽 화면의 머리말. 왼쪽 뒤로 가기(44px), 가운데 제목(17px 굵게). 글 상세, 알림, 글쓰기, AI 친구 안내가 쓴다                                                                                                                      |
+| `BrandMark`                   | 새 로고의 가로형 SVG 하나로 바꾼다. 아래 "로고" 참고                                                                                                                                                                              |
 
 부품을 바꾸면 `docs/DESIGN_SYSTEM.md`의 모양과 컴포넌트 표, 디자인 카탈로그(`ENABLE_DESIGN_CATALOG`)를 함께 고친다.
 
@@ -137,14 +137,14 @@ GitHub의 Nexters, depromeet, YAPP-Github, dnd-side-project, sopt-makers에서 2
 
 **한 벌**
 
-| 파일 | 쓰임 |
-| --- | --- |
-| `public/brand/ogu-logo-symbol.svg` | 심볼. 정사각형 |
-| `public/brand/ogu-logo-wordmark.svg` | 글자 |
-| `public/brand/ogu-logo.svg` | 가로형. `BrandMark`가 쓴다 |
-| `src/app/icon.svg`, `public/brand/apple-touch-icon.png` | 파비콘과 애플 아이콘 |
-| `public/pwa/ogu-logo-v2-{192,512,maskable-512}.png` | 설치 아이콘. `scripts/generate-brand-icons.mjs`가 SVG에서 만든다. 파일 이름의 판을 올려 설치된 기기의 아이콘이 바뀌게 한다 |
-| `src/app/opengraph-image.png` | 공유 이미지(1200×630). 로고와 한 줄 소개 |
+| 파일                                                    | 쓰임                                                                                                                       |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `public/brand/ogu-logo-symbol.svg`                      | 심볼. 정사각형                                                                                                             |
+| `public/brand/ogu-logo-wordmark.svg`                    | 글자                                                                                                                       |
+| `public/brand/ogu-logo.svg`                             | 가로형. `BrandMark`가 쓴다                                                                                                 |
+| `src/app/icon.svg`, `public/brand/apple-touch-icon.png` | 파비콘과 애플 아이콘                                                                                                       |
+| `public/pwa/ogu-logo-v2-{192,512,maskable-512}.png`     | 설치 아이콘. `scripts/generate-brand-icons.mjs`가 SVG에서 만든다. 파일 이름의 판을 올려 설치된 기기의 아이콘이 바뀌게 한다 |
+| `src/app/opengraph-image.png`                           | 공유 이미지(1200×630). 로고와 한 줄 소개                                                                                   |
 
 옛 파일(`ogu-wordmark.svg`, `ogu-lettering-v1-*`, `icon-*.png`)은 쓰는 곳을 옮긴 뒤 지운다. `ogu-symbol.webp`는 다른 화면이 쓰는지 확인하고 정한다.
 
@@ -158,12 +158,12 @@ codex가 만든 것은 내가 그려진 모습을 확인한 뒤에 넣는다.
 
 ## 나누는 순서
 
-| PR | 내용 |
-| --- | --- |
-| 1 | 토큰과 공용 부품(`Button`, `Chip`, `SegmentedControl`, 입력, `EmptyState`, `ConfirmDialog`, `Toaster`, `PageHeader`), 디자인 문서와 카탈로그 |
-| 2 | 화면 틀, 홈, 글 상세 |
-| 3 | 로그인 첫 화면 |
-| 4 | 새 로고 한 벌과 아이콘, 공유 이미지 |
+| PR  | 내용                                                                                                                                         |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | 토큰과 공용 부품(`Button`, `Chip`, `SegmentedControl`, 입력, `EmptyState`, `ConfirmDialog`, `Toaster`, `PageHeader`), 디자인 문서와 카탈로그 |
+| 2   | 화면 틀, 홈, 글 상세                                                                                                                         |
+| 3   | 로그인 첫 화면                                                                                                                               |
+| 4   | 새 로고 한 벌과 아이콘, 공유 이미지                                                                                                          |
 
 PR 1이 들어간 뒤에 2와 3을 한다. 4는 로고를 고른 뒤 어느 때든 할 수 있다. 모두 웹만 바꾸므로 병합하면 바로 배포된다. API 배포는 필요 없다.
 

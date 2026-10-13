@@ -164,7 +164,19 @@ body {
       transform var(--duration-fast) ease;
   }
   .ogu-pressable:active:not(:disabled):not([aria-disabled="true"]) {
-    transform: scale(0.98);
+    transform: scale(0.97);
+  }
+}
+
+/*
+ * 칩과 세그먼트는 고른 것을 채움으로 알린다. 고대비 모드에서는 채움이 시스템 색으로 바뀌어 사라지므로
+ * 고른 것에 시스템의 강조색을 준다. 테두리는 부품이 가진 투명 테두리가 그대로 보인다.
+ */
+@media (forced-colors: active) {
+  .ogu-pressable[aria-pressed="true"] {
+    forced-color-adjust: none;
+    background-color: Highlight;
+    color: HighlightText;
   }
 }
 

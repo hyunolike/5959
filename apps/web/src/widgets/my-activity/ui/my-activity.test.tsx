@@ -160,7 +160,7 @@ describe("MyActivity", () => {
       "tab=reports",
       "주간 리포트",
       "/api/members/me/weekly-reports",
-      "아직 받은 리포트가 없어요. 글을 쓰면 다음 월요일에 지난주 리포트가 와요.",
+      "아직 받은 리포트가 없어요.",
     ],
   ])(
     'US3-AC4 탭(%s)이 비면 안내와 "글쓰기", "피드 보기" 버튼이 보인다',
@@ -171,6 +171,12 @@ describe("MyActivity", () => {
       renderActivity();
 
       expect(await screen.findByText(message)).toBeInTheDocument();
+      if (search === "tab=reports") {
+        // 언제 오는지는 제목이 아니라 설명으로 적는다.
+        expect(
+          screen.getByText("글을 쓰면 다음 월요일에 지난주 리포트가 와요."),
+        ).toHaveClass("text-fg-subtle");
+      }
       expect(selectedTab()).toHaveTextContent(label);
       const panel = screen.getByRole("tabpanel", { name: label });
       expect(

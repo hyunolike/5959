@@ -51,7 +51,7 @@ export function HomeInstall() {
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="min-h-11 px-2"
+                  className="px-2"
                   disabled={state.pending}
                   aria-busy={state.pending}
                   onClick={() =>

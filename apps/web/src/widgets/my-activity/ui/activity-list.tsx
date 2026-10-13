@@ -24,6 +24,7 @@ export function ActivityList<T>({
   query,
   label,
   emptyMessage,
+  emptyDescription,
   keyOf,
   renderItem,
   layout = "rows",
@@ -31,6 +32,8 @@ export function ActivityList<T>({
   query: UseInfiniteQueryResult<InfiniteData<ActivityPage<T>>>;
   label: string;
   emptyMessage: string;
+  /** 빈 안내의 제목 아래에 덧붙일 한 줄. */
+  emptyDescription?: string;
   keyOf: (item: T) => number;
   renderItem: (item: T) => ReactNode;
   layout?: "rows" | "cards";
@@ -78,7 +81,11 @@ export function ActivityList<T>({
 
   if (items.length === 0) {
     return (
-      <EmptyState imageSrc="/brand/ogu-hello.webp" title={emptyMessage}>
+      <EmptyState
+        imageSrc="/brand/ogu-hello.webp"
+        title={emptyMessage}
+        description={emptyDescription}
+      >
         <Button asChild>
           <Link href="/write">글쓰기</Link>
         </Button>

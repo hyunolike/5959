@@ -135,6 +135,18 @@ describe("모양 토큰", () => {
   });
 });
 
+describe("고대비 모드", () => {
+  it("POLISH-AC5 채움으로 고른 것을 알리는 부품은 고대비에서 시스템 강조색을 쓴다", () => {
+    const block = css.match(
+      /@media \(forced-colors: active\)\s*\{([\s\S]*?)\n\}/,
+    );
+    expect(block, "forced-colors 블록").not.toBeNull();
+    expect(block![1]).toMatch(/\.ogu-pressable\[aria-pressed="true"\]/);
+    expect(block![1]).toMatch(/background-color: Highlight;/);
+    expect(block![1]).toMatch(/color: HighlightText;/);
+  });
+});
+
 describe("옛 토큰", () => {
   it("DS-US1-AC1 옛 토큰 이름이 globals.css에 남아 있지 않다", () => {
     expect(css).not.toMatch(

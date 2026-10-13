@@ -91,7 +91,7 @@ function Toast({
 
   return (
     <div
-      className="rounded-control bg-action text-on-action shadow-float pointer-events-auto flex w-full items-start"
+      className="rounded-control bg-action text-on-action shadow-float pointer-events-auto flex w-full items-start border border-transparent"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onFocus={() => setFocused(true)}

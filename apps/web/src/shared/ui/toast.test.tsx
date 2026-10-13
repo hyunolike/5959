@@ -57,7 +57,8 @@ describe("Toast", () => {
       "shadow-float",
       "rounded-control",
     );
-    expect(toast).not.toHaveClass("border");
+    // 고대비 모드에서는 바탕과 그림자가 사라진다. 그때 보일 투명 테두리를 둔다.
+    expect(toast).toHaveClass("border", "border-transparent");
   });
 
   it("POLISH-AC10 잉크 바탕 위의 초점 표시는 글자 색 외곽선이다", () => {

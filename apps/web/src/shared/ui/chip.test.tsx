@@ -25,7 +25,7 @@ describe("Chip", () => {
     render(<Chip pressed={false}>디자인</Chip>);
     expect(screen.getByRole("button", { name: "디자인" })).toHaveClass(
       "h-10",
-      "before:-inset-y-0.5",
+      "before:-inset-y-[3px]",
     );
   });
 
@@ -38,6 +38,7 @@ describe("Chip", () => {
       "aria-pressed:bg-action",
       "aria-pressed:text-on-action",
     );
-    expect(chip).not.toHaveClass("border");
+    // 고대비 모드에서는 채움이 사라진다. 그때 보일 투명 테두리를 둔다.
+    expect(chip).toHaveClass("border", "border-transparent");
   });
 });

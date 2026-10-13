@@ -129,6 +129,17 @@ test("DS-US2-AC4 대화상자와 토스트를 열어 볼 수 있다", async ({ p
   });
   expect(strip.background).toBe("rgb(23, 23, 28)");
   expect(strip.shadow).not.toBe("none");
+  // 잉크 바탕 위에서는 초점 외곽선이 글자 색(흰색)이어야 보인다. 키보드로 초점을 옮겨 본다.
+  const toastButton = page.getByRole("button", { name: "새 댓글이 달렸어요" });
+  for (let step = 0; step < 6; step++) {
+    await page.keyboard.press("Tab");
+    if (await toastButton.evaluate((button) => button.matches(":focus"))) {
+      break;
+    }
+  }
+  await expect(toastButton).toBeFocused();
+  await expect(toastButton).toHaveCSS("outline-color", "rgb(255, 255, 255)");
+  await expect(toastButton).toHaveCSS("outline-style", "solid");
 
   // POLISH-AC9: 시트는 손잡이가 있고 버튼 두 개의 너비가 같다.
   await page.getByRole("button", { name: "시트 열기" }).click();

@@ -25,7 +25,28 @@ describe("Button", () => {
     render(<Button variant="secondary">취소</Button>);
     const button = screen.getByRole("button", { name: "취소" });
     expect(button).toHaveClass("bg-surface-sunken", "text-fg");
-    expect(button).not.toHaveClass("border");
+    expect(button).not.toHaveClass("border-line-strong");
+  });
+
+  it("POLISH-AC3 잠긴 버튼은 흐려져 옅은 채움의 보조 버튼과 구분된다", () => {
+    render(
+      <>
+        <Button variant="secondary">취소</Button>
+        <Button disabled>저장</Button>
+      </>,
+    );
+    expect(screen.getByRole("button", { name: "저장" })).toHaveClass(
+      "disabled:opacity-60",
+    );
+    expect(screen.getByRole("button", { name: "취소" })).not.toBeDisabled();
+  });
+
+  it("POLISH-AC3 채움 버튼은 고대비 모드에서 보일 투명 테두리를 가진다", () => {
+    render(<Button variant="secondary">취소</Button>);
+    expect(screen.getByRole("button", { name: "취소" })).toHaveClass(
+      "border",
+      "border-transparent",
+    );
   });
 
   it("POLISH-AC3 테두리 버튼은 outline이다", () => {
@@ -51,7 +72,7 @@ describe("Button", () => {
     expect(screen.getByRole("button", { name: "확인" })).toHaveClass(
       "relative",
       "before:absolute",
-      "before:-inset-y-0.5",
+      "before:-inset-y-[3px]",
       "rounded-control-sm",
     );
   });

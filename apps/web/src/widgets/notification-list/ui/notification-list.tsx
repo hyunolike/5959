@@ -117,7 +117,16 @@ export function NotificationList() {
         imageSrc="/brand/ogu-listen.webp"
         title="알림을 불러오지 못했습니다."
         description="잠시 후 다시 시도해주세요."
-      />
+      >
+        <Button
+          variant="secondary"
+          disabled={isFetching}
+          aria-busy={isFetching}
+          onClick={() => void refetch()}
+        >
+          다시 불러오기
+        </Button>
+      </EmptyState>
     );
   }
 

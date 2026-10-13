@@ -46,7 +46,7 @@ export function CollectionSummary({
           ) : (
             <span
               key={emotion}
-              className="border-line-strong text-body-sm text-fg-subtle inline-flex h-9 shrink-0 items-center rounded-full border border-dashed px-3.5 tabular-nums"
+              className="border-line-strong text-body-sm text-fg-subtle inline-flex h-10 shrink-0 items-center rounded-full border border-dashed px-4 tabular-nums"
             >
               {emotionLabel(emotion)} 0
             </span>
