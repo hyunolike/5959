@@ -81,8 +81,8 @@ export function AttackButton({
           });
         }}
         className={cn(
-          // 쿨다운 동안에는 눌린 채로 내려가 있다가 다시 올라온다.
-          recharging && "translate-y-1 shadow-none",
+          // 쿨다운 동안에는 눌린 채로 내려가 있다가 다시 올라온다. 움직임 줄이기에서는 그림자만 바뀐다.
+          recharging && "translate-y-1 shadow-none motion-reduce:translate-y-0",
           // 레이드가 쉬는 중이면 회색으로 잠긴다.
           disabled &&
             "border-line-strong bg-surface-sunken text-fg-subtle cursor-not-allowed shadow-none active:translate-y-0",

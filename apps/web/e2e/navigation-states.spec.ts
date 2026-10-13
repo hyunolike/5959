@@ -60,6 +60,19 @@ for (const width of [320, 390, 430, 1440]) {
     const content = page.getByRole("textbox", { name: "고민", exact: true });
     await content.fill("로컬 검증용 입력입니다.");
     await expect(content).toHaveValue("로컬 검증용 입력입니다.");
+    // DS-US2-AC1: 댓글 말투는 칩 네 개이고 좁은 화면에서도 화면 안에 있다.
+    for (const tone of [
+      "대신 욕해주기",
+      "무조건 위로해주기",
+      "따뜻한 조언해주기",
+      "웃겨주기",
+    ]) {
+      const box = await page
+        .getByRole("button", { name: tone, exact: true })
+        .boundingBox();
+      expect(box!.height).toBe(36);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(width);
+    }
     const sizes = await nav.getByRole("link").evaluateAll((nodes) =>
       nodes.map((el) => ({
         width: el.getBoundingClientRect().width,

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const member = {
   id: 2,
@@ -27,6 +27,38 @@ function raidState(hp: number) {
   };
 }
 
+/** 로그인한 회원으로 보이게 하고 레이드 응답을 고정한다. 그 밖의 API는 쓰지 않는다. */
+async function mockApi(page: Page, raid: unknown) {
+  await page.setExtraHTTPHeaders({
+    cookie: "__Host-ogu_rt=local-review; __Host-ogu_ob=1",
+  });
+  await page.route("**/api/**", async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    const data =
+      path === "/api/members/me"
+        ? member
+        : path === "/api/raid"
+          ? raid
+          : path === "/api/notifications/unread-count"
+            ? { count: 0 }
+            : undefined;
+    await route.fulfill({
+      status: data === undefined ? 503 : 200,
+      json:
+        data === undefined
+          ? {
+              success: false,
+              data: null,
+              error: {
+                code: "TEST_UNAVAILABLE",
+                message: "실시간 연결은 로컬 검증에서 사용하지 않습니다.",
+              },
+            }
+          : { success: true, data, error: null },
+    });
+  });
+}
+
 for (const viewport of [
   { width: 1440, height: 1000 },
   { width: 390, height: 844 },
@@ -36,34 +68,7 @@ for (const viewport of [
     page,
   }, testInfo) => {
     await page.setViewportSize(viewport);
-    await page.setExtraHTTPHeaders({
-      cookie: "__Host-ogu_rt=local-review; __Host-ogu_ob=1",
-    });
-    await page.route("**/api/**", async (route) => {
-      const path = new URL(route.request().url()).pathname;
-      const data =
-        path === "/api/members/me"
-          ? member
-          : path === "/api/raid"
-            ? raidState(10000)
-            : path === "/api/notifications/unread-count"
-              ? { count: 0 }
-              : undefined;
-      await route.fulfill({
-        status: data === undefined ? 503 : 200,
-        json:
-          data === undefined
-            ? {
-                success: false,
-                data: null,
-                error: {
-                  code: "TEST_UNAVAILABLE",
-                  message: "실시간 연결은 로컬 검증에서 사용하지 않습니다.",
-                },
-              }
-            : { success: true, data, error: null },
-      });
-    });
+    await mockApi(page, raidState(10000));
 
     await page.goto("/raid");
     const stage = page.getByRole("region", { name: "보스" });
@@ -110,5 +115,38 @@ for (const viewport of [
       path: testInfo.outputPath("raid.png"),
       fullPage: true,
     });
+  });
+}
+
+for (const width of [320, 360]) {
+  test(`DS-US3-AC6 결과 화면의 수치가 ${width}px에서 단어 중간에 끊기지 않는다`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 844 });
+    const state = raidState(0);
+    await mockApi(page, {
+      ...state,
+      boss: {
+        ...state.boss,
+        status: "DEFEATED",
+        endedAt: "2026-10-12T02:15:00Z",
+      },
+      nextBossAt: "2026-10-13T00:00:00Z",
+    });
+
+    await page.goto("/raid");
+    const result = page.getByRole("region", { name: "레이드 결과" });
+    await expect(result).toContainText("함께한 회원213명");
+    await page.evaluate(() => document.fonts.ready);
+    // 수치 글자의 줄 높이는 28px이다. 한 줄이면 40px보다 작다.
+    for (const value of ["213명", "14", "2시간 15분"]) {
+      const box = await result.getByText(value, { exact: true }).boundingBox();
+      expect(box!.height).toBeLessThan(40);
+    }
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth > innerWidth,
+      ),
+    ).toBe(false);
   });
 }

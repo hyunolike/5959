@@ -4,19 +4,19 @@ const NOTICES = {
   // US3-AC4: 사용자가 스스로 취소한 것이라 오류로 다루지 않는다.
   oauth_cancelled: {
     role: "status",
-    className: "text-neutral-600",
+    className: "text-fg-subtle",
     message:
       "외부 계정 로그인을 취소했습니다. 다시 시도하거나 다른 방법으로 로그인해주세요.",
   },
   oauth_failed: {
     role: "alert",
-    className: "text-red-600",
+    className: "text-danger",
     message: "외부 계정으로 로그인하지 못했습니다. 잠시 후 다시 시도해주세요.",
   },
   // US3-AC3: 계정을 합치지 않고 원래 가입한 방법을 안내한다.
   email_registered: {
     role: "alert",
-    className: "text-red-600",
+    className: "text-danger",
     message:
       "이 이메일은 이미 이메일 가입에 쓰이고 있습니다. 이메일과 비밀번호로 로그인해주세요.",
   },
@@ -40,7 +40,7 @@ export function OAuthLoginErrorNotice({ error }: OAuthLoginErrorNoticeProps) {
   }
   const notice = NOTICES[error];
   return (
-    <p role={notice.role} className={cn("text-sm", notice.className)}>
+    <p role={notice.role} className={cn("text-body-sm", notice.className)}>
       {notice.message}
     </p>
   );

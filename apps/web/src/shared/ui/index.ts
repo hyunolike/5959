@@ -7,6 +7,7 @@ export { Chip } from "./chip";
 export { ConfirmDialog } from "./confirm-dialog";
 export { Input } from "./input";
 export { Label } from "./label";
+export { Select } from "./select";
 export { TextField } from "./text-field";
 export { Textarea } from "./textarea";
 export { Spinner } from "./spinner";

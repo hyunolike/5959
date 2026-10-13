@@ -61,4 +61,11 @@ describe("GameButton", () => {
       "disabled:aria-busy:not-aria-pressed:shadow-game",
     );
   });
+
+  it("DS-US4-AC3 움직임 줄이기에서는 눌린 상태도 내려가 있지 않는다", () => {
+    render(<GameButton aria-pressed>공감 3</GameButton>);
+    expect(screen.getByRole("button", { name: "공감 3" })).toHaveClass(
+      "motion-reduce:aria-pressed:translate-y-0",
+    );
+  });
 });

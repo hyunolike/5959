@@ -20,7 +20,7 @@ export function BossBanner() {
       href="/raid"
       aria-label={`레이드: ${EMOTION_LABELS[boss.emotion]} 보스, HP ${boss.hp}/${boss.maxHp}`}
       data-emotion={boss.emotion}
-      className="rounded-control bg-emotion-tint flex items-center gap-3 px-4 py-3"
+      className="rounded-control bg-emotion-tint flex items-center gap-3 px-4 py-3 transition-[filter] hover:brightness-[0.97]"
     >
       <span className="size-12 shrink-0">
         <MonsterSprite emotion={boss.emotion} stage="full" boss sizes="48px" />

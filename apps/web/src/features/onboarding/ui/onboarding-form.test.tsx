@@ -219,4 +219,58 @@ describe("OnboardingForm 완료 뒤 이동", () => {
 
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith(expected));
   });
+
+  it("DS-US2-AC2 직군과 경력은 52px 공용 선택 상자이고 완료 버튼도 52px이다", () => {
+    vi.stubGlobal("fetch", vi.fn());
+    renderForm();
+    for (const name of ["직군", "경력"]) {
+      expect(screen.getByLabelText(name)).toHaveClass(
+        "h-13",
+        "border-line-strong",
+      );
+    }
+    expect(screen.getByRole("button", { name: "완료" })).toHaveClass(
+      "min-h-13",
+    );
+  });
+
+  it("DS-US2-AC1 쓸 수 있는 닉네임 안내는 초록색 없이 굵은 글씨다", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockImplementation(async (input: RequestInfo | URL) =>
+          nicknameAvailability(
+            new URL(String(input), "http://localhost").searchParams.get(
+              "nickname",
+            ) ?? "",
+          ),
+        ),
+    );
+    const user = userEvent.setup();
+    renderForm();
+    await user.type(screen.getByLabelText("닉네임"), "오구");
+    const hint = await screen.findByText("사용할 수 있는 닉네임입니다.");
+    expect(hint).toHaveClass("text-fg", "font-medium");
+    expect(hint.className).not.toContain("leaf");
+  });
+
+  it("DS-US2-AC1 고르지 않고 내면 선택 상자가 잘못됨으로 표시되고 오류 문구와 이어진다", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async () => nicknameAvailability("오구")),
+    );
+    const user = userEvent.setup();
+    renderForm();
+    await user.click(screen.getByRole("button", { name: "완료" }));
+    const jobRole = screen.getByLabelText("직군");
+    await waitFor(() =>
+      expect(jobRole).toHaveAttribute("aria-invalid", "true"),
+    );
+    expect(jobRole).toHaveAccessibleDescription("직군을 선택하세요.");
+    expect(document.getElementById("jobRole-error")).toHaveClass(
+      "text-label",
+      "text-danger",
+    );
+  });
 });

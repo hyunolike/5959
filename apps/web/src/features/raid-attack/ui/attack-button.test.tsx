@@ -210,4 +210,12 @@ describe("AttackButton", () => {
     expect(button()).not.toBeDisabled();
     expect(button()).toHaveAttribute("aria-disabled", "true");
   });
+
+  it("DS-US4-AC3 움직임 줄이기에서는 쿨다운 동안에도 자리가 움직이지 않는다", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(accepted(199, 1000)));
+    renderButton();
+    act(() => button().click());
+    await waitFor(() => expect(button()).toHaveClass("translate-y-1"));
+    expect(button()).toHaveClass("motion-reduce:translate-y-0");
+  });
 });
