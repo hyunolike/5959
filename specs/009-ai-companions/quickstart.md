@@ -10,10 +10,11 @@ cd apps/api && SPRING_PROFILES_ACTIVE=local,e2e ./gradlew bootRun
 pnpm --filter web dev
 ```
 
-가짜 댓글 쓰기는 글의 본문에 든 표지로 결과가 정해진다. 표지가 없으면 말투와 말씨의 이름이 든 정해진 댓글을 준다.
+가짜 댓글 쓰기는 글의 본문에 든 표지로 결과가 정해진다. **e2e 프로필에서는 본문에 `[AI친구]`가 있는 글에만 답한다.** 기능을 켠 채 도는 e2e에서 다른 시나리오의 댓글 수와 몬스터 HP가 흔들리지 않게 한다(research R11). 아래 시나리오의 글은 모두 본문에 `[AI친구]`를 넣어 쓴다. 표지가 없는 글은 세 번 실패한 뒤 `FAILED`로 닫힌다.
 
 | 본문의 표지 | 결과 |
 |---|---|
+| `[AI친구]`만 | 말투와 말씨의 이름이 든 정해진 댓글 |
 | `[AI댓글실패]` | 계속 실패 |
 | `[AI댓글실패:2]` | 두 번 실패한 뒤 성공 |
 | `[AI댓글욕설]` | 욕설 목록의 낱말이 든 댓글 |
@@ -34,7 +35,7 @@ OGU_RUN_AI_EVAL=true AI_API_KEY=... ./gradlew test --tests "*CompanionCommentLiv
 
 ## 수동 검증 시나리오 (로컬)
 
-회원 A, B가 가입과 온보딩을 마친 상태에서 시작한다. "기다린다"는 e2e 프로필에서 10초쯤이다.
+회원 A, B가 가입과 온보딩을 마친 상태에서 시작한다. "기다린다"는 e2e 프로필에서 10초쯤이다. 글의 본문에는 `[AI친구]`를 넣는다(20번처럼 반응이 없어야 하는 글도 넣는다. 그래야 꺼져서 없는 것인지 가릴 수 있다).
 
 | # | 절차 | 기대 결과 | 인수 조건 |
 |---|---|---|---|
@@ -58,7 +59,7 @@ OGU_RUN_AI_EVAL=true AI_API_KEY=... ./gradlew test --tests "*CompanionCommentLiv
 | 18 | 말투 네 가지로 글을 하나씩 쓴다 | 댓글에 그 말투의 이름이 들어 있다(가짜 쓰기) | US4-AC1 |
 | 19 | 글 여섯 개를 차례로 쓴다 | 세 친구가 두 번씩 나온다. 한 글에는 한 명 | US4-AC2, US4-AC3 |
 | 20 | `AI_COMPANION_ENABLED=false`로 다시 띄우고 글을 쓴다 | 반응이 없다. 앞의 댓글은 그대로다 | US5-AC1 |
-| 21 | `AI_COMPANION_DAILY_LIMIT=2`로 띄우고(`delete from companion_daily_usage`) 글 셋을 쓴다 | 둘에만 반응한다. 셋째는 `DAILY_LIMIT` | US5-AC2 |
+| 21 | `AI_COMPANION_DAILY_LIMIT=2`로 띄우고(`delete from companion_daily_usage`) 글 셋을 쓴다(e2e 프로필의 기본 상한은 100000이다) | 둘에만 반응한다. 셋째는 `DAILY_LIMIT` | US5-AC2 |
 | 22 | `AI_COMPANION_WAIT=30s`로 띄우고 글을 쓴다 | 30초가 지난 뒤에 반응한다 | US5-AC3 |
 | 23 | 끈 채로 글 둘을 쓰고 하나의 `companion_reaction.post_created_at`을 25시간 앞으로 옮긴 뒤 켠다 | 옮기지 않은 글에만 반응한다. 옮긴 글은 `EXPIRED` | US5-AC4 |
 | 24 | `select post_id, status, skip_reason, companion_id, attempts, last_error from companion_reaction order by id desc limit 20` | 누가 어느 글에 반응했는지, 건너뛴 까닭이 보인다. 본문이 든 열이 없다 | US5-AC5 |

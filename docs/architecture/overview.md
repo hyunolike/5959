@@ -127,6 +127,7 @@ Redis는 M3(004)에서 들어왔다. 실시간 알림의 인스턴스 간 pub/su
 | `raid` | 보스 한 마리를 모든 회원이 버튼으로 함께 공격, 보스의 생애, 실시간으로 내보낼 레이드 상태 | `RaidApi`(끝난 보스의 참여자, 회원이 함께 물리친 보스 수) | `RaidBossDefeated` | - |
 | `recommend` | 글의 임베딩과 처리 일정, 비슷한 글 고르기(글 ID만), 같은 감정의 글로 대신하기 | `RecommendApi` | - | `PostWritten`, `PostRemoved`(커밋 뒤) |
 | `report` | 주간 리포트: 지난주 수치 세기와 저장, 없는 리포트를 채우는 주기 작업, AI 편지와 재시도 | - (HTTP API만) | `WeeklyReportPublished` | 자기 이벤트(편지 첫 시도) |
+| `companion` | AI 친구(009): 반응 없는 글에 AI 회원이 댓글과 공감을 남긴다. 글마다의 반응 기록, 올리기 전 검사, 하루의 몫 | - | - | `PostCreated`(커밋 뒤) |
 | `notification` | SSE 알림, 알림 이력, 읽음 | - (HTTP API만) | - | `PostLiked`, `CommentCreated`, `MonsterSpawned`, `MonsterDefeated`(M3), `RiskDetected`, `ContentRestored`, `ReviewResolved`(M4). `WeeklyReportPublished`는 뒤 마일스톤 |
 | `feed` | 피드, 글 상세, 마이페이지 목록과 감정 통계 조합 | - (HTTP API만) | - | - |
 
@@ -153,6 +154,10 @@ flowchart BT
     report --> ai
     report --> post
     report --> member
+    companion --> post
+    companion --> safety
+    companion --> emotion
+    companion --> ai
     notification --> post
     notification --> member
     notification --> monster
@@ -173,6 +178,7 @@ flowchart BT
 - M5까지 만든 모듈은 `shared`, `member`, `post`, `ai`, `emotion`, `monster`, `feed`, `notification`, `safety`, `raid`다. 나머지는 표에 적힌 마일스톤에서 들어온다.
 - `raid`는 `monster`를 모른다. 보스는 글의 몬스터와 다른 것이고, 공격도 댓글이 아니라 레이드 화면의 버튼이다. `raid`와 `notification`은 서로를 부르지 않는다. 실시간 전달은 `shared`의 `TopicBroadcaster` 인터페이스를 `notification`의 스트림이 구현해 잇는다(006 research R1, R6).
 - `post`는 `safety`를 모른다. 숨김 상태와 위험 단계는 `post`의 열이고 `safety`가 `PostModerationApi`로 바꾼다. 욕설 가리기는 `shared`의 `ContentMask` 인터페이스를 `safety`가 구현해, 본문을 내보내는 `post`, `feed`가 `safety`에 의존하지 않는다(005 research R1, R6).
+- `companion`(009)에는 아무도 의존하지 않는다. 글의 상태와 댓글 남기기는 `post`의 `PostCompanionApi`, 위험 판정은 `safety`의 `RiskApi`로만 한다. `post`는 AI를 모르고, 어느 회원이 AI 친구인지는 `companion`이 번호로 넘긴다(009 research R1, R5).
 - 감정 통계는 `emotion`이 아니라 `feed`가 계산한다. 숫자의 원천이 `monsters`와 `monster_hp_log`라서 `emotion`이 `monster`를 알면 `monster → emotion`과 순환이 생긴다(004 research R1, R12).
 - 공격 반영, 몬스터 생성, 글 삭제가 함께 쓰는 글 단위 잠금(`PostLock`)은 두 모듈이 같은 키를 써야 해서 `shared/lock`에 둔다.
 
@@ -315,6 +321,18 @@ sequenceDiagram
 - **읽음**: 하나 읽음과 모두 읽음(`upToSeq` 이하)이 바뀌면 그 회원의 모든 연결에 안 읽은 수를 보낸다. 알림은 90일 보관하고 매일 정리한다.
 
 자세한 규칙은 `specs/004-notification-mypage/research.md`(R2~R11)와 `apps/api/AGENTS.md`에 있다.
+
+### 5.10 AI 친구 (009)
+
+설계는 [specs/009-ai-companions](../../specs/009-ai-companions/plan.md)에 있다.
+
+- 글이 올라온 뒤 10분 동안 다른 회원의 댓글이 없으면 AI 친구 세 명 가운데 한 명이 댓글 하나와 공감 하나를 남긴다. AI 친구는 `member`의 행(`kind = 'AI'`)이고 로그인 수단이 없다. 닉네임이 나가는 응답에는 `ai`가 함께 실려 화면이 언제나 "AI 친구"라고 표시한다.
+- **글마다 반응 기록이 하나다.** 글이 저장되면 `companion_reaction`에 행을 넣고, 30초마다 도는 주기 작업이 차례가 된 행을 맡아 닫는다. 감정 분석과 같은 구조다. "한 글에 한 번"은 유일 제약이 지킨다.
+- **AI를 부르기 전에 거른다.** 지운 글, 숨긴 글, 다른 회원이 댓글을 단 글, 위기나 우려로 판정된 글에는 호출이 나가지 않는다. 판정이 끝나지 않은 글은 끝날 때까지 기다린다.
+- **AI의 댓글은 판정한 뒤에 저장한다.** 모양과 규칙, 욕설, 키워드 위험, AI 위험 분류를 통과해야 한다. 걸린 댓글은 한 번도 보이지 않는다. 사람의 댓글은 저장한 뒤에 판정하는 것과 순서가 반대다.
+- **댓글과 공감은 사람이 쓰는 서비스를 그대로 탄다.** `post`의 파사드가 한 트랜잭션에서 남기고, 몬스터 HP와 알림과 위험 판정은 지금의 이벤트로 돈다. `companion`은 그 모듈들을 부르지 않는다.
+- **하루의 몫은 "AI에 댓글을 청한 횟수" 30번이다.** 실패한 시도도 든다. 댓글 하나에 공급자 호출이 세 번까지 들어 하루 최대 90번이다.
+- 기능은 꺼진 채로 나간다(`AI_COMPANION_ENABLED`). 꺼져 있어도 반응 기록은 생겨, 켜면 24시간 안의 글부터 맡는다.
 
 ## 6. 프론트엔드 (apps/web)
 

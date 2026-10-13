@@ -67,6 +67,19 @@ class ReactionStore(
         }
     }
 
+    /**
+     * 올라온 지 `max-age`가 지난, 아직 기다리는 기록을 한 번에 닫는다(FR-015). 닫은 수를 돌려준다. 주기 작업이 차례마다
+     * 먼저 부른다. 기능이 오래 꺼져 있다 켜졌을 때 쌓인 기록을 하나씩 맡느라 새 글이 기다리지 않게 한다. 꺼져 있으면
+     * 아무것도 닫지 않는다.
+     */
+    fun expireOld(): Int {
+        if (!properties.enabled) return 0
+        val now = now()
+        val closed = reactions.expireOlderThan(now.minus(properties.maxAge), now)
+        if (closed > 0) log.info("올라온 지 오래된 글의 반응 기록을 닫았습니다: {}건", closed)
+        return closed
+    }
+
     /** 글의 위험 판정이 끝나지 않았다. 조금 뒤에 다시 본다. 시도로 세지 않는다(US3-AC3). */
     fun waitForRisk(reaction: Reaction) {
         reactions.defer(reaction.id, now().plus(properties.riskWait))

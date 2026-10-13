@@ -108,16 +108,13 @@ class CompanionFixture(
     }
 
     /**
-     * 시계를 아직 아무도 쓰지 않은 날의 정오(한국 시간)로 옮긴다. 하루의 몫을 재는 테스트가 다른 테스트의 몫과 섞이지
-     * 않게 한다. 처음에는 [FAR]일 뒤로 뛰고 그다음부터 이틀씩 건너뛴다.
+     * 시계를 아직 아무도 쓰지 않은 날의 정오(한국 시간)로 옮긴다. 시계는 앞으로만 가므로 모레는 아무도 쓰지 않은 날이다.
+     * 하루의 몫을 재는 테스트가 앞뒤 테스트의 몫과 섞이지 않게 한다.
      */
     fun freshDay() {
         val mutable = checkNotNull(clock) { "시계를 움직이는 컨텍스트가 아닙니다" }
-        val today = mutable.instant().atZone(SEOUL).toLocalDate()
-        val alreadyFar = today.isAfter(LocalDate.now(SEOUL).plusDays(FAR / 2))
-        val base = if (alreadyFar) today else today.plusDays(FAR)
         mutable.moveTo(
-            base
+            today()
                 .plusDays(2)
                 .atTime(LocalTime.NOON)
                 .atZone(SEOUL)
@@ -127,15 +124,21 @@ class CompanionFixture(
 
     /** 지금 날(한국 시간)에 쓴 몫. 기록이 없으면 0이다. */
     fun usedToday(): Int {
-        val day =
-            checkNotNull(clock)
-                .instant()
-                .atZone(SEOUL)
-                .toLocalDate()
-        return jdbcTemplate
-            .queryForList("select used from companion_daily_usage where day = ?", Int::class.java, Date.valueOf(day))
-            .firstOrNull() ?: 0
+        val sql = "select used from companion_daily_usage where day = ?"
+        return jdbcTemplate.queryForList(sql, Int::class.java, Date.valueOf(today())).firstOrNull() ?: 0
     }
+
+    /** 오늘의 몫을 이미 [used]번 쓴 것으로 만든다(상한을 낮춰 띄우지 않고 "몫이 얼마 남지 않은 날"을 만든다). */
+    fun spendToday(used: Int) {
+        jdbcTemplate.update(
+            "insert into companion_daily_usage (day, used) values (?, ?) " +
+                "on conflict (day) do update set used = excluded.used",
+            Date.valueOf(today()),
+            used,
+        )
+    }
+
+    private fun today(): LocalDate = checkNotNull(clock).instant().atZone(SEOUL).toLocalDate()
 
     /** 반응 기록을 [age]만큼 전에 올라온 글의 것으로 바꾼다(시계를 움직이지 않는 컨텍스트용). */
     fun backdate(
@@ -156,6 +159,8 @@ class CompanionFixture(
         val WAIT: Duration = Duration.ofMinutes(10)
         val AWAIT_LIMIT: Duration = Duration.ofSeconds(10)
         val POLL: Duration = Duration.ofMillis(50)
-        private const val FAR = 1000L
+
+        /** [CompanionSettings.NO_LIMIT]로 띄운 컨텍스트의 하루 상한. */
+        const val LIMIT = 100_000
     }
 }

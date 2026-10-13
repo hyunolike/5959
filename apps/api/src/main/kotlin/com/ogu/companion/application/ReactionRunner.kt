@@ -39,6 +39,8 @@ class ReactionRunner(
 
     /** 차례가 된 글을 `batch-size`개까지 먼저 올라온 것부터 하나씩 맡는다. 맡은 수를 돌려준다. 꺼져 있으면 0이다. */
     fun runDue(): Int {
+        // 오래 꺼져 있다 켜졌으면 24시간이 지난 기록이 쌓여 있다. 먼저 한 번에 닫아 새 글이 그 뒤에서 기다리지 않게 한다
+        store.expireOld()
         var handled = 0
         while (handled < store.batchSize) {
             val claim = store.claim() ?: break

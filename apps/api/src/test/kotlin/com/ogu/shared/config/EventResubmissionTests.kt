@@ -163,8 +163,9 @@ class EventResubmissionTests {
                 String::class.java,
                 "%\"postId\":$postId,%",
             )
-        assertThat(serialized).hasSize(1)
-        assertThat(serialized.single()).doesNotContain(content).doesNotContain("\"content\"")
+        // 발행 기록은 리스너마다 하나다. PostCreated는 emotion(분석 예약)과 companion(009, 반응 기록)이 받는다
+        assertThat(serialized).hasSize(2)
+        assertThat(serialized).allSatisfy { assertThat(it).doesNotContain(content).doesNotContain("\"content\"") }
     }
 
     private fun forPost(postId: Long): PostCreated = argThat<PostCreated> { it?.postId == postId } ?: PLACEHOLDER

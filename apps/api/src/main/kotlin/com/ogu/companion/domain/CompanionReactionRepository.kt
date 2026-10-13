@@ -175,6 +175,25 @@ class CompanionReactionRepository(
             .update() == 1
 
     /**
+     * [createdBefore]까지 올라온, 아직 기다리는 기록을 한 문장으로 닫는다(`EXPIRED`). 닫은 수를 돌려준다. 기능이 오래 꺼져
+     * 있었으면 기다리는 기록이 쌓여 있다. 하나씩 맡아 닫으면 새 글이 그 뒤에서 기다린다.
+     */
+    fun expireOlderThan(
+        createdBefore: Instant,
+        now: Instant,
+    ): Int =
+        jdbcClient
+            .sql(
+                """
+                update companion_reaction
+                set status = 'SKIPPED', skip_reason = 'EXPIRED', next_attempt_at = null, completed_at = :now
+                where status = 'WAITING' and post_created_at <= :createdBefore
+                """.trimIndent(),
+            ).param("now", Timestamp.from(now))
+            .param("createdBefore", Timestamp.from(createdBefore))
+            .update()
+
+    /**
      * 친구마다 가장 최근에 반응한 기록의 번호. 반응한 적이 없는 친구는 결과에 없다. 완료 시각이 아니라 기록 번호로 견줘,
      * 인스턴스의 시계가 조금 달라도 차례가 흐트러지지 않는다.
      */

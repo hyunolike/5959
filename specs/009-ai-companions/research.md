@@ -57,6 +57,7 @@
 - 감정 분석(`emotion_analysis`), 임베딩(`post_embedding`)과 같은 구조다. `PostCreated`를 커밋 뒤에 받아 행을 넣고(`ON CONFLICT DO NOTHING`), 맡을 때는 `FOR UPDATE SKIP LOCKED`로 한 행씩 잡고 `next_attempt_at`을 미뤄 둔다. ShedLock은 넣지 않는다.
 - **"한 글에 한 번"은 `companion_reaction_post_key`(유일 제약)가 지킨다**(FR-002, SC-004). 다시 시도, 재시작, 여러 인스턴스가 모두 같은 행을 두고 다툰다.
 - **행은 기능이 꺼져 있어도 들어간다.** 주기 작업만 켜고 끄기를 본다. 그래서 껐다 켜면 그동안의 글 가운데 24시간 안의 것은 반응을 받고, 넘은 것은 `EXPIRED`로 닫힌다(US5-AC4, FR-015). 처음 배포하기 전의 글은 행이 없어 대상이 아니다.
+- 24시간이 지난 기록은 주기 작업이 차례마다 먼저 한 문장으로 닫는다. 오래 꺼져 있다 켜졌을 때 쌓인 기록을 하나씩(한 차례에 세 개) 맡느라 새 글이 기다리지 않게 한다. 꺼져 있는 동안에는 닫지 않는다.
 - 기다리는 시간은 행에 적지 않는다. 맡을 때 `post_created_at <= 지금 - wait`로 본다. 설정을 바꾸면 아직 기다리는 글에도 바로 적용된다(US5-AC3).
 - 차례는 먼저 올라온 글부터다.
 
@@ -77,6 +78,10 @@
 
 - 4번의 "보이는 댓글"은 지우지도 숨기지도 않은 댓글이다. 달았다가 지운 댓글은 글쓴이에게 남은 반응이 아니다.
 - 2~6번은 AI를 부르기 전에 끝난다. 반응하지 않을 글에는 호출이 나가지 않는다.
+- 위기로 판정된 글은 숨겨져 있어 2번에서 `GONE`으로 닫힌다. 6번의 `RISK`는 우려로 판정된 글이다.
+- 8번에서 회로가 열려 호출이 공급자에 나가지 않았으면 시도로 세지 않는다. 몫도 돌려준다(R8). 다음 차례에 다시 본다.
+- 10번에서 댓글 수를 올리다 글이 지워진 것을 알면(`POST_NOT_FOUND`) `SKIPPED(GONE)`로 닫는다.
+- 반응할 친구는 7번과 8번 사이에 고른다. 가장 오래 쉰 친구다: 반응한 적이 없는 친구가 먼저이고, 그다음은 가장 최근에 반응한 기록의 번호가 가장 작은 친구다. 완료 시각으로 견주지 않아 인스턴스의 시계가 달라도 차례가 흐트러지지 않는다.
 - 글을 고치면 2~6번을 고친 뒤의 상태로 본다. 본문이 바뀌면 `safety`가 판정을 다시 열므로 5번에서 기다린다(스펙 Edge Cases).
 - 10번이 끝나기 전에 사람이 댓글을 달면 둘 다 올라갈 수 있다. 막으려면 사람의 댓글을 기다리게 해야 해서 막지 않는다(스펙 Edge Cases). 10번 안에서 한 번 더 보는 것은 그 틈을 좁히려는 것이다.
 
@@ -89,12 +94,12 @@
 ```text
 target(postId, companionIds): CompanionTarget?
   → 지웠으면 null. authorId, content, commentTone, createdAt, hidden,
-    companionCommented(companionIds의 댓글이 있는가), otherCommented(글쓴이와 companionIds 말고 보이는 댓글이 있는가)
+    companionCommentId(companionIds가 남긴 댓글의 번호, 없으면 null), otherCommented(글쓴이와 companionIds 말고 보이는 댓글이 있는가)
 react(postId, memberId, content, companionIds): CompanionReactionResult
   → REACTED | ALREADY_REACTED | GONE | HUMAN_COMMENTED
 ```
 
-- `react`는 한 트랜잭션에서 다시 확인하고, `CommentService.write`와 `LikeService.likePost`를 그대로 부른다. 사람이 쓰는 서비스를 그대로 타므로 글자 수 검사, 카운터, 이벤트, 잠금 순서가 같다. 댓글과 공감이 함께 성공하거나 함께 실패해 한쪽만 남는 일이 없다(스펙 Edge Cases의 "실패한 쪽만 다시"는 생기지 않는다).
+- `react`는 한 트랜잭션에서 글의 행을 잠그고(`FOR UPDATE`) 다시 확인한 뒤, `CommentService.write`와 `LikeService.likePost`를 그대로 부른다. 같은 글에 겹쳐 온 두 요청은 행 잠금에서 줄을 서고 뒤에 온 쪽은 `ALREADY_REACTED`를 받는다. 잠금 순서는 지금 규칙(행 먼저, `PostLock`은 그다음) 그대로다. 사람이 쓰는 서비스를 그대로 타므로 글자 수 검사, 카운터, 이벤트, 잠금 순서가 같다. 댓글과 공감이 함께 성공하거나 함께 실패해 한쪽만 남는 일이 없다(스펙 Edge Cases의 "실패한 쪽만 다시"는 생기지 않는다).
 - `post`는 AI를 모른다. 어느 회원이 AI 친구인지는 `companion`이 번호로 넘긴다.
 - `react`가 커밋된 뒤 `companion`이 `DONE`을 적기 전에 죽으면 다음 차례에 3번(R4)에서 닫힌다. 댓글이 둘 생기지 않는다.
 - `PostApi`는 detekt의 함수 수 한도에 닿아 있어 새 인터페이스로 나눈다(`PostReportApi`와 같다).
@@ -173,6 +178,8 @@ keywordLevel(text): RiskLevel
 - 모델은 감정 분석과 편지에 쓰는 `ogu.ai.model`(`openai/gpt-oss-20b`)이다. 추론 토큰을 먼저 내므로 `companion-max-tokens`를 900으로 둔다. temperature는 0.8이다.
 - Resilience4j 인스턴스 `companionComment`를 더한다. SDK 재시도는 끈다.
 - 키가 없으면 바로 실패하는 구현, `e2e` 프로필은 본문의 표지로 결과가 정해지는 가짜 구현을 쓴다.
+- **`e2e` 프로필의 가짜 구현은 본문에 `[AI친구]`가 있는 글에만 답한다.** e2e는 기능을 켠 채 돈다. AI 친구가 모든 글에 5초 뒤 댓글과 공감을 남기면 이미 있는 e2e 시나리오의 댓글 수, 몬스터 HP, 알림 수가 흔들린다. 표지가 없는 글의 시도는 가짜가 실패로 돌려주고 세 번 뒤 `FAILED`로 닫힌다. 그 글에는 아무것도 남지 않는다. 실패한 시도도 하루의 몫을 쓰므로 e2e의 `daily-limit`은 100000이다. 테스트 컨텍스트(`ScriptedCompanionCommentWriter`)는 표지 없이도 답한다.
+- 검사(`CompanionCommentValidator`)는 이모지를 막지 않는다. 사람의 댓글도 쓸 수 있는 글자다. 프롬프트가 쓰지 말라고 적는다.
 - 요청과 답의 원문은 로그, 이벤트, `last_error`에 남기지 않는다(FR-020). 남는 것은 실패의 분류뿐이다.
 
 ## R12. 켜고 끄기
@@ -182,6 +189,7 @@ keywordLevel(text): RiskLevel
 - main에 합치면 바로 운영에 나간다. 꺼진 채로 나가고, 저장소 소유자가 실제 모델의 댓글을 읽어 본 뒤(quickstart) 서버의 환경 변수로 켠다.
 - 끄면 주기 작업이 아무 행도 맡지 않는다. 이미 남긴 댓글과 공감은 그대로다(US5-AC1).
 - 운영 설정은 지금처럼 환경 변수와 재시작이다. 관리 화면은 만들지 않는다(스펙 Assumptions). `AI_COMPANION_ENABLED`, `AI_COMPANION_DAILY_LIMIT`, `AI_COMPANION_WAIT`를 두 compose 파일과 `runtime.py`에 더한다. compose는 적힌 변수만 컨테이너에 넣는다.
+- GCP VM에서는 terraform 변수(`ai_companion_enabled`, `ai_companion_daily_limit`, `ai_companion_wait`)가 배포 설정(`deployment-config`)으로 넘어가고 `runtime.py`가 환경 변수로 바꾼다. 카카오 로그인 스위치와 같은 길이다. 비밀 값(Secret Manager의 JSON)에 같은 이름의 필드가 있어도 배포 설정이 이긴다. 비밀 값을 고치다 기능이 켜지는 일이 없게 한다.
 - 운영 기록(US5-AC5)은 `companion_reaction`을 SQL로 본다. 본문은 없다.
 
 ## R13. 생성형 AI 고지
@@ -194,7 +202,9 @@ keywordLevel(text): RiskLevel
 
 ## R14. 테스트 전략
 
-- **모듈 테스트**(`@ApplicationModuleTest`, Testcontainers): 시계를 움직이고 주기 작업을 끈 채(`ogu.companion.scheduler-enabled=false`) 직접 부른다. 가짜 쓰기(`ScriptedCompanionCommentWriter`)가 답과 실패를 정한다.
+- **통합 테스트**(`@SpringBootTest`, Testcontainers): 시계를 움직이고 주기 작업을 끈 채(`ogu.companion.scheduler-enabled=false`) 실행기를 글마다 직접 부른다(`ReactionRunner.attempt(postId)`). 컨텍스트들이 DB를 함께 써서 차례가 된 글을 모두 맡는 `runDue`를 부르면 다른 테스트의 글에도 댓글이 달린다. 가짜 쓰기(`ScriptedCompanionCommentWriter`)가 답과 실패를 정한다. 모듈 하나만 띄우는 `@ApplicationModuleTest`는 쓰지 않았다. 확인할 것이 `post`, `monster`, `notification`, `safety`와 함께 도는 모습이다.
+- 새 컨텍스트는 하나다: 기능을 켜고 시계를 움직이는 것(`CompanionReactionTests`, `CompanionSafetyTests`, `CompanionOnceTests`, `CompanionOperationTests`, `CompanionBudgetTests`가 같은 설정으로 함께 쓴다). 꺼진 상태(`CompanionDisabledTests`, `AiMemberDisplayTests`)와 `RiskApiTests`는 아무 설정 없이 띄운 기본 컨텍스트를 쓴다. 컨텍스트마다 Postgres와 Redis 컨테이너가 하나씩 뜨므로 설정이 다른 컨텍스트를 늘리지 않는다. 그래서 하루 상한을 낮춰 띄우지 않고 그날의 몫을 두 번만 남겨 두는 식으로(`CompanionFixture.spendToday`), 기다리는 시간은 설정만 바꾼 `ReactionStore`를 직접 만들어 본다. 몫을 재는 테스트는 앞뒤로 아무도 쓰지 않은 날로 시계를 옮긴다.
+- 기능이 오래 꺼져 있다 켜지면 24시간이 지난 기록이 쌓여 있다. 주기 작업은 차례마다 먼저 그것들을 한 문장으로 닫는다(`ReactionStore.expireOld`). 하나씩 맡아 닫으면 한 차례에 세 개라 새 글이 그 뒤에서 기다린다.
 - **끝에서 끝**: 글을 쓰고 시계를 10분 넘긴 뒤 한 번 돌려 댓글, 공감, `monster_hp_log`의 두 행(3과 1), 글쓴이의 알림 둘을 본다(US1-AC1, AC5, AC6). 실제 `post`, `monster`, `notification`, `safety`가 함께 도는 통합 테스트다.
 - **한 번만**: 같은 행을 두 스레드가 함께 맡게 하고 댓글이 하나인지 본다. `react` 뒤 `DONE`을 적기 전에 멈춘 상태를 만들어 다시 돌린다(FR-002).
 - **몫**: 상한을 2로 두고 글 셋을 돌린다. 여러 스레드로 함께 올려 넘지 않는지 본다(US5-AC2, SC-007).

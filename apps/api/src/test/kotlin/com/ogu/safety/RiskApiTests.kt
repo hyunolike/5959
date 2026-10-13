@@ -23,10 +23,10 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.context.WebApplicationContext
 
 /**
- * 글의 위험 판정이 끝났는지와 글자의 키워드 단계를 다른 모듈에 알려 주는 파사드(009 research R7). 재시도 주기 작업을 끄고,
- * 가짜 분류기의 표지(`[우려]`, `[위험분류실패]`)로 상태를 만든다.
+ * 글의 위험 판정이 끝났는지와 글자의 키워드 단계를 다른 모듈에 알려 주는 파사드(009 research R7). 가짜 분류기의 표지
+ * (`[우려]`, `[위험분류실패]`)로 상태를 만든다. 늘 실패하는 표지를 쓰므로 재시도 주기 작업이 돌아도 기다리는 상태로 남는다.
  */
-@SpringBootTest(properties = ["ogu.safety.retry.scheduler-enabled=false"])
+@SpringBootTest
 @Import(TestcontainersConfiguration::class)
 class RiskApiTests {
     @Autowired
@@ -56,7 +56,7 @@ class RiskApiTests {
     @Test
     fun `US3-AC3 AI 분류가 끝나지 않은 글은 settled가 아니다`() {
         val postId = loop.createPost(members.onboarded(), "[실패] [위험분류실패] $SAFE_TEXT")
-        awaitAssessment(postId) { it["attempts"] == 1 }
+        awaitAssessment(postId) { (it["attempts"] as Int) >= 1 }
 
         val risk = riskApi.postRisk(postId)
 
@@ -85,7 +85,7 @@ class RiskApiTests {
         assertThat(riskApi.postRisk(postId).settled).isTrue()
 
         loop.updatePost(author, postId, mapOf("content" to "[실패] [위험분류실패] 고친 글")).andExpect(status().isNoContent)
-        awaitAssessment(postId) { it["status"] == "PENDING" && it["attempts"] == 1 }
+        awaitAssessment(postId) { it["status"] == "PENDING" && (it["attempts"] as Int) >= 1 }
 
         assertThat(riskApi.postRisk(postId).settled).isFalse()
     }

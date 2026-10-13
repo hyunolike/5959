@@ -89,7 +89,7 @@ AI 친구 한 명과 그 말씨.
 - `CONSTRAINT companion_reaction_waiting_check CHECK ((status = 'WAITING') = (next_attempt_at IS NOT NULL))`
 - `CONSTRAINT companion_reaction_completed_check CHECK ((status = 'WAITING') = (completed_at IS NULL))`
 - `CREATE INDEX companion_reaction_due_idx ON companion_reaction (post_created_at) WHERE status = 'WAITING'`. 주기 작업이 먼저 올라온 글부터 맡는다.
-- `CREATE INDEX companion_reaction_done_idx ON companion_reaction (companion_id, completed_at DESC) WHERE status = 'DONE'`. 가장 오래 쉰 친구를 고를 때 쓴다.
+- `CREATE INDEX companion_reaction_done_idx ON companion_reaction (companion_id, id DESC) WHERE status = 'DONE'`. 가장 오래 쉰 친구를 고를 때 쓴다. 친구마다 가장 최근에 반응한 기록의 번호를 견준다. 완료 시각으로 견주면 인스턴스의 시계가 조금만 달라도 차례가 흐트러진다.
 
 **건너뛴 까닭**
 
@@ -135,7 +135,7 @@ AI 친구 한 명과 그 말씨.
   ```
 
   `:limit`이 0이면 넣지도 않는다(코드에서 먼저 본다).
-- 돌려주기(회로가 열려 호출이 나가지 않았을 때): `UPDATE ... SET used = used - 1 WHERE day = :day AND used > 0`.
+- 돌려주기(회로가 열려 호출이 나가지 않았을 때): `UPDATE ... SET used = used - 1 WHERE day = :day AND used > 0`. 이때는 그 글의 시도 횟수(`attempts`)도 되돌린다. 나가지 않은 호출이 세 번의 시도를 쓰지 않게 한다.
 
 ## post 모듈 (더하는 것)
 
@@ -143,8 +143,10 @@ AI 친구 한 명과 그 말씨.
 
 | 타입 | 필드 |
 |---|---|
-| `CompanionTarget` | `postId`, `authorId`, `content`, `commentTone`, `createdAt`, `hidden`, `companionCommented`, `otherCommented` |
+| `CompanionTarget` | `postId`, `authorId`, `content`, `commentTone`, `createdAt`, `hidden`, `companionCommentId`(AI 친구가 이미 남긴 댓글, 없으면 null), `otherCommented` |
 | `CompanionReactionResult` | `outcome`(`REACTED`, `ALREADY_REACTED`, `GONE`, `HUMAN_COMMENTED`), `commentId`(앞의 둘일 때만) |
+
+`companionCommentId`가 댓글 번호인 까닭: 남긴 뒤 기록을 적기 전에 멈췄던 행을 `DONE`으로 닫으려면 `comment_id`가 있어야 한다.
 
 `otherCommented`를 읽는 쿼리는 `comments (post_id, ...)` 색인을 탄다. 구현할 때 실행 계획을 확인한다.
 
@@ -160,7 +162,7 @@ AI 친구 한 명과 그 말씨.
 
 | 키 | 기본값 | 설명 |
 |---|---|---|
-| `ogu.companion.enabled` | `${AI_COMPANION_ENABLED:false}` | 꺼져 있으면 주기 작업이 아무 행도 맡지 않는다. e2e는 true |
+| `ogu.companion.enabled` | `${AI_COMPANION_ENABLED:false}` | 꺼져 있으면 주기 작업이 아무 행도 맡지 않는다. e2e는 true이고, 가짜 쓰기가 본문에 `[AI친구]`가 있는 글에만 답한다 |
 | `ogu.companion.wait` | `${AI_COMPANION_WAIT:10m}` | 올라온 뒤 기다리는 시간. e2e는 5s |
 | `ogu.companion.max-age` | 24h | 이보다 오래된 글에는 반응하지 않는다 |
 | `ogu.companion.daily-limit` | `${AI_COMPANION_DAILY_LIMIT:30}` | 하루(한국 시간)에 AI에 댓글을 청하는 횟수 |

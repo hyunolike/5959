@@ -8,6 +8,7 @@ import com.ogu.support.CompanionSettings
 import com.ogu.support.CompanionTestConfiguration
 import com.ogu.support.FutureClockSchedulers
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -20,15 +21,16 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 /**
- * 하루의 몫(009 US5-AC2, SC-007, research R8). 이 컨텍스트는 하루 상한을 2로 띄운다. 테스트마다 아직 아무도 쓰지 않은
- * 날로 시계를 옮겨, 함께 쓰는 DB의 다른 날 기록과 섞이지 않게 한다.
+ * 하루의 몫(009 US5-AC2, SC-007, research R8). 상한을 낮춰 띄우면 컨텍스트가 하나 더 생기므로, 테스트마다 아직 아무도 쓰지
+ * 않은 날로 시계를 옮기고 그날의 몫을 두 번만 남겨 둔다. 끝나면 다시 새 날로 옮겨 뒤의 테스트가 몫이 떨어진 날에서
+ * 시작하지 않게 한다.
  */
 @SpringBootTest(
     properties = [
         CompanionSettings.ENABLED,
         CompanionSettings.NO_SCHEDULER,
         CompanionSettings.LONG_TOKEN,
-        "ogu.companion.daily-limit=2",
+        CompanionSettings.NO_LIMIT,
         FutureClockSchedulers.REPORT,
         FutureClockSchedulers.RAID,
         FutureClockSchedulers.EMOTION,
@@ -43,12 +45,21 @@ class CompanionBudgetTests : CompanionTestBase() {
     lateinit var budget: DailyBudget
 
     @BeforeEach
-    fun moveToFreshDay() {
+    fun leaveTwo() {
+        companions.freshDay()
+        companions.spendToday(SPENT)
+    }
+
+    @AfterEach
+    fun leaveTheDay() {
         companions.freshDay()
     }
 
+    /** 이 테스트가 오늘 쓴 몫. */
+    private fun spent(): Int = companions.usedToday() - SPENT
+
     @Test
-    fun `US5-AC2 하루 상한이 2면 글 셋 가운데 둘에만 반응하고 셋째는 DAILY_LIMIT이다`() {
+    fun `US5-AC2 하루의 몫이 둘 남았으면 글 셋 가운데 둘에만 반응하고 셋째는 DAILY_LIMIT이다`() {
         val author = members.onboarded()
         val posts = (1..3).map { postOf(author) }
 
@@ -60,7 +71,8 @@ class CompanionBudgetTests : CompanionTestBase() {
         assertThat(companions.comments(posts[2])).isEmpty()
         // 몫이 없으면 AI를 부르지 않는다
         assertThat(writer.callsOf(posts[2])).isZero()
-        assertThat(companions.usedToday()).isEqualTo(2)
+        assertThat(spent()).isEqualTo(2)
+        assertThat(companions.usedToday()).isEqualTo(CompanionFixture.LIMIT)
     }
 
     @Test
@@ -72,7 +84,7 @@ class CompanionBudgetTests : CompanionTestBase() {
         companions.pass(CompanionFixture.WAIT)
         runner.attempt(failing)
         runner.attempt(other)
-        assertThat(companions.usedToday()).isEqualTo(2)
+        assertThat(spent()).isEqualTo(2)
         assertThat(statusOf(other)).isEqualTo("DONE")
         assertThat(statusOf(failing)).isEqualTo("WAITING")
 
@@ -81,7 +93,7 @@ class CompanionBudgetTests : CompanionTestBase() {
 
         assertThat(skipReasonOf(failing)).isEqualTo("DAILY_LIMIT")
         assertThat(writer.callsOf(failing)).isEqualTo(1)
-        assertThat(companions.usedToday()).isEqualTo(2)
+        assertThat(spent()).isEqualTo(2)
     }
 
     @Test
@@ -95,13 +107,13 @@ class CompanionBudgetTests : CompanionTestBase() {
         assertThat(row["status"]).isEqualTo("WAITING")
         assertThat(row["attempts"]).isEqualTo(0)
         assertThat(row["last_error"]).isEqualTo("CIRCUIT_OPEN")
-        assertThat(companions.usedToday()).isZero()
+        assertThat(spent()).isZero()
 
         // 회로가 닫히면 다음 차례에 반응한다
         writer.failures.remove(postId)
         reactAfter(postId, Duration.ofMinutes(1))
         assertThat(statusOf(postId)).isEqualTo("DONE")
-        assertThat(companions.usedToday()).isEqualTo(1)
+        assertThat(spent()).isEqualTo(1)
     }
 
     @Test
@@ -112,7 +124,7 @@ class CompanionBudgetTests : CompanionTestBase() {
         today.forEach { runner.attempt(it) }
         assertThat(skipReasonOf(today[2])).isEqualTo("DAILY_LIMIT")
 
-        // 정오에서 13시간 뒤면 다음 날 새벽 1시다
+        // 정오에서 13시간 뒤면 다음 날 새벽 1시다. 새 날의 몫은 하나도 쓰지 않았다
         companions.pass(Duration.ofHours(13))
         val tomorrow = postOf(author)
         reactAfter(tomorrow)
@@ -146,16 +158,30 @@ class CompanionBudgetTests : CompanionTestBase() {
             }
 
         assertThat(granted.count { it }).isEqualTo(2)
-        assertThat(companions.usedToday()).isEqualTo(2)
-        // 돌려주면 다시 받을 수 있고, 0 아래로는 내려가지 않는다
+        assertThat(companions.usedToday()).isEqualTo(CompanionFixture.LIMIT)
+        // 돌려주면 다시 받을 수 있다
         budget.release()
         assertThat(budget.reserve()).isTrue()
         assertThat(budget.reserve()).isFalse()
-        repeat(5) { budget.release() }
+    }
+
+    @Test
+    fun `SC-007 돌려줘도 쓴 몫은 0 아래로 내려가지 않는다`() {
+        // 아무것도 쓰지 않은 날
+        companions.freshDay()
+
+        assertThat(budget.reserve()).isTrue()
+        repeat(3) { budget.release() }
+
         assertThat(companions.usedToday()).isZero()
+        assertThat(budget.reserve()).isTrue()
+        assertThat(companions.usedToday()).isEqualTo(1)
     }
 
     private companion object {
         const val CONCURRENCY = 8
+
+        /** 오늘의 몫을 둘만 남긴다. */
+        const val SPENT = CompanionFixture.LIMIT - 2
     }
 }
