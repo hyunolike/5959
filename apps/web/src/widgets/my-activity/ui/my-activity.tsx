@@ -177,6 +177,7 @@ function WeeklyReportsTab() {
       label="주간 리포트"
       emptyMessage="아직 받은 리포트가 없어요. 글을 쓰면 다음 월요일에 지난주 리포트가 와요."
       keyOf={(report) => Date.parse(report.weekStart)}
+      layout="cards"
       renderItem={(report) => (
         <WeeklyReportItem
           report={report}

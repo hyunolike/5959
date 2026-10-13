@@ -154,6 +154,10 @@ export default function DesignCatalogPage() {
           <Heart size={24} weight="fill" aria-hidden />
           공감 보내기
         </GameButton>
+        <GameButton aria-pressed>공감 4</GameButton>
+        <GameButton disabled aria-busy>
+          공감 5
+        </GameButton>
         <GameButton disabled>공격하기</GameButton>
       </Section>
 

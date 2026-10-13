@@ -246,6 +246,15 @@ describe("PostDetail 공감과 댓글", () => {
     }
   });
 
+  it("댓글 목록 구역은 초점을 받아도 외곽선을 그리지 않는다", async () => {
+    // 내 댓글을 지우면 초점이 이 구역으로 온다. 목록 전체에 외곽선이 둘리면 안 된다.
+    renderDetailWithComments(detail({ ...ANALYZED, mine: false }));
+    await screen.findByRole("article", { name: "공감러의 댓글" });
+    expect(screen.getByRole("region", { name: "댓글 목록" })).toHaveClass(
+      "focus-visible:outline-none",
+    );
+  });
+
   it("댓글이 없으면 첫 댓글을 남겨 달라고 안내한다", async () => {
     renderDetailWithComments(detail({ ...ANALYZED, mine: false }), []);
 

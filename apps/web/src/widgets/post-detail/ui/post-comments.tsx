@@ -75,7 +75,8 @@ export function PostComments({ postId }: { postId: number }) {
       ref={sectionRef}
       tabIndex={-1}
       aria-label="댓글 목록"
-      className="flex flex-col gap-4"
+      // 내 댓글을 지우면 초점이 여기로 온다. 목록 전체에 외곽선을 두르지 않게 공통 초점 표시를 끈다.
+      className="flex flex-col gap-4 focus-visible:outline-none"
     >
       {isPending ? (
         <div className="flex justify-center py-2">

@@ -17,7 +17,7 @@ export function GameButton({
     <button
       type={type}
       className={cn(
-        "rounded-surface border-game-line bg-game text-title text-fg shadow-game disabled:border-line-strong disabled:bg-surface-sunken disabled:text-fg-subtle disabled:aria-busy:border-game-line disabled:aria-busy:bg-game disabled:aria-busy:text-fg inline-flex min-h-14 w-full items-center justify-center gap-2 border-2 px-6 text-center font-extrabold transition-[transform,box-shadow] duration-[120ms] active:translate-y-1 active:shadow-none disabled:cursor-not-allowed disabled:shadow-none disabled:active:translate-y-0 aria-pressed:translate-y-1 aria-pressed:shadow-none motion-reduce:transition-none motion-reduce:active:translate-y-0",
+        "rounded-surface border-game-line bg-game text-title text-fg shadow-game disabled:border-line-strong disabled:bg-surface-sunken disabled:text-fg-subtle disabled:aria-busy:border-game-line disabled:aria-busy:bg-game disabled:aria-busy:text-fg disabled:aria-busy:not-aria-pressed:shadow-game inline-flex min-h-14 w-full items-center justify-center gap-2 border-2 px-6 text-center font-extrabold transition-[transform,box-shadow] duration-[120ms] active:translate-y-1 active:shadow-none disabled:cursor-not-allowed disabled:shadow-none disabled:active:translate-y-0 aria-pressed:translate-y-1 aria-pressed:shadow-none motion-reduce:transition-none motion-reduce:active:translate-y-0",
         className,
       )}
       {...props}

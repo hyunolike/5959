@@ -57,8 +57,9 @@ export function MonsterDisplay({
     >
       <div
         className={cn(
-          "shrink-0",
-          boss ? "size-62 sm:size-72" : "size-44 sm:size-56",
+          // 좁은 무대에서는 무대 폭에 맞춰 줄어든다.
+          "aspect-square w-full shrink-0",
+          boss ? "max-w-62 sm:max-w-72" : "max-w-44 sm:max-w-56",
         )}
       >
         <MonsterSprite

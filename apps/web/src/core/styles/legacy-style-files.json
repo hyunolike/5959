@@ -23,7 +23,6 @@
   "widgets/emotion-stats-panel/ui/emotion-stats-panel.tsx": 11,
   "widgets/emotion-stats-panel/ui/weekly-chart.tsx": 3,
   "widgets/guest-home/ui/guest-home.tsx": 19,
-  "widgets/my-activity/ui/activity-list.tsx": 3,
   "widgets/my-activity/ui/my-activity.tsx": 6,
   "widgets/notification-list/ui/notification-list.tsx": 3,
   "widgets/post-editor/ui/post-editor.tsx": 4,

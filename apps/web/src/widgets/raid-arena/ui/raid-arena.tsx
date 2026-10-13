@@ -76,7 +76,7 @@ function Battle({ state, boss }: { state: RaidState; boss: RaidBoss }) {
       aria-label="보스"
       className="rounded-surface flex flex-col items-center gap-4 p-5"
     >
-      <p className="text-body-sm text-emotion-fg text-center font-medium">
+      <p className="text-body-sm text-emotion-fg text-center font-medium break-keep">
         요즘 가장 많이 나타난 감정이 보스가 됐어요. 함께 물리쳐요.
       </p>
       <MonsterDisplay
