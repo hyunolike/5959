@@ -45,15 +45,15 @@ export function WeeklyChart({
               title={weekSummary(week, labels)}
               className="flex min-w-0 flex-1 flex-col items-center gap-1"
             >
-              <div className="flex w-full flex-1 flex-col items-center justify-end gap-1 border-b border-neutral-200">
+              <div className="border-line flex w-full flex-1 flex-col items-center justify-end gap-1 border-b">
                 {total > 0 ? (
-                  <span className="text-xs text-neutral-600 tabular-nums">
+                  <span className="text-caption text-fg-subtle tabular-nums">
                     {total}
                   </span>
                 ) : null}
                 <div
                   data-testid="weekly-bar"
-                  className="flex w-full max-w-6 flex-col-reverse gap-0.5 overflow-hidden rounded-t"
+                  className="flex w-full max-w-6 flex-col-reverse gap-0.5 overflow-hidden rounded-t-[4px]"
                   style={{ height: `${(total / max) * 75}%` }}
                 >
                   {week.counts
@@ -69,7 +69,7 @@ export function WeeklyChart({
                     ))}
                 </div>
               </div>
-              <span className="text-xs text-neutral-500 tabular-nums">
+              <span className="text-caption text-fg-subtle tabular-nums">
                 {weekLabel(week)}
               </span>
             </li>

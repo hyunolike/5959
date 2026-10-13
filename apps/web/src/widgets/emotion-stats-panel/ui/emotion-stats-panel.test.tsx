@@ -152,4 +152,24 @@ describe("EmotionStatsPanel", () => {
       "감정 통계를 불러오지 못했습니다.",
     );
   });
+
+  it("DS-US3-AC6 수치 네 개는 numeric 단계이고 이름은 글자 토큰을 쓴다", async () => {
+    stubStats(stats());
+    renderPanel();
+    const panel = await screen.findByRole("region", { name: "감정 통계" });
+    await within(panel).findByText("내 몬스터");
+    for (const label of [
+      "내 몬스터",
+      "물리친 몬스터",
+      "함께 물리친 몬스터",
+      "함께 물리친 보스",
+    ]) {
+      const tile = figure(label);
+      expect(tile.querySelector("dd")).toHaveClass(
+        "text-numeric",
+        "font-extrabold",
+      );
+      expect(tile.querySelector("dt")).toHaveClass("text-fg-subtle");
+    }
+  });
 });
