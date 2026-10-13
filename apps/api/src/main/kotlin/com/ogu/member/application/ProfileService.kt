@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class ProfileService(
     private val memberRepository: MemberRepository,
+    private val nicknamePolicy: NicknamePolicy,
 ) {
     @Transactional
     fun update(
@@ -33,8 +34,11 @@ class ProfileService(
         }
         val member = lockOnboardedMember(memberId)
         val validated = nickname?.let(Nickname::of)
-        // 내 닉네임의 대소문자만 바꾸는 것은 중복이 아니다
-        if (validated != null && validated.key != member.nicknameKey) rejectIfNicknameTaken(validated)
+        // 내 닉네임의 대소문자만 바꾸는 것은 중복이 아니다. 예약 규칙도 새 닉네임에만 건다(이미 가진 닉네임은 둔다)
+        if (validated != null && validated.key != member.nicknameKey) {
+            nicknamePolicy.rejectIfReserved(validated)
+            rejectIfNicknameTaken(validated)
+        }
 
         member.updateProfile(validated, jobRole, careerYear)
         return save(member)

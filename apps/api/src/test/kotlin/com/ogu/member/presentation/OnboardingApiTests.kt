@@ -190,6 +190,31 @@ class OnboardingApiTests {
             .andExpect(jsonPath("$.data.reason").value("INVALID_FORMAT"))
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = ["다정한오구", "씩씩한오구", "차분한오구", "오구AI", "ai오구", "AI", "에이아이"])
+    fun `US2-AC5 AI 친구와 헷갈리는 닉네임은 확인에서 RESERVED이고 온보딩은 400 NICKNAME_RESERVED다`(nickname: String) {
+        val member = signupMember()
+
+        checkNickname(member.accessToken, nickname)
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.available").value(false))
+            .andExpect(jsonPath("$.data.reason").value("RESERVED"))
+        onboard(member.accessToken, nickname)
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.error.code").value("NICKNAME_RESERVED"))
+        me(member.accessToken).andExpect(jsonPath("$.data.onboarded").value(false))
+    }
+
+    @Test
+    fun `US2-AC5 영어 낱말의 일부로 ai가 든 닉네임은 쓸 수 있다`() {
+        val member = signupMember()
+        val nickname = "Kai" + uniqueNickname().take(5) + "ai"
+
+        checkNickname(member.accessToken, nickname)
+            .andExpect(jsonPath("$.data.available").value(true))
+        onboard(member.accessToken, nickname).andExpect(status().isOk)
+    }
+
     @Test
     fun `이미 온보딩한 회원은 409 ALREADY_ONBOARDED`() {
         val member = signupMember()

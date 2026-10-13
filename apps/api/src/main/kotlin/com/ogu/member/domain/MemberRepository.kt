@@ -12,6 +12,18 @@ interface MemberRepository : JpaRepository<Member, Long> {
 
     fun existsByNicknameKey(nicknameKey: String): Boolean
 
+    /**
+     * AI 친구의 닉네임에서 띄어쓰기를 뺀 것이 [key]와 같은가(009 US2-AC5). AI 친구의 닉네임에는 띄어쓰기가 있어
+     * 사람의 닉네임과 유일 제약으로는 겹치지 않는다.
+     */
+    @Query(
+        value = "select exists(select 1 from member where kind = 'AI' and replace(nickname_key, ' ', '') = :key)",
+        nativeQuery = true,
+    )
+    fun existsAiNicknameKeyWithoutSpaces(
+        @Param("key") key: String,
+    ): Boolean
+
     fun existsByIdAndRole(
         id: Long,
         role: MemberRole,

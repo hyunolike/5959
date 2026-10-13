@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
+import org.springframework.jdbc.core.JdbcTemplate
 import java.time.Instant
 import java.util.UUID
 
@@ -32,6 +33,9 @@ class MemberQueryServiceTest {
 
     @Autowired
     lateinit var entityManagerFactory: EntityManagerFactory
+
+    @Autowired
+    lateinit var jdbcTemplate: JdbcTemplate
 
     private val statistics by lazy { entityManagerFactory.unwrap(SessionFactory::class.java).statistics }
 
@@ -51,6 +55,24 @@ class MemberQueryServiceTest {
         )
         assertThat(members[second.id]!!.jobRole).isEqualTo(JobRole.DESIGN)
         assertThat(members[notOnboarded.id]!!.nickname).isNull()
+    }
+
+    @Test
+    fun `US2-AC3 AI 회원은 ai가 true이고 닉네임만 있으며 사람은 ai가 false다`() {
+        val human = saveOnboardedMember(JobRole.HR, CareerYear.YEAR_1)
+        val aiIds = jdbcTemplate.queryForList("select id from member where kind = 'AI' order by id", Long::class.java)
+
+        val members = memberApi.getMembers(aiIds + human.id)
+
+        assertThat(aiIds).hasSize(3)
+        assertThat(aiIds.map { members[it] }).allSatisfy { info ->
+            assertThat(info!!.ai).isTrue()
+            assertThat(info.jobRole).isNull()
+            assertThat(info.careerYear).isNull()
+        }
+        assertThat(aiIds.map { members[it]!!.nickname }).containsExactly("다정한 오구", "씩씩한 오구", "차분한 오구")
+        assertThat(members[human.id]!!.ai).isFalse()
+        assertThat(memberApi.getMember(aiIds.first()).ai).isTrue()
     }
 
     @Test

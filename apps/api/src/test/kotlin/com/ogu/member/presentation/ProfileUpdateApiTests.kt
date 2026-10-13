@@ -117,6 +117,33 @@ class ProfileUpdateApiTests {
     }
 
     @ParameterizedTest
+    @ValueSource(strings = ["다정한오구", "오구AI", "ai오구"])
+    fun `US2-AC5 AI 친구와 헷갈리는 닉네임으로는 고칠 수 없다`(nickname: String) {
+        val member = members.onboarded()
+        val before = nicknameOf(member)
+
+        update(member, mapOf("nickname" to nickname, "jobRole" to "HR"))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.error.code").value("NICKNAME_RESERVED"))
+
+        me(member)
+            .andExpect(jsonPath("$.data.nickname").value(before))
+            .andExpect(jsonPath("$.data.jobRole").value("DEVELOPMENT"))
+    }
+
+    @Test
+    fun `US2-AC5 이미 그런 닉네임을 가진 회원은 다른 항목을 고칠 수 있다`() {
+        val member = members.onboarded()
+        val legacy = "오구" + (System.nanoTime() % 1_000_000) + "AI"
+        jdbcTemplate.update("update member set nickname = ?, nickname_key = ? where id = ?", legacy, legacy.lowercase(), member.id)
+
+        update(member, mapOf("nickname" to legacy, "careerYear" to "YEAR_5"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.nickname").value(legacy))
+            .andExpect(jsonPath("$.data.careerYear").value("YEAR_5"))
+    }
+
+    @ParameterizedTest
     @ValueSource(strings = ["", "   ", "오 구", "ogu!", "오구😀", "열한글자가넘는닉네임이다", "ㅇㄱ"])
     fun `US5-AC2 허용되지 않는 닉네임은 M1과 같은 메시지의 400 INVALID_REQUEST`(nickname: String) {
         val member = members.onboarded()

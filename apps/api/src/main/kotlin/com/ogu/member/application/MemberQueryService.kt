@@ -4,6 +4,7 @@ import com.ogu.member.MemberApi
 import com.ogu.member.MemberInfo
 import com.ogu.member.StreamTicket
 import com.ogu.member.domain.Member
+import com.ogu.member.domain.MemberKind
 import com.ogu.member.domain.MemberRepository
 import com.ogu.member.domain.MemberRole
 import com.ogu.shared.error.BusinessException
@@ -54,4 +55,5 @@ private fun Member.toInfo(): MemberInfo =
         nickname = nickname,
         jobRole = jobRole,
         careerYear = careerYear,
+        ai = kind == MemberKind.AI,
     )
