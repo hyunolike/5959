@@ -91,6 +91,8 @@ class ModularityTests {
                 "raid" to setOf("post", "emotion", "member"),
                 // 007: 글의 임베딩으로 가까운 글을 찾는다. 임베딩이 없으면 emotion의 결과로 대신한다. feed가 카드로 조립한다
                 "recommend" to setOf("post", "ai", "emotion"),
+                // 009: 글의 상태와 위험 판정을 읽고, AI에 댓글을 청해 post의 파사드로 남긴다. 아무도 companion을 모른다
+                "companion" to setOf("post", "safety", "emotion", "ai"),
             )
     }
 }

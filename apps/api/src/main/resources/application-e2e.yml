@@ -35,3 +35,12 @@ ogu:
     poll-interval: 5s
     letter:
       poll-interval: 5s
+  # 009 AI 친구: 가짜 댓글 쓰기를 쓰고 5초만 기다렸다 반응한다
+  companion:
+    enabled: true
+    wait: 5s
+    poll-interval: 2s
+    risk-wait: 2s
+    retry:
+      initial-interval: 2s
+      max-interval: 4s

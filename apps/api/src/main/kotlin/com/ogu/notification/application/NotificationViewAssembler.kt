@@ -20,6 +20,8 @@ data class NotificationPostView(
 data class NotificationActorView(
     val id: Long,
     val nickname: String,
+    /** 행동한 회원이 AI 친구다(009 US2-AC2). */
+    val ai: Boolean,
 )
 
 /**
@@ -47,7 +49,7 @@ class NotificationViewAssembler(
                     ?.takeUnless { it.deleted }
             val actor =
                 notification.latestActorId?.let { id ->
-                    members[id]?.nickname?.let { nickname -> NotificationActorView(id, nickname) }
+                    members[id]?.let { member -> member.nickname?.let { NotificationActorView(id, it, member.ai) } }
                 }
             NotificationView(
                 notification = notification,

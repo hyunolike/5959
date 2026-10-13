@@ -36,12 +36,16 @@ data class CommentResponse(
     val replies: List<CommentResponse>,
 )
 
-/** 계약의 `Author`. 댓글은 글과 달리 스냅숏이 없어 지금 프로필을 보여 준다. */
+/**
+ * 계약의 `CommentAuthor`. 댓글은 글과 달리 스냅숏이 없어 지금 프로필을 보여 준다. [ai]가 true면 AI 친구이고 직군과 경력이
+ * 없다(009 US2-AC1, US2-AC3).
+ */
 data class CommentAuthorResponse(
     val id: Long,
     val nickname: String,
     val jobRole: JobRole?,
     val careerYear: CareerYear?,
+    val ai: Boolean,
 )
 
 /**

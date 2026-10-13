@@ -181,6 +181,7 @@ class CommentService(
                         nickname = member?.nickname.orEmpty(),
                         jobRole = member?.jobRole,
                         careerYear = member?.careerYear,
+                        ai = member?.ai ?: false,
                     )
                 },
             content = if (concealed) null else content,
