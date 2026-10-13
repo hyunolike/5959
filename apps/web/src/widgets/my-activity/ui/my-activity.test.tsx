@@ -360,4 +360,27 @@ describe("MyActivity", () => {
     expect(links[1]).toHaveTextContent("9월 28일 ~ 10월 4일");
     expect(links[1]).toHaveTextContent("감정 분석이 끝난 글이 없어요");
   });
+
+  it("DS-US3-AC1 주간 리포트 탭의 카드는 구분선이 아니라 간격으로 나눈다", async () => {
+    navigation.search = "tab=reports";
+    stubLists({
+      "/api/members/me/weekly-reports": {
+        items: [
+          {
+            weekStart: "2026-10-05",
+            weekEnd: "2026-10-11",
+            postCount: 3,
+            topEmotion: "ANXIETY",
+          },
+        ],
+        nextCursor: null,
+      },
+    });
+
+    renderActivity();
+
+    const list = await screen.findByRole("list", { name: "주간 리포트" });
+    expect(list).toHaveClass("gap-3");
+    expect(list).not.toHaveClass("divide-y");
+  });
 });

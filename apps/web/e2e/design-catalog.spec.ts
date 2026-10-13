@@ -124,3 +124,19 @@ test("DS-US3-AC2 감정이 정해지지 않은 HP 막대도 색이 있다", asyn
     );
   expect(fill).toBe("rgb(107, 107, 118)");
 });
+
+test("DS-US3-AC2 게임 버튼은 눌리면 그림자가 없고, 요청 중에는 색과 그림자를 유지한다", async ({
+  page,
+}) => {
+  await page.goto("/debug/design");
+  const pressed = page.getByRole("button", { name: "공감 4", exact: true });
+  const busy = page.getByRole("button", { name: "공감 5", exact: true });
+  const locked = page
+    .getByRole("button", { name: "공격하기", exact: true })
+    .last();
+  await expect(pressed).not.toHaveCSS("box-shadow", /0px 4px 0px/);
+  await expect(busy).toHaveCSS("background-color", "rgb(255, 214, 10)");
+  await expect(busy).toHaveCSS("box-shadow", /0px 4px 0px/);
+  await expect(locked).toHaveCSS("background-color", "rgb(245, 245, 247)");
+  await expect(locked).not.toHaveCSS("box-shadow", /0px 4px 0px/);
+});

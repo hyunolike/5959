@@ -137,7 +137,7 @@ export function WriteCommentForm({
             type="button"
             variant="ghost"
             size="sm"
-            className="px-2"
+            className="text-caption px-2 font-medium"
             onClick={cancelReply}
             aria-label="답글 취소"
           >

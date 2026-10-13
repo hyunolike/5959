@@ -19,21 +19,22 @@ export function BossBanner() {
     <Link
       href="/raid"
       aria-label={`레이드: ${EMOTION_LABELS[boss.emotion]} 보스, HP ${boss.hp}/${boss.maxHp}`}
-      className="flex items-center gap-3 rounded-lg border border-neutral-200 bg-white px-4 py-3 transition-colors hover:border-neutral-300 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none"
+      data-emotion={boss.emotion}
+      className="rounded-control bg-emotion-tint flex items-center gap-3 px-4 py-3"
     >
       <span className="size-12 shrink-0">
         <MonsterSprite emotion={boss.emotion} stage="full" boss sizes="48px" />
       </span>
       <span className="flex min-w-0 flex-col">
-        <span className="text-sm font-semibold text-neutral-900">
+        <span className="text-body-sm text-fg font-bold">
           {EMOTION_LABELS[boss.emotion]} 보스가 나타났어요
         </span>
-        <span className="text-xs text-neutral-600 tabular-nums">
+        <span className="text-caption text-emotion-fg font-medium tabular-nums">
           HP {boss.hp}/{boss.maxHp} · {boss.participantCount}명이 함께하고
           있어요
         </span>
       </span>
-      <span className="ml-auto shrink-0 text-sm font-medium text-neutral-900">
+      <span className="text-label text-fg ml-auto shrink-0 font-bold">
         함께 공격하기
       </span>
     </Link>

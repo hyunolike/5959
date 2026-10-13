@@ -71,7 +71,7 @@ export function RequestReviewButton({
             },
           );
         }}
-        className="text-fg -ml-3 underline underline-offset-2"
+        className="text-label text-fg px-2 font-medium underline underline-offset-2"
       >
         다시 살펴봐 달라고 요청하기
       </Button>

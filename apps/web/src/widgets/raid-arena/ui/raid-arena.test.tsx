@@ -226,3 +226,35 @@ describe("elapsedLabel", () => {
     expect(elapsedLabel(spawnedAt, endedAt)).toBe(expected);
   });
 });
+
+describe("레이드의 감정 색", () => {
+  it("DS-US3-AC3 전투 무대는 보스의 감정 색이고 수치가 이름과 값으로 이어진다", () => {
+    renderWith(<RaidArena />, raid());
+    const boss = screen.getByRole("region", { name: "보스" });
+    expect(boss).toHaveAttribute("data-emotion", "ANXIETY");
+    expect(boss).toHaveClass("bg-emotion-tint");
+    expect(boss).toHaveTextContent("함께한 회원5명");
+    expect(boss).toHaveTextContent("내 기여3");
+  });
+
+  it("DS-US3-AC3 결과 무대도 보스의 감정 색이다", () => {
+    renderWith(<RaidArena />, ended("DEFEATED"));
+    const result = screen.getByRole("region", { name: "레이드 결과" });
+    expect(result).toHaveAttribute("data-emotion", "ANXIETY");
+    expect(result).toHaveClass("bg-emotion-tint");
+  });
+
+  it("DS-US3-AC4 쉬는 중 안내는 무대 안에서도 주의 색이다", () => {
+    renderWith(<RaidArena />, raid({ available: false }));
+    expect(screen.getByRole("status")).toHaveClass("text-warning");
+  });
+
+  it("DS-US3-AC3 홈의 보스 안내는 보스의 감정 색이다", () => {
+    renderWith(<BossBanner />, raid());
+    const link = screen.getByRole("link", {
+      name: "레이드: 불안 보스, HP 200/300",
+    });
+    expect(link).toHaveAttribute("data-emotion", "ANXIETY");
+    expect(link).toHaveClass("bg-emotion-tint");
+  });
+});

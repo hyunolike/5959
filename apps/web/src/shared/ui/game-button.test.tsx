@@ -50,4 +50,15 @@ describe("GameButton", () => {
       "disabled:aria-busy:border-game-line",
     );
   });
+
+  it("DS-US3-AC2 눌리지 않은 버튼은 요청이 가는 동안에도 그림자를 유지한다", () => {
+    render(
+      <GameButton disabled aria-busy>
+        공감 3
+      </GameButton>,
+    );
+    expect(screen.getByRole("button", { name: "공감 3" })).toHaveClass(
+      "disabled:aria-busy:not-aria-pressed:shadow-game",
+    );
+  });
 });
