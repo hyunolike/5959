@@ -5,6 +5,7 @@ export { AI_FRIENDS_PATH, AiBadge } from "./ai-badge";
 export { BrandMark } from "./brand-mark";
 export { Card } from "./card";
 export { Chip } from "./chip";
+export { EmptyState } from "./empty-state";
 export { SegmentedControl } from "./segmented-control";
 export { ConfirmDialog } from "./confirm-dialog";
 export { Input } from "./input";

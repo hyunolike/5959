@@ -8,7 +8,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { useInfiniteScroll } from "@/shared/lib";
-import { Button, Card, ListSkeleton, Spinner } from "@/shared/ui";
+import { Button, EmptyState, ListSkeleton, Spinner } from "@/shared/ui";
 
 interface ActivityPage<T> {
   items: T[];
@@ -59,36 +59,33 @@ export function ActivityList<T>({
 
   if (isError && items.length === 0) {
     return (
-      <Card className="text-center">
-        <p role="alert" className="text-body-sm text-danger">
-          목록을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
-        </p>
+      <EmptyState
+        tone="error"
+        title="목록을 불러오지 못했습니다."
+        description="잠시 후 다시 시도해주세요."
+      >
         <Button
           variant="secondary"
-          className="mt-4"
           disabled={isFetching}
           aria-busy={isFetching}
           onClick={() => void refetch()}
         >
           다시 불러오기
         </Button>
-      </Card>
+      </EmptyState>
     );
   }
 
   if (items.length === 0) {
     return (
-      <Card className="flex flex-col items-center gap-4 text-center">
-        <p className="text-body-sm text-fg-subtle">{emptyMessage}</p>
-        <div className="flex gap-2">
-          <Button asChild size="sm">
-            <Link href="/write">글쓰기</Link>
-          </Button>
-          <Button asChild variant="secondary" size="sm">
-            <Link href="/home">피드 보기</Link>
-          </Button>
-        </div>
-      </Card>
+      <EmptyState imageSrc="/brand/ogu-hello.webp" title={emptyMessage}>
+        <Button asChild>
+          <Link href="/write">글쓰기</Link>
+        </Button>
+        <Button asChild variant="secondary">
+          <Link href="/home">피드 보기</Link>
+        </Button>
+      </EmptyState>
     );
   }
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
 import { useMemo } from "react";
 
@@ -9,7 +8,7 @@ import { CAREER_YEAR_LABELS, JOB_ROLE_LABELS } from "@/entities/member";
 import { EmotionTag, MonsterSummary } from "@/entities/monster";
 import { PostCard, useFeedQuery, type FeedFilter } from "@/entities/post";
 import { useInfiniteScroll } from "@/shared/lib";
-import { Button, ListSkeleton, Spinner } from "@/shared/ui";
+import { Button, EmptyState, ListSkeleton, Spinner } from "@/shared/ui";
 
 import {
   parseFeedFilter,
@@ -71,27 +70,21 @@ function FeedItems({ filter }: { filter: FeedFilter }) {
 
   if (isError && items.length === 0) {
     return (
-      <div className="py-10 text-center">
-        <Image
-          src="/brand/ogu-listen.webp"
-          alt=""
-          width={80}
-          height={80}
-          className="mx-auto mb-4 size-20"
-        />
-        <p role="alert" className="text-body-sm text-danger">
-          피드를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
-        </p>
+      <EmptyState
+        tone="error"
+        imageSrc="/brand/ogu-listen.webp"
+        title="피드를 불러오지 못했습니다."
+        description="잠시 후 다시 시도해주세요."
+      >
         <Button
           variant="secondary"
-          className="mt-4"
           disabled={isFetching}
           aria-busy={isFetching}
           onClick={() => void refetch()}
         >
           다시 불러오기
         </Button>
-      </div>
+      </EmptyState>
     );
   }
 
@@ -99,30 +92,23 @@ function FeedItems({ filter }: { filter: FeedFilter }) {
     const filtered =
       filter.jobRoles.length > 0 || filter.careerYears.length > 0;
     return (
-      <div className="py-10 text-center">
-        <Image
-          src="/brand/ogu-hello.webp"
-          alt=""
-          width={80}
-          height={80}
-          className="mx-auto mb-4 size-20"
-        />
-        <p className="text-body text-fg font-bold">
-          {filtered
-            ? "조건에 맞는 고민이 없어요."
-            : "아직 올라온 고민이 없어요."}
-        </p>
-        <p className="text-body-sm text-fg-subtle mt-1">
-          {filtered
+      <EmptyState
+        imageSrc="/brand/ogu-hello.webp"
+        title={
+          filtered ? "조건에 맞는 고민이 없어요." : "아직 올라온 고민이 없어요."
+        }
+        description={
+          filtered
             ? "다른 직군이나 경력으로도 찾아보세요."
-            : "첫 이야기를 들려주세요."}
-        </p>
+            : "첫 이야기를 들려주세요."
+        }
+      >
         {!filtered ? (
-          <Button asChild className="mt-5">
+          <Button asChild>
             <Link href="/write">첫 고민 남기기</Link>
           </Button>
         ) : null}
-      </div>
+      </EmptyState>
     );
   }
 
