@@ -4,6 +4,10 @@ import { describe, expect, it } from "vitest";
 import { BrandMark } from "./brand-mark";
 
 describe("BrandMark", () => {
+  it("BRAND-US1-AC2 그림 로고도 서비스 이름을 한 번 읽을 수 있다", () => {
+    render(<BrandMark />);
+    expect(screen.getAllByRole("img", { name: /^오구오구$/ })).toHaveLength(1);
+  });
   it("DS-US5-AC1 로고는 오구의 얼굴과 서비스 이름이다", () => {
     const { container } = render(<BrandMark />);
 

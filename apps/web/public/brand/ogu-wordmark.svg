@@ -1,0 +1,30 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 256 64"
+  role="img"
+  aria-labelledby="title"
+>
+  <title id="title">오구오구</title>
+  <g
+    fill="none"
+    stroke="#65509F"
+    stroke-width="9.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
+    <g transform="translate(0 0)">
+      <rect x="18" y="7" width="28" height="25" rx="11" />
+      <path d="M32 47V56M10 56H54" />
+    </g>
+    <g transform="translate(64 0)">
+      <path d="M12 11H45Q53 11 53 19V29M10 44H54M32 44V58" />
+    </g>
+    <g transform="translate(128 0)">
+      <rect x="18" y="7" width="28" height="25" rx="11" />
+      <path d="M32 47V56M10 56H54" />
+    </g>
+    <g transform="translate(192 0)">
+      <path d="M12 11H45Q53 11 53 19V29M10 44H54M32 44V58" />
+    </g>
+  </g>
+</svg>

@@ -433,7 +433,7 @@ test("manifest와 공개 아이콘을 제공하고 서비스 워커를 등록하
   );
   await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute(
     "href",
-    "/brand/apple-touch-icon.png",
+    "/brand/ogu-lettering-v1-apple-touch-180.png",
   );
   expect(
     await page.evaluate(

@@ -12,7 +12,10 @@ export const metadata: Metadata = {
   title: { default: "오구오구", template: "%s | 오구오구" },
   description: "감정을 나누고 함께 이겨내는 서비스",
   appleWebApp: { capable: true, title: "오구오구", statusBarStyle: "default" },
-  icons: { icon: "/icon.png", apple: "/brand/apple-touch-icon.png" },
+  icons: {
+    icon: "/icon.png",
+    apple: "/brand/ogu-lettering-v1-apple-touch-180.png",
+  },
 };
 
 export const viewport: Viewport = {
