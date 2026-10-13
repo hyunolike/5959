@@ -196,6 +196,13 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   지웠거나 숨긴 글의 몬스터는 `visibleIds`에서 빠진다(내 글이 숨겨져도 같다). 응답에는 본문, 미리보기, 닉네임이 들어갈
   자리가 없다. 그래서 `FeedAssembler`를 쓰지 않는다. 등급은 `max_hp`로 정하고(10, 20, 30이 일반, 희귀, 전설) 무작위가 없다.
   `visibleIds`의 작성자 인자는 없어도 된다(주면 추천처럼 그 회원의 글을 뺀다).
+- **비회원 둘러보기 피드(011, research R1~R4).** `GET /api/v1/public/feed`는 로그인 없이 부르는 하나뿐인 글 조회다
+  (`SecurityPaths.PUBLIC`). `feed/application/PublicFeedQuery`가 회원의 피드와 따로 조립한다. 응답 타입
+  (`PublicFeedItemResponse`)에 닉네임과 회원 번호가 들어갈 자리가 없고 회원을 읽지도 않는다. 그래서 `FeedAssembler`를
+  쓰지 않는다. `PostApi.page`로 최근 50개를 읽어 숨기지 않았고 위험 단계가 없음인 글만 남기고,
+  `RiskApi.unsettledPostIds`로 위험 판정이 끝나지 않은 글을 뺀 뒤 앞의 20개를 준다. 회원에게는 보이는 우려 글도 여기서는
+  빠진다. 욕설은 언제나 가린다. 커서와 쪽 번호가 없어 얻을 수 있는 것은 그때의 최근 20개뿐이다. 쿼리는 4개다.
+  이 조회 때문에 `feed`가 `safety`에 의존한다(`RiskApi`만 쓴다). 여기에 필드를 더할 때는 누구나 본다는 것을 먼저 생각한다.
 - **감정 통계(004 US4, research R12).** `GET /api/v1/members/me/emotion-stats`는 `feed/application/EmotionStatsQuery`가
   파사드 네 번(`PostActivityApi.liveRefsByAuthor`, `MonsterApi.statRows`, `MonsterApi.defeatedPostIdsDamagedBy`,
   `PostActivityApi.liveIds`)으로 읽어 메모리에서 센다. `posts`와 `monsters`는 소유 모듈이 달라 SQL로 조인하지 않는다.

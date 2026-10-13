@@ -136,6 +136,27 @@ class RiskApiTests {
     }
 
     @Test
+    fun `US2-AC3 판정이 끝나지 않은 글만 unsettledPostIds에 든다`() {
+        val author = members.onboarded()
+        val done = loop.createPost(author, "[실패] $SAFE_TEXT")
+        val waiting = loop.createPost(author, "[실패] [위험분류실패] $SAFE_TEXT")
+        val closed = loop.createPost(author, "[실패] $SAFE_TEXT 닫힌 글")
+        val noRecord = safety.insertPost(author, SAFE_TEXT)
+        listOf(done, closed).forEach { postId -> awaitAssessment(postId) { it["status"] == "DONE" } }
+        awaitAssessment(waiting) { (it["attempts"] as Int) >= 1 }
+        // AI가 보지 못한 채 닫힌 판정은 끝난 것이 아니다(009 research R15)
+        jdbcTemplate.update(
+            "update risk_assessment set status = 'SUPERSEDED' where target_type = 'POST' and target_id = ?",
+            closed,
+        )
+
+        val unsettled = riskApi.unsettledPostIds(listOf(done, waiting, closed, noRecord, Long.MAX_VALUE))
+
+        assertThat(unsettled).containsExactlyInAnyOrder(waiting, closed)
+        assertThat(riskApi.unsettledPostIds(emptyList())).isEmpty()
+    }
+
+    @Test
     fun `US3-AC4 위기나 우려 낱말이 든 글자는 keywordLevel이 그 단계다`() {
         assertThat(riskApi.keywordLevel(CRISIS_TEXT)).isEqualTo(RiskLevel.CRISIS)
         assertThat(riskApi.keywordLevel(CONCERN_TEXT)).isEqualTo(RiskLevel.CONCERN)

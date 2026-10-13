@@ -51,6 +51,33 @@ class RiskAssessmentRepository(
             .optional()
             .orElse(null)
 
+    /**
+     * [ids] 가운데 가장 새 판정의 상태가 [settled]에 없는 대상. 판정 기록이 없는 대상은 들지 않는다. 대상마다 가장 새
+     * 행 하나만 본다(`risk_assessment_target_idx`).
+     */
+    fun unsettledIds(
+        type: ContentType,
+        ids: Set<Long>,
+        settled: Set<String>,
+    ): Set<Long> =
+        jdbcClient
+            .sql(
+                """
+                select latest.target_id from (
+                    select distinct on (target_id) target_id, status from risk_assessment
+                    where target_type = :type and target_id in (:ids)
+                    order by target_id, id desc
+                ) latest
+                where latest.status not in (:settled)
+                """.trimIndent(),
+            ).param("type", type.name)
+            .param("ids", ids)
+            .param("settled", settled)
+            .query(Long::class.java)
+            .list()
+            .filterNotNull()
+            .toSet()
+
     /** 고쳐서 새 판정이 생기기 전에, 아직 AI를 기다리던 이전 판정을 닫는다. */
     fun supersedePending(
         type: ContentType,

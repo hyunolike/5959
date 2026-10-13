@@ -179,6 +179,23 @@ export interface paths {
     patch: operations["updatePost"];
     trace?: never;
   };
+  "/api/v1/public/feed": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 로그인하지 않은 방문자가 보는 최근 글 (011 US1, US2) */
+    get: operations["getPublicFeed"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/feed": {
     parameters: {
       query?: never;
@@ -977,6 +994,30 @@ export interface components {
       /** Format: int64 */
       postId: number;
       analysisStatus: components["schemas"]["AnalysisStatus"];
+    };
+    /**
+     * @description 로그인하지 않은 방문자에게 보이는 글 하나. 닉네임, 회원 번호, 댓글의 내용, 공감한 회원이 들어갈 자리가 없다(011 FR-003).
+     *     지운 글, 숨긴 글, 위험 단계가 없음이 아닌 글, 위험 판정이 끝나지 않은 글은 나오지 않는다(011 FR-004).
+     */
+    PublicFeedItem: {
+      /**
+       * Format: int64
+       * @description 로그인한 뒤 이 글로 가는 데 쓴다
+       */
+      postId: number;
+      jobRole: components["schemas"]["JobRole"];
+      careerYear: components["schemas"]["CareerYear"];
+      /** @description 욕설을 가린 본문의 앞부분 */
+      contentPreview: string;
+      analysisStatus: components["schemas"]["AnalysisStatus"];
+      monster: components["schemas"]["MonsterView"] | null;
+      likeCount: number;
+      commentCount: number;
+      /** Format: date-time */
+      createdAt: string;
+    };
+    PublicFeed: {
+      items: components["schemas"]["PublicFeedItem"][];
     };
     FeedItem: {
       /** Format: int64 */
@@ -2117,6 +2158,31 @@ export interface operations {
       401: components["responses"]["Unauthorized"];
       403: components["responses"]["Forbidden"];
       404: components["responses"]["NotFound"];
+    };
+  };
+  getPublicFeed: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 최근 글 최대 20개. 넘겨 볼 수 없다. 보일 수 있는 글이 없으면 빈 목록이다 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["PublicFeed"];
+            error: null;
+          };
+        };
+      };
     };
   };
   getFeed: {

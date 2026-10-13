@@ -77,7 +77,8 @@ class ModularityTests {
                 "monster" to setOf("post", "emotion"),
                 // 006: 마이페이지 통계에 함께 물리친 보스 수를 더한다
                 // 007: 글 상세의 추천을 recommend가 고른 ID로 조립한다
-                "feed" to setOf("post", "monster", "emotion", "member", "raid", "recommend"),
+                // 011: 로그인하지 않은 방문자에게 보일 글을 고를 때 safety에 위험 판정이 끝났는지 묻는다
+                "feed" to setOf("post", "monster", "emotion", "member", "raid", "recommend", "safety"),
                 // 004: 행동한 회원 닉네임과 연결 표 때문에 member를 더한다. 몬스터 생성은 MonsterSpawned로 받아 emotion을 모른다
                 // 005: 위험 감지 결과를 safety의 이벤트로 받는다
                 // 006: 보스 처치를 raid의 이벤트로 받는다

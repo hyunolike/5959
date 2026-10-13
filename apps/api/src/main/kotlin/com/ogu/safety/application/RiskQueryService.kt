@@ -29,6 +29,10 @@ class RiskQueryService(
         return PostRisk(settled = true, level = written)
     }
 
+    @Transactional(readOnly = true)
+    override fun unsettledPostIds(postIds: Collection<Long>): Set<Long> =
+        if (postIds.isEmpty()) emptySet() else assessments.unsettledIds(ContentType.POST, postIds.toSet(), SETTLED)
+
     override fun keywordLevel(text: String): RiskLevel = KeywordRule.level(text, termCache.terms())
 
     private companion object {
