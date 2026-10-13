@@ -27,7 +27,7 @@
 
 /* 감정 색. 몬스터 그림에서 뽑았다. 이 속성이 붙은 요소 안에서 emotion 유틸리티가 이 값이 된다. */
 [data-emotion="ANXIETY"] {
-  --emotion: #8b5cf6;
+  --emotion: #6d28d9;
   --emotion-tint: #f1ebff;
   --emotion-fg: #5334b8;
 }
@@ -37,17 +37,17 @@
   --emotion-fg: #3346a3;
 }
 [data-emotion="LONELINESS"] {
-  --emotion: #35b6d3;
+  --emotion: #45c6dd;
   --emotion-tint: #e0f5fa;
   --emotion-fg: #0d6379;
 }
 [data-emotion="SELF_DEPRECATION"] {
-  --emotion: #8a9a3c;
+  --emotion: #a3b03c;
   --emotion-tint: #f0f3de;
   --emotion-fg: #56621d;
 }
 [data-emotion="IRRITATION"] {
-  --emotion: #e5484d;
+  --emotion: #cf2f38;
   --emotion-tint: #fdeaea;
   --emotion-fg: #a81f26;
 }

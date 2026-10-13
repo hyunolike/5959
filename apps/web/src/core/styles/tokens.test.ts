@@ -112,6 +112,20 @@ describe("색 토큰", () => {
   });
 });
 
+describe("차트의 감정 색", () => {
+  it("DS-US1-AC3 감정의 진한 색은 차트 검증을 통과한 값이다", () => {
+    // dataviz 검증기(validate_palette.js)를 이 순서로 통과한 값이다: 색각 이상 ΔE 14.5, 일반 시야 17.4.
+    // 값을 바꾸려면 검증기를 다시 돌린다. 옛 값은 자기비하와 짜증이 적록 색각에서 ΔE 2.2였다.
+    expect(EMOTIONS.map((type) => emotion(type).solid)).toEqual([
+      "#6d28d9",
+      "#7187e0",
+      "#45c6dd",
+      "#a3b03c",
+      "#cf2f38",
+    ]);
+  });
+});
+
 describe("초점 표시", () => {
   it("DS-US2-AC2 공통 초점 규칙은 base 레이어에 있어 컴포넌트가 끌 수 있다", () => {
     const layer = css.match(/@layer base\s*\{([\s\S]*?)\n\}/);

@@ -46,11 +46,11 @@ test("DS-US1-AC3 감정마다 태그의 점과 HP 막대가 그 감정의 색이
 }) => {
   await page.goto("/debug/design");
   for (const [emotion, expected] of [
-    ["ANXIETY", "rgb(139, 92, 246)"],
+    ["ANXIETY", "rgb(109, 40, 217)"],
     ["LETHARGY", "rgb(113, 135, 224)"],
-    ["LONELINESS", "rgb(53, 182, 211)"],
-    ["SELF_DEPRECATION", "rgb(138, 154, 60)"],
-    ["IRRITATION", "rgb(229, 72, 77)"],
+    ["LONELINESS", "rgb(69, 198, 221)"],
+    ["SELF_DEPRECATION", "rgb(163, 176, 60)"],
+    ["IRRITATION", "rgb(207, 47, 56)"],
   ]) {
     const row = page.getByTestId(`emotion-${emotion}`);
     const colors = await row.evaluate((element) => {
