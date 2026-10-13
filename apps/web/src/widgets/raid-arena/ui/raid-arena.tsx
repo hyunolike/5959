@@ -2,7 +2,11 @@
 
 import Link from "next/link";
 
-import { EMOTION_LABELS, MonsterDisplay } from "@/entities/monster";
+import {
+  EMOTION_LABELS,
+  MonsterDisplay,
+  MonsterStage,
+} from "@/entities/monster";
 import {
   RAID_TOPIC,
   useRaidQuery,
@@ -44,7 +48,7 @@ export function RaidArena() {
   if (isError || data === undefined) {
     return (
       <Card>
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-body-sm text-danger">
           레이드를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
         </p>
       </Card>
@@ -53,7 +57,7 @@ export function RaidArena() {
   if (data.boss === null) {
     return (
       <Card className="text-center">
-        <p className="text-sm text-neutral-600">곧 첫 보스가 나타나요.</p>
+        <p className="text-body-sm text-fg-subtle">곧 첫 보스가 나타나요.</p>
       </Card>
     );
   }
@@ -66,12 +70,13 @@ export function RaidArena() {
 
 function Battle({ state, boss }: { state: RaidState; boss: RaidBoss }) {
   return (
-    <Card
+    <MonsterStage
+      emotion={boss.emotion}
       role="region"
       aria-label="보스"
-      className="flex flex-col items-center gap-4"
+      className="rounded-surface flex flex-col items-center gap-4 p-5"
     >
-      <p className="text-sm text-neutral-600">
+      <p className="text-body-sm text-emotion-fg text-center font-medium">
         요즘 가장 많이 나타난 감정이 보스가 됐어요. 함께 물리쳐요.
       </p>
       <MonsterDisplay
@@ -90,23 +95,24 @@ function Battle({ state, boss }: { state: RaidState; boss: RaidBoss }) {
       />
       <AttackButton bossId={boss.bossId} disabled={!state.available} />
       {state.available ? null : (
-        <p role="status" className="text-sm text-amber-800">
+        <p role="status" className="text-body-sm text-warning text-center">
           {RAID_PAUSED_NOTICE}
         </p>
       )}
-    </Card>
+    </MonsterStage>
   );
 }
 
 function Result({ state, boss }: { state: RaidState; boss: RaidBoss }) {
   const defeated = boss.status === "DEFEATED";
   return (
-    <Card
+    <MonsterStage
+      emotion={boss.emotion}
       role="region"
       aria-label="레이드 결과"
-      className="flex flex-col items-center gap-4"
+      className="rounded-surface flex flex-col items-center gap-4 p-5"
     >
-      <h2 className="text-lg font-semibold text-neutral-900">
+      <h2 className="text-title text-fg text-center font-bold">
         {defeated
           ? `${EMOTION_LABELS[boss.emotion]} 보스를 함께 물리쳤어요`
           : `${EMOTION_LABELS[boss.emotion]} 보스가 물러났어요`}
@@ -133,7 +139,7 @@ function Result({ state, boss }: { state: RaidState; boss: RaidBoss }) {
         ) : null}
       </Figures>
       {state.nextBossAt ? (
-        <p className="text-sm text-neutral-600">
+        <p className="text-body-sm text-fg-muted text-center">
           다음 보스는{" "}
           <time dateTime={state.nextBossAt}>
             {formatDate(state.nextBossAt, "M월 D일 HH:mm")}
@@ -144,7 +150,7 @@ function Result({ state, boss }: { state: RaidState; boss: RaidBoss }) {
       <Button asChild variant="ghost" size="sm">
         <Link href="/home">피드로</Link>
       </Button>
-    </Card>
+    </MonsterStage>
   );
 }
 
@@ -159,10 +165,7 @@ function Figures({
 }) {
   return (
     // 공격이 몰려도 화면 낭독기가 따라올 수 있게, 바뀐 값만 정중하게 읽는다.
-    <dl
-      aria-live="polite"
-      className="flex w-full justify-center gap-6 text-center"
-    >
+    <dl aria-live="polite" className="flex w-full gap-3">
       <Figure label="함께한 회원" value={`${participantCount}명`} />
       <Figure label="내 기여" value={String(myDamage)} />
       {children}
@@ -172,9 +175,10 @@ function Figures({
 
 function Figure({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col gap-1">
-      <dt className="text-xs text-neutral-500">{label}</dt>
-      <dd className="text-lg font-semibold text-neutral-900 tabular-nums">
+    // 이름 바로 뒤에 값이 오게 둔다. e2e가 "함께한 회원5명"처럼 이어진 글자를 읽는다.
+    <div className="rounded-control bg-surface flex min-w-0 flex-1 flex-col gap-0.5 px-4 py-3">
+      <dt className="text-caption text-fg-subtle">{label}</dt>
+      <dd className="text-title text-fg font-extrabold tabular-nums">
         {value}
       </dd>
     </div>

@@ -7,7 +7,6 @@
   "app/notifications/page.tsx": 1,
   "app/onboarding/page.tsx": 2,
   "app/page.tsx": 3,
-  "app/raid/page.tsx": 2,
   "app/report/[weekStart]/page.tsx": 1,
   "app/write/page.tsx": 2,
   "entities/notification/ui/notification-item.tsx": 13,
@@ -28,8 +27,6 @@
   "widgets/my-activity/ui/my-activity.tsx": 6,
   "widgets/notification-list/ui/notification-list.tsx": 3,
   "widgets/post-editor/ui/post-editor.tsx": 4,
-  "widgets/raid-arena/ui/boss-banner.tsx": 8,
-  "widgets/raid-arena/ui/raid-arena.tsx": 10,
   "widgets/service-status/ui/service-status-view.tsx": 4,
   "widgets/weekly-report/ui/weekly-report.tsx": 23
 }
