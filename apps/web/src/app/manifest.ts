@@ -15,20 +15,20 @@ export default function manifest(): MetadataRoute.Manifest {
     prefer_related_applications: false,
     icons: [
       {
-        src: "/pwa/ogu-lettering-v1-192.png",
+        src: "/pwa/ogu-logo-v2-192.png",
         sizes: "192x192",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/pwa/ogu-lettering-v1-512.png",
+        src: "/pwa/ogu-logo-v2-512.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "any",
       },
-      // 글자와 전신 오구를 80% 지름 안전 원 안에 따로 배치한 버전이다.
+      // 심볼이 가운데 안전 영역(지름 80% 원) 안에 든 버전이다. 원형으로 잘려도 얼굴이 남는다.
       {
-        src: "/pwa/ogu-lettering-v1-maskable-512.png",
+        src: "/pwa/ogu-logo-v2-maskable-512.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("BRAND-US1-AC1 원형 mask가 글자와 캐릭터를 자르지 않는다", async ({
+test("BRAND-US1-AC1 원형 mask가 심볼을 자르지 않는다", async ({
   page,
   request,
 }) => {
@@ -45,12 +45,13 @@ test("BRAND-US1-AC1 원형 mask가 글자와 캐릭터를 자르지 않는다", 
   expect(pixels.width).toBe(512);
   expect(pixels.height).toBe(512);
   expect(pixels.outside).toBe(0);
+  // 심볼은 잎(위)과 얼굴(아래)이다. 둘 다 그려져 있다.
   expect(pixels.upper).toBeGreaterThan(1000);
   expect(pixels.lower).toBeGreaterThan(5000);
 });
 
 for (const width of [390, 1440]) {
-  test(`BRAND-US1-AC2 서비스 로고는 이름과 24/32px 레터링을 보존한다 (${width}px)`, async ({
+  test(`LOGO-AC1 서비스 로고는 이름이 읽히고 28/32px 높이로 놓인다 (${width}px)`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 });
@@ -62,10 +63,20 @@ for (const width of [390, 1440]) {
     await expect(
       page.getByRole("link", { name: "오구오구 홈", exact: true }),
     ).toHaveAttribute("href", "/login");
-    const wordmark = logo.locator('img[src="/brand/ogu-wordmark.svg"]');
-    await expect(wordmark).toBeVisible();
-    const box = await wordmark.boundingBox();
-    expect(box?.height).toBe(width < 640 ? 24 : 32);
+    const image = logo.locator('img[src="/brand/ogu-logo.svg"]');
+    await expect(image).toBeVisible();
+    await expect
+      .poll(() =>
+        image.evaluate(
+          (element: HTMLImageElement) =>
+            element.complete && element.naturalWidth > 0,
+        ),
+      )
+      .toBe(true);
+    const box = (await image.boundingBox())!;
+    expect(box.height).toBe(width < 640 ? 28 : 32);
+    // 가로형 원본의 비율(304:64)을 지킨다.
+    expect(Math.abs(box.width / box.height - 304 / 64)).toBeLessThan(0.05);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth > innerWidth,
@@ -73,3 +84,24 @@ for (const width of [390, 1440]) {
     ).toBe(false);
   });
 }
+
+test("LOGO-AC5 공유 이미지는 서비스 주소의 절대 경로로 실리고 1200×630 PNG로 열린다", async ({
+  page,
+  request,
+}) => {
+  await page.goto("/login");
+  const content = await page
+    .locator('meta[property="og:image"]')
+    .getAttribute("content");
+  expect(content).toMatch(/^https?:\/\/[^/]+\/opengraph-image\b/);
+  expect(
+    await page
+      .locator('meta[property="og:image:width"]')
+      .getAttribute("content"),
+  ).toBe("1200");
+  const image = await request.get(
+    new URL(content!).pathname + new URL(content!).search,
+  );
+  expect(image.ok()).toBe(true);
+  expect(image.headers()["content-type"]).toContain("image/png");
+});

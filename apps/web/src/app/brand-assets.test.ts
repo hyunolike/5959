@@ -63,4 +63,58 @@ describe("브랜드 그림과 아이콘", () => {
   it("DS-US5-AC1 파비콘은 PNG로 둔다", () => {
     expect(existsSync(join(SRC, "app", "icon.png"))).toBe(true);
   });
+
+  it("LOGO-AC3 옛 로고와 옛 아이콘 파일은 남기지 않는다", () => {
+    for (const path of [
+      "brand/ogu-wordmark.svg",
+      "brand/ogu-symbol.webp",
+      "brand/apple-touch-icon.png",
+      "brand/ogu-lettering-v1-apple-touch-180.png",
+      "pwa/icon-192.png",
+      "pwa/icon-512.png",
+      "pwa/icon-maskable-512.png",
+      "pwa/ogu-lettering-v1-192.png",
+      "pwa/ogu-lettering-v1-512.png",
+      "pwa/ogu-lettering-v1-maskable-512.png",
+    ]) {
+      expect(existsSync(join(PUBLIC, path)), path).toBe(false);
+    }
+    for (const { path, text } of code) {
+      expect(text, path).not.toMatch(/ogu-wordmark|ogu-symbol|ogu-lettering/);
+    }
+  });
+
+  it("LOGO-AC4 로고는 글꼴과 그림 파일에 기대지 않는 SVG다", () => {
+    for (const name of ["ogu-logo.svg", "ogu-logo-symbol.svg"]) {
+      const svg = readFileSync(join(PUBLIC, "brand", name), "utf8");
+      expect(svg, name).not.toMatch(/<text|font-family|<image|<style|href=/);
+      // 화면에 브랜드 색을 두지 않는다. 잉크와 잎의 초록뿐이고 보라색(불안의 색)은 없다.
+      const colors = new Set(svg.match(/#[0-9a-fA-F]{6}/g));
+      expect([...colors].sort(), name).toEqual(["#17171c", "#3fa96b"]);
+    }
+  });
+
+  it("LOGO-AC5 공유 이미지는 1200×630 PNG다", () => {
+    const header = readFileSync(join(SRC, "app", "opengraph-image.png"));
+    expect(header.subarray(1, 4).toString("latin1")).toBe("PNG");
+    expect(`${header.readUInt32BE(16)}x${header.readUInt32BE(20)}`).toBe(
+      "1200x630",
+    );
+  });
+
+  it("LOGO-AC2 아이콘의 원본 SVG는 scripts/brand에 있고 만드는 스크립트가 읽는다", () => {
+    const script = readFileSync(
+      join(WEB, "scripts", "generate-brand-icons.mjs"),
+      "utf8",
+    );
+    for (const name of [
+      "icon.svg",
+      "app-icon.svg",
+      "app-icon-maskable.svg",
+      "og-image.svg",
+    ]) {
+      expect(existsSync(join(WEB, "scripts", "brand", name)), name).toBe(true);
+      expect(script, name).toContain(name);
+    }
+  });
 });

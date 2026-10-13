@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none" role="img" aria-labelledby="title">
+  <title id="title">오구오구 앱 아이콘</title>
+  <path fill="#ffffff" d="M0 0 H512 V512 H0 Z"/>
+  <g transform="translate(74.88 74.88) scale(5.66)">
+  <path d="M32 18 C19 17 8 27 8 39 C8 51 17 56 32 56 C47 56 56 51 56 39 C56 27 45 17 32 18 Z" stroke="#17171c" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path fill="#3fa96b" d="M32 19 C27 11 34 4 46 4 C46 14 42 20 32 19 Z"/>
+  <path fill="#17171c" d="M26.25 34 A3.25 3.25 0 1 1 19.75 34 A3.25 3.25 0 1 1 26.25 34 Z M44.25 34 A3.25 3.25 0 1 1 37.75 34 A3.25 3.25 0 1 1 44.25 34 Z"/>
+  <path d="M26 44 Q32 49 38 44" stroke="#17171c" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

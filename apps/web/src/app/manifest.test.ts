@@ -8,9 +8,14 @@ it("BRAND-US1-AC1 새 설치 아이콘은 이전 아이콘 캐시와 다른 공�
     "/pwa/icon-192.png",
     "/pwa/icon-512.png",
     "/pwa/icon-maskable-512.png",
+    "/pwa/ogu-lettering-v1-192.png",
+    "/pwa/ogu-lettering-v1-512.png",
+    "/pwa/ogu-lettering-v1-maskable-512.png",
   ]);
   for (const icon of manifest().icons ?? []) {
     expect(previous.has(icon.src)).toBe(false);
+    // LOGO-AC2: 새 로고의 아이콘은 판을 올린 이름이다. 설치된 기기의 아이콘이 바뀌게 한다.
+    expect(icon.src).toMatch(/^\/pwa\/ogu-logo-v2-/);
   }
 });
 
