@@ -181,22 +181,78 @@ describe("AppShell", () => {
     expect(menu.className).not.toMatch(/shadow/);
   });
 
-  it("좁은 화면의 고민 쓰기는 막대 한가운데 칸에 있다", () => {
+  it("US5-AC1 좁은 화면의 메뉴는 이야기, 함께, 고민 쓰기, 도감, 기록이고 고민 쓰기가 한가운데다", () => {
     render(<AppShell authenticated>{null}</AppShell>);
     const menu = screen.getByRole("navigation", { name: "모바일 주요 메뉴" });
-    // 다섯 칸으로 나눠 셋째 칸이 정가운데다. 오른쪽의 하나는 두 칸을 쓴다.
+    // 다섯 칸이라 셋째 칸이 정가운데다. 두 칸을 쓰는 메뉴는 없다.
     expect(menu).toHaveClass("grid", "grid-cols-5");
     const links = within(menu).getAllByRole("link");
     expect(links.map((link) => link.getAttribute("aria-label"))).toEqual([
       "마음 이야기",
       "함께 이겨내기",
       "고민 쓰기",
+      "몬스터 도감",
       "내 마음 기록",
     ]);
-    expect(links[3]).toHaveClass("col-span-2");
-    for (const link of links.slice(0, 3)) {
+    expect(links.map((link) => link.textContent)).toEqual([
+      "이야기",
+      "함께",
+      "고민 쓰기",
+      "도감",
+      "기록",
+    ]);
+    for (const link of links) {
       expect(link).not.toHaveClass("col-span-2");
     }
+    expect(links[3]).toHaveAttribute("href", "/cards");
+  });
+
+  it("US5-AC2 넓은 화면의 메뉴에도 같은 순서로 도감이 있다", () => {
+    render(<AppShell authenticated>{null}</AppShell>);
+    const links = within(
+      screen.getByRole("navigation", { name: "주요 메뉴" }),
+    ).getAllByRole("link");
+    expect(links.map((link) => link.getAttribute("aria-label"))).toEqual([
+      "마음 이야기",
+      "함께 이겨내기",
+      "고민 쓰기",
+      "몬스터 도감",
+      "내 마음 기록",
+    ]);
+    expect(links[3]).toHaveTextContent("몬스터 도감");
+  });
+
+  it("US5-AC3 도감 화면에서는 도감이 지금 위치다", () => {
+    route.pathname = "/cards";
+    render(<AppShell authenticated>{null}</AppShell>);
+    for (const name of ["주요 메뉴", "모바일 주요 메뉴"]) {
+      const nav = within(screen.getByRole("navigation", { name }));
+      expect(nav.getByRole("link", { name: "몬스터 도감" })).toHaveAttribute(
+        "aria-current",
+        "page",
+      );
+      expect(
+        nav.getByRole("link", { name: "내 마음 기록" }),
+      ).not.toHaveAttribute("aria-current");
+    }
+  });
+
+  it("US5-AC4 익명에게 도감은 잠겨 있고 누르면 로그인 안내가 열린다", async () => {
+    const user = userEvent.setup();
+    render(<AppShell authenticated={false}>{null}</AppShell>);
+    const cards = within(
+      screen.getByRole("navigation", { name: "모바일 주요 메뉴" }),
+    ).getByRole("link", { name: "몬스터 도감" });
+    expect(cards).toHaveAccessibleDescription("로그인 후 이용할 수 있어요");
+
+    await user.click(cards);
+    const confirm = within(
+      screen.getByRole("dialog", { name: "로그인이 필요해요" }),
+    ).getByRole("button", { name: "로그인하기" });
+    await user.click(confirm);
+    expect(route.replace).toHaveBeenCalledExactlyOnceWith(
+      "/login?next=%2Fcards",
+    );
   });
 
   it("좁은 화면의 고민 쓰기는 막대 위로 올라온 둥근 버튼이고 주요 동작 색이다", () => {
@@ -218,7 +274,12 @@ describe("AppShell", () => {
     expect(circle?.className).not.toMatch(/shadow/);
     expect(within(write).getByText("고민 쓰기")).toBeVisible();
     expect(write).toHaveClass("text-fg");
-    for (const name of ["마음 이야기", "함께 이겨내기", "내 마음 기록"]) {
+    for (const name of [
+      "마음 이야기",
+      "함께 이겨내기",
+      "몬스터 도감",
+      "내 마음 기록",
+    ]) {
       expect(
         nav
           .getByRole("link", { name })

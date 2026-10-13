@@ -14,7 +14,6 @@ export function NavigationItem({
   current,
   mobile = false,
   primary = false,
-  wide = false,
   locked = false,
   onClick,
   prefetch,
@@ -27,8 +26,6 @@ export function NavigationItem({
   mobile?: boolean;
   /** 좁은 화면의 메뉴에서 막대 위로 올라온 둥근 버튼으로 보이는 메뉴. 넓은 화면에서는 다른 메뉴와 같다. */
   primary?: boolean;
-  /** 좁은 화면의 메뉴에서 두 칸을 쓴다. */
-  wide?: boolean;
   /** 익명에게 로그인 안내를 먼저 여는 메뉴. 이름은 그대로 두고 설명으로만 알린다. */
   locked?: boolean;
   onClick?: MouseEventHandler<HTMLAnchorElement>;
@@ -47,7 +44,6 @@ export function NavigationItem({
       className={cn(
         "ogu-pressable group rounded-control relative",
         mobile ? "min-h-16 min-w-0" : "min-h-12",
-        mobile && wide && "col-span-2",
         // 둥근 버튼은 칸 밖으로 올라와 있어 칸의 바탕을 바꾸지 않는다.
         filled
           ? "text-fg"
