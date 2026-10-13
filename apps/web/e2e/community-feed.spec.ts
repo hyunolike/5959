@@ -172,15 +172,20 @@ for (const viewport of [
     expect(sortBox.x + sortBox.width).toBeLessThanOrEqual(filterBox.x - 8);
     // 고른 필터의 개수가 붙어 여닫이가 넓어져도 겹치지 않고, 펼친 칩은 그 아래에 놓인다.
     await page.goto("/home?jobRole=DEVELOPMENT&jobRole=DESIGN");
-    const counted = page.locator("summary", { hasText: "필터 (2)" });
+    // 주소가 바뀌면 Next가 이전 화면을 숨긴 채 잠깐 남겨 둔다. 보이는 쪽만 본다.
+    const counted = page
+      .locator("summary", { hasText: "필터 (2)" })
+      .filter({ visible: true });
     await expect(counted).toBeVisible();
     const countedBox = (await counted.boundingBox())!;
     const sortAgain = (await page
       .getByRole("group", { name: "정렬" })
+      .filter({ visible: true })
       .boundingBox())!;
     expect(sortAgain.x + sortAgain.width).toBeLessThanOrEqual(countedBox.x - 4);
     const chips = (await page
       .getByRole("group", { name: "직군" })
+      .filter({ visible: true })
       .boundingBox())!;
     expect(chips.y).toBeGreaterThanOrEqual(sortAgain.y + sortAgain.height);
     await page.goto("/home");
