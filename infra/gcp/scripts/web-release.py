@@ -55,12 +55,22 @@ def eligible(run, jobs, current_sha, expected_sha):
     return expected_sha
 
 
+def github(*args, attempts=4, pause=5):
+    # Gate reads are GETs; the Actions API answers 502 in bursts, and one must not fail a release.
+    for attempt in range(1, attempts + 1):
+        try:
+            return json.loads(command(["gh", "api", *args]))
+        except RuntimeError:
+            if attempt == attempts:
+                raise
+            time.sleep(pause * attempt)
+
+
 def gate(run_id, sha):
     root = f"repos/{REPO}"
-    run = json.loads(command(["gh", "api", f"{root}/actions/runs/{run_id}"]))
-    pages = json.loads(command(["gh", "api", "--paginate", "--slurp",
-                               f"{root}/actions/runs/{run_id}/jobs?filter=latest&per_page=100"]))
-    current = json.loads(command(["gh", "api", f"{root}/git/ref/heads/main"]))["object"]["sha"]
+    run = github(f"{root}/actions/runs/{run_id}")
+    pages = github("--paginate", "--slurp", f"{root}/actions/runs/{run_id}/jobs?filter=latest&per_page=100")
+    current = github(f"{root}/git/ref/heads/main")["object"]["sha"]
     return eligible(run, [j for p in pages for j in p["jobs"]], current, sha)
 
 
