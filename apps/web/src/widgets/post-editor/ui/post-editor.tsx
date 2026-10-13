@@ -6,11 +6,11 @@ import { usePostDetailQuery } from "@/entities/post";
 import { updateErrorOf, useUpdatePostMutation } from "@/features/manage-post";
 import { PostForm, type WritePostFormValues } from "@/features/write-post";
 import { ApiError } from "@/shared/api";
-import { Card, Spinner } from "@/shared/ui";
+import { Spinner } from "@/shared/ui";
 
 function Notice({ message }: { message: string }) {
   return (
-    <p role="alert" className="text-center text-sm text-neutral-600">
+    <p role="alert" className="text-body-sm text-fg-subtle text-center">
       {message}
     </p>
   );
@@ -70,14 +70,14 @@ export function PostEditor({ postId }: { postId: number }) {
 /** 고치기 화면 틀. 페이지는 이 카드만 그린다. */
 export function PostEditorCard({ postId }: { postId: number }) {
   return (
-    <Card className="w-full max-w-xl">
-      <h1 className="text-xl font-semibold text-neutral-900">고민 고치기</h1>
-      <p className="mt-1 text-sm text-neutral-500">
+    <div className="w-full max-w-xl">
+      <h1 className="text-heading text-fg font-bold">고민 고치기</h1>
+      <p className="text-body-sm text-fg-subtle mt-1">
         본문과 댓글 말투를 고쳐도 몬스터는 그대로예요.
       </p>
       <div className="mt-6">
         <PostEditor postId={postId} />
       </div>
-    </Card>
+    </div>
   );
 }

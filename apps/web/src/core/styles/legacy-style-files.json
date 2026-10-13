@@ -8,7 +8,6 @@
   "app/onboarding/page.tsx": 2,
   "app/page.tsx": 3,
   "app/report/[weekStart]/page.tsx": 1,
-  "app/write/page.tsx": 2,
   "entities/notification/ui/notification-item.tsx": 13,
   "entities/weekly-report/ui/weekly-report-item.tsx": 6,
   "features/auth/email-login/ui/login-form.tsx": 3,
@@ -17,7 +16,6 @@
   "features/edit-profile/ui/profile-form.tsx": 16,
   "features/install-app/ui/home-install.tsx": 13,
   "features/onboarding/ui/onboarding-form.tsx": 14,
-  "features/write-post/ui/post-form.tsx": 18,
   "widgets/auth-welcome/ui/auth-welcome.tsx": 2,
   "widgets/emotion-stats-panel/ui/distribution-bar.tsx": 4,
   "widgets/emotion-stats-panel/ui/emotion-stats-panel.tsx": 11,
@@ -25,7 +23,6 @@
   "widgets/guest-home/ui/guest-home.tsx": 19,
   "widgets/my-activity/ui/my-activity.tsx": 6,
   "widgets/notification-list/ui/notification-list.tsx": 3,
-  "widgets/post-editor/ui/post-editor.tsx": 4,
   "widgets/service-status/ui/service-status-view.tsx": 4,
   "widgets/weekly-report/ui/weekly-report.tsx": 23
 }

@@ -137,19 +137,25 @@ describe("WriteForm", () => {
     );
   });
 
-  it("DS-US2-AC1 고른 말투는 테두리와 가라앉은 면으로 안 고른 말투와 구분된다", async () => {
+  it("DS-US2-AC1 댓글 말투는 공용 칩이고 고른 것만 눌린 상태다", async () => {
     const user = userEvent.setup({ delay: null });
     renderForm();
 
     await user.click(screen.getByRole("button", { name: "웃겨주기" }));
-    expect(screen.getByRole("button", { name: "웃겨주기" })).toHaveClass(
-      "border",
-      "border-action",
-      "bg-surface-sunken",
-    );
+    const chosen = screen.getByRole("button", { name: "웃겨주기" });
+    expect(chosen).toHaveClass("h-9", "rounded-full");
+    expect(chosen).toHaveAttribute("aria-pressed", "true");
     expect(
       screen.getByRole("button", { name: "대신 욕해주기" }),
-    ).not.toHaveClass("border-action");
+    ).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("DS-US2-AC2 본문 입력은 공용 입력 모양이다", () => {
+    renderForm();
+    expect(screen.getByLabelText("고민")).toHaveClass(
+      "border-line-strong",
+      "rounded-control",
+    );
   });
 
   it("글자 수 카운터는 사람이 보는 글자(grapheme)로 센다", async () => {
