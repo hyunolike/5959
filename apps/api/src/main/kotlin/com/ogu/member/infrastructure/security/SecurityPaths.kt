@@ -25,6 +25,13 @@ object SecurityPaths {
             "/api/v1/notifications/stream",
         )
 
+    /**
+     * 토큰 없이 `GET`으로만 부를 수 있는 경로. 011: 로그인하지 않은 방문자가 보는 최근 글. 닉네임과 회원 번호를 싣지 않는
+     * 따로 둔 조회 하나만 연다. 회원의 피드(`/api/v1/feed`)와 글 상세, 댓글은 열지 않는다. 같은 경로에 쓰기가 생겨도
+     * 함께 열리지 않게 메서드까지 본다.
+     */
+    val PUBLIC_GET = listOf("/api/v1/public/feed")
+
     /** springdoc이 켜져 있을 때(`springdoc.api-docs.enabled`, 기본 true)만 공개한다. 운영은 이 설정이 false다. */
     const val API_DOCS = "/v3/api-docs/**"
 
@@ -43,7 +50,9 @@ object SecurityPaths {
 
     fun publicMatcher(apiDocsEnabled: Boolean): RequestMatcher {
         val patterns = if (apiDocsEnabled) PUBLIC + API_DOCS else PUBLIC
-        return anyOf(patterns)
+        val builder = PathPatternRequestMatcher.withDefaults()
+        val getOnly = PUBLIC_GET.map { builder.matcher(HttpMethod.GET, it) }
+        return OrRequestMatcher(listOf(anyOf(patterns)) + getOnly)
     }
 
     val onboardingAllowedMatcher: RequestMatcher =

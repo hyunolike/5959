@@ -3,13 +3,20 @@
 import { PencilSimpleLine } from "@phosphor-icons/react";
 import Link from "next/link";
 
+import { CAREER_YEAR_LABELS, JOB_ROLE_LABELS } from "@/entities/member";
 import {
   EMOTION_LABELS,
+  EmotionTag,
+  MonsterSummary,
   MonsterThumb,
   type EmotionType,
 } from "@/entities/monster";
+import { PublicPostCard, usePublicFeedQuery } from "@/entities/post";
 import { useGuestAccess } from "@/features/auth/guest-access";
-import { Button } from "@/shared/ui";
+import { Button, ListSkeleton } from "@/shared/ui";
+
+/** 로그인 없이 받는 글의 상한(계약 `PublicFeed.items`의 `maxItems`). 다 찼으면 더 있을 수 있다. */
+const PUBLIC_FEED_LIMIT = 20;
 
 const EMOTIONS = Object.keys(EMOTION_LABELS) as EmotionType[];
 
@@ -29,8 +36,9 @@ const STEPS = [
 ];
 
 /**
- * 비회원이 보는 홈. 공개 피드 API는 없다. 회원의 글과 수치, 가짜 게시글 없이
- * 실제 몬스터 그림으로 무엇을 하는 곳인지 보여 주고, 참여하려 하면 로그인 안내를 연다.
+ * 비회원이 보는 홈. 무엇을 하는 곳인지 알리고 최근 글을 닉네임 없이 목록으로 보인다(011).
+ * 글을 누르거나 참여하려 하면 로그인 안내를 연다. 목록이 비었거나 불러오지 못해도 소개와
+ * 로그인으로 가는 길은 남는다(011 FR-010).
  * 메뉴는 화면의 메뉴가 잠금 표시와 함께 보여 주므로 여기서 되풀이하지 않는다.
  */
 export function GuestHome() {
@@ -66,13 +74,31 @@ export function GuestHome() {
         </ul>
       </section>
 
+      <section
+        aria-labelledby="guest-home-stories"
+        className="flex flex-col gap-3"
+      >
+        <div>
+          <h2
+            id="guest-home-stories"
+            className="text-title text-fg font-bold break-keep"
+          >
+            최근 이야기
+          </h2>
+          <p className="text-body-sm text-fg-subtle mt-1 max-w-md break-keep">
+            글의 앞부분을 닉네임 없이 보여드려요. 글 전체와 댓글은 로그인하면 볼
+            수 있어요.
+          </p>
+        </div>
+        <RecentStories onSelect={(postId) => requestLogin(`/post/${postId}`)} />
+      </section>
+
       <section className="flex flex-col gap-2">
         <h2 className="text-title text-fg font-bold break-keep">
-          마음 이야기는 로그인 후 볼 수 있어요
+          로그인하고 함께해요
         </h2>
         <p className="text-body-sm text-fg-subtle max-w-md break-keep">
-          서로의 고민을 안전하게 나누기 위해 회원의 글은 로그인한 분께만
-          보여드려요.
+          공감과 댓글로 몬스터를 함께 물리치고 내 고민도 남길 수 있어요.
         </p>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
           <Button type="button" size="lg" onClick={() => requestLogin("/home")}>
@@ -123,5 +149,74 @@ export function GuestHome() {
         </ol>
       </section>
     </div>
+  );
+}
+
+/** 최근 글 목록(011 US1). 다음 쪽이 없어 스무 개가 찼으면 더 보려면 로그인하라고 알린다(US1-AC5). */
+function RecentStories({ onSelect }: { onSelect: (postId: number) => void }) {
+  const { data, isPending, isError, isFetching, refetch } =
+    usePublicFeedQuery();
+  const items = data?.items ?? [];
+
+  if (isPending) {
+    return <ListSkeleton label="최근 이야기" />;
+  }
+
+  if (isError && items.length === 0) {
+    return (
+      <div className="py-2">
+        <p role="alert" className="text-body-sm text-danger">
+          이야기를 불러오지 못했어요. 잠시 후 다시 시도해주세요.
+        </p>
+        <Button
+          variant="secondary"
+          className="mt-3"
+          disabled={isFetching}
+          aria-busy={isFetching}
+          onClick={() => void refetch()}
+        >
+          다시 불러오기
+        </Button>
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="py-2">
+        <p className="text-body text-fg font-bold">
+          아직 올라온 이야기가 없어요.
+        </p>
+        <p className="text-body-sm text-fg-subtle mt-1">
+          로그인하고 첫 이야기를 들려주세요.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <ul className="border-line -mx-5 flex flex-col border-t">
+        {items.map((item) => (
+          <li key={item.postId} className="border-line border-b">
+            <PublicPostCard
+              item={item}
+              authorMeta={`${JOB_ROLE_LABELS[item.jobRole]} · ${CAREER_YEAR_LABELS[item.careerYear]}`}
+              renderEmotion={(monster) => (
+                <EmotionTag emotion={monster.emotion} />
+              )}
+              renderMonster={(monster) => <MonsterSummary monster={monster} />}
+              onSelect={onSelect}
+            />
+          </li>
+        ))}
+      </ul>
+      {items.length >= PUBLIC_FEED_LIMIT ? (
+        <p className="text-body-sm text-fg-subtle break-keep">
+          최근 {PUBLIC_FEED_LIMIT}개까지 보여드려요. 더 많은 이야기는 로그인하면
+          볼 수 있어요.
+        </p>
+      ) : null}
+    </>
   );
 }

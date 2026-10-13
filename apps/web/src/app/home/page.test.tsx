@@ -8,8 +8,33 @@ const me = vi.hoisted(() => ({
   state: {} as { data?: { nickname: string }; isError: boolean },
 }));
 
-vi.mock("@/entities/member", () => ({
+vi.mock("@/entities/member", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/entities/member")>()),
   useMeQuery: () => me.state,
+}));
+vi.mock("@/entities/post", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/entities/post")>()),
+  usePublicFeedQuery: () => ({
+    data: {
+      items: [
+        {
+          postId: 7,
+          jobRole: "DEVELOPMENT",
+          careerYear: "YEAR_3",
+          contentPreview: "내일 발표가 걱정돼요",
+          analysisStatus: "ANALYZED",
+          monster: { emotion: "ANXIETY", hp: 2, maxHp: 10, status: "ALIVE" },
+          likeCount: 3,
+          commentCount: 2,
+          createdAt: "2026-10-03T00:00:00Z",
+        },
+      ],
+    },
+    isPending: false,
+    isError: false,
+    isFetching: false,
+    refetch: vi.fn(),
+  }),
 }));
 vi.mock("@/features/auth/logout", () => ({
   LogoutButton: () => <button type="button">로그아웃</button>,
@@ -35,7 +60,7 @@ beforeEach(() => {
 });
 
 describe("HomePage", () => {
-  it("GUEST-US1-AC4 익명 홈은 회원 글이나 프로필 대신 보호 범위를 안내한다", () => {
+  it("GUEST-US1-AC4 익명 홈은 프로필과 회원의 피드 없이 닉네임을 가린 최근 글을 보인다", () => {
     me.state = { data: { nickname: "비공개회원" }, isError: false };
     render(
       <AppShell authenticated={false}>
@@ -48,10 +73,11 @@ describe("HomePage", () => {
     expect(
       screen.queryByRole("region", { name: "피드" }),
     ).not.toBeInTheDocument();
+    // 011 US1-AC1: 로그인하지 않아도 최근 이야기가 보인다
     expect(
-      screen.getByRole("heading", {
-        name: "마음 이야기는 로그인 후 볼 수 있어요",
-      }),
+      within(screen.getByRole("region", { name: "최근 이야기" })).getByText(
+        "내일 발표가 걱정돼요",
+      ),
     ).toBeInTheDocument();
     expect(
       within(screen.getByRole("main")).getByRole("button", {

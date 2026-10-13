@@ -268,7 +268,7 @@ export function ConfirmDialog({
             {title}
           </h2>
           {description ? (
-            <p id={descriptionId} className="text-fg-subtle text-sm">
+            <p id={descriptionId} className="text-fg-subtle text-sm break-keep">
               {description}
             </p>
           ) : null}

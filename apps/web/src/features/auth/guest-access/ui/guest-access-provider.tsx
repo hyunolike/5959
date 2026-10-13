@@ -58,7 +58,7 @@ export function GuestAccessProvider({
       <ConfirmDialog
         open={request !== null && request.origin === pathname && !authenticated}
         title="로그인이 필요해요"
-        description="고민을 쓰거나 다른 메뉴를 이용하려면 로그인해 주세요. 로그인 후 선택한 화면으로 돌아갈게요."
+        description="글 전체를 읽거나 다른 메뉴를 이용하려면 로그인해 주세요. 로그인 후 선택한 화면으로 갈게요."
         confirmLabel="로그인하기"
         cancelLabel="계속 둘러보기"
         role="dialog"

@@ -136,12 +136,64 @@ class RiskApiTests {
     }
 
     @Test
+    fun `US2-AC3 AI 분류가 위험 없음으로 끝난 글만 clearedPostIds에 든다`() {
+        val author = members.onboarded()
+        val done = loop.createPost(author, "[실패] $SAFE_TEXT")
+        val concern = loop.createPost(author, "[실패] [우려] $SAFE_TEXT")
+        val waiting = loop.createPost(author, "[실패] [위험분류실패] $SAFE_TEXT")
+        val closed = loop.createPost(author, "[실패] $SAFE_TEXT 닫힌 글")
+        val fallback = loop.createPost(author, "[실패] $SAFE_TEXT 키워드로만 닫힌 글")
+        val noRecord = safety.insertPost(author, SAFE_TEXT)
+        listOf(done, concern, closed, fallback).forEach { postId -> awaitAssessment(postId) { it["status"] == "DONE" } }
+        awaitAssessment(waiting) { (it["attempts"] as Int) >= 1 }
+        // AI가 보지 못한 채 닫힌 판정(009 research R15)과 기한을 넘겨 키워드로만 닫힌 판정은 AI가 본 것이 아니다
+        closeAs(closed, "SUPERSEDED")
+        closeAs(fallback, "FALLBACK")
+
+        val cleared =
+            riskApi.clearedPostIds(listOf(done, concern, waiting, closed, fallback, noRecord, Long.MAX_VALUE))
+
+        assertThat(cleared).containsExactly(done)
+        assertThat(riskApi.clearedPostIds(emptyList())).isEmpty()
+    }
+
+    @Test
+    fun `US2-AC3 clearedPostIds는 가장 새 판정만 본다`() {
+        val author = members.onboarded()
+        val edited = loop.createPost(author, "[실패] $SAFE_TEXT")
+        val recovered = loop.createPost(author, "[실패] [위험분류실패] $SAFE_TEXT")
+        awaitAssessment(edited) { it["status"] == "DONE" }
+        awaitAssessment(recovered) { (it["attempts"] as Int) >= 1 }
+        assertThat(riskApi.clearedPostIds(listOf(edited, recovered))).containsExactly(edited)
+
+        // 끝난 글을 고치면 새 판정이 끝날 때까지 빠지고, 기다리던 글을 고쳐 분류가 끝나면 든다
+        val stuck = mapOf("content" to "[실패] [위험분류실패] $SAFE_TEXT 고친 글")
+        loop.updatePost(author, edited, stuck).andExpect(status().isNoContent)
+        loop.updatePost(author, recovered, mapOf("content" to "[실패] $SAFE_TEXT 고친 글")).andExpect(status().isNoContent)
+        awaitAssessment(edited) { it["status"] == "PENDING" && (it["attempts"] as Int) >= 1 }
+        awaitAssessment(recovered) { it["status"] == "DONE" }
+
+        assertThat(riskApi.clearedPostIds(listOf(edited, recovered))).containsExactly(recovered)
+    }
+
+    @Test
     fun `US3-AC4 위기나 우려 낱말이 든 글자는 keywordLevel이 그 단계다`() {
         assertThat(riskApi.keywordLevel(CRISIS_TEXT)).isEqualTo(RiskLevel.CRISIS)
         assertThat(riskApi.keywordLevel(CONCERN_TEXT)).isEqualTo(RiskLevel.CONCERN)
         assertThat(riskApi.keywordLevel(SAFE_TEXT)).isEqualTo(RiskLevel.NONE)
         // 가짜 분류기의 표지는 키워드가 아니다
         assertThat(riskApi.keywordLevel("[위기] $SAFE_TEXT")).isEqualTo(RiskLevel.NONE)
+    }
+
+    private fun closeAs(
+        postId: Long,
+        status: String,
+    ) {
+        jdbcTemplate.update(
+            "update risk_assessment set status = ? where target_type = 'POST' and target_id = ?",
+            status,
+            postId,
+        )
     }
 
     private fun awaitAssessment(

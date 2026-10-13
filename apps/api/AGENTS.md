@@ -196,6 +196,15 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   지웠거나 숨긴 글의 몬스터는 `visibleIds`에서 빠진다(내 글이 숨겨져도 같다). 응답에는 본문, 미리보기, 닉네임이 들어갈
   자리가 없다. 그래서 `FeedAssembler`를 쓰지 않는다. 등급은 `max_hp`로 정하고(10, 20, 30이 일반, 희귀, 전설) 무작위가 없다.
   `visibleIds`의 작성자 인자는 없어도 된다(주면 추천처럼 그 회원의 글을 뺀다).
+- **비회원 둘러보기 피드(011, research R1~R4, R8).** `GET /api/v1/public/feed`는 로그인 없이 부르는 하나뿐인 글 조회다
+  (`SecurityPaths.PUBLIC_GET`, `GET`만 연다). `feed/application/PublicFeedQuery`가 회원의 피드와 따로 조립한다. 응답 타입
+  (`PublicFeedItemResponse`)에 닉네임과 회원 번호가 들어갈 자리가 없고 회원을 읽지도 않는다. 그래서 `FeedAssembler`를
+  쓰지 않는다. `PostApi.page`로 최근 50개를 읽어 숨기지 않았고 위험 단계가 없음인 글 가운데 `RiskApi.clearedPostIds`가
+  허락한 것만 앞에서 20개 준다. 허락하는 것은 가장 새 판정이 `DONE`이고 단계가 없음인 글이다. 우려 글, AI 분류를 기다리는
+  글, 키워드로만 닫힌 글(`FALLBACK`), 판정 기록이 없는 옛 글은 회원에게는 보여도 여기서는 빠진다. "뺄 글"을 고르는
+  방식으로 되돌리지 않는다. 글의 단계 열은 분류 결과보다 늦게 읽힐 수 있어 위기 글이 샌다. 욕설은 언제나 가린다. 커서와
+  쪽 번호가 없어 얻을 수 있는 것은 그때의 최근 20개뿐이다. 쿼리는 4개다. 이 조회 때문에 `feed`가 `safety`에 의존한다
+  (`RiskApi`만 쓴다). 여기에 필드를 더할 때는 누구나 본다는 것을 먼저 생각한다.
 - **감정 통계(004 US4, research R12).** `GET /api/v1/members/me/emotion-stats`는 `feed/application/EmotionStatsQuery`가
   파사드 네 번(`PostActivityApi.liveRefsByAuthor`, `MonsterApi.statRows`, `MonsterApi.defeatedPostIdsDamagedBy`,
   `PostActivityApi.liveIds`)으로 읽어 메모리에서 센다. `posts`와 `monsters`는 소유 모듈이 달라 SQL로 조인하지 않는다.
@@ -436,7 +445,7 @@ HTTP API도 이벤트도 없다. 글이 올라온 뒤 한동안 다른 회원의
 |---|---|---|---|
 | `companion` | - | - | `PostCreated`(커밋 뒤, 반응 기록 만들기) |
 | `post`(더한 것) | `PostCompanionApi`(`target`, `react`), `CompanionTarget`, `CompanionReactionResult` | - | - |
-| `safety`(더한 것) | `RiskApi`(`postRisk`, `keywordLevel`), `PostRisk` | - | - |
+| `safety`(더한 것) | `RiskApi`(`postRisk`, `keywordLevel`, 011에서 `clearedPostIds`), `PostRisk` | - | - |
 | `ai`(더한 것) | `CompanionCommentWriter`, `CompanionCommentInput`, `CompanionTone`, `CompanionVoice`, `CompanionCommentFailed` | - | - |
 | `member`(더한 것) | `MemberInfo.ai` | - | - |
 
