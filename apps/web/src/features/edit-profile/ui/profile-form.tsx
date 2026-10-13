@@ -135,7 +135,7 @@ export function ProfileForm({ member }: { member: MemberProfile }) {
               className={cn(
                 "text-body-sm",
                 settledNicknameResult?.available
-                  ? "text-leaf-700"
+                  ? "text-fg font-medium"
                   : "text-fg-subtle",
               )}
             >
