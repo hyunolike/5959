@@ -21,11 +21,23 @@ describe("Chip", () => {
     );
   });
 
-  it("DS-US2-AC2 보이는 높이는 36px이고 누르는 영역은 위아래로 넓다", () => {
+  it("POLISH-AC5 보이는 높이는 40px이고 누르는 영역은 44px이다", () => {
     render(<Chip pressed={false}>디자인</Chip>);
     expect(screen.getByRole("button", { name: "디자인" })).toHaveClass(
-      "h-9",
-      "before:-inset-y-[5px]",
+      "h-10",
+      "before:-inset-y-0.5",
     );
+  });
+
+  it("POLISH-AC5 칩은 테두리 없이 채움으로 고른 것을 알린다", () => {
+    render(<Chip pressed={false}>디자인</Chip>);
+    const chip = screen.getByRole("button", { name: "디자인" });
+    expect(chip).toHaveClass(
+      "bg-surface-sunken",
+      "text-fg-muted",
+      "aria-pressed:bg-action",
+      "aria-pressed:text-on-action",
+    );
+    expect(chip).not.toHaveClass("border");
   });
 });

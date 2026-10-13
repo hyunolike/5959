@@ -143,7 +143,7 @@ describe("WriteForm", () => {
 
     await user.click(screen.getByRole("button", { name: "웃겨주기" }));
     const chosen = screen.getByRole("button", { name: "웃겨주기" });
-    expect(chosen).toHaveClass("h-9", "rounded-full");
+    expect(chosen).toHaveClass("h-10", "rounded-full");
     expect(chosen).toHaveAttribute("aria-pressed", "true");
     expect(
       screen.getByRole("button", { name: "대신 욕해주기" }),

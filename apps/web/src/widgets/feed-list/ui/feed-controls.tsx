@@ -136,8 +136,8 @@ function ChipGroup({
   return (
     <div role="group" aria-label={label} className="flex flex-col gap-2">
       <span className="text-caption text-fg-subtle">{label}</span>
-      {/* 칩의 누르는 영역이 위아래로 5px씩 넓어서, 줄 사이를 12px로 둬 겹치지 않게 한다. */}
-      <div className="flex flex-wrap gap-x-2 gap-y-3">{children}</div>
+      {/* 칩의 누르는 영역은 위아래로 2px씩 넓다. 줄 사이 8px이면 겹치지 않는다. */}
+      <div className="flex flex-wrap gap-2">{children}</div>
     </div>
   );
 }

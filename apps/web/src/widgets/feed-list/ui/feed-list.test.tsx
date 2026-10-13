@@ -268,7 +268,7 @@ describe("FeedList", () => {
 
     const latest = screen.getByRole("button", { name: "최신순" });
     expect(latest).toHaveAttribute("aria-pressed", "true");
-    expect(latest).toHaveClass("h-9", "rounded-full");
+    expect(latest).toHaveClass("h-10", "rounded-full");
     expect(screen.getByRole("button", { name: "인기순" })).toHaveAttribute(
       "aria-pressed",
       "false",
