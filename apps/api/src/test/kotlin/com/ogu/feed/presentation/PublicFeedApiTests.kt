@@ -132,11 +132,12 @@ class PublicFeedApiTests {
         assertThat(raw).contains("\"postId\":$postId")
         assertThat(raw).doesNotContain(nickname)
         assertThat(raw).doesNotContain("nickname", "author", "memberId", "likedByMe", "hidden", "nextCursor")
-        // 글 하나의 필드는 계약에 적힌 아홉 개뿐이다
+        // 글 하나의 필드는 계약에 적힌 열 개뿐이다. ai는 AI 친구가 쓴 글인지다(012 US4-AC3). 닉네임은 여전히 없다
         assertThat(itemOf(postId)!!.propertyNames()).containsExactlyInAnyOrder(
             "postId",
             "jobRole",
             "careerYear",
+            "ai",
             "contentPreview",
             "analysisStatus",
             "monster",

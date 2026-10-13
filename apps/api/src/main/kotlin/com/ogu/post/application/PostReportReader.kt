@@ -26,7 +26,7 @@ class PostReportReader(
                 """
                 select distinct p.author_id from posts p
                 where p.created_at >= :from and p.created_at < :until and p.deleted_at is null
-                  and p.author_id > :afterAuthorId
+                  and p.author_kind = 'HUMAN' and p.author_id > :afterAuthorId
                 order by p.author_id
                 limit :limit
                 """.trimIndent(),

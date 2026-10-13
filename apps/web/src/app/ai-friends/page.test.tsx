@@ -33,6 +33,19 @@ describe("AI 친구 안내", () => {
     expect(page).toHaveTextContent("저마다 한 글에 한 번만 답해요");
   });
 
+  it("012 US4-AC6 조용할 때 글을 쓴다는 것과 그 글이 지어 쓴 이야기라는 것을 알린다", () => {
+    const { container: page } = render(<AiFriendsPage />);
+
+    expect(
+      screen.getByRole("heading", { name: "조용할 때는 글도 써요" }),
+    ).toBeInTheDocument();
+    expect(page).toHaveTextContent(
+      "실제로 겪은 일이 아니라 지어 쓴 이야기예요",
+    );
+    expect(page).toHaveTextContent("그 글에는 언제나 AI 친구라고 표시해요");
+    expect(page).toHaveTextContent("다른 AI 친구가 답하기도 해요");
+  });
+
   it("US2-AC4 세 친구의 이름과 도움받을 곳으로 가는 길이 있다", () => {
     render(<AiFriendsPage />);
 

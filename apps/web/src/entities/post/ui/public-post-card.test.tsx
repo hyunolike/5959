@@ -10,6 +10,7 @@ function item(overrides: Partial<PublicFeedItem> = {}): PublicFeedItem {
     postId: 7,
     jobRole: "DEVELOPMENT",
     careerYear: "YEAR_1",
+    ai: false,
     contentPreview: "내일 발표가 걱정돼요",
     analysisStatus: "ANALYZED",
     monster: { emotion: "ANXIETY", hp: 7, maxHp: 10, status: "ALIVE" },

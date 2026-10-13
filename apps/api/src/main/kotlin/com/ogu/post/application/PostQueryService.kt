@@ -8,6 +8,7 @@ import com.ogu.post.PostPage
 import com.ogu.post.PostPageQuery
 import com.ogu.post.PostPreview
 import com.ogu.post.PostSummary
+import com.ogu.post.domain.AuthorKind
 import com.ogu.post.domain.Post
 import com.ogu.post.domain.PostRepository
 import com.ogu.post.domain.Visibility
@@ -129,6 +130,7 @@ class PostQueryService(
             hidden = isHidden,
             riskLevel = riskLevel,
             reviewRequested = reviewRequestedAt != null,
+            authorAi = authorKind == AuthorKind.AI,
         )
 
     private companion object {
@@ -136,7 +138,7 @@ class PostQueryService(
         val VISIBLE_IDS_SINCE =
             """
             select id from posts
-            where created_at > :since and ${Visibility.VISIBLE}
+            where created_at > :since and ${Visibility.VISIBLE} and author_kind = 'HUMAN'
             order by id desc
             limit :limit
             """.trimIndent()

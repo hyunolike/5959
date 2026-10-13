@@ -3,7 +3,7 @@
 import { PencilSimpleLine } from "@phosphor-icons/react";
 import Link from "next/link";
 
-import { CAREER_YEAR_LABELS, JOB_ROLE_LABELS } from "@/entities/member";
+import { authorMetaLabel } from "@/entities/member";
 import {
   EMOTION_LABELS,
   EmotionTag,
@@ -201,7 +201,7 @@ function RecentStories({ onSelect }: { onSelect: (postId: number) => void }) {
           <li key={item.postId} className="border-line border-b">
             <PublicPostCard
               item={item}
-              authorMeta={`${JOB_ROLE_LABELS[item.jobRole]} · ${CAREER_YEAR_LABELS[item.careerYear]}`}
+              authorMeta={authorMetaLabel(item)}
               renderEmotion={(monster) => (
                 <EmotionTag emotion={monster.emotion} />
               )}

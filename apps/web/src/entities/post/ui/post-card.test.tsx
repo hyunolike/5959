@@ -12,6 +12,7 @@ function item(overrides: Partial<FeedItem> = {}): FeedItem {
       nickname: "오구",
       jobRole: "DEVELOPMENT",
       careerYear: "YEAR_1",
+      ai: false,
     },
     contentPreview: "내일 발표가 걱정돼요",
     analysisStatus: "ANALYZED",

@@ -960,12 +960,21 @@ export interface components {
       /** @enum {string} */
       status: "ALIVE" | "DEFEATED";
     };
+    /**
+     * @description 글을 쓴 회원. 직군과 경력은 글을 쓸 때의 스냅숏이다.
+     *     AI 친구가 쓴 글(ai = true)은 직군과 경력이 null이다. 웹은 그 자리에 "AI 친구"를 보인다(012 US4-AC1, FR-029).
+     *     피드, 글 상세, 비슷한 글, 내가 쓴 글, 공감한 글이 함께 쓴다.
+     */
     Author: {
       /** Format: int64 */
       id: number;
       nickname: string;
-      jobRole: components["schemas"]["JobRole"];
-      careerYear: components["schemas"]["CareerYear"];
+      /** @description AI 친구의 글이면 null */
+      jobRole: components["schemas"]["JobRole"] | null;
+      /** @description AI 친구의 글이면 null */
+      careerYear: components["schemas"]["CareerYear"] | null;
+      /** @description AI 친구가 쓴 글이면 true. 글을 쓸 때의 글쓴이 종류다 */
+      ai: boolean;
     };
     /**
      * @description 댓글을 쓴 회원의 지금 프로필. 글의 Author와 달리 작성 때의 스냅숏이 아니다.
@@ -998,6 +1007,7 @@ export interface components {
     /**
      * @description 로그인하지 않은 방문자에게 보이는 글 하나. 닉네임, 회원 번호, 댓글의 내용, 공감한 회원이 들어갈 자리가 없다(011 FR-003).
      *     지운 글, 숨긴 글, AI 분류까지 끝나 위험 없음으로 판정되지 않은 글은 나오지 않는다(011 FR-004).
+     *     AI 친구가 쓴 글(ai = true)도 같은 조건으로 나오고 직군과 경력이 null이다. 닉네임은 여전히 없다(012 US4-AC3, FR-031).
      */
     PublicFeedItem: {
       /**
@@ -1005,8 +1015,12 @@ export interface components {
        * @description 로그인한 뒤 이 글로 가는 데 쓴다
        */
       postId: number;
-      jobRole: components["schemas"]["JobRole"];
-      careerYear: components["schemas"]["CareerYear"];
+      /** @description AI 친구의 글이면 null */
+      jobRole: components["schemas"]["JobRole"] | null;
+      /** @description AI 친구의 글이면 null */
+      careerYear: components["schemas"]["CareerYear"] | null;
+      /** @description AI 친구가 쓴 글이면 true */
+      ai: boolean;
       /** @description 욕설을 가린 본문의 앞부분 */
       contentPreview: string;
       analysisStatus: components["schemas"]["AnalysisStatus"];

@@ -28,10 +28,14 @@ data class PostDetailResponse(
     val createdAt: Instant,
 )
 
-/** 계약의 `Author`. 직군과 경력은 글을 쓸 때의 스냅숏이다(research R7). */
+/**
+ * 계약의 `Author`. 직군과 경력은 글을 쓸 때의 스냅숏이다(research R7). AI 친구가 쓴 글은 [ai]가 true이고 직군과 경력이
+ * null이다. 웹이 그 자리에 "AI 친구"를 보인다(012 US4-AC1).
+ */
 data class AuthorResponse(
     val id: Long,
     val nickname: String,
-    val jobRole: JobRole,
-    val careerYear: CareerYear,
+    val jobRole: JobRole?,
+    val careerYear: CareerYear?,
+    val ai: Boolean,
 )

@@ -29,3 +29,21 @@ export const CAREER_YEAR_LABELS: Record<CareerYear, string> = {
   YEAR_6: "6년차",
   YEAR_7_PLUS: "7년차 이상",
 };
+
+/** AI 친구의 글에서 직군과 경력 자리에 보이는 말(012 US4-AC1). 색이나 그림이 아니라 글자로 알린다. */
+export const AI_FRIEND_LABEL = "AI 친구";
+
+/**
+ * 글쓴이의 이름 옆에 보이는 한 줄. 사람 회원은 글을 쓸 때의 직군과 경력이고, AI 친구는 "AI 친구"다(012 FR-029).
+ * AI 친구에게는 직군과 경력이 없다. 꾸며 붙이지 않는다.
+ */
+export function authorMetaLabel(author: {
+  jobRole: JobRole | null;
+  careerYear: CareerYear | null;
+  ai: boolean;
+}): string {
+  if (author.ai || author.jobRole === null || author.careerYear === null) {
+    return AI_FRIEND_LABEL;
+  }
+  return `${JOB_ROLE_LABELS[author.jobRole]} · ${CAREER_YEAR_LABELS[author.careerYear]}`;
+}

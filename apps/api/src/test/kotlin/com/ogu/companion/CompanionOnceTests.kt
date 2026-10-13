@@ -30,6 +30,8 @@ import java.util.concurrent.TimeUnit
         CompanionSettings.NO_SCHEDULER,
         CompanionSettings.LONG_TOKEN,
         CompanionSettings.NO_LIMIT,
+        CompanionSettings.POSTING,
+        CompanionSettings.NO_POSTING_SCHEDULER,
         FutureClockSchedulers.REPORT,
         FutureClockSchedulers.RAID,
         FutureClockSchedulers.EMOTION,

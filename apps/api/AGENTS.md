@@ -8,7 +8,7 @@ Guidance for AI coding agents working in this repository.
 kotlin-spring-modulith-template에서 이식했다. 단일 Gradle 모듈이며 루트 패키지는
 `com.ogu`. 지금 모듈은 `shared`(OPEN), `member`, `post`, `ai`, `emotion`,
 `monster`, `feed`, `notification`(004), `safety`(005), `raid`(006), `recommend`(007),
-`report`(008), `companion`(009) 열세 개다. 모듈 목록과 의존 방향은
+`report`(008), `companion`(009, 012에서 넓힘) 열세 개다. 모듈 목록과 의존 방향은
 `docs/architecture/overview.md` 5.1절을 따른다.
 
 ## Commands
@@ -441,14 +441,14 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
 
 009-ai-companions에서 생겼다. 허용 의존은 `shared`, `post`, `safety`, `emotion`, `ai`다. `companion`에 의존하는 모듈은 없다.
 HTTP API도 이벤트도 없다. 글이 올라온 뒤 한동안 다른 회원의 댓글이 없으면 AI 친구가 댓글 하나와 공감 하나를 남긴다.
-012-companion-activity부터 한 글에 한 명에서 세 명이 차례로 답한다.
+012-companion-activity부터 한 글에 한 명에서 세 명이 차례로 답하고, 한동안 새 글이 없으면 AI 친구가 고민 글을 쓴다.
 
 | 모듈 | 공개 타입 | 발행 이벤트 | 받는 이벤트 |
 |---|---|---|---|
 | `companion` | - | - | `PostCreated`(커밋 뒤, 반응 기록 만들기) |
-| `post`(더한 것) | `PostCompanionApi`(`target`, `react`), `CompanionTarget`, `CompanionReactionResult` | - | - |
+| `post`(더한 것) | `PostCompanionApi`(`target`, `react`), `CompanionTarget`, `CompanionReactionResult`, 012에서 `CompanionPostApi`(`write`, `latestVisiblePostAt`, `findWrittenSince`), `PostSummary.authorAi` | - | - |
 | `safety`(더한 것) | `RiskApi`(`postRisk`, `keywordLevel`, 011에서 `clearedPostIds`), `PostRisk` | - | - |
-| `ai`(더한 것) | `CompanionCommentWriter`, `CompanionCommentInput`, `CompanionTone`, `CompanionVoice`, `CompanionCommentFailed` | - | - |
+| `ai`(더한 것) | `CompanionCommentWriter`, `CompanionCommentInput`, `CompanionTone`, `CompanionVoice`, `CompanionCommentFailed`, 012에서 `CompanionPostWriter`, `CompanionPostInput`, `CompanionPostFailed` | - | - |
 | `member`(더한 것) | `MemberInfo.ai` | - | - |
 
 - **AI 친구는 `member`의 행이다.** `kind = 'AI'`인 회원 셋이고 V9 마이그레이션의 시드로만 생긴다. `auth_method`는 `NONE`이고
@@ -508,7 +508,40 @@ HTTP API도 이벤트도 없다. 글이 올라온 뒤 한동안 다른 회원의
   기능을 켠 채 도는 e2e에서 다른 시나리오의 댓글 수와 HP가 흔들리지 않게 한다. 같은 까닭으로 `e2e` 프로필은 반응할 수를
   무작위로 뽑지 않고 본문의 `[AI친구:2]`, `[AI친구:3]`으로 정한다(없으면 한 명). 통합 테스트는 `postOf(count = 3)`으로
   정한다(`ScriptedReactionCountPicker`, 정하지 않으면 한 명). 뒤따르는 차례는 `followUp(postId)`로 10분을 보낸 뒤 맡는다.
+- **AI 친구의 글은 `posts`의 행이다(012 research R10, R11).** 감정 분석, 몬스터, 위험 판정, 임베딩, 피드, 공감과 댓글이 고치지
+  않아도 돈다. 글을 쓸 때의 글쓴이 종류를 `posts.author_kind`(`HUMAN`, `AI`)에 스냅숏으로 남기고, AI 친구의 글은 직군과 경력이
+  NULL이다(`posts_author_profile_check`). 저장은 `CompanionPostApi.write`만 한다. 사람의 글과 같은 엔티티와 이벤트를 쓰되
+  직군과 경력을 읽지 않고, 작성 제한을 타지 않고, 글쓴이가 `MemberInfo.ai`가 아니면 거절한다. 고치거나 지우는 길은 없다.
+  `post`가 글쓴이의 종류는 알게 됐지만, 누가 AI 친구인지(반응할 때)는 여전히 `companion`이 번호로 넘긴다.
+- **글의 작성자가 나가는 응답에는 `ai`를 함께 싣는다.** `Author`(피드, 글 상세, 비슷한 글, 내 활동)와 `PublicFeedItem`
+  (둘러보기)이다. 값은 `PostSummary.authorAi`에서 온다. 둘러보기는 여전히 회원을 읽지 않는다. `PostSummary.authorJobRole`과
+  `authorCareerYear`는 null일 수 있다. 직군이나 경력으로 거른 피드는 `author_job_role in (...)`이라 AI 친구의 글이 저절로 빠진다.
+- **사람의 수치에서 AI 친구의 글을 뺀다.** 주간 리포트의 대상(`PostReportApi.authorIdsBetween`)과 레이드 보스의 감정을 정하는
+  글(`PostApi.visibleIdsSince`)은 `author_kind = 'HUMAN'`만 본다. 회원 수나 글 수를 세는 쿼리를 새로 만들면 같은 조건을 건다.
+  비슷한 글 추천은 빼지 않는다. 조립이 피드와 같아 표시가 따라온다.
+- **글쓰기는 `companion_post`에 친구마다 하루 한 행이다(012 research R12).** `UNIQUE (companion_id, day)`가 친구마다 하루 하나를,
+  부분 유일 색인(`WHERE status = 'WRITING'`)이 한 번에 하나를 지킨다. 쓰지 못하고 그만둔 행도 그날의 자리를 쓴다. 그날 올린
+  수와 청한 횟수는 그날 행들에서 센다. 쓰는 중인 행이 하나뿐이라 따로 세는 테이블과 잠금이 없다. ShedLock을 넣지 않는다.
+- **조건은 `PostingPlanner`가 읽고, 쓰는 중인 행도 차례마다 다시 본다.** 글쓰기가 켜져 있고(`ogu.companion.posting.enabled`,
+  `AI_COMPANION_POSTING_ENABLED`, 기본 false. 반응의 스위치와 따로다), 한국 시간 8시부터 23시 전이고, 그날 올린 글이 3개보다
+  적고, 오늘 행이 없는 친구가 있고, 회원에게 보이는 가장 새 글(사람의 것이든 AI 친구의 것이든)이 6시간보다 오래됐을 때 쓴다.
+  쓰는 사이에 새 글이 올라왔으면 `NOT_QUIET`으로 그만둔다. 밀린 글을 몰아서 쓰지 않는다.
+- **AI 친구의 글은 댓글보다 엄격하게 검사한다(012 research R16).** 모양과 규칙(`CompanionPostValidator`), 욕설, 키워드 위험,
+  AI 위험 분류를 모두 통과해야 저장한다. 분류가 실패하면 올리지 않고 다시 시도한다(댓글은 키워드 판정만으로 올린다).
+  댓글의 검증기와 달리 "우리 팀", "제 팀장" 같은 일인칭은 막지 않는다. 지어 쓴 이야기이고 화면이 그것을 밝힌다.
+- **글을 쓸 때 공급자에 보내는 것은 `CompanionPostInput`이 전부다.** 소재의 한 줄 설명, 댓글 말투, 말씨뿐이다. 회원의 글과
+  댓글, 닉네임의 자리가 없다. 소재는 `PostTopics`(코드의 목록 서른 개)에서 고르고 최근 열 행이 쓴 소재는 피한다. 소재의 열쇠는
+  기록에 남으므로 바꾸지 않는다. 설명에 검증기가 막는 낱말을 넣으면 그 소재의 글은 늘 떨어진다(`PostTopicsTest`가 본다).
+- **AI 친구의 글에 달리는 반응은 따로 만든 길이 없다.** 그 글도 `PostCreated`를 내 반응 기록이 생긴다. 수는 글쓴 친구를 뺀
+  두 명까지로 낮추고, 친구를 고를 때 글쓴이를 뺀다. `PostCompanionApi.react`가 글쓴이의 이름으로 남기려 하면 거절한다.
+- **글쓰기 테스트.** 주기 작업을 끄고(`ogu.companion.posting.scheduler-enabled=false`) `PostingRunner.runOnce()`를 부른다.
+  `CompanionPostingTestBase`가 테스트마다 시계를 아직 아무도 글을 쓰지 않은 날의 8시로 옮긴다(`CompanionFixture.quietDay`).
+  컨텍스트들이 DB를 함께 쓰고 시계를 앞으로 움직이는 테스트가 있어, 그러지 않으면 "한동안 새 글이 없었다"가 되지 않는다.
+  조용한 시간이나 하루의 수를 바꿔 볼 때는 컨텍스트를 더 띄우지 않고 `runnerWith { ... }`로 설정만 바꾼 실행기를 만든다.
+  가짜 글쓰기(`ScriptedCompanionPostWriter`)는 `answer`(검사 없이 그대로 나온다)와 `failure`로 결과를 정한다. 기본 글은
+  `[실패]`로 시작해 몬스터가 생기지 않는다. `e2e` 프로필에서 글쓰기는 꺼져 있다.
 - **실제 모델.** 프롬프트나 모델을 바꾸면 `OGU_RUN_AI_EVAL=true`로 `CompanionCommentLiveTest`를 돌려 댓글 40개를 읽는다.
+  글쓰기는 `CompanionPostLiveTest`로 글 30개를 읽는다. 글쓰기를 켜기 전에도 읽는다(012 quickstart "운영 준비").
   규칙 검사는 낱말 목록이라 다 잡지 못한다. 기능을 켜기 전에도 읽는다(009 quickstart "운영 준비").
 
 ## Gotchas
@@ -532,4 +565,7 @@ HTTP API도 이벤트도 없다. 글이 올라온 뒤 한동안 다른 회원의
   `TestcontainersConfiguration` uses `asCompatibleSubstituteFor("postgres")`
   for the same reason.
 - `docs/` is intentionally git-ignored (local working documents).
+- 운영 이미지는 `eclipse-temurin:21-jre`다(`Dockerfile`). JDK보다 모듈이 적어, 테스트(전체 JDK)에서는 되는 것이 이미지에서는
+  뜨다가 죽을 수 있다. `RandomGenerator.getDefault()`가 그랬다(알고리즘이 든 `jdk.random` 모듈이 없다). 무작위는
+  `java.util.Random()`이나 `ThreadLocalRandom`을 쓴다. CI의 "Docker 이미지 기동 스모크 테스트"가 이런 것을 잡는다.
 - CLAUDE.md is a symlink to this file — edit AGENTS.md only.

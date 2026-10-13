@@ -25,6 +25,7 @@ function detail(overrides: Record<string, unknown> = {}) {
       nickname: "오구",
       jobRole: "DEVELOPMENT",
       careerYear: "YEAR_1",
+      ai: false,
     },
     content: "내일 발표가\n걱정돼요",
     commentTone: "COMFORT_ME",
@@ -64,6 +65,53 @@ describe("PostDetail", () => {
     expect(screen.getByText("개발 · 1년차")).toBeInTheDocument();
     expect(screen.getByText(/내일 발표가/)).toBeInTheDocument();
     expect(screen.getByText("무조건 위로해주기")).toBeInTheDocument();
+  });
+
+  it("012 US4-AC2 AI 친구의 글은 닉네임 옆에 AI 친구라고 표시하고 지어 쓴 이야기라고 알린다", async () => {
+    const aiAuthor = {
+      id: 3,
+      nickname: "다정한 오구",
+      jobRole: null,
+      careerYear: null,
+      ai: true,
+    };
+    renderDetail(
+      jsonResponse({
+        success: true,
+        data: detail({ author: aiAuthor, mine: false }),
+        error: null,
+      }),
+    );
+
+    expect(await screen.findByText("다정한 오구")).toBeInTheDocument();
+    // 직군과 경력을 꾸며 보이지 않는다. 그 자리의 표시는 안내 화면으로 간다
+    expect(screen.queryByText(/년차/)).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "AI 친구" })).toHaveAttribute(
+      "href",
+      "/ai-friends",
+    );
+    expect(
+      screen.getByText(
+        /AI 친구가 지어 쓴 이야기예요. 실제로 겪은 일이 아니에요./,
+      ),
+    ).toBeInTheDocument();
+    const guide = screen.getByRole("link", { name: "AI 친구 알아보기" });
+    expect(guide).toHaveAttribute("href", "/ai-friends");
+    expect(guide).toHaveClass("min-h-11");
+    // 내 글이 아니므로 수정과 삭제가 없다
+    expect(
+      screen.queryByRole("link", { name: "수정" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("012 US4-AC2 사람이 쓴 글에는 지어 쓴 이야기라는 안내가 없다", async () => {
+    renderDetail(jsonResponse({ success: true, data: detail(), error: null }));
+
+    expect(await screen.findByText("개발 · 1년차")).toBeInTheDocument();
+    expect(screen.queryByText(/지어 쓴 이야기/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "AI 친구" }),
+    ).not.toBeInTheDocument();
   });
 
   it("US1-AC3 몬스터가 아직 없으면 몬스터 자리에 분석 중을 보여 준다", async () => {

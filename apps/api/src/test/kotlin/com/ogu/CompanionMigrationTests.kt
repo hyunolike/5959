@@ -10,7 +10,8 @@ import org.springframework.dao.DataAccessException
 import org.springframework.jdbc.core.JdbcTemplate
 
 /**
- * V9__ai_companions.sql(009-ai-companions)와 V11__companion_multi_reaction.sql(012-companion-activity)의 스키마, 제약, 시드.
+ * V9__ai_companions.sql(009-ai-companions)와 V11__companion_multi_reaction.sql, V12__companion_posts.sql
+ * (012-companion-activity)의 스키마, 제약, 시드.
  * 글 번호는 다른 테스트와 겹치지 않게 음수를 쓴다.
  */
 @SpringBootTest
@@ -188,6 +189,73 @@ class CompanionMigrationTests {
     }
 
     @Test
+    fun `FR-029 AI 친구의 글에는 직군과 경력이 없고 사람의 글에는 있어야 한다`() {
+        val nickname = "글쓴${System.nanoTime() % 100_000}"
+        val row = MemberRow(nickname, kind = "HUMAN", authMethod = "GOOGLE")
+        insert(row.copy(jobRole = "DEVELOPMENT", careerYear = "YEAR_3"))
+        val human = jdbcTemplate.queryForObject("select id from member where nickname = ?", Long::class.java, nickname)
+        val ai = jdbcTemplate.queryForObject("select id from member where kind = 'AI' limit 1", Long::class.java)
+        val post =
+            "insert into posts (author_id, author_kind, author_job_role, author_career_year, content, comment_tone, " +
+                "deleted_at, created_at, updated_at) values (?, ?, ?, ?, '제약을 보는 글', 'COMFORT_ME', now(), now(), now())"
+
+        // 꾸며 낸 직군이 들어갈 자리가 없다
+        assertRejected { jdbcTemplate.update(post, ai, "AI", "DEVELOPMENT", null) }
+        assertRejected { jdbcTemplate.update(post, ai, "AI", null, "YEAR_3") }
+        assertRejected { jdbcTemplate.update(post, human, "HUMAN", null, null) }
+        assertRejected { jdbcTemplate.update(post, human, "HUMAN", "DEVELOPMENT", null) }
+        assertRejected { jdbcTemplate.update(post, ai, "BOT", null, null) }
+        jdbcTemplate.update(post, ai, "AI", null, null)
+        val kind =
+            jdbcTemplate.queryForObject(
+                "select column_default from information_schema.columns " +
+                    "where table_name = 'posts' and column_name = 'author_kind'",
+                String::class.java,
+            )
+        assertThat(kind).contains("HUMAN")
+    }
+
+    @Test
+    fun `US3-AC4 AI 친구의 글 기록은 친구마다 하루 하나이고 쓰는 중인 기록은 하나다`() {
+        try {
+            // 쓰는 중인 기록은 DB에 하나뿐이다. 다른 테스트가 남긴 것이 있으면 닫고 본다
+            jdbcTemplate.update(
+                "update companion_post set status = 'GIVEN_UP', give_up_reason = 'EXPIRED', " +
+                    "next_attempt_at = null, completed_at = now() where status = 'WRITING'",
+            )
+            insert(PostRow(companionId = 1, day = "1999-01-01"))
+
+            assertRejected { insert(PostRow(companionId = 1, day = "1999-01-01", status = "POSTED")) }
+            // 다른 친구, 다른 날이어도 쓰는 중인 기록은 하나뿐이다
+            assertRejected { insert(PostRow(companionId = 2, day = "1999-01-02")) }
+            insert(PostRow(companionId = 2, day = "1999-01-02", status = "POSTED"))
+            insert(PostRow(companionId = 3, day = "1999-01-02", status = "GIVEN_UP"))
+        } finally {
+            removeOldPostRows()
+        }
+        assertThat(indexDef("companion_post_companion_day_key")).contains("UNIQUE").contains("(companion_id, day)")
+        assertThat(indexDef("companion_post_writing_key")).contains("UNIQUE").contains("'WRITING'")
+    }
+
+    @Test
+    fun `US7-AC5 상태와 어긋난 AI 친구의 글 기록은 거절한다`() {
+        val day = "1999-02-01"
+        try {
+            assertRejected { insert(PostRow(1, day, status = "GIVEN_UP", giveUpReason = null)) }
+            assertRejected { insert(PostRow(1, day, status = "GIVEN_UP", giveUpReason = "BORED")) }
+            assertRejected { insert(PostRow(1, day, status = "POSTED", postId = null)) }
+            assertRejected { insert(PostRow(1, day, status = "POSTED", giveUpReason = "FAILED")) }
+            assertRejected { insert(PostRow(1, day, status = "DRAFT", giveUpReason = null, postId = null)) }
+            assertRejected { insert(PostRow(1, day, status = "POSTED", tone = "SHOUT")) }
+            for ((index, reason) in GIVE_UP_REASONS.withIndex()) {
+                insert(PostRow(1, "1999-03-${index + 10}", status = "GIVEN_UP", giveUpReason = reason))
+            }
+        } finally {
+            removeOldPostRows()
+        }
+    }
+
+    @Test
     fun `SC-007 하루의 쓴 몫은 날짜마다 하나이고 음수가 될 수 없다`() {
         jdbcTemplate.update("insert into companion_daily_usage (day, used) values ('1999-01-01', 0)")
 
@@ -230,6 +298,36 @@ class CompanionMigrationTests {
         )
     }
 
+    /** 제약을 보려고 먼 옛날의 날짜로 넣은 글 기록을 지운다. */
+    private fun removeOldPostRows() {
+        jdbcTemplate.update("delete from companion_post where day < '2000-01-01'")
+    }
+
+    private fun insert(row: PostRow) {
+        val writing = row.status == "WRITING"
+        jdbcTemplate.update(
+            "insert into companion_post (companion_id, day, topic, comment_tone, status, give_up_reason, post_id, " +
+                "next_attempt_at, created_at, completed_at) values (?, ?::date, 'MEETING_SILENCE', ?, ?, ?, ?, " +
+                "${if (writing) "now()" else "null"}, now(), ${if (writing) "null" else "now()"})",
+            row.companionId,
+            row.day,
+            row.tone,
+            row.status,
+            row.giveUpReason,
+            row.postId,
+        )
+    }
+
+    /** 넣어 볼 AI 친구의 글 기록 한 행. 상태에 맞는 값을 기본으로 채운다. */
+    private data class PostRow(
+        val companionId: Int,
+        val day: String,
+        val status: String = "WRITING",
+        val giveUpReason: String? = if (status == "GIVEN_UP") "FAILED" else null,
+        val postId: Long? = if (status == "POSTED") 1 else null,
+        val tone: String = "COMFORT_ME",
+    )
+
     /** 넣어 볼 회원 한 행. [onboarded]면 `onboarded_at`을 지금으로 넣는다. */
     private data class MemberRow(
         val nickname: String?,
@@ -258,6 +356,7 @@ class CompanionMigrationTests {
         jdbcTemplate.queryForObject("select indexdef from pg_indexes where indexname = ?", String::class.java, name)!!
 
     companion object {
+        private val GIVE_UP_REASONS = listOf("NOT_QUIET", "OFF_HOURS", "EXPIRED", "DAILY_LIMIT", "FAILED", "REJECTED")
         private val SKIP_REASONS =
             listOf("HUMAN_COMMENT", "RISK", "GONE", "EXPIRED", "DAILY_LIMIT", "FAILED", "REJECTED")
     }

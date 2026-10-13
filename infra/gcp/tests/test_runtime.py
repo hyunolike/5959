@@ -27,6 +27,7 @@ class RuntimeTests(unittest.TestCase):
     def test_ai_companion_is_off_unless_the_deployment_config_turns_it_on(self):
         self.assertEqual(runtime.companion_settings({}), {
             "AI_COMPANION_ENABLED": "false", "AI_COMPANION_DAILY_LIMIT": "45", "AI_COMPANION_WAIT": "10m",
+            "AI_COMPANION_POSTING_ENABLED": "false",
         })
         # Only a real boolean true enables it; a truthy string does not.
         self.assertEqual(runtime.companion_settings({"ai_companion_enabled": "true"})["AI_COMPANION_ENABLED"], "false")
@@ -35,7 +36,16 @@ class RuntimeTests(unittest.TestCase):
         )
         self.assertEqual(enabled, {
             "AI_COMPANION_ENABLED": "true", "AI_COMPANION_DAILY_LIMIT": "5", "AI_COMPANION_WAIT": "30m",
+            "AI_COMPANION_POSTING_ENABLED": "false",
         })
+
+    def test_ai_companion_posting_has_its_own_switch(self):
+        # 012: turning the reactions on does not turn the posting on, and the reverse.
+        only_posting = runtime.companion_settings({"ai_companion_posting_enabled": True})
+        self.assertEqual(only_posting["AI_COMPANION_POSTING_ENABLED"], "true")
+        self.assertEqual(only_posting["AI_COMPANION_ENABLED"], "false")
+        truthy = runtime.companion_settings({"ai_companion_posting_enabled": "true"})
+        self.assertEqual(truthy["AI_COMPANION_POSTING_ENABLED"], "false")
 
     def test_ai_companion_rejects_malformed_limits(self):
         for config in [
@@ -49,11 +59,13 @@ class RuntimeTests(unittest.TestCase):
     def test_deployment_config_overrides_companion_fields_in_the_secret(self):
         secret = {key: "x" * 64 for key in runtime.REQUIRED}
         secret["AI_COMPANION_ENABLED"] = "true"
+        secret["AI_COMPANION_POSTING_ENABLED"] = "true"
         config = {"project_id": "p", "api_secret": "a", "bff_secret": "b", "web_origin": "https://web.example",
                   "api_image": "image", "api_domain": "api.example"}
         with mock.patch.object(runtime, "secret", side_effect=[json.dumps(secret), "b" * 32]):
             values = runtime.environment(config, "token")
         self.assertEqual(values["AI_COMPANION_ENABLED"], "false")
+        self.assertEqual(values["AI_COMPANION_POSTING_ENABLED"], "false")
         self.assertEqual(values["AI_COMPANION_DAILY_LIMIT"], "45")
 
     def test_wrong_data_disk_is_rejected_before_docker_can_start(self):

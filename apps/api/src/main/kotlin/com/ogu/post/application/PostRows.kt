@@ -6,13 +6,14 @@ import com.ogu.post.CommentTone
 import com.ogu.post.PostPageItem
 import com.ogu.post.PostPageQuery
 import com.ogu.post.PostSummary
+import com.ogu.post.domain.AuthorKind
 import com.ogu.shared.error.BusinessException
 import com.ogu.shared.error.ErrorCode
 import java.sql.ResultSet
 
 /** 피드와 마이페이지의 글 목록이 함께 읽는 `posts p`의 열. [toPostPageItem]과 짝이다. */
 internal const val POST_COLUMNS =
-    "p.id, p.author_id, p.author_job_role, p.author_career_year, p.content, p.comment_tone, " +
+    "p.id, p.author_id, p.author_kind, p.author_job_role, p.author_career_year, p.content, p.comment_tone, " +
         "p.like_count, p.comment_count, p.created_at, p.hidden_at, p.risk_level, p.review_requested_at"
 
 /** 알림과 내 댓글에 붙이는 글 미리보기 글자 수(사람이 보는 글자 단위). */
@@ -25,8 +26,8 @@ internal fun ResultSet.toPostPageItem(): PostPageItem =
             PostSummary(
                 postId = getLong("id"),
                 authorId = getLong("author_id"),
-                authorJobRole = JobRole.valueOf(getString("author_job_role")),
-                authorCareerYear = CareerYear.valueOf(getString("author_career_year")),
+                authorJobRole = getString("author_job_role")?.let(JobRole::valueOf),
+                authorCareerYear = getString("author_career_year")?.let(CareerYear::valueOf),
                 content = getString("content"),
                 commentTone = CommentTone.valueOf(getString("comment_tone")),
                 likeCount = getInt("like_count"),
@@ -35,6 +36,7 @@ internal fun ResultSet.toPostPageItem(): PostPageItem =
                 hidden = getTimestamp("hidden_at") != null,
                 riskLevel = getString("risk_level"),
                 reviewRequested = getTimestamp("review_requested_at") != null,
+                authorAi = getString("author_kind") == AuthorKind.AI.name,
             ),
         likedByMe = getBoolean("liked_by_me"),
     )

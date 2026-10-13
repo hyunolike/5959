@@ -4,7 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useMemo } from "react";
 
-import { CAREER_YEAR_LABELS, JOB_ROLE_LABELS } from "@/entities/member";
+import { authorMetaLabel } from "@/entities/member";
 import { EmotionTag, MonsterSummary } from "@/entities/monster";
 import { PostCard, useFeedQuery, type FeedFilter } from "@/entities/post";
 import { useInfiniteScroll } from "@/shared/lib";
@@ -119,7 +119,7 @@ function FeedItems({ filter }: { filter: FeedFilter }) {
           <li key={item.postId} className="border-line border-b">
             <PostCard
               item={item}
-              authorMeta={`${JOB_ROLE_LABELS[item.author.jobRole]} · ${CAREER_YEAR_LABELS[item.author.careerYear]}`}
+              authorMeta={authorMetaLabel(item.author)}
               showCreatedAt
               renderEmotion={(monster) => (
                 <EmotionTag emotion={monster.emotion} />

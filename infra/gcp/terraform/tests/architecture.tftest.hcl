@@ -49,6 +49,28 @@ run "ai_companion_ships_off" {
   }
 }
 
+run "ai_companion_posting_ships_off_and_has_its_own_switch" {
+  command = apply
+  variables {
+    ai_companion_enabled = true
+  }
+  assert {
+    condition     = !jsondecode(google_compute_instance.api.metadata["deployment-config"]).ai_companion_posting_enabled
+    error_message = "Turning the companions' reactions on must not turn their posting on."
+  }
+}
+
+run "ai_companion_posting_can_be_turned_on" {
+  command = apply
+  variables {
+    ai_companion_posting_enabled = true
+  }
+  assert {
+    condition     = jsondecode(google_compute_instance.api.metadata["deployment-config"]).ai_companion_posting_enabled && !jsondecode(google_compute_instance.api.metadata["deployment-config"]).ai_companion_enabled
+    error_message = "The operator's posting switch must reach the VM on its own."
+  }
+}
+
 run "ai_companion_can_be_turned_on" {
   command = apply
   variables {

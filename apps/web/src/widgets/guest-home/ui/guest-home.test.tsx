@@ -30,6 +30,7 @@ function item(overrides: Partial<PublicFeedItem> = {}): PublicFeedItem {
     postId: 7,
     jobRole: "DEVELOPMENT",
     careerYear: "YEAR_3",
+    ai: false,
     contentPreview: "내일 발표가 걱정돼요",
     analysisStatus: "ANALYZED",
     monster: { emotion: "ANXIETY", hp: 2, maxHp: 10, status: "ALIVE" },
@@ -91,6 +92,29 @@ describe("GuestHome", () => {
     expect(within(row).getByRole("progressbar")).toBeInTheDocument();
     expect(within(row).getByText("공감 3")).toBeInTheDocument();
     expect(within(row).getByText("댓글 2")).toBeInTheDocument();
+  });
+
+  it("012 US4-AC3 AI 친구의 글은 직군과 경력 자리에 AI 친구라고 보이고 닉네임은 없다", () => {
+    loaded([
+      item({
+        postId: 9,
+        jobRole: null,
+        careerYear: null,
+        ai: true,
+        contentPreview: "회의에서 한마디도 못 했어요",
+      }),
+      item({ postId: 8, contentPreview: "사람이 쓴 글" }),
+    ]);
+    render(<GuestHome />);
+
+    const rows = within(stories()).getAllByRole("listitem");
+    expect(rows[0]).toHaveTextContent("AI 친구");
+    expect(rows[0]).not.toHaveTextContent("년차");
+    expect(rows[0]).not.toHaveTextContent("오구");
+    // 카드 전체가 로그인 안내를 여는 버튼이라 표시는 링크가 아니라 글자다
+    expect(within(rows[0]).queryByRole("link")).not.toBeInTheDocument();
+    expect(rows[1]).toHaveTextContent("개발 · 3년차");
+    expect(rows[1]).not.toHaveTextContent("AI 친구");
   });
 
   it("US1-AC3 닉네임 자리, 글 상세 링크, 회원의 피드 구역이 없다", () => {

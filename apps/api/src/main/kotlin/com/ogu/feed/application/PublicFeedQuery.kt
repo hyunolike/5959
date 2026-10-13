@@ -46,6 +46,7 @@ class PublicFeedQuery(
                     postId = post.postId,
                     jobRole = post.authorJobRole,
                     careerYear = post.authorCareerYear,
+                    ai = post.authorAi,
                     contentPreview = previewOf(contentMask.mask(post.content)),
                     analysisStatus = emotions[post.postId].analysisStatus(),
                     monster = monsters[post.postId],

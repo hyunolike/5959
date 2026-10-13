@@ -51,3 +51,7 @@ ogu:
     follow-up:
       min-gap: ${AI_COMPANION_FOLLOW_UP_MIN:2s}
       max-gap: ${AI_COMPANION_FOLLOW_UP_MAX:4s}
+    # 012: 글쓰기는 e2e에서도 꺼져 있다. 켜면 다른 시나리오의 피드와 둘러보기 목록이 흔들린다.
+    # 손으로 볼 때는 AI_COMPANION_POSTING_ENABLED=true AI_COMPANION_POSTING_QUIET=1m으로 띄운다(012 quickstart)
+    posting:
+      poll-interval: 5s

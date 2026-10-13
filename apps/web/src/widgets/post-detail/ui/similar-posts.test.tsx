@@ -18,6 +18,7 @@ function item(postId: number, contentPreview: string) {
       nickname: `오구${postId}`,
       jobRole: "DEVELOPMENT",
       careerYear: "YEAR_1",
+      ai: false,
     },
     contentPreview,
     monster: { emotion: "ANXIETY", hp: 10, maxHp: 10, status: "ALIVE" },
@@ -65,6 +66,34 @@ describe("SimilarPosts", () => {
     expect(cards).toHaveLength(2);
     expect(cards[0]).toHaveTextContent("팀장님이 무서워요");
     expect(cards[1]).toHaveTextContent("팀장님 눈치가 보여요");
+  });
+
+  it("012 US4-AC4 AI 친구의 글은 비슷한 고민에서도 직군과 경력 자리에 AI 친구라고 보인다", async () => {
+    const aiItem = {
+      ...item(3, "회의에서 한마디도 못 했어요"),
+      author: {
+        id: 9,
+        nickname: "차분한 오구",
+        jobRole: null,
+        careerYear: null,
+        ai: true,
+      },
+    };
+    renderSection(
+      ok({
+        basis: "SIMILAR",
+        items: [aiItem, item(5, "팀장님 눈치가 보여요")],
+        pending: false,
+      }),
+    );
+
+    const section = await screen.findByRole("region", { name: "비슷한 고민" });
+    const cards = within(section).getAllByRole("link");
+    expect(cards[0]).toHaveTextContent("차분한 오구");
+    expect(cards[0]).toHaveTextContent("AI 친구");
+    expect(cards[0]).not.toHaveTextContent("년차");
+    expect(cards[1]).toHaveTextContent("개발 · 1년차");
+    expect(cards[1]).not.toHaveTextContent("AI 친구");
   });
 
   it("US1-AC2 카드를 누르면 그 글의 상세로 간다", async () => {

@@ -27,9 +27,7 @@ import java.time.Instant
 @DynamicUpdate
 @Table(name = "posts")
 class Post private constructor(
-    authorId: Long,
-    authorJobRole: JobRole,
-    authorCareerYear: CareerYear,
+    author: PostAuthor,
     content: String,
     commentTone: CommentTone,
     createdAt: Instant,
@@ -40,17 +38,24 @@ class Post private constructor(
         protected set
 
     @Column(name = "author_id", nullable = false, updatable = false)
-    var authorId: Long = authorId
+    var authorId: Long = author.id
+        protected set
+
+    /** 글을 쓸 때의 글쓴이 종류. 직군, 경력과 같이 스냅숏이다(012 research R10). */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "author_kind", nullable = false, updatable = false, length = 10)
+    var authorKind: AuthorKind = author.kind
+        protected set
+
+    /** AI 친구의 글이면 null이다. 꾸며 낸 직군을 넣지 않는다(`posts_author_profile_check`). */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "author_job_role", length = 20)
+    var authorJobRole: JobRole? = author.jobRole
         protected set
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "author_job_role", nullable = false, length = 20)
-    var authorJobRole: JobRole = authorJobRole
-        protected set
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "author_career_year", nullable = false, length = 20)
-    var authorCareerYear: CareerYear = authorCareerYear
+    @Column(name = "author_career_year", length = 20)
+    var authorCareerYear: CareerYear? = author.careerYear
         protected set
 
     @Column(name = "content", nullable = false, columnDefinition = "text")
@@ -130,7 +135,15 @@ class Post private constructor(
             content: String,
             commentTone: CommentTone,
             now: Instant,
-        ): Post = Post(author.id, author.jobRole, author.careerYear, normalizeContent(content), commentTone, now)
+        ): Post = Post(author, normalizeContent(content), commentTone, now)
+
+        /** AI 친구가 쓰는 글(012 research R11). 직군과 경력이 없다. 본문 규칙은 사람의 글과 같다. */
+        fun writeByAi(
+            authorId: Long,
+            content: String,
+            commentTone: CommentTone,
+            now: Instant,
+        ): Post = Post(PostAuthor.ai(authorId), normalizeContent(content), commentTone, now)
 
         /** 앞뒤 공백을 빼고 1~500자인지 검사한다. 어기면 400 INVALID_REQUEST. */
         fun normalizeContent(raw: String): String {
@@ -155,9 +168,25 @@ class Post private constructor(
     }
 }
 
-/** 글을 쓰는 회원과 그때의 직군, 경력(스냅숏, research R7). */
-data class PostAuthor(
+/** 글을 쓸 때의 글쓴이 종류(`posts.author_kind`). AI 친구의 글은 `AI`다. */
+enum class AuthorKind {
+    HUMAN,
+    AI,
+}
+
+/**
+ * 글을 쓰는 회원과 그때의 직군, 경력(스냅숏, research R7). 사람 회원은 직군과 경력이 있고, AI 친구는 둘 다 없다
+ * (`posts_author_profile_check`). AI 친구는 [ai]로만 만든다.
+ */
+data class PostAuthor private constructor(
     val id: Long,
-    val jobRole: JobRole,
-    val careerYear: CareerYear,
-)
+    val jobRole: JobRole?,
+    val careerYear: CareerYear?,
+    val kind: AuthorKind,
+) {
+    constructor(id: Long, jobRole: JobRole, careerYear: CareerYear) : this(id, jobRole, careerYear, AuthorKind.HUMAN)
+
+    companion object {
+        fun ai(id: Long): PostAuthor = PostAuthor(id, null, null, AuthorKind.AI)
+    }
+}

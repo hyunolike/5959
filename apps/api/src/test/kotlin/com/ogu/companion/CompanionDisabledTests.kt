@@ -2,6 +2,7 @@ package com.ogu.companion
 
 import com.ogu.TestcontainersConfiguration
 import com.ogu.companion.application.CompanionProperties
+import com.ogu.companion.application.PostingRunner
 import com.ogu.companion.application.ReactionRunner
 import com.ogu.monster.MonsterApi
 import com.ogu.post.CompanionReactionCheck
@@ -22,6 +23,7 @@ import org.springframework.test.web.servlet.setup.DefaultMockMvcBuilder
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.context.WebApplicationContext
 import java.time.Duration
+import java.time.LocalTime
 
 /**
  * 기능이 꺼져 있을 때(009 US5-AC1, research R12). 아무 설정 없이 띄운 컨텍스트가 곧 꺼진 상태다. 운영에도 이대로 나간다.
@@ -44,6 +46,9 @@ class CompanionDisabledTests {
 
     @Autowired
     lateinit var runner: ReactionRunner
+
+    @Autowired
+    lateinit var postingRunner: PostingRunner
 
     @Autowired
     lateinit var writer: ScriptedCompanionCommentWriter
@@ -109,6 +114,32 @@ class CompanionDisabledTests {
         assertThat(companions.reaction(postId)!!["status"]).isEqualTo("WAITING")
         assertThat(companions.comments(postId)).hasSize(1)
         assertThat(writer.callsOf(postId)).isZero()
+    }
+
+    @Test
+    fun `US3-AC11 따로 켜지 않으면 글쓰기는 꺼져 있고 조용해도 AI 친구가 글을 쓰지 않는다`() {
+        val count = "select count(*) from companion_post"
+        val before = jdbcTemplate.queryForObject(count, Int::class.java)
+
+        assertThat(properties.posting.enabled).isFalse()
+        assertThat(postingRunner.runOnce()).isFalse()
+
+        assertThat(jdbcTemplate.queryForObject(count, Int::class.java)).isEqualTo(before)
+    }
+
+    @Test
+    fun `US7-AC3 따로 정하지 않으면 글쓰기의 기본값은 스펙과 같다`() {
+        val posting = properties.posting
+
+        assertThat(posting.quiet).isEqualTo(Duration.ofHours(6))
+        assertThat(posting.dailyPosts).isEqualTo(3)
+        assertThat(posting.dailyRequests).isEqualTo(9)
+        assertThat(posting.maxAttempts).isEqualTo(3)
+        assertThat(posting.recentTopics).isEqualTo(10)
+        assertThat(posting.activeAt(LocalTime.of(8, 0))).isTrue()
+        assertThat(posting.activeAt(LocalTime.of(22, 59))).isTrue()
+        assertThat(posting.activeAt(LocalTime.of(7, 59))).isFalse()
+        assertThat(posting.activeAt(LocalTime.of(23, 0))).isFalse()
     }
 
     @Test

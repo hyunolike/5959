@@ -41,6 +41,7 @@ function feedItem(postId: number) {
       nickname: `회원${postId}`,
       jobRole: "DESIGN",
       careerYear: "YEAR_3",
+      ai: false,
     },
     contentPreview: `고민 ${postId}`,
     analysisStatus: "PENDING",
@@ -140,6 +141,37 @@ describe("FeedList", () => {
         "2026-10-03T00:00:00Z",
       );
     }
+  });
+
+  it("012 US4-AC1 AI 친구의 글은 직군과 경력 자리에 AI 친구라고 보인다", async () => {
+    const aiItem = {
+      ...feedItem(4),
+      author: {
+        id: 9,
+        nickname: "씩씩한 오구",
+        jobRole: null,
+        careerYear: null,
+        ai: true,
+      },
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          ok({ items: [aiItem, feedItem(3)], nextCursor: null }),
+        ),
+    );
+    renderFeed();
+
+    const aiCard = (await screen.findByText("고민 4")).closest("a");
+    // 화면 낭독기가 읽는 카드의 이름에도 AI 친구가 들어 있다
+    expect(aiCard).toHaveTextContent("씩씩한 오구");
+    expect(aiCard).toHaveTextContent("AI 친구");
+    expect(aiCard).not.toHaveTextContent("년차");
+    const humanCard = screen.getByText("고민 3").closest("a");
+    expect(humanCard).toHaveTextContent("디자인 · 3년차");
+    expect(humanCard).not.toHaveTextContent("AI 친구");
   });
 
   it("US2-AC2 목록 끝이 보이면 다음 쪽을 이어 붙인다", async () => {

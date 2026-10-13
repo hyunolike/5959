@@ -23,3 +23,5 @@ google_client_id = ""
 ai_companion_enabled     = false
 ai_companion_daily_limit = 45
 ai_companion_wait        = "10m"
+# AI 친구의 글쓰기(012). 반응과 따로 켠다. 실제 모델의 글을 읽어 본 뒤 true로 바꾸고 apply한다.
+ai_companion_posting_enabled = false
