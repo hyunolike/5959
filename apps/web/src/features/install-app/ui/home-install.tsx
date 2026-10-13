@@ -31,11 +31,11 @@ export function HomeInstall() {
       {state.promotionVisible ? (
         <div className="border-line flex items-start gap-2 border-y py-3 sm:items-center">
           <Image
-            src="/brand/ogu-companion.png"
+            src="/brand/ogu-symbol.webp"
             alt=""
             width={28}
-            height={23}
-            className="mt-1 shrink-0 object-contain"
+            height={28}
+            className="mt-1 shrink-0"
           />
           <div className="min-w-0 flex-1 sm:flex sm:items-center sm:justify-between sm:gap-3">
             <div>

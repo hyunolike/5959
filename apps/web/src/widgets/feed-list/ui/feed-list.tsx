@@ -73,11 +73,11 @@ function FeedItems({ filter }: { filter: FeedFilter }) {
     return (
       <div className="py-10 text-center">
         <Image
-          src="/brand/ogu-companion.png"
+          src="/brand/ogu-listen.webp"
           alt=""
-          width={96}
-          height={79}
-          className="mx-auto mb-4 h-auto w-16 object-contain"
+          width={80}
+          height={80}
+          className="mx-auto mb-4 size-20"
         />
         <p role="alert" className="text-body-sm text-danger">
           피드를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
@@ -101,11 +101,11 @@ function FeedItems({ filter }: { filter: FeedFilter }) {
     return (
       <div className="py-10 text-center">
         <Image
-          src="/brand/ogu-companion.png"
+          src="/brand/ogu-hello.webp"
           alt=""
-          width={96}
-          height={79}
-          className="mx-auto mb-4 h-auto w-16 object-contain"
+          width={80}
+          height={80}
+          className="mx-auto mb-4 size-20"
         />
         <p className="text-body text-fg font-bold">
           {filtered
