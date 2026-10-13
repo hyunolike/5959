@@ -180,6 +180,32 @@ describe("AppShell", () => {
     expect(other).toHaveClass("text-fg-subtle");
   });
 
+  it("POLISH-AC12 글 상세에서는 좁은 화면의 하단 메뉴가 없고 옆 메뉴는 있다", () => {
+    route.pathname = "/post/42";
+    render(<AppShell authenticated>{null}</AppShell>);
+    expect(
+      screen.queryByRole("navigation", { name: "모바일 주요 메뉴" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("navigation", { name: "주요 메뉴" }),
+    ).toBeInTheDocument();
+  });
+
+  it("POLISH-AC12 글 고치기에서는 하단 메뉴가 있다", () => {
+    route.pathname = "/post/42/edit";
+    render(<AppShell authenticated>{null}</AppShell>);
+    expect(
+      screen.getByRole("navigation", { name: "모바일 주요 메뉴" }),
+    ).toBeInTheDocument();
+  });
+
+  it("POLISH-AC12 좁은 화면의 머리말은 56px이다", () => {
+    render(<AppShell authenticated>{null}</AppShell>);
+    expect(
+      screen.getByRole("link", { name: "오구오구 홈" }).parentElement,
+    ).toHaveClass("h-14", "sm:h-18");
+  });
+
   it("좁은 화면의 메뉴는 위쪽 모서리가 둥근 막대이고 그림자 없이 테두리로 본문과 나뉜다", () => {
     render(<AppShell authenticated>{null}</AppShell>);
     const menu = screen.getByRole("navigation", { name: "모바일 주요 메뉴" });
