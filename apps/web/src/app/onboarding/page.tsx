@@ -1,10 +1,12 @@
+import type { Metadata } from "next";
 import { OnboardingForm } from "@/features/onboarding";
-import { Card } from "@/shared/ui";
 import { AuthWelcome } from "@/widgets/auth-welcome";
 
 function firstValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
+
+export const metadata: Metadata = { title: "프로필 입력" };
 
 export default async function OnboardingPage({
   searchParams,
@@ -15,17 +17,15 @@ export default async function OnboardingPage({
 
   return (
     <AuthWelcome>
-      <Card className="mx-auto w-full max-w-sm px-5 py-7 sm:p-9">
-        <h1 className="text-2xl font-bold text-neutral-900">
-          프로필을 알려주세요
-        </h1>
-        <p className="mt-1 text-sm text-neutral-600">
+      <div className="mx-auto w-full max-w-sm">
+        <h1 className="text-heading text-fg font-bold">프로필을 알려주세요</h1>
+        <p className="text-body-sm text-fg-subtle mt-1">
           닉네임과 직군, 경력을 입력하면 서비스를 쓸 준비가 끝나요.
         </p>
         <div className="mt-6">
           <OnboardingForm next={firstValue(next)} />
         </div>
-      </Card>
+      </div>
     </AuthWelcome>
   );
 }

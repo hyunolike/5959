@@ -15,10 +15,10 @@ export function SelectionIndicator({
     <m.span
       aria-hidden
       initial={false}
-      className="bg-brand-600 pointer-events-none absolute bottom-0 left-0 h-0.5"
+      className="bg-action pointer-events-none absolute bottom-0 left-0 h-0.5"
       style={{ width: `${100 / count}%` }}
       animate={{ x: `${index * 100}%` }}
-      transition={{ duration: reduce ? 0 : 0.16, ease: "easeOut" }}
+      transition={{ duration: reduce ? 0 : 0.12, ease: "easeOut" }}
     />
   );
 }

@@ -356,7 +356,7 @@ test("US3-AC1, US3-AC2 다른 회원의 글과 댓글을 사유와 함께 신고
   // 글 신고: 기타를 골라 설명을 적는다
   const article = reporter.page.getByRole("article").first();
   await article.getByRole("button", { name: "신고" }).first().click();
-  const dialog = reporter.page.getByRole("alertdialog");
+  const dialog = reporter.page.getByRole("dialog");
   await expect(dialog).toContainText("이 글을 신고할까요?");
   await dialog.getByRole("radio", { name: "기타" }).check();
   await dialog.getByRole("textbox").fill("확인용 설명이에요");

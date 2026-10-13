@@ -1,28 +1,23 @@
 import Image from "next/image";
 import { cn } from "@/shared/lib";
 
+/** 로고: 오구의 얼굴과 서비스 이름. 이름이 글자로 있으므로 그림은 낭독하지 않는다. */
 export function BrandMark({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-2 text-[26px] leading-none font-bold tracking-[-0.055em] text-neutral-900",
+        "text-title text-fg inline-flex items-center gap-2 leading-none font-extrabold tracking-tight",
         className,
       )}
     >
-      <span
-        aria-hidden
-        className="relative size-11 shrink-0 overflow-hidden rounded-full"
-      >
-        <Image
-          src="/brand/ogu-companion.png"
-          alt=""
-          width={72}
-          height={59}
-          sizes="72px"
-          className="absolute top-0 left-1/2 h-auto w-[72px] max-w-none -translate-x-1/2"
-        />
-      </span>
-      <span>5959</span>
+      <Image
+        src="/brand/ogu-symbol.webp"
+        alt=""
+        width={36}
+        height={36}
+        className="size-9 shrink-0"
+      />
+      <span>오구오구</span>
     </span>
   );
 }

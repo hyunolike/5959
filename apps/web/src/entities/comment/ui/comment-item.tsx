@@ -68,13 +68,11 @@ function CommentBody({
         aria-label={isReply ? "가려진 답글" : "가려진 댓글"}
         className={
           isReply
-            ? "flex flex-col gap-1 border-l-2 border-neutral-200 pl-3"
+            ? "border-line flex flex-col gap-1 border-l-2 pl-3"
             : "flex flex-col gap-1"
         }
       >
-        <p className="text-sm text-neutral-500 italic">
-          {HIDDEN_COMMENT_LABEL}
-        </p>
+        <p className="text-body-sm text-fg-subtle">{HIDDEN_COMMENT_LABEL}</p>
       </article>
     );
   }
@@ -85,23 +83,23 @@ function CommentBody({
       aria-label={`${nickname}의 ${isReply ? "답글" : "댓글"}`}
       className={
         isReply
-          ? "flex flex-col gap-1 border-l-2 border-neutral-200 pl-3"
+          ? "border-line flex flex-col gap-1 border-l-2 pl-3"
           : "flex flex-col gap-1"
       }
     >
-      <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-neutral-900">
+      <p className="text-body-sm text-fg flex flex-wrap items-center gap-2 font-medium">
         {nickname}
         {comment.hidden ? (
           // 내 댓글이 숨겨졌다. 나에게는 내용이 보이지만 다른 회원에게는 자리만 보인다(005 US1-AC5).
-          <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-normal text-amber-800">
+          <span className="bg-warning-tint text-caption text-warning rounded-full px-2 py-0.5 font-normal">
             다른 회원에게 보이지 않아요
           </span>
         ) : null}
       </p>
-      <p className="text-sm break-words whitespace-pre-wrap text-neutral-800">
+      <p className="text-body-sm text-fg break-words whitespace-pre-wrap">
         {comment.content}
       </p>
-      <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-600 tabular-nums">
+      <div className="text-caption text-fg-subtle flex flex-wrap items-center gap-2 tabular-nums">
         {renderActions ? (
           renderActions(comment, { isReply })
         ) : (

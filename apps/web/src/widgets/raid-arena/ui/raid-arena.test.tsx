@@ -203,7 +203,7 @@ describe("BossBanner", () => {
     renderWith(<BossBanner />, raid());
 
     const link = screen.getByRole("link", {
-      name: "레이드: 불안 보스, HP 200/300",
+      name: /^레이드: 불안 보스가 나타났어요, HP 200\/300/,
     });
     expect(link).toHaveAttribute("href", "/raid");
     expect(link).toHaveTextContent("불안 보스가 나타났어요");
@@ -224,5 +224,109 @@ describe("elapsedLabel", () => {
     ["2026-10-09T00:00:00Z", "2026-10-11T03:10:00Z", "2일 3시간"],
   ])("%s에서 %s까지는 %s", (spawnedAt, endedAt, expected) => {
     expect(elapsedLabel(spawnedAt, endedAt)).toBe(expected);
+  });
+});
+
+describe("레이드의 감정 색", () => {
+  it("DS-US3-AC3 전투 무대는 보스의 감정 색이고 수치가 이름과 값으로 이어진다", () => {
+    renderWith(<RaidArena />, raid());
+    const boss = screen.getByRole("region", { name: "보스" });
+    expect(boss).toHaveAttribute("data-emotion", "ANXIETY");
+    expect(boss).toHaveClass("bg-emotion-tint");
+    expect(boss).toHaveTextContent("함께한 회원5명");
+    expect(boss).toHaveTextContent("내 기여3");
+  });
+
+  it("DS-US3-AC3 결과 무대도 보스의 감정 색이다", () => {
+    renderWith(<RaidArena />, ended("DEFEATED"));
+    const result = screen.getByRole("region", { name: "레이드 결과" });
+    expect(result).toHaveAttribute("data-emotion", "ANXIETY");
+    expect(result).toHaveClass("bg-emotion-tint");
+  });
+
+  it("DS-US3-AC4 쉬는 중 안내는 무대 안에서도 주의 색이다", () => {
+    renderWith(<RaidArena />, raid({ available: false }));
+    expect(screen.getByRole("status")).toHaveClass("text-warning");
+  });
+
+  it("DS-US3-AC3 홈의 보스 안내는 보스의 감정 색이다", () => {
+    renderWith(<BossBanner />, raid());
+    const link = screen.getByRole("link", {
+      name: /^레이드: 불안 보스가 나타났어요, HP 200\/300/,
+    });
+    expect(link).toHaveAttribute("data-emotion", "ANXIETY");
+    expect(link).toHaveClass("bg-emotion-tint");
+  });
+
+  it("DS-US3-AC6 결과의 수치는 좁은 화면에서 두 칸으로 나누고 값이 단어 중간에서 끊기지 않는다", () => {
+    renderWith(<RaidArena />, ended("DEFEATED"));
+    const result = screen.getByRole("region", { name: "레이드 결과" });
+    const figures = within(result).getByText("걸린 시간").closest("dl");
+    expect(figures).toHaveClass("grid", "grid-cols-2");
+    expect(within(result).getByText("2시간 30분")).toHaveClass("break-keep");
+    // 세 번째 칸은 좁은 화면에서 한 줄을 다 쓴다.
+    expect(within(result).getByText("걸린 시간").parentElement).toHaveClass(
+      "col-span-2",
+      "sm:col-span-1",
+    );
+  });
+
+  it("DS-US3-AC3 홈의 보스 안내는 큰 HP에 쉼표를 넣는다", () => {
+    const state = raid();
+    renderWith(<BossBanner />, {
+      ...state,
+      boss: { ...state.boss!, hp: 4120, maxHp: 10000 },
+    });
+    const link = screen.getByRole("link", { name: /^레이드: 불안 보스/ });
+    expect(link).toHaveTextContent("HP 4,120/10,000");
+  });
+
+  it("006 US5-AC7 홈의 보스 안내는 눈에 보이는 글자를 이름에 그대로 담는다", () => {
+    const state = raid();
+    renderWith(<BossBanner />, {
+      ...state,
+      boss: { ...state.boss!, hp: 4120, maxHp: 10000 },
+    });
+    // 보이는 글자를 말해 누르는 음성 제어가 링크를 찾을 수 있어야 한다.
+    expect(screen.getByRole("link")).toHaveAccessibleName(
+      "레이드: 불안 보스가 나타났어요, HP 4,120/10,000, 5명이 함께하고 있어요, 함께 공격하기",
+    );
+  });
+
+  it("006 US5-AC5 보스는 여러 날 살아 있을 수 있어 오늘의 보스라고 하지 않고, 제목은 보스까지 읽힌다", () => {
+    renderWith(<RaidArena />, raid());
+    const boss = screen.getByRole("region", { name: "보스" });
+    expect(within(boss).queryByText("오늘의 보스")).not.toBeInTheDocument();
+    expect(within(boss).getByText("지금의 보스")).toBeInTheDocument();
+    expect(
+      within(boss).getByRole("heading", { name: "불안 보스" }),
+    ).toHaveClass("text-display");
+  });
+
+  it("DS-US3-AC3 홈의 보스 안내는 계약을 어긴 HP 값이 와도 죽지 않는다", () => {
+    const state = raid();
+    renderWith(<BossBanner />, {
+      ...state,
+      boss: {
+        ...state.boss!,
+        hp: undefined as unknown as number,
+        maxHp: Number.NaN,
+      },
+    });
+    expect(screen.getByRole("link")).toHaveTextContent("HP 0/0");
+  });
+
+  it("006 US5-AC1 수치는 바뀐 숫자만이 아니라 이름과 함께 읽힌다", () => {
+    renderWith(<RaidArena />, raid());
+    const figures = screen.getByText("함께한 회원").closest("dl");
+    expect(figures).toHaveAttribute("aria-live", "polite");
+    expect(figures).toHaveAttribute("aria-atomic", "true");
+  });
+
+  it("006 US5-AC6 쉬는 중이면 공격 버튼이 잠긴 까닭이 버튼과 이어져 있다", () => {
+    renderWith(<RaidArena />, raid({ available: false }));
+    expect(
+      screen.getByRole("button", { name: "공격하기" }),
+    ).toHaveAccessibleDescription(RAID_PAUSED_NOTICE);
   });
 });

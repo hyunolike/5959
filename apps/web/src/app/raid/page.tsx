@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Button } from "@/shared/ui";
 import { RaidArena } from "@/widgets/raid-arena";
+
+export const metadata: Metadata = { title: "레이드" };
 
 /**
  * 보스 레이드(006). 로그인과 온보딩은 proxy.ts의 라우트 가드가 먼저 확인한다(US1-AC7).
@@ -12,10 +15,10 @@ export default function RaidPage() {
     <div className="flex w-full max-w-xl flex-col gap-6">
       <header className="flex items-center justify-between gap-4">
         <div>
-          <p className="mb-1 text-xs font-bold text-neutral-600">
+          <p className="text-label text-fg-subtle mb-1 font-bold">
             함께 이겨내기
           </p>
-          <h1 className="text-2xl font-bold text-neutral-900">레이드</h1>
+          <h1 className="text-heading text-fg font-bold">레이드</h1>
         </div>
         <Button asChild variant="ghost" size="sm">
           <Link href="/home">피드로</Link>

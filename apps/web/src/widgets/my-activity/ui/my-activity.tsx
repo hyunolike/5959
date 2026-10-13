@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { MyCommentItem, useMyCommentsQuery } from "@/entities/comment";
 import { CAREER_YEAR_LABELS, JOB_ROLE_LABELS } from "@/entities/member";
-import { EMOTION_LABELS, MonsterDisplay } from "@/entities/monster";
+import { EMOTION_LABELS, EmotionTag, MonsterSummary } from "@/entities/monster";
 import {
   PostCard,
   useLikedPostsQuery,
@@ -56,7 +56,7 @@ export function MyActivity() {
       <div
         role="tablist"
         aria-label="내 활동"
-        className="relative grid grid-cols-4 border-b border-neutral-200"
+        className="border-line relative grid grid-cols-4 border-b"
       >
         {MY_ACTIVITY_TABS.map((tab) => (
           <button
@@ -90,10 +90,10 @@ export function MyActivity() {
                 ?.focus();
             }}
             className={cn(
-              "focus-visible:ring-brand-600 ogu-pressable rounded-control active:bg-brand-100 min-h-11 px-1 py-2 text-xs leading-5 focus-visible:ring-2 focus-visible:outline-none sm:text-sm",
+              "ogu-pressable rounded-control active:bg-surface-sunken text-caption sm:text-body-sm min-h-11 px-1 py-2 leading-5",
               tab.id === active
-                ? "text-brand-700 font-bold"
-                : "text-neutral-500 hover:text-neutral-800",
+                ? "text-fg font-bold"
+                : "text-fg-subtle hover:text-fg",
             )}
             onClick={() => select(tab.id)}
           >
@@ -127,9 +127,8 @@ function renderPost(item: FeedItem) {
       item={item}
       showCreatedAt
       authorMeta={`${JOB_ROLE_LABELS[item.author.jobRole]} · ${CAREER_YEAR_LABELS[item.author.careerYear]}`}
-      renderMonster={(monster) => (
-        <MonsterDisplay monster={monster} variant="card" />
-      )}
+      renderEmotion={(monster) => <EmotionTag emotion={monster.emotion} />}
+      renderMonster={(monster) => <MonsterSummary monster={monster} />}
     />
   );
 }
@@ -178,6 +177,7 @@ function WeeklyReportsTab() {
       label="주간 리포트"
       emptyMessage="아직 받은 리포트가 없어요. 글을 쓰면 다음 월요일에 지난주 리포트가 와요."
       keyOf={(report) => Date.parse(report.weekStart)}
+      layout="cards"
       renderItem={(report) => (
         <WeeklyReportItem
           report={report}

@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 
 import { ApiError } from "@/shared/api";
-import { Button } from "@/shared/ui";
+import { cn } from "@/shared/lib";
+import { GameButton } from "@/shared/ui";
 
 import { useRaidAttackMutation } from "../api/use-raid-attack-mutation";
 
@@ -20,10 +21,13 @@ const DEFAULT_COOLDOWN_MS = 1_000;
 export function AttackButton({
   bossId,
   disabled = false,
+  "aria-describedby": describedBy,
 }: {
   bossId: number;
   /** 레이드가 쉬는 중이면 부르는 쪽이 막는다. */
   disabled?: boolean;
+  /** 잠긴 까닭을 적은 안내의 id. 버튼에 초점이 오면 함께 읽힌다. */
+  "aria-describedby"?: string;
 }) {
   const attack = useRaidAttackMutation();
   const [cooling, setCooling] = useState(false);
@@ -47,15 +51,15 @@ export function AttackButton({
     timer.current = setTimeout(() => setCooling(false), ms);
   };
 
-  const locked = disabled || cooling || attack.isPending;
+  const recharging = cooling || attack.isPending;
+  const locked = disabled || recharging;
 
   return (
-    <div className="flex flex-col items-center gap-1">
-      <Button
-        type="button"
-        size="lg"
+    <div className="flex w-full flex-col items-center gap-2">
+      <GameButton
         // 잠긴 동안에도 초점이 남도록 disabled 대신 aria-disabled로 막는다. 연달아 누르는 버튼이다.
         aria-disabled={locked}
+        aria-describedby={describedBy}
         onClick={() => {
           if (locked) {
             return;
@@ -80,12 +84,18 @@ export function AttackButton({
             },
           });
         }}
-        className={locked ? "cursor-not-allowed opacity-50" : undefined}
+        className={cn(
+          // 쿨다운 동안에는 눌린 채로 내려가 있다가 다시 올라온다. 움직임 줄이기에서는 그림자만 바뀐다.
+          recharging && "translate-y-1 shadow-none motion-reduce:translate-y-0",
+          // 레이드가 쉬는 중이면 회색으로 잠긴다.
+          disabled &&
+            "border-line-strong bg-surface-sunken text-fg-subtle cursor-not-allowed shadow-none active:translate-y-0",
+        )}
       >
         공격하기
-      </Button>
+      </GameButton>
       {failed ? (
-        <p role="alert" className="text-xs text-red-600">
+        <p role="alert" className="text-label text-danger">
           공격하지 못했어요. 잠시 후 다시 시도해 주세요.
         </p>
       ) : null}

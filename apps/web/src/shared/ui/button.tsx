@@ -5,23 +5,21 @@ import type { ComponentProps } from "react";
 import { cn } from "@/shared/lib";
 
 const buttonVariants = cva(
-  "ogu-pressable inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-control text-sm font-bold disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 disabled:shadow-none aria-disabled:cursor-not-allowed aria-disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2",
+  "ogu-pressable rounded-control text-body-sm disabled:bg-surface-sunken disabled:text-fg-subtle inline-flex items-center justify-center gap-2 text-center font-bold disabled:cursor-not-allowed disabled:border-transparent aria-disabled:cursor-not-allowed aria-disabled:opacity-60 break-keep",
   {
     variants: {
       variant: {
-        primary:
-          "bg-brand-600 text-white hover:bg-brand-650 active:bg-brand-700",
+        primary: "bg-action text-on-action hover:bg-action-hover",
         secondary:
-          "border border-brand-200 bg-brand-100 text-brand-700 hover:bg-brand-200 active:bg-brand-200",
-        outline:
-          "border border-neutral-300 bg-white text-neutral-800 hover:border-brand-600 hover:bg-brand-50 active:bg-brand-100",
-        ghost: "text-neutral-700 hover:bg-neutral-100 active:bg-neutral-200",
-        destructive: "bg-red-600 text-white hover:bg-red-700 active:bg-red-800",
+          "border-line-strong bg-surface text-fg hover:bg-surface-sunken border",
+        subtle: "bg-surface-sunken text-fg hover:bg-line",
+        ghost: "text-fg-muted hover:bg-surface-sunken",
+        danger: "bg-danger text-on-danger hover:opacity-90",
       },
       size: {
         sm: "min-h-11 px-3",
         md: "min-h-11 px-4",
-        lg: "min-h-12 px-6",
+        lg: "text-body min-h-13 px-6",
       },
     },
     defaultVariants: {

@@ -28,6 +28,7 @@ export default defineConfig({
     timeout: 120_000,
     env: {
       API_ORIGIN: process.env.API_ORIGIN ?? "http://127.0.0.1:9",
+      ENABLE_DESIGN_CATALOG: "1",
     },
   },
 });

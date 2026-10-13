@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { EMOTION_LABELS, MonsterSprite } from "@/entities/monster";
+import { EmotionTag, EMOTION_LABELS, MonsterThumb } from "@/entities/monster";
 import { Button, Card, Spinner } from "@/shared/ui";
 
 import { useEmotionStatsQuery } from "../api/queries";
@@ -21,10 +21,7 @@ export function EmotionStatsPanel() {
   return (
     <section aria-labelledby="emotion-stats-heading">
       <Card className="flex w-full flex-col gap-5">
-        <h2
-          id="emotion-stats-heading"
-          className="text-base font-semibold text-neutral-900"
-        >
+        <h2 id="emotion-stats-heading" className="text-title text-fg font-bold">
           감정 통계
         </h2>
         {isPending ? (
@@ -32,7 +29,7 @@ export function EmotionStatsPanel() {
             <Spinner />
           </div>
         ) : isError || !stats ? (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-body-sm text-danger">
             감정 통계를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
           </p>
         ) : (
@@ -55,7 +52,7 @@ function Stats({ stats }: { stats: EmotionStats }) {
       </dl>
       {stats.totalMonsters === 0 || stats.topEmotion === null ? (
         <div className="flex flex-col items-center gap-3 text-center">
-          <p className="text-sm text-neutral-600">
+          <p className="text-body-sm text-fg-subtle">
             아직 몬스터가 없어요. 고민을 쓰면 감정 몬스터가 나타나요.
           </p>
           <Button asChild size="sm">
@@ -65,18 +62,10 @@ function Stats({ stats }: { stats: EmotionStats }) {
       ) : (
         <>
           <div className="flex items-center gap-3">
-            <div className="size-16 shrink-0">
-              <MonsterSprite
-                emotion={stats.topEmotion}
-                stage="full"
-                sizes="64px"
-              />
-            </div>
-            <p className="text-sm text-neutral-600">
+            <MonsterThumb emotion={stats.topEmotion} stage="full" />
+            <p className="text-body-sm text-fg-subtle flex flex-col items-start gap-1">
               가장 많이 나타난 몬스터
-              <strong className="block text-base font-semibold text-neutral-900">
-                {EMOTION_LABELS[stats.topEmotion]}
-              </strong>
+              <EmotionTag emotion={stats.topEmotion} />
             </p>
           </div>
           <DistributionBar
@@ -84,7 +73,7 @@ function Stats({ stats }: { stats: EmotionStats }) {
             labels={EMOTION_LABELS}
           />
           <div className="flex flex-col gap-2">
-            <h3 className="text-sm font-medium text-neutral-900">최근 8주</h3>
+            <h3 className="text-body-sm text-fg font-bold">최근 8주</h3>
             <WeeklyChart weekly={stats.weekly} labels={EMOTION_LABELS} />
           </div>
         </>
@@ -97,8 +86,8 @@ function Figure({ label, value }: { label: string; value: number }) {
   return (
     // 이름표가 두 줄로 넘어가도 숫자끼리 높이가 맞게, 숫자를 위에 둔다.
     <div className="flex flex-col gap-1">
-      <dt className="text-xs text-neutral-500">{label}</dt>
-      <dd className="order-first text-2xl font-semibold text-neutral-900 tabular-nums">
+      <dt className="text-caption text-fg-subtle break-keep">{label}</dt>
+      <dd className="text-numeric text-fg order-first font-extrabold tabular-nums">
         {value}
       </dd>
     </div>

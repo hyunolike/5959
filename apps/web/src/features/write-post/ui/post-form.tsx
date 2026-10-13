@@ -1,12 +1,12 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Check, LoaderCircle } from "lucide-react";
+import { CircleNotch } from "@phosphor-icons/react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 
 import { COMMENT_TONE_LABELS, type CommentTone } from "@/entities/post";
 import { cn, countGraphemes } from "@/shared/lib";
-import { Button, Label } from "@/shared/ui";
+import { Button, Chip, Label, Textarea } from "@/shared/ui";
 
 import {
   POST_CONTENT_MAX_LENGTH,
@@ -68,30 +68,32 @@ export function PostForm({
   return (
     <form onSubmit={submit} noValidate className="flex w-full flex-col gap-7">
       <div className="flex flex-col gap-1.5">
-        <Label
-          htmlFor="content"
-          className="text-base font-bold text-neutral-900"
-        >
+        <Label htmlFor="content" className="text-body text-fg font-bold">
           고민
         </Label>
-        <p id="content-hint" className="text-sm leading-6 text-neutral-600">
+        <p id="content-hint" className="text-body-sm text-fg-subtle leading-6">
           형식 없이 편하게 적어 주세요. 닉네임, 직군, 경력과 함께 회원에게만
           보여요.
         </p>
-        <textarea
+        <Textarea
           id="content"
+          aria-required
           aria-invalid={!!errors.content || overLimit}
           aria-describedby={
             errors.content ? "content-error content-hint" : "content-hint"
           }
           rows={8}
           placeholder="요즘 마음을 무겁게 하는 일을 적어 주세요."
-          className="rounded-control focus-visible:border-brand-600 focus-visible:ring-brand-600 w-full resize-y border border-neutral-300 bg-white p-4 text-base leading-7 text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-600 focus-visible:ring-2 focus-visible:outline-none aria-invalid:border-red-600 aria-invalid:bg-red-50/30"
+          className="min-h-48 resize-y leading-7"
           {...register("content")}
         />
         <div className="flex items-start justify-between gap-2">
           {errors.content ? (
-            <p id="content-error" role="alert" className="text-sm text-red-600">
+            <p
+              id="content-error"
+              role="alert"
+              className="text-body-sm text-danger"
+            >
               {errors.content.message}
             </p>
           ) : (
@@ -99,8 +101,8 @@ export function PostForm({
           )}
           <p
             className={cn(
-              "shrink-0 text-xs tabular-nums",
-              overLimit ? "text-red-600" : "text-neutral-500",
+              "text-caption shrink-0 tabular-nums",
+              overLimit ? "text-danger" : "text-fg-subtle",
             )}
           >
             {length}/{POST_CONTENT_MAX_LENGTH}
@@ -116,12 +118,10 @@ export function PostForm({
         aria-describedby="comment-tone-hint"
         className="flex flex-col gap-1.5"
       >
-        <legend className="text-base font-bold text-neutral-900">
-          댓글 말투
-        </legend>
+        <legend className="text-body text-fg font-bold">댓글 말투</legend>
         <p
           id="comment-tone-hint"
-          className="mb-1.5 text-sm leading-6 text-neutral-600"
+          className="text-body-sm text-fg-subtle mb-1.5 leading-6"
         >
           듣고 싶은 댓글의 말투를 하나 골라 주세요. 댓글을 쓰는 회원에게 함께
           보여요.
@@ -130,46 +130,31 @@ export function PostForm({
           control={control}
           name="commentTone"
           render={({ field }) => (
-            <div className="grid grid-cols-2 gap-2">
+            <div className="flex flex-wrap gap-x-2 gap-y-3">
               {COMMENT_TONES.map(([tone, label]) => {
                 const selected = field.value === tone;
                 return (
-                  // 선택은 연한 면과 체크로 보인다. 채운 보라는 올리기 버튼에만 쓴다.
-                  <Button
+                  <Chip
                     key={tone}
-                    type="button"
-                    variant={selected ? "secondary" : "outline"}
-                    aria-pressed={selected}
-                    className={cn(
-                      "h-auto gap-1 px-2 py-2 text-center break-keep whitespace-normal",
-                      selected && "border-brand-600",
-                    )}
+                    pressed={selected}
                     onClick={() => field.onChange(tone)}
                   >
-                    {selected ? (
-                      <Check
-                        aria-hidden
-                        size={14}
-                        strokeWidth={2.5}
-                        className="shrink-0"
-                      />
-                    ) : null}
                     {label}
-                  </Button>
+                  </Chip>
                 );
               })}
             </div>
           )}
         />
         {errors.commentTone && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-body-sm text-danger">
             {errors.commentTone.message}
           </p>
         )}
       </fieldset>
 
       {errors.root && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-body-sm text-danger">
           {errors.root.message}
         </p>
       )}
@@ -182,9 +167,9 @@ export function PostForm({
         aria-busy={isSubmitting || locked}
       >
         {isSubmitting || locked ? (
-          <LoaderCircle
+          <CircleNotch
             aria-hidden
-            size={16}
+            size={18}
             className="motion-safe:animate-spin"
           />
         ) : null}

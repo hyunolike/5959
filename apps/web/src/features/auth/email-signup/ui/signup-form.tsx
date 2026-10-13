@@ -72,12 +72,15 @@ export function SignupForm({ next }: SignupFormProps) {
         <Label htmlFor="email">이메일</Label>
         <Input
           id="email"
+          aria-required
           type="email"
           autoComplete="email"
+          aria-invalid={errors.email ? true : undefined}
+          aria-describedby={errors.email ? "email-error" : undefined}
           {...register("email")}
         />
         {errors.email && (
-          <p role="alert" className="text-sm text-red-600">
+          <p id="email-error" role="alert" className="text-label text-danger">
             {errors.email.message}
           </p>
         )}
@@ -87,28 +90,37 @@ export function SignupForm({ next }: SignupFormProps) {
         <Label htmlFor="password">비밀번호</Label>
         <Input
           id="password"
+          aria-required
           type="password"
           autoComplete="new-password"
+          aria-invalid={errors.password ? true : undefined}
+          aria-describedby={
+            errors.password ? "password-error" : "password-hint"
+          }
           {...register("password")}
         />
         {errors.password ? (
-          <p role="alert" className="text-sm text-red-600">
+          <p
+            id="password-error"
+            role="alert"
+            className="text-label text-danger"
+          >
             {errors.password.message}
           </p>
         ) : (
-          <p className="text-xs text-neutral-500">
+          <p id="password-hint" className="text-caption text-fg-subtle">
             영문과 숫자를 포함해 8~20자로 입력하세요.
           </p>
         )}
       </div>
 
       {errors.root && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-body-sm text-danger">
           {errors.root.message}
         </p>
       )}
 
-      <Button type="submit" disabled={isSubmitting}>
+      <Button type="submit" size="lg" disabled={isSubmitting}>
         가입하기
       </Button>
     </form>

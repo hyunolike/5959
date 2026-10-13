@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { EMOTION_LABELS, MonsterSprite } from "@/entities/monster";
+import { emotionLabel, formatHp, MonsterSprite } from "@/entities/monster";
 import { useRaidQuery } from "@/entities/raid";
 
 /**
@@ -15,25 +15,27 @@ export function BossBanner() {
   if (!boss || boss.status !== "ALIVE") {
     return null;
   }
+  const headline = `${emotionLabel(boss.emotion)} 보스가 나타났어요`;
+  const hp = `HP ${formatHp(boss.hp)}/${formatHp(boss.maxHp)}`;
+  const participants = `${boss.participantCount}명이 함께하고 있어요`;
   return (
     <Link
       href="/raid"
-      aria-label={`레이드: ${EMOTION_LABELS[boss.emotion]} 보스, HP ${boss.hp}/${boss.maxHp}`}
-      className="flex items-center gap-3 rounded-lg border border-neutral-200 bg-white px-4 py-3 transition-colors hover:border-neutral-300 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none"
+      // 이름은 보이는 글자를 그대로 담는다. 보이는 글자를 말해 누르는 음성 제어가 링크를 찾는다.
+      aria-label={`레이드: ${headline}, ${hp}, ${participants}, 함께 공격하기`}
+      data-emotion={boss.emotion}
+      className="rounded-control bg-emotion-tint flex items-center gap-3 px-4 py-3 transition-[filter] hover:brightness-[0.97]"
     >
       <span className="size-12 shrink-0">
         <MonsterSprite emotion={boss.emotion} stage="full" boss sizes="48px" />
       </span>
       <span className="flex min-w-0 flex-col">
-        <span className="text-sm font-semibold text-neutral-900">
-          {EMOTION_LABELS[boss.emotion]} 보스가 나타났어요
-        </span>
-        <span className="text-xs text-neutral-600 tabular-nums">
-          HP {boss.hp}/{boss.maxHp} · {boss.participantCount}명이 함께하고
-          있어요
+        <span className="text-body-sm text-fg font-bold">{headline}</span>
+        <span className="text-caption text-emotion-fg font-medium tabular-nums">
+          {hp} · {participants}
         </span>
       </span>
-      <span className="ml-auto shrink-0 text-sm font-medium text-neutral-900">
+      <span className="text-label text-fg ml-auto shrink-0 font-bold">
         함께 공격하기
       </span>
     </Link>

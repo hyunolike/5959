@@ -80,4 +80,54 @@ describe("NotificationItem", () => {
 
     expect(onSelect).toHaveBeenCalledWith(item);
   });
+
+  it("DS-US3-AC1 안 읽은 알림은 굵은 글씨와 표시로, 읽은 알림은 보통 글씨와 옅은 색으로 보인다", () => {
+    const { rerender } = render(
+      <NotificationItem notification={notification()} onSelect={vi.fn()} />,
+    );
+    const unread = screen.getByText("오구 님이 내 글에 댓글을 남겼어요");
+    expect(unread).toHaveClass("font-bold", "text-fg");
+    expect(screen.getByText("안 읽음")).toHaveClass(
+      "bg-action",
+      "text-on-action",
+    );
+
+    rerender(
+      <NotificationItem
+        notification={notification({ read: true })}
+        onSelect={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("오구 님이 내 글에 댓글을 남겼어요")).toHaveClass(
+      "font-normal",
+      "text-fg-subtle",
+    );
+  });
+
+  it("DS-US3-AC1 알림 시각은 상대 시각이고 datetime은 원래 값이다", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-06T03:16:00Z"));
+    try {
+      render(
+        <NotificationItem notification={notification()} onSelect={vi.fn()} />,
+      );
+      const time = screen.getByText("12분 전");
+      expect(time.tagName).toBe("TIME");
+      expect(time).toHaveAttribute("datetime", "2026-10-06T03:04:00Z");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("DS-US3-AC1 읽은 알림은 글 앞부분도 제목보다 진하지 않다", () => {
+    render(
+      <NotificationItem
+        notification={notification({ read: true })}
+        onSelect={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("내일 발표가 걱정돼요")).toHaveClass(
+      "text-fg-subtle",
+    );
+  });
 });

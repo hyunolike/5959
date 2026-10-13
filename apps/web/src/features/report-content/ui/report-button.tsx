@@ -1,10 +1,10 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import { ApiError } from "@/shared/api";
 import { countGraphemes } from "@/shared/lib";
-import { ConfirmDialog } from "@/shared/ui";
+import { Button, ConfirmDialog, Textarea } from "@/shared/ui";
 
 import { useReportMutation } from "../api/use-report-mutation";
 import {
@@ -44,6 +44,14 @@ export function ReportButton({
   const [detail, setDetail] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const noticeRef = useRef<HTMLSpanElement>(null);
+
+  // 접수되면 신고 버튼이 사라져 대화상자가 초점을 돌려줄 곳이 없다. 안내로 옮긴다.
+  useEffect(() => {
+    if (notice !== null) {
+      noticeRef.current?.focus();
+    }
+  }, [notice]);
 
   const target = TARGET_LABEL[targetType];
   const detailLength = countGraphemes(detail.trim());
@@ -98,7 +106,12 @@ export function ReportButton({
 
   if (notice !== null) {
     return (
-      <span role="status" className="text-xs text-neutral-500">
+      <span
+        ref={noticeRef}
+        role="status"
+        tabIndex={-1}
+        className="text-caption text-fg-subtle"
+      >
         {notice}
       </span>
     );
@@ -106,32 +119,34 @@ export function ReportButton({
 
   return (
     <>
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="sm"
         onClick={() => setOpen(true)}
-        className={
-          className ??
-          "rounded px-1 text-xs text-neutral-500 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none"
-        }
+        className={className ?? "text-label px-2 font-medium"}
       >
         신고
-      </button>
+      </Button>
       <ConfirmDialog
         open={open}
         title={`이 ${target}을 신고할까요?`}
         description="신고한 사람은 글쓴이에게 알려지지 않아요."
         confirmLabel="신고하기"
+        // 고르고 적는 대화상자다. 경고가 아니므로 dialog로 두고 첫 사유에서 시작한다.
+        role="dialog"
+        initialFocus="first"
         pending={report.isPending}
         error={error}
         onConfirm={submit}
         onCancel={close}
       >
-        <fieldset className="flex flex-col gap-2">
+        <fieldset className="flex flex-col">
           <legend className="sr-only">신고 사유</legend>
           {REPORT_REASONS.map((option) => (
             <label
               key={option.value}
-              className="flex items-center gap-2 text-sm text-neutral-900"
+              className="text-body-sm text-fg flex min-h-11 items-center gap-2"
             >
               <input
                 type="radio"
@@ -149,21 +164,21 @@ export function ReportButton({
         </fieldset>
         {reason === "OTHER" ? (
           <div className="flex flex-col gap-1">
-            <label htmlFor={detailId} className="text-sm text-neutral-700">
+            <label htmlFor={detailId} className="text-body-sm text-fg-muted">
               어떤 점이 문제인지 알려 주세요 (선택)
             </label>
-            <textarea
+            <Textarea
               id={detailId}
               rows={3}
               value={detail}
               onChange={(event) => setDetail(event.target.value)}
-              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none"
+              className="text-body-sm min-h-20 resize-y px-3 py-2"
             />
             <p
               className={
                 detailTooLong
-                  ? "text-right text-xs text-red-600"
-                  : "text-right text-xs text-neutral-500"
+                  ? "text-caption text-danger text-right"
+                  : "text-caption text-fg-subtle text-right"
               }
             >
               {detailLength}/{REPORT_DETAIL_MAX_LENGTH}

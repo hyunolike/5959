@@ -1,3 +1,5 @@
+import { CaretDown } from "@phosphor-icons/react/dist/ssr";
+
 import { formatDate } from "@/shared/lib";
 
 import {
@@ -45,15 +47,15 @@ export function WeeklyChart({
               title={weekSummary(week, labels)}
               className="flex min-w-0 flex-1 flex-col items-center gap-1"
             >
-              <div className="flex w-full flex-1 flex-col items-center justify-end gap-1 border-b border-neutral-200">
+              <div className="border-line flex w-full flex-1 flex-col items-center justify-end gap-1 border-b">
                 {total > 0 ? (
-                  <span className="text-xs text-neutral-600 tabular-nums">
+                  <span className="text-caption text-fg-subtle tabular-nums">
                     {total}
                   </span>
                 ) : null}
                 <div
                   data-testid="weekly-bar"
-                  className="flex w-full max-w-6 flex-col-reverse gap-0.5 overflow-hidden rounded-t"
+                  className="flex w-full max-w-6 flex-col-reverse gap-0.5 overflow-hidden rounded-t-[4px]"
                   style={{ height: `${(total / max) * 75}%` }}
                 >
                   {week.counts
@@ -69,13 +71,33 @@ export function WeeklyChart({
                     ))}
                 </div>
               </div>
-              <span className="text-xs text-neutral-500 tabular-nums">
+              <span className="text-caption text-fg-subtle tabular-nums">
                 {weekLabel(week)}
               </span>
             </li>
           );
         })}
       </ol>
+      {/*
+        막대의 색만으로는 감정별 수를 읽기 어렵고(밝은 색은 바탕과 3:1에 못 미친다) title은 마우스에서만 보인다.
+        터치와 저시력 사용자가 값을 볼 수 있게 주별 수를 글자로 펼쳐 볼 수 있게 한다.
+      */}
+      <details className="group mt-3">
+        {/* summary를 flex로 두면 기본 삼각형이 사라진다. 누를 수 있다는 표시를 화살표와 밑줄로 준다. */}
+        <summary className="rounded-inline text-label text-fg-muted inline-flex min-h-11 cursor-pointer list-none items-center gap-1 font-medium underline underline-offset-4">
+          주별 수 보기
+          <CaretDown
+            size={14}
+            aria-hidden
+            className="transition-transform group-open:rotate-180 motion-reduce:transition-none"
+          />
+        </summary>
+        <ul className="text-label text-fg-muted mt-1 flex flex-col gap-1 tabular-nums">
+          {weekly.map((week) => (
+            <li key={week.weekStart}>{weekSummary(week, labels)}</li>
+          ))}
+        </ul>
+      </details>
       {/* 표의 최소 콘텐츠 폭이 숨김 영역 밖에서 페이지를 넓히지 않도록 컨테이너를 자른다. */}
       <div className="sr-only">
         <table>

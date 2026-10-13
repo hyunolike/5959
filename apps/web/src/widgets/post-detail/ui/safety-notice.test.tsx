@@ -185,7 +185,9 @@ describe("SafetyNotice", () => {
 
     renderNotice(safety({ level: "CRISIS", hidden: true }));
 
-    const link = await screen.findByRole("link", { name: "109" });
+    const link = await screen.findByRole("link", {
+      name: "자살예방상담전화 109 전화 걸기",
+    });
     expect(link).toHaveAttribute("href", "tel:109");
   });
 });
@@ -227,5 +229,16 @@ describe("worstSafetyOfMine", () => {
       hidden: true,
       reviewRequested: false,
     });
+  });
+
+  it("DS-US3-AC4 위기 안내는 주의 색만 쓰고 감정 색과 게임 요소가 없다", async () => {
+    renderNotice(safety({ level: "CRISIS", hidden: true }));
+    const region = await screen.findByRole("region", { name: "도움 안내" });
+    expect(region).toHaveClass("bg-warning-tint", "border-warning");
+    expect(
+      region.querySelector(
+        '[data-emotion], [class*="emotion"], [class*="bg-game"], [class*="shadow-game"]',
+      ),
+    ).toBeNull();
   });
 });

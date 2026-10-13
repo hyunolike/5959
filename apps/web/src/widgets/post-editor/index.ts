@@ -1,1 +1,1 @@
-export { PostEditor, PostEditorCard } from "./ui/post-editor";
+export { PostEditor, PostEditorScreen } from "./ui/post-editor";

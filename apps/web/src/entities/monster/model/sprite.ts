@@ -1,5 +1,5 @@
 import type { HpStage } from "./hp-stage";
-import { EMOTION_LABELS, type EmotionType } from "./types";
+import { emotionLabel, type EmotionType } from "./types";
 
 /** HP 단계의 한국어 이름. 그림의 대체 텍스트에 쓴다. */
 export const STAGE_LABELS: Record<HpStage, string> = {
@@ -31,7 +31,7 @@ export function monsterLabel(
   stage: HpStage,
   boss = false,
 ): string {
-  return `${EMOTION_LABELS[emotion]} ${boss ? "보스" : "몬스터"}, ${STAGE_LABELS[stage]}`;
+  return `${emotionLabel(emotion)} ${boss ? "보스" : "몬스터"}, ${STAGE_LABELS[stage]}`;
 }
 
 /** 감정별 대기 움직임: 떨림, 축 처짐, 좌우 흔들림, 끄덕임, 움찔거림. `globals.css`의 `monster-idle-*`와 짝이다. */

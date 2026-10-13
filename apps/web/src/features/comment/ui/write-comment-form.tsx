@@ -7,7 +7,7 @@ import { useForm, useWatch } from "react-hook-form";
 import type { Comment } from "@/entities/comment";
 import { ApiError } from "@/shared/api";
 import { cn, countGraphemes } from "@/shared/lib";
-import { Button } from "@/shared/ui";
+import { Button, Textarea } from "@/shared/ui";
 
 import { useCreateCommentMutation } from "../api/use-create-comment-mutation";
 import {
@@ -129,24 +129,26 @@ export function WriteCommentForm({
   return (
     <form onSubmit={onSubmit} noValidate className="flex flex-col gap-2">
       {replyTo ? (
-        <div className="flex items-center justify-between gap-2 text-xs text-neutral-600">
+        <div className="text-caption text-fg-subtle flex items-center justify-between gap-2">
           <span>
             {replyTo.author ? `${replyTo.author.nickname}님에게 답글` : "답글"}
           </span>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
+            className="text-caption px-2 font-medium"
             onClick={cancelReply}
             aria-label="답글 취소"
-            className="ogu-pressable rounded-control min-h-11 min-w-11 px-2 text-neutral-500 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none"
           >
             취소
-          </button>
+          </Button>
         </div>
       ) : null}
       <label htmlFor={contentId} className="sr-only">
         {label}
       </label>
-      <textarea
+      <Textarea
         id={contentId}
         aria-invalid={!!errors.content || overLimit}
         aria-describedby={errors.content ? `${contentId}-error` : undefined}
@@ -154,7 +156,7 @@ export function WriteCommentForm({
         placeholder={
           replyTo ? "답글을 남겨 주세요." : "따뜻한 한마디를 남겨 주세요."
         }
-        className="rounded-control focus-visible:border-brand-600 focus-visible:ring-brand-600 w-full resize-y border border-neutral-300 bg-white p-4 text-base leading-7 text-neutral-900 placeholder:text-neutral-500 hover:border-neutral-600 focus-visible:ring-2 focus-visible:outline-none aria-invalid:border-red-600"
+        className="min-h-24 resize-y"
         {...register("content")}
       />
       <div className="flex items-start justify-between gap-2">
@@ -162,12 +164,12 @@ export function WriteCommentForm({
           <p
             id={`${contentId}-error`}
             role="alert"
-            className="text-sm text-red-600"
+            className="text-body-sm text-danger"
           >
             {errors.content.message}
           </p>
         ) : errors.root ? (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-body-sm text-danger">
             {errors.root.message}
           </p>
         ) : (
@@ -176,8 +178,8 @@ export function WriteCommentForm({
         <div className="flex shrink-0 items-center gap-3">
           <p
             className={cn(
-              "text-xs tabular-nums",
-              overLimit ? "text-red-600" : "text-neutral-500",
+              "text-caption tabular-nums",
+              overLimit ? "text-danger" : "text-fg-subtle",
             )}
           >
             {length}/{COMMENT_CONTENT_MAX_LENGTH}

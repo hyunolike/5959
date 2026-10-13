@@ -26,10 +26,26 @@ describe("ConfirmDialog", () => {
     const back = vi.spyOn(history, "back").mockImplementation(() => {});
     history.replaceState({ __oguDialog: "ogu-dialog-reloaded-guide" }, "");
     try {
-      render(<>
-        <ConfirmDialog open={false} dismissOnBack title="로그인 안내" confirmLabel="로그인" onCancel={() => {}} onConfirm={() => {}} />
-        <ConfirmDialog open={false} dismissOnBack title="설치 안내" confirmLabel="확인" onCancel={() => {}} onConfirm={() => {}} />
-      </>);
+      render(
+        <>
+          <ConfirmDialog
+            open={false}
+            dismissOnBack
+            title="로그인 안내"
+            confirmLabel="로그인"
+            onCancel={() => {}}
+            onConfirm={() => {}}
+          />
+          <ConfirmDialog
+            open={false}
+            dismissOnBack
+            title="설치 안내"
+            confirmLabel="확인"
+            onCancel={() => {}}
+            onConfirm={() => {}}
+          />
+        </>,
+      );
       await act(async () => {});
       expect(back).toHaveBeenCalledTimes(1);
     } finally {

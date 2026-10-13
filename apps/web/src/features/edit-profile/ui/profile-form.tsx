@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { LoaderCircle } from "lucide-react";
+import { CircleNotch } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
@@ -15,7 +15,7 @@ import {
 } from "@/entities/member";
 import { ApiError } from "@/shared/api";
 import { cn } from "@/shared/lib";
-import { Button, Input, Label } from "@/shared/ui";
+import { Button, Input, Label, Select } from "@/shared/ui";
 
 import { useUpdateProfileMutation } from "../api/use-update-profile-mutation";
 import {
@@ -28,9 +28,6 @@ import {
 
 const GENERIC_ERROR_MESSAGE =
   "프로필을 저장하지 못했습니다. 잠시 후 다시 시도해주세요.";
-
-const SELECT_CLASS_NAME =
-  "h-12 w-full rounded-control border border-neutral-300 bg-white px-4 text-base text-neutral-900 transition-colors hover:border-neutral-600 focus-visible:border-brand-600 focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:outline-none disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500";
 
 const MY_PAGE = "/my";
 
@@ -122,93 +119,97 @@ export function ProfileForm({ member }: { member: MemberProfile }) {
         <Label htmlFor="nickname">닉네임</Label>
         <Input
           id="nickname"
+          aria-required
           autoComplete="off"
           maxLength={10}
           aria-invalid={!!errors.nickname}
-          aria-describedby="nickname-status"
+          aria-describedby={
+            errors.nickname
+              ? "nickname-rule nickname-error"
+              : "nickname-rule nickname-status"
+          }
           {...register("nickname")}
         />
-        <div id="nickname-status">
-          {errors.nickname ? (
-            <p role="alert" className="text-sm text-red-600">
-              {errors.nickname.message}
-            </p>
-          ) : nicknameHint ? (
-            <p
-              className={cn(
-                "text-sm",
-                settledNicknameResult?.available
-                  ? "text-leaf-700"
-                  : "text-neutral-600",
-              )}
-            >
-              {nicknameHint}
-            </p>
-          ) : (
-            <p className="text-xs text-neutral-500">최대 10자</p>
+        <p id="nickname-rule" className="text-caption text-fg-subtle">
+          한글, 영문, 숫자 1~10자
+        </p>
+        {errors.nickname ? (
+          <p
+            id="nickname-error"
+            role="alert"
+            className="text-body-sm text-danger"
+          >
+            {errors.nickname.message}
+          </p>
+        ) : null}
+        {/* 확인 결과는 400ms 뒤 조용히 바뀐다. 자리를 처음부터 그려 두어 화면 낭독기가 읽게 한다. */}
+        <p
+          id="nickname-status"
+          role="status"
+          className={cn(
+            "text-body-sm",
+            settledNicknameResult?.available
+              ? "text-fg font-medium"
+              : "text-danger",
+            !nicknameHint && "sr-only",
           )}
-        </div>
+        >
+          {nicknameHint}
+        </p>
       </div>
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="jobRole">직군</Label>
-        <select
-          id="jobRole"
-          className={SELECT_CLASS_NAME}
-          {...register("jobRole")}
-        >
+        <Select id="jobRole" {...register("jobRole")}>
           {Object.entries(JOB_ROLE_LABELS).map(([value, label]) => (
             <option key={value} value={value}>
               {label}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="careerYear">경력</Label>
-        <select
-          id="careerYear"
-          className={SELECT_CLASS_NAME}
-          {...register("careerYear")}
-        >
+        <Select id="careerYear" {...register("careerYear")}>
           {Object.entries(CAREER_YEAR_LABELS).map(([value, label]) => (
             <option key={value} value={value}>
               {label}
             </option>
           ))}
-        </select>
-        <p className="text-xs text-neutral-500">
+        </Select>
+        <p className="text-caption text-fg-subtle">
           직군과 경력을 바꿔도 예전에 쓴 글은 쓸 때의 값으로 보여요.
         </p>
       </div>
 
       {errors.root && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-body-sm text-danger">
           {errors.root.message}
         </p>
       )}
 
-      <div className="flex flex-col gap-2 border-t border-neutral-200 pt-4">
+      <div className="border-line flex flex-col gap-2 border-t pt-4">
         {/* 저장이 왜 잠겨 있는지 버튼 옆에서 말한다. */}
         {!changed ? (
-          <p id="profile-save-hint" className="text-xs text-neutral-500">
+          <p id="profile-save-hint" className="text-caption text-fg-subtle">
             바꾼 내용이 있으면 저장할 수 있어요.
           </p>
         ) : null}
         <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
-          <Button asChild variant="outline">
+          <Button asChild variant="secondary" size="lg">
             <Link href={MY_PAGE}>취소</Link>
           </Button>
           <Button
             type="submit"
+            size="lg"
             disabled={!changed || isSubmitting}
             aria-busy={isSubmitting}
             aria-describedby={!changed ? "profile-save-hint" : undefined}
             className="sm:min-w-24"
           >
             {isSubmitting ? (
-              <LoaderCircle
+              <CircleNotch
                 aria-hidden
                 size={16}
                 className="motion-safe:animate-spin"

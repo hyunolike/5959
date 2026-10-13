@@ -12,16 +12,13 @@ import {
 } from "@/entities/member";
 import { ApiError } from "@/shared/api";
 import { cn, sanitizeNextPath } from "@/shared/lib";
-import { Button, Input, Label } from "@/shared/ui";
+import { Button, Input, Label, Select } from "@/shared/ui";
 
 import { useOnboardingMutation } from "../api/use-onboarding-mutation";
 import { onboardingSchema, type OnboardingFormValues } from "../model/schema";
 
 const GENERIC_ERROR_MESSAGE =
   "온보딩을 완료하지 못했습니다. 잠시 후 다시 시도해주세요.";
-
-const SELECT_CLASS_NAME =
-  "h-12 w-full rounded-control border border-neutral-300 bg-white px-4 text-base text-neutral-900 transition-colors hover:border-neutral-600 focus-visible:border-brand-600 focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:outline-none disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500";
 
 /**
  * 온보딩 폼(닉네임, 직군, 경력). 완료하면 `/home`으로 이동한다(US1-AC4).
@@ -112,36 +109,53 @@ export function OnboardingForm({ next }: OnboardingFormProps) {
         <Label htmlFor="nickname">닉네임</Label>
         <Input
           id="nickname"
+          aria-required
           autoComplete="off"
           maxLength={10}
+          aria-invalid={errors.nickname ? true : undefined}
+          aria-describedby={
+            errors.nickname
+              ? "nickname-rule nickname-error"
+              : "nickname-rule nickname-status"
+          }
           {...register("nickname")}
         />
+        <p id="nickname-rule" className="text-caption text-fg-subtle">
+          한글, 영문, 숫자 1~10자
+        </p>
         {errors.nickname ? (
-          <p role="alert" className="text-sm text-red-600">
+          <p
+            id="nickname-error"
+            role="alert"
+            className="text-label text-danger"
+          >
             {errors.nickname.message}
           </p>
-        ) : (
-          nicknameHint && (
-            <p
-              className={cn(
-                "text-sm",
-                settledNicknameResult?.available
-                  ? "text-leaf-700"
-                  : "text-neutral-500",
-              )}
-            >
-              {nicknameHint}
-            </p>
-          )
-        )}
+        ) : null}
+        {/* 확인 결과는 400ms 뒤 조용히 바뀐다. 자리를 처음부터 그려 두어 화면 낭독기가 읽게 한다. */}
+        <p
+          id="nickname-status"
+          role="status"
+          className={cn(
+            "text-label",
+            settledNicknameResult?.available
+              ? "text-fg font-medium"
+              : "text-danger",
+            !nicknameHint && "sr-only",
+          )}
+        >
+          {nicknameHint}
+        </p>
       </div>
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="jobRole">직군</Label>
-        <select
+        <Select
           id="jobRole"
+          aria-required
           defaultValue=""
-          className={SELECT_CLASS_NAME}
+          aria-invalid={errors.jobRole ? true : undefined}
+          aria-describedby={errors.jobRole ? "jobRole-error" : undefined}
           {...register("jobRole")}
         >
           <option value="" disabled>
@@ -152,9 +166,9 @@ export function OnboardingForm({ next }: OnboardingFormProps) {
               {label}
             </option>
           ))}
-        </select>
+        </Select>
         {errors.jobRole && (
-          <p role="alert" className="text-sm text-red-600">
+          <p id="jobRole-error" role="alert" className="text-label text-danger">
             직군을 선택하세요.
           </p>
         )}
@@ -162,10 +176,12 @@ export function OnboardingForm({ next }: OnboardingFormProps) {
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="careerYear">경력</Label>
-        <select
+        <Select
           id="careerYear"
+          aria-required
           defaultValue=""
-          className={SELECT_CLASS_NAME}
+          aria-invalid={errors.careerYear ? true : undefined}
+          aria-describedby={errors.careerYear ? "careerYear-error" : undefined}
           {...register("careerYear")}
         >
           <option value="" disabled>
@@ -176,21 +192,25 @@ export function OnboardingForm({ next }: OnboardingFormProps) {
               {label}
             </option>
           ))}
-        </select>
+        </Select>
         {errors.careerYear && (
-          <p role="alert" className="text-sm text-red-600">
+          <p
+            id="careerYear-error"
+            role="alert"
+            className="text-label text-danger"
+          >
             경력을 선택하세요.
           </p>
         )}
       </div>
 
       {errors.root && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-body-sm text-danger">
           {errors.root.message}
         </p>
       )}
 
-      <Button type="submit" disabled={isSubmitting}>
+      <Button type="submit" size="lg" disabled={isSubmitting}>
         완료
       </Button>
     </form>

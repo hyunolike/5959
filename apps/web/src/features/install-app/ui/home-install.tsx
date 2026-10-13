@@ -1,9 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { Download, X } from "lucide-react";
+import { DownloadSimple, X } from "@phosphor-icons/react";
 import { useRef, useState } from "react";
-import { Button, ConfirmDialog } from "@/shared/ui";
+import { Button, ConfirmDialog, IconButton } from "@/shared/ui";
 import { useInstallApp } from "../model/install-provider";
 
 /** 설치 권한을 자동으로 묻지 않는다. 실제 prompt 이벤트가 있으면 사용자 클릭으로만 연다. */
@@ -14,40 +14,42 @@ export function HomeInstall() {
   if (!state.environment || state.installed) return null;
   const { platform, inApp, secure } = state.environment;
   const guide = (
-    <button
+    <Button
       ref={guideButton}
       type="button"
+      variant="ghost"
+      size="sm"
       aria-label="홈 화면 추가 방법"
       onClick={() => setGuideOpen(true)}
-      className="focus-visible:ring-brand-600 inline-flex min-h-11 min-w-11 items-center justify-center self-start rounded-sm text-xs text-neutral-500 underline underline-offset-4 focus-visible:ring-2"
+      className="text-caption text-fg-subtle min-w-11 self-start px-2 font-medium underline underline-offset-4"
     >
       {state.promotionVisible ? "방법" : "홈 화면 추가 방법"}
-    </button>
+    </Button>
   );
   return (
     <aside aria-label="홈 화면 추가" className="flex flex-col gap-2">
       {state.promotionVisible ? (
-        <div className="flex items-start gap-2 border-y border-neutral-200 py-3 sm:items-center">
+        <div className="border-line flex items-start gap-2 border-y py-3 sm:items-center">
           <Image
-            src="/brand/ogu-companion.png"
+            src="/brand/ogu-symbol.webp"
             alt=""
             width={28}
-            height={23}
-            className="mt-1 shrink-0 object-contain"
+            height={28}
+            className="mt-1 shrink-0"
           />
           <div className="min-w-0 flex-1 sm:flex sm:items-center sm:justify-between sm:gap-3">
             <div>
-              <p className="text-sm font-bold text-neutral-900">
+              <p className="text-body-sm text-fg font-bold">
                 오구오구를 홈 화면에서 만나세요
               </p>
-              <p className="mt-1 text-xs leading-relaxed text-neutral-500">
+              <p className="text-caption text-fg-subtle mt-1 leading-relaxed">
                 앱처럼 바로 열고 이야기를 이어갈 수 있어요.
               </p>
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2 sm:mt-0">
               {state.canPrompt || state.pending ? (
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   className="min-h-11 px-2"
                   disabled={state.pending}
@@ -58,7 +60,7 @@ export function HomeInstall() {
                       : setGuideOpen(true)
                   }
                 >
-                  <Download size={15} aria-hidden />
+                  <DownloadSimple size={15} aria-hidden />
                   {state.pending
                     ? "브라우저 안내 여는 중"
                     : state.canPrompt
@@ -69,14 +71,13 @@ export function HomeInstall() {
               {guide}
             </div>
           </div>
-          <button
-            type="button"
+          <IconButton
             aria-label="설치 안내 7일간 숨기기"
-            className="focus-visible:ring-brand-600 inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-neutral-500 hover:bg-neutral-100 focus-visible:ring-2"
+            className="text-fg-subtle"
             onClick={state.dismissPromotion}
           >
             <X size={18} aria-hidden />
-          </button>
+          </IconButton>
         </div>
       ) : null}
       {!state.promotionVisible ? guide : null}
@@ -87,8 +88,8 @@ export function HomeInstall() {
           !state.message
             ? "sr-only"
             : state.error
-              ? "text-xs text-red-600"
-              : "text-xs text-neutral-600"
+              ? "text-caption text-danger"
+              : "text-caption text-fg-subtle"
         }
       >
         {state.message}
@@ -109,7 +110,7 @@ export function HomeInstall() {
         onConfirm={() => setGuideOpen(false)}
         onCancel={() => setGuideOpen(false)}
       >
-        <div className="text-sm leading-relaxed text-neutral-700">
+        <div className="text-body-sm text-fg-muted leading-relaxed">
           {!secure ? (
             <p>
               보안 연결(HTTPS)에서 다시 열어주세요. 브라우저가 현재 주소에서
@@ -151,8 +152,8 @@ export function HomeInstall() {
             role={state.error ? "alert" : "status"}
             className={
               state.error
-                ? "mt-3 text-xs text-red-600"
-                : "mt-3 text-xs text-neutral-600"
+                ? "text-caption text-danger mt-3"
+                : "text-caption text-fg-subtle mt-3"
             }
           >
             {state.message}

@@ -1,7 +1,7 @@
 "use client";
 
 import { CAREER_YEAR_LABELS, JOB_ROLE_LABELS } from "@/entities/member";
-import { MonsterDisplay } from "@/entities/monster";
+import { EmotionTag, MonsterSummary } from "@/entities/monster";
 import {
   PostCard,
   useSimilarPostsQuery,
@@ -28,18 +28,19 @@ export function SimilarPosts({ postId }: { postId: number }) {
   const headingId = `similar-posts-${postId}`;
   return (
     <section aria-labelledby={headingId} className="mt-4 flex flex-col gap-3">
-      <h2 id={headingId} className="text-base font-bold text-neutral-900">
+      <h2 id={headingId} className="text-title text-fg font-bold">
         {HEADINGS[data.basis]}
       </h2>
-      <ul className="rounded-surface flex flex-col overflow-hidden border border-neutral-200 bg-white [&>li:last-child>a]:border-b-0">
+      <ul className="rounded-surface border-line divide-line flex flex-col divide-y overflow-hidden border">
         {data.items.map((item) => (
           <li key={item.postId}>
             <PostCard
               item={item}
               authorMeta={`${JOB_ROLE_LABELS[item.author.jobRole]} · ${CAREER_YEAR_LABELS[item.author.careerYear]}`}
-              renderMonster={(monster) => (
-                <MonsterDisplay monster={monster} variant="card" />
+              renderEmotion={(monster) => (
+                <EmotionTag emotion={monster.emotion} />
               )}
+              renderMonster={(monster) => <MonsterSummary monster={monster} />}
             />
           </li>
         ))}

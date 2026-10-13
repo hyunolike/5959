@@ -1,6 +1,6 @@
 "use client";
 
-import { House, PencilLine, Swords, UserRound } from "lucide-react";
+import { House, PencilSimpleLine, Sword, User } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -15,14 +15,14 @@ import { NavigationItem } from "./navigation-item";
 
 const NAVIGATION = [
   { href: "/home", label: "마음 이야기", shortLabel: "이야기", icon: House },
-  { href: "/raid", label: "함께 이겨내기", shortLabel: "함께", icon: Swords },
+  { href: "/raid", label: "함께 이겨내기", shortLabel: "함께", icon: Sword },
   {
     href: "/write",
     label: "고민 쓰기",
     shortLabel: "고민 쓰기",
-    icon: PencilLine,
+    icon: PencilSimpleLine,
   },
-  { href: "/my", label: "내 마음 기록", shortLabel: "기록", icon: UserRound },
+  { href: "/my", label: "내 마음 기록", shortLabel: "기록", icon: User },
 ];
 
 export function AppShell({
@@ -75,12 +75,12 @@ function ShellContents({
     <>
       <a
         href="#main-content"
-        className="text-brand-700 sr-only z-50 rounded-xl bg-white px-5 py-3 focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+        className="text-fg rounded-control bg-surface sr-only z-50 px-5 py-3 focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
       >
         본문으로 건너뛰기
       </a>
-      <header className="sticky top-0 isolate z-30 border-b border-neutral-200/70">
-        <div aria-hidden className="absolute inset-0 -z-10 bg-white/95" />
+      <header className="border-line sticky top-0 isolate z-30 border-b">
+        <div aria-hidden className="bg-surface/95 absolute inset-0 -z-10" />
         <div className="mx-auto flex h-16 max-w-[1120px] items-center justify-between px-5 sm:h-18 sm:px-8">
           <Link
             href={showNavigation ? "/home" : "/login"}
@@ -94,18 +94,39 @@ function ShellContents({
             ) : showNavigation ? (
               <Link
                 href="/login"
-                className="text-brand-700 inline-flex min-h-11 items-center text-sm font-bold"
+                className="text-body-sm text-fg inline-flex min-h-11 items-center font-bold"
               >
                 로그인
               </Link>
             ) : (
-              <span className="hidden text-sm text-neutral-500 sm:block">
+              <span className="text-body-sm text-fg-subtle hidden sm:block">
                 마음을 나누는 오구오구
               </span>
             )}
           </div>
         </div>
       </header>
+      {/*
+        좁은 화면의 메뉴는 화면 아래에 붙어 있지만 DOM에서는 본문보다 앞에 둔다. 뒤에 두면 Tab으로는
+        끝없이 늘어나는 피드를 다 지나야 메뉴에 닿는다.
+      */}
+      {showNavigation ? (
+        <nav
+          aria-label="모바일 주요 메뉴"
+          className="border-line bg-surface fixed right-0 bottom-0 left-0 z-30 flex border-t px-3 pt-1 pb-[max(8px,env(safe-area-inset-bottom))] md:hidden"
+        >
+          {NAVIGATION.map((item) => (
+            <NavigationItem
+              key={item.href}
+              {...item}
+              current={current(item.href)}
+              mobile
+              locked={!authenticated && item.href !== "/home"}
+              {...guestNavigation(item.href)}
+            />
+          ))}
+        </nav>
+      ) : null}
       <div
         className={cn(
           "mx-auto flex w-full max-w-[1120px] flex-1 gap-12 px-5 sm:px-8",
@@ -137,24 +158,8 @@ function ShellContents({
           {children}
         </main>
       </div>
-      {showNavigation ? (
-        <nav
-          aria-label="모바일 주요 메뉴"
-          className="fixed right-0 bottom-0 left-0 z-30 flex border-t border-neutral-200 bg-white px-3 pt-1 pb-[max(8px,env(safe-area-inset-bottom))] shadow-[0_-4px_24px_rgba(39,35,51,0.05)] md:hidden"
-        >
-          {NAVIGATION.map((item) => (
-            <NavigationItem
-              key={item.href}
-              {...item}
-              current={current(item.href)}
-              mobile
-              locked={!authenticated && item.href !== "/home"}
-              {...guestNavigation(item.href)}
-            />
-          ))}
-        </nav>
-      ) : (
-        <footer className="pb-6 text-center text-xs text-neutral-500">
+      {showNavigation ? null : (
+        <footer className="text-caption text-fg-subtle pb-6 text-center">
           오구오구
         </footer>
       )}

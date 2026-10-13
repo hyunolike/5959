@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { EMOTION_LABELS, MonsterDisplay } from "@/entities/monster";
+import { emotionLabel, MonsterDisplay, MonsterStage } from "@/entities/monster";
 import {
   RAID_TOPIC,
   useRaidQuery,
@@ -14,12 +14,13 @@ import {
   useStreamTopic,
 } from "@/features/notification-stream";
 import { AttackButton } from "@/features/raid-attack";
-import { formatDate } from "@/shared/lib";
+import { cn, formatDate } from "@/shared/lib";
 import { Button, Card, Spinner } from "@/shared/ui";
 
 /** 레이드가 쉬는 중일 때의 안내(006 US3-AC6). 공격은 반영되지 않는다. */
 export const RAID_PAUSED_NOTICE =
   "레이드가 잠시 쉬고 있어요. 조금 뒤에 다시 공격할 수 있어요.";
+const PAUSED_NOTICE_ID = "raid-paused-notice";
 
 /**
  * 레이드 화면의 본문(006 US1, US2, US4).
@@ -44,7 +45,7 @@ export function RaidArena() {
   if (isError || data === undefined) {
     return (
       <Card>
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-body-sm text-danger">
           레이드를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
         </p>
       </Card>
@@ -53,7 +54,7 @@ export function RaidArena() {
   if (data.boss === null) {
     return (
       <Card className="text-center">
-        <p className="text-sm text-neutral-600">곧 첫 보스가 나타나요.</p>
+        <p className="text-body-sm text-fg-subtle">곧 첫 보스가 나타나요.</p>
       </Card>
     );
   }
@@ -66,14 +67,21 @@ export function RaidArena() {
 
 function Battle({ state, boss }: { state: RaidState; boss: RaidBoss }) {
   return (
-    <Card
+    <MonsterStage
+      emotion={boss.emotion}
       role="region"
       aria-label="보스"
-      className="flex flex-col items-center gap-4"
+      className="rounded-surface flex flex-col items-center gap-4 p-5"
     >
-      <p className="text-sm text-neutral-600">
-        요즘 가장 많이 나타난 감정이 보스가 됐어요. 함께 물리쳐요.
-      </p>
+      <div className="flex w-full flex-col gap-1">
+        <p className="text-label text-emotion-fg font-bold">지금의 보스</p>
+        <h2 className="text-display text-fg font-extrabold">
+          {emotionLabel(boss.emotion)} <span className="sr-only">보스</span>
+        </h2>
+        <p className="text-body-sm text-emotion-fg font-medium break-keep">
+          요즘 가장 많이 나타난 감정이 보스가 됐어요. 함께 물리쳐요.
+        </p>
+      </div>
       <MonsterDisplay
         monster={{
           emotion: boss.emotion,
@@ -88,28 +96,37 @@ function Battle({ state, boss }: { state: RaidState; boss: RaidBoss }) {
         participantCount={boss.participantCount}
         myDamage={state.myDamage}
       />
-      <AttackButton bossId={boss.bossId} disabled={!state.available} />
+      <AttackButton
+        bossId={boss.bossId}
+        disabled={!state.available}
+        aria-describedby={state.available ? undefined : PAUSED_NOTICE_ID}
+      />
       {state.available ? null : (
-        <p role="status" className="text-sm text-amber-800">
+        <p
+          id={PAUSED_NOTICE_ID}
+          role="status"
+          className="text-body-sm text-warning text-center break-keep"
+        >
           {RAID_PAUSED_NOTICE}
         </p>
       )}
-    </Card>
+    </MonsterStage>
   );
 }
 
 function Result({ state, boss }: { state: RaidState; boss: RaidBoss }) {
   const defeated = boss.status === "DEFEATED";
   return (
-    <Card
+    <MonsterStage
+      emotion={boss.emotion}
       role="region"
       aria-label="레이드 결과"
-      className="flex flex-col items-center gap-4"
+      className="rounded-surface flex flex-col items-center gap-4 p-5"
     >
-      <h2 className="text-lg font-semibold text-neutral-900">
+      <h2 className="text-title text-fg text-center font-bold">
         {defeated
-          ? `${EMOTION_LABELS[boss.emotion]} 보스를 함께 물리쳤어요`
-          : `${EMOTION_LABELS[boss.emotion]} 보스가 물러났어요`}
+          ? `${emotionLabel(boss.emotion)} 보스를 함께 물리쳤어요`
+          : `${emotionLabel(boss.emotion)} 보스가 물러났어요`}
       </h2>
       <MonsterDisplay
         monster={{
@@ -129,11 +146,13 @@ function Result({ state, boss }: { state: RaidState; boss: RaidBoss }) {
           <Figure
             label="걸린 시간"
             value={elapsedLabel(boss.spawnedAt, boss.endedAt)}
+            // 좁은 화면에서는 세 번째 수치가 한 줄을 다 쓴다.
+            className="col-span-2 sm:col-span-1"
           />
         ) : null}
       </Figures>
       {state.nextBossAt ? (
-        <p className="text-sm text-neutral-600">
+        <p className="text-body-sm text-fg-muted text-center break-keep">
           다음 보스는{" "}
           <time dateTime={state.nextBossAt}>
             {formatDate(state.nextBossAt, "M월 D일 HH:mm")}
@@ -144,7 +163,7 @@ function Result({ state, boss }: { state: RaidState; boss: RaidBoss }) {
       <Button asChild variant="ghost" size="sm">
         <Link href="/home">피드로</Link>
       </Button>
-    </Card>
+    </MonsterStage>
   );
 }
 
@@ -158,10 +177,15 @@ function Figures({
   children?: React.ReactNode;
 }) {
   return (
-    // 공격이 몰려도 화면 낭독기가 따라올 수 있게, 바뀐 값만 정중하게 읽는다.
+    // 공격이 몰려도 화면 낭독기가 따라올 수 있게 정중하게 읽는다. 바뀐 숫자만 읽으면 무엇의 값인지
+    // 알 수 없어 이름까지 통째로 읽힌다.
     <dl
       aria-live="polite"
-      className="flex w-full justify-center gap-6 text-center"
+      aria-atomic="true"
+      className={cn(
+        "grid w-full grid-cols-2 gap-3",
+        children ? "sm:grid-cols-3" : null,
+      )}
     >
       <Figure label="함께한 회원" value={`${participantCount}명`} />
       <Figure label="내 기여" value={String(myDamage)} />
@@ -170,11 +194,25 @@ function Figures({
   );
 }
 
-function Figure({ label, value }: { label: string; value: string }) {
+function Figure({
+  label,
+  value,
+  className,
+}: {
+  label: string;
+  value: string;
+  className?: string;
+}) {
   return (
-    <div className="flex flex-col gap-1">
-      <dt className="text-xs text-neutral-500">{label}</dt>
-      <dd className="text-lg font-semibold text-neutral-900 tabular-nums">
+    // 이름 바로 뒤에 값이 오게 둔다. e2e가 "함께한 회원5명"처럼 이어진 글자를 읽는다.
+    <div
+      className={cn(
+        "rounded-control bg-surface flex min-w-0 flex-col gap-0.5 px-3 py-3",
+        className,
+      )}
+    >
+      <dt className="text-caption text-fg-subtle">{label}</dt>
+      <dd className="text-title text-fg font-extrabold break-keep tabular-nums">
         {value}
       </dd>
     </div>

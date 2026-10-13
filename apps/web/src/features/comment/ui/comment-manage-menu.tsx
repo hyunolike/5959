@@ -1,13 +1,13 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 
 import type { Comment } from "@/entities/comment";
 import { ApiError } from "@/shared/api";
 import { cn, countGraphemes } from "@/shared/lib";
-import { Button, ConfirmDialog } from "@/shared/ui";
+import { Button, ConfirmDialog, Textarea } from "@/shared/ui";
 
 import {
   useDeleteCommentMutation,
@@ -19,9 +19,6 @@ import {
   type WriteCommentFormInput,
   type WriteCommentFormValues,
 } from "../model/schema";
-
-const MENU_BUTTON =
-  "rounded px-1 text-neutral-500 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none";
 
 function manageErrorMessage(error: unknown, action: "고치지" | "지우지") {
   if (error instanceof ApiError) {
@@ -61,31 +58,49 @@ export function CommentManageMenu({
     deleteMutation.reset();
   };
 
+  // 고치기를 마치거나 그만두면 폼이 사라진다. 초점을 다시 생긴 "수정" 버튼으로 돌려준다.
+  const editButtonRef = useRef<HTMLButtonElement>(null);
+  const returnFocusToEdit = useRef(false);
+  useEffect(() => {
+    if (!editing && returnFocusToEdit.current) {
+      returnFocusToEdit.current = false;
+      editButtonRef.current?.focus();
+    }
+  }, [editing]);
+
   return (
     <>
       {editing ? null : (
         <>
-          <button
+          <Button
+            ref={editButtonRef}
             type="button"
-            className={MENU_BUTTON}
+            variant="ghost"
+            size="sm"
+            className="text-label px-2 font-medium"
             onClick={() => setEditing(true)}
           >
             수정
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className={MENU_BUTTON}
+            variant="ghost"
+            size="sm"
+            className="text-label px-2 font-medium"
             onClick={() => setConfirming(true)}
           >
             삭제
-          </button>
+          </Button>
         </>
       )}
       {editing ? (
         <EditCommentForm
           postId={postId}
           comment={comment}
-          onDone={() => setEditing(false)}
+          onDone={() => {
+            returnFocusToEdit.current = true;
+            setEditing(false);
+          }}
         />
       ) : null}
       <ConfirmDialog
@@ -170,16 +185,16 @@ function EditCommentForm({
       <label htmlFor={contentId} className="sr-only">
         댓글 수정
       </label>
-      <textarea
+      <Textarea
         id={contentId}
         rows={2}
         autoFocus
-        className="w-full resize-y rounded-md border border-neutral-300 bg-white p-2 text-sm text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none"
+        className="text-body-sm min-h-20 resize-y px-3 py-2"
         {...register("content")}
       />
       <div className="flex items-start justify-between gap-2">
         {message ? (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-body-sm text-danger">
             {message}
           </p>
         ) : (
@@ -189,7 +204,7 @@ function EditCommentForm({
           <p
             className={cn(
               "tabular-nums",
-              overLimit ? "text-red-600" : "text-neutral-500",
+              overLimit ? "text-danger" : "text-fg-subtle",
             )}
           >
             {length}/{COMMENT_CONTENT_MAX_LENGTH}

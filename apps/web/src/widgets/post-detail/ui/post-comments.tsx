@@ -75,6 +75,7 @@ export function PostComments({ postId }: { postId: number }) {
       ref={sectionRef}
       tabIndex={-1}
       aria-label="댓글 목록"
+      // 내 댓글을 지우면 초점이 여기로 온다. 목록 전체에 외곽선을 두르지 않게 공통 초점 표시를 끈다.
       className="flex flex-col gap-4 focus-visible:outline-none"
     >
       {isPending ? (
@@ -82,13 +83,13 @@ export function PostComments({ postId }: { postId: number }) {
           <Spinner />
         </div>
       ) : isError ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-body-sm text-danger">
           댓글을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
         </p>
       ) : comments.length === 0 ? (
-        <p className="text-sm text-neutral-600">첫 댓글을 남겨 주세요.</p>
+        <p className="text-body-sm text-fg-subtle">첫 댓글을 남겨 주세요.</p>
       ) : (
-        <ul className="flex flex-col divide-y divide-neutral-100 [&>li]:py-4 [&>li:first-child]:pt-0">
+        <ul className="divide-line flex flex-col divide-y [&>li]:py-4 [&>li:first-child]:pt-0">
           {comments.map((comment) => (
             <li key={comment.commentId}>
               <CommentItem
@@ -97,13 +98,15 @@ export function PostComments({ postId }: { postId: number }) {
                   <>
                     <CommentLikeButton postId={postId} comment={target} />
                     {isReply ? null : (
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-label px-2 font-medium"
                         onClick={() => setReplyTo(target)}
-                        className="focus-visible:ring-brand-600 inline-flex min-h-11 items-center rounded px-1 text-neutral-600 hover:text-neutral-900 focus-visible:ring-2 focus-visible:outline-none"
                       >
                         답글 달기
-                      </button>
+                      </Button>
                     )}
                     {target.mine ? (
                       <>

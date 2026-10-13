@@ -47,6 +47,14 @@ describe("Toast", () => {
     expect(region).toHaveTextContent("알림 1");
   });
 
+  it("DS-US1-AC2 토스트는 바탕과 구분되는 진한 테두리를 가진다", () => {
+    render(<Harness />);
+    showToast();
+    expect(
+      screen.getByText("알림 1").closest("div.pointer-events-auto"),
+    ).toHaveClass("border", "border-line-strong");
+  });
+
   it("4초 뒤에 저절로 사라진다", () => {
     render(<Harness />);
     showToast();
@@ -180,5 +188,44 @@ describe("Toast", () => {
 
     expect(screen.queryByText("알림 2")).not.toBeInTheDocument();
     expect(screen.getByText("알림 1")).toBeInTheDocument();
+  });
+
+  it("005 닫을 때까지 남는 토스트는 시간이 지나도 사라지지 않는다", () => {
+    function Persistent() {
+      const { toasts, show, dismiss } = useToasts();
+      return (
+        <>
+          <button
+            type="button"
+            onClick={() => show({ message: "도움 안내", durationMs: null })}
+          >
+            띄우기
+          </button>
+          <Toaster toasts={toasts} onDismiss={dismiss} />
+        </>
+      );
+    }
+    render(<Persistent />);
+    showToast();
+
+    act(() => {
+      vi.advanceTimersByTime(60_000);
+    });
+    expect(screen.getByText("도움 안내")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "알림 닫기" }));
+    expect(screen.queryByText("도움 안내")).not.toBeInTheDocument();
+  });
+
+  it("DS-US4-AC1 토스트의 버튼은 공통 초점 외곽선을 지우지 않는다", () => {
+    render(<Harness />);
+    showToast();
+    for (const button of [
+      screen.getByRole("button", { name: "알림 1" }),
+      screen.getByRole("button", { name: "알림 닫기" }),
+    ]) {
+      // 그림자로 그린 초점 표시는 고대비 모드에서 사라진다.
+      expect(button.className).not.toMatch(/outline-none|ring-/);
+    }
   });
 });

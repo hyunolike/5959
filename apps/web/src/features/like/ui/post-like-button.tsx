@@ -1,8 +1,8 @@
 "use client";
 
 import type { PostDetail } from "@/entities/post";
-import { Heart } from "lucide-react";
-import { Button, ReactionIcon } from "@/shared/ui";
+import { Heart } from "@phosphor-icons/react";
+import { GameButton, ReactionIcon } from "@/shared/ui";
 
 import { usePostLikeMutation } from "../api/use-post-like-mutation";
 import { likeErrorMessage } from "../model/like-error";
@@ -26,15 +26,12 @@ export function PostLikeButton({ detail }: { detail: PostDetail }) {
   const errorMessage = likeErrorMessage(mutation.error);
 
   return (
-    <div className="flex items-center gap-2">
-      <Button
-        type="button"
-        size="sm"
-        variant={liked ? "primary" : "outline"}
+    <div className="flex min-w-0 flex-1 flex-col gap-2">
+      <GameButton
         aria-pressed={liked}
         disabled={mutation.isPending}
         aria-busy={mutation.isPending}
-        className="min-h-11 tabular-nums"
+        className="tabular-nums"
         onClick={() => {
           if (mutation.isPending || !feedback.begin()) return;
           mutation.mutate(
@@ -47,19 +44,15 @@ export function PostLikeButton({ detail }: { detail: PostDetail }) {
         }}
       >
         <ReactionIcon confirmation={feedback.confirmation}>
-          <Heart
-            size={16}
-            aria-hidden
-            className={liked ? "fill-current" : ""}
-          />
+          <Heart size={22} weight={liked ? "fill" : "regular"} aria-hidden />
         </ReactionIcon>
         공감 {detail.likeCount}
-      </Button>
+      </GameButton>
       <span role="status" className="sr-only">
         {mutation.isPending ? "공감 처리 중" : feedback.message}
       </span>
       {errorMessage ? (
-        <p role="alert" className="text-xs text-red-600">
+        <p role="alert" className="text-label text-danger">
           {errorMessage}
         </p>
       ) : null}

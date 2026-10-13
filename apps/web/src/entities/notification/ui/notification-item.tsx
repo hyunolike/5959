@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { cn, formatDate } from "@/shared/lib";
+import { cn, formatDate, formatRelativeTime } from "@/shared/lib";
 
 import { notificationHref, notificationMessage } from "../model/message";
 import type { Notification } from "../model/types";
@@ -12,7 +12,7 @@ export const DELETED_POST_LABEL = "삭제된 글";
 const RAID_NOTICE_LABEL = "레이드 결과 보기";
 
 const ITEM_CLASS =
-  "flex w-full flex-col gap-1 rounded-lg border px-4 py-3 text-left transition-colors hover:border-neutral-300 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none";
+  "hover:bg-surface-sunken flex w-full flex-col gap-1 px-5 py-4 text-left transition-colors focus-visible:-outline-offset-2";
 
 /**
  * 알림 목록의 한 줄(US2-AC1): 종류 문구, 관련 글의 앞부분 또는 "삭제된 글", 시각, 읽음 여부.
@@ -33,17 +33,14 @@ export function NotificationItem({
 }) {
   const { post, read, updatedAt } = notification;
   const href = notificationHref(notification);
-  const className = cn(
-    ITEM_CLASS,
-    read ? "border-neutral-200 bg-white" : "border-blue-200 bg-blue-50",
-  );
+  const className = ITEM_CLASS;
   const body = (
     <>
       <span className="flex items-start justify-between gap-2">
         <span
           className={cn(
-            "text-sm text-neutral-900",
-            read ? "font-normal" : "font-semibold",
+            "text-body-sm",
+            read ? "text-fg-subtle font-normal" : "text-fg font-bold",
           )}
         >
           {notificationMessage(notification)}
@@ -51,15 +48,19 @@ export function NotificationItem({
         {read ? (
           <span className="sr-only">읽음</span>
         ) : (
-          <span className="shrink-0 rounded-full bg-blue-600 px-2 py-0.5 text-xs font-medium text-white">
+          <span className="bg-action text-caption text-on-action shrink-0 rounded-full px-2 py-0.5 font-medium whitespace-nowrap">
             안 읽음
           </span>
         )}
       </span>
       <span
         className={cn(
-          "text-sm break-words",
-          href === null ? "text-neutral-500 italic" : "text-neutral-700",
+          "text-body-sm break-words",
+          href === null
+            ? "text-fg-subtle"
+            : read
+              ? "text-fg-subtle"
+              : "text-fg-muted",
         )}
       >
         {post
@@ -68,8 +69,12 @@ export function NotificationItem({
             ? DELETED_POST_LABEL
             : RAID_NOTICE_LABEL}
       </span>
-      <time dateTime={updatedAt} className="text-xs text-neutral-500">
-        {formatDate(updatedAt, "YYYY.MM.DD HH:mm")}
+      <time
+        dateTime={updatedAt}
+        title={formatDate(updatedAt, "YYYY.MM.DD HH:mm")}
+        className="text-caption text-fg-subtle tabular-nums"
+      >
+        {formatRelativeTime(updatedAt)}
       </time>
     </>
   );

@@ -6,7 +6,7 @@ import { HIDDEN_FROM_OTHERS_LABEL } from "@/entities/post";
 import { SupportResourceList } from "@/entities/support-resource";
 import type { components } from "@/shared/api";
 import { cn } from "@/shared/lib";
-import { Card } from "@/shared/ui";
+import { Button, Card } from "@/shared/ui";
 
 export type ContentSafety = components["schemas"]["ContentSafety"];
 
@@ -48,26 +48,28 @@ export function SafetyNotice({
       aria-label="도움 안내"
       className={cn(
         "flex flex-col gap-3",
-        urgent ? "border-amber-300 bg-amber-50" : "border-neutral-200",
+        urgent ? "border-warning bg-warning-tint" : "border-line",
       )}
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="text-sm font-semibold text-neutral-900">
+        <p className="text-body-sm text-fg font-bold">
           마음이 많이 힘드신가요? 혼자 견디지 않아도 돼요.
         </p>
         {urgent ? null : (
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             aria-expanded={open}
             onClick={() => setOpen((value) => !value)}
-            className="shrink-0 rounded px-1 text-xs text-neutral-600 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none"
+            className="text-label -my-2 shrink-0 px-2 font-medium"
           >
             {open ? "접기" : "도움받을 곳 보기"}
-          </button>
+          </Button>
         )}
       </div>
       {safety.hidden ? (
-        <p className="text-sm text-neutral-700">
+        <p className="text-body-sm text-fg-muted">
           <strong className="font-medium">
             {target === "post"
               ? `이 글은 ${HIDDEN_FROM_OTHERS_LABEL}.`
@@ -78,7 +80,7 @@ export function SafetyNotice({
       ) : null}
       {open || urgent ? (
         <>
-          <p className="text-sm text-neutral-700">
+          <p className="text-body-sm text-fg-muted">
             지금 이야기를 들어 줄 수 있는 곳이에요. 전화번호를 누르면 바로
             연결돼요.
           </p>

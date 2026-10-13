@@ -28,6 +28,14 @@ for (const viewport of [
     ).toHaveAttribute("href", /next=%2Fwrite$/);
     await page.getByLabel("이메일", { exact: true }).focus();
     await expect(page.getByLabel("이메일", { exact: true })).toBeFocused();
+    // DS-US2-AC2: 입력과 제출 버튼은 52px이고 주요 버튼은 먹색이다.
+    await expect(page.getByLabel("이메일", { exact: true })).toHaveCSS(
+      "height",
+      "52px",
+    );
+    const submit = page.getByRole("button", { name: "로그인", exact: true });
+    await expect(submit).toHaveCSS("background-color", "rgb(23, 23, 28)");
+    expect((await submit.boundingBox())!.height).toBeGreaterThanOrEqual(52);
     await page.evaluate(() => document.fonts.ready);
     const layout = await page.evaluate(() => ({
       overflow: document.documentElement.scrollWidth > window.innerWidth,
@@ -35,8 +43,8 @@ for (const viewport of [
       font: getComputedStyle(document.body).fontFamily,
     }));
     expect(layout.overflow).toBe(false);
-    expect(layout.background).toBe("rgb(247, 247, 251)");
-    expect(layout.font).toContain("oguSans");
+    expect(layout.background).toBe("rgb(255, 255, 255)");
+    expect(layout.font).toContain("Pretendard");
     if (viewport.width < 768) {
       const google = await page
         .getByRole("link", { name: "구글로 계속하기" })
@@ -142,7 +150,11 @@ for (const viewport of [
       "aria-pressed",
       "true",
     );
-    await page.getByText("필터", { exact: true }).click();
+    // 주소의 검색어가 바뀌면 Next가 이전 화면을 숨긴 채 잠깐 남겨 둔다. 보이는 쪽만 누른다.
+    await page
+      .getByText("필터", { exact: true })
+      .filter({ visible: true })
+      .click();
     await page.getByRole("button", { name: "개발", exact: true }).click();
     await expect(page).toHaveURL(/jobRole=DEVELOPMENT/);
     await page.getByRole("button", { name: "필터 지우기" }).click();

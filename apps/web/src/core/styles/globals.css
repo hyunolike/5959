@@ -1,79 +1,191 @@
 @import "tailwindcss";
 
+/* 테스트 파일에는 검사용 예시 클래스(옛 색 이름 등)가 적혀 있다. 화면용 CSS에 섞이지 않게 뺀다. */
+@source not "../../**/*.test.{ts,tsx}";
+
+/* 원색 층. 화면에서 직접 쓰지 않는다. 유틸리티가 생기지 않게 @theme 밖에 둔다. */
 :root {
-  --background: #f7f7fb;
-  --foreground: #272333;
+  --ink-900: #17171c;
+  --ink-800: #2a2a32;
+  --ink-700: #45454f;
+  --ink-600: #6b6b76;
+  --ink-500: #8a8a95;
+  --ink-300: #dcdce2;
+  --ink-200: #ececf0;
+  --ink-100: #f5f5f7;
+  --white: #ffffff;
+  --game-yellow: #ffd60a;
+  --danger-700: #b42318;
+  --danger-50: #fef3f2;
+  --warning-700: #b54708;
+  --warning-50: #fffaeb;
+
+  /* 감정이 정해지지 않은 곳의 기본값. */
+  --emotion: var(--ink-600);
+  --emotion-tint: var(--ink-100);
+  --emotion-fg: var(--ink-700);
+
+  /* 움직임의 시간 세 단계. 누름과 hover는 fast, 값이 바뀌는 막대와 반응은 base, 화면이 바뀌는 것은 slow. */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+
   color-scheme: light;
 }
 
+/*
+ * 감정 색. 몬스터 그림의 색에서 출발했고, 진한 색은 차트에서 나란히 놓여도 색각 이상에서 구분되게
+ * 밝기를 벌렸다(DESIGN_SYSTEM.md). 이 속성이 붙은 요소 안에서 emotion 유틸리티가 이 값이 된다.
+ */
+[data-emotion="ANXIETY"] {
+  --emotion: #6d28d9;
+  --emotion-tint: #f1ebff;
+  --emotion-fg: #5334b8;
+}
+[data-emotion="LETHARGY"] {
+  --emotion: #7187e0;
+  --emotion-tint: #e9edfc;
+  --emotion-fg: #3346a3;
+}
+[data-emotion="LONELINESS"] {
+  --emotion: #45c6dd;
+  --emotion-tint: #e0f5fa;
+  --emotion-fg: #0d6379;
+}
+[data-emotion="SELF_DEPRECATION"] {
+  --emotion: #a3b03c;
+  --emotion-tint: #f0f3de;
+  --emotion-fg: #56621d;
+}
+[data-emotion="IRRITATION"] {
+  --emotion: #cf2f38;
+  --emotion-tint: #fdeaea;
+  --emotion-fg: #a81f26;
+}
+
+/* 역할 층. 화면과 컴포넌트는 이 이름만 쓴다. */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-ogu-sans);
-  --color-brand-50: #f4f0ff;
-  --color-brand-100: #eee8ff;
-  --color-brand-200: #d8c9f8;
-  --color-brand-500: #8666e2;
-  --color-brand-600: #7252d6;
-  --color-brand-650: #6343c3;
-  --color-brand-700: #5938b6;
-  --color-leaf-50: #edf5e9;
-  --color-leaf-500: #78a86a;
-  --color-leaf-700: #426436;
-  --color-neutral-50: #f8f8fa;
-  --color-neutral-100: #efedf5;
-  --color-neutral-200: #e6e1ed;
-  --color-neutral-300: #8e839d;
-  --color-neutral-400: #93939f;
-  --color-neutral-500: #716b7b;
-  --color-neutral-600: #5f5f6b;
-  --color-neutral-700: #484852;
-  --color-neutral-800: #35353e;
-  --color-neutral-900: #272333;
-  --radius-control: 12px;
+  --color-page: var(--white);
+  --color-surface: var(--white);
+  --color-surface-sunken: var(--ink-100);
+  --color-line: var(--ink-200);
+  --color-line-strong: var(--ink-500);
+  --color-fg: var(--ink-900);
+  --color-fg-muted: var(--ink-700);
+  --color-fg-subtle: var(--ink-600);
+  --color-action: var(--ink-900);
+  --color-action-hover: var(--ink-800);
+  --color-on-action: var(--white);
+  --color-focus: var(--ink-900);
+  --color-danger: var(--danger-700);
+  --color-danger-tint: var(--danger-50);
+  --color-on-danger: var(--white);
+  --color-warning: var(--warning-700);
+  --color-warning-tint: var(--warning-50);
+  --color-emotion: var(--emotion);
+  --color-emotion-tint: var(--emotion-tint);
+  --color-emotion-fg: var(--emotion-fg);
+  --color-game: var(--game-yellow);
+  --color-game-line: var(--ink-900);
+  --color-scrim: rgb(23 23 28 / 0.4);
+
+  --radius-inline: 8px;
+  --radius-control: 14px;
   --radius-surface: 20px;
-  --shadow-surface: 0 2px 10px rgba(39, 35, 51, 0.035);
-  --color-neutral-950: #202025;
+  --shadow-game: 0 4px 0 var(--ink-900);
+}
+
+@theme {
+  /* transition-* 유틸리티의 기본 시간도 가장 짧은 단계에 맞춘다. */
+  --default-transition-duration: 120ms;
+
+  --font-sans:
+    "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+    system-ui, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1rem;
+  --text-label: 0.8125rem;
+  --text-label--line-height: 1.125rem;
+  --text-body-sm: 0.9375rem;
+  --text-body-sm--line-height: 1.5rem;
+  --text-body: 1rem;
+  --text-body--line-height: 1.625rem;
+  --text-body-lg: 1.0625rem;
+  --text-body-lg--line-height: 1.8125rem;
+  --text-title: 1.25rem;
+  --text-title--line-height: 1.75rem;
+  --text-heading: 1.5rem;
+  --text-heading--line-height: 2rem;
+  --text-display: 2rem;
+  --text-display--line-height: 2.5rem;
+  --text-numeric: 2.25rem;
+  --text-numeric--line-height: 2.5rem;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-ogu-sans), sans-serif;
+  background: var(--white);
+  color: var(--ink-900);
+  font-family: var(--font-sans);
   line-height: 1.65;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
 }
 
 ::selection {
-  background: #eee8ff;
-  color: #382946;
+  background: var(--ink-200);
+  color: var(--ink-900);
 }
 
 .ogu-pressable {
   transition:
-    background-color 150ms ease,
-    border-color 150ms ease,
-    color 150ms ease;
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
 }
 @media (prefers-reduced-motion: no-preference) {
   .ogu-pressable {
     transition:
-      background-color 150ms ease,
-      border-color 150ms ease,
-      color 150ms ease,
-      transform 150ms ease;
+      background-color var(--duration-fast) ease,
+      border-color var(--duration-fast) ease,
+      color var(--duration-fast) ease,
+      transform var(--duration-fast) ease;
   }
   .ogu-pressable:active:not(:disabled):not([aria-disabled="true"]) {
     transform: scale(0.98);
   }
 }
 
-/* Every interactive control shares a visible keyboard focus treatment. */
-a:focus-visible,
-button:focus-visible,
-select:focus-visible {
-  outline: 2px solid var(--color-brand-600);
-  outline-offset: 3px;
+/*
+ * Every interactive control shares a visible keyboard focus treatment. base 레이어에 두어
+ * 컴포넌트가 유틸리티(`focus-visible:outline-none` 등)로 끄거나 바꿀 수 있게 한다.
+ */
+@layer base {
+  :where(
+    a,
+    button,
+    summary,
+    select,
+    input,
+    textarea,
+    [tabindex]
+  ):focus-visible {
+    outline: 2px solid var(--ink-900);
+    outline-offset: 2px;
+  }
+
+  /*
+   * 머리말은 위에, 좁은 화면의 메뉴는 아래에 붙어 있다. 키보드로 옮긴 초점이나 건너뛰기 링크의
+   * 목적지가 그 밑에 깔리지 않게 스크롤 여백을 둔다. 넓은 화면에는 아래 메뉴가 없다.
+   */
+  html {
+    scroll-padding-top: 5.5rem;
+    scroll-padding-bottom: calc(6.5rem + env(safe-area-inset-bottom));
+  }
+  @media (min-width: 48rem) {
+    html {
+      scroll-padding-bottom: 1rem;
+    }
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

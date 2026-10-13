@@ -1,11 +1,13 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
+
+import { QUERY_KEYS } from "@/shared/config";
 
 import { PostDetail } from "./post-detail";
 
@@ -101,6 +103,87 @@ describe("PostDetail", () => {
     expect(bar).toHaveAttribute("aria-valuemax", "20");
     expect(screen.getByText("HP 20/20")).toBeInTheDocument();
     expect(screen.queryByText("분석 중")).not.toBeInTheDocument();
+  });
+
+  it("US1-AC1 화면의 첫 제목은 누구의 고민인지 알리고, 몬스터 자리는 이름 있는 묶음이다", async () => {
+    renderDetail(jsonResponse({ success: true, data: detail(), error: null }));
+
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "오구님의 고민" }),
+    ).toHaveClass("sr-only");
+    // 이름은 역할이 있는 요소에만 붙일 수 있다.
+    expect(screen.getByRole("group", { name: "몬스터" })).toHaveTextContent(
+      "분석 중",
+    );
+  });
+
+  it("US1-AC3 분석 중이던 몬스터가 나타나면 처음부터 있던 알림 자리로 알린다", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockImplementation(async (input: RequestInfo | URL) =>
+          String(input) === "/api/posts/7"
+            ? jsonResponse({ success: true, data: detail(), error: null })
+            : jsonResponse({ success: false, data: null, error: null }, 500),
+        ),
+    );
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <PostDetail postId={7} />
+      </QueryClientProvider>,
+    );
+    await screen.findByText("분석 중");
+    const status = within(
+      screen.getByRole("group", { name: "몬스터" }),
+    ).getByRole("status");
+    expect(status).toBeEmptyDOMElement();
+
+    act(() => {
+      queryClient.setQueryData(QUERY_KEYS.postDetail(7), {
+        ...detail(),
+        analysisStatus: "ANALYZED",
+        monster: { emotion: "ANXIETY", hp: 20, maxHp: 20, status: "ALIVE" },
+      });
+    });
+
+    expect(await screen.findByText("불안 몬스터가 나타났어요.")).toBe(status);
+  });
+
+  it("US1-AC4 처음부터 몬스터가 있던 글에서는 나타났다고 알리지 않는다", async () => {
+    renderDetail(
+      jsonResponse({
+        success: true,
+        data: detail({
+          analysisStatus: "ANALYZED",
+          monster: { emotion: "ANXIETY", hp: 20, maxHp: 20, status: "ALIVE" },
+        }),
+        error: null,
+      }),
+    );
+    await screen.findByText("HP 20/20");
+    expect(
+      within(screen.getByRole("group", { name: "몬스터" })).getByRole("status"),
+    ).toBeEmptyDOMElement();
+  });
+
+  it("글을 못 보여 줄 때도 화면에 첫 제목이 있다", async () => {
+    renderDetail(
+      jsonResponse(
+        {
+          success: false,
+          data: null,
+          error: { code: "INTERNAL_ERROR", message: "실패" },
+        },
+        500,
+      ),
+    );
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "고민 글" }),
+    ).toHaveClass("sr-only");
   });
 
   it("404 POST_NOT_FOUND면 삭제된 글이라고 안내한다", async () => {
@@ -233,6 +316,28 @@ describe("PostDetail 공감과 댓글", () => {
     expect(screen.getByLabelText("답글")).toHaveFocus();
   });
 
+  it("DS-US2-AC2 답글 달기와 댓글 공감은 공용 버튼이고 누르는 영역이 44px이다", async () => {
+    renderDetailWithComments(detail({ ...ANALYZED, mine: false }));
+    const root = await screen.findByRole("article", {
+      name: "공감러의 댓글",
+    });
+    for (const name of ["답글 달기", "댓글 공감 1"]) {
+      expect(within(root).getAllByRole("button", { name })[0]).toHaveClass(
+        "ogu-pressable",
+        "min-h-11",
+      );
+    }
+  });
+
+  it("댓글 목록 구역은 초점을 받아도 외곽선을 그리지 않는다", async () => {
+    // 내 댓글을 지우면 초점이 이 구역으로 온다. 목록 전체에 외곽선이 둘리면 안 된다.
+    renderDetailWithComments(detail({ ...ANALYZED, mine: false }));
+    await screen.findByRole("article", { name: "공감러의 댓글" });
+    expect(screen.getByRole("region", { name: "댓글 목록" })).toHaveClass(
+      "focus-visible:outline-none",
+    );
+  });
+
   it("댓글이 없으면 첫 댓글을 남겨 달라고 안내한다", async () => {
     renderDetailWithComments(detail({ ...ANALYZED, mine: false }), []);
 
@@ -293,5 +398,84 @@ describe("PostDetail 공감과 댓글", () => {
     expect(
       within(myReply).getByRole("button", { name: "삭제" }),
     ).toBeInTheDocument();
+  });
+
+  const ALIVE = {
+    analysisStatus: "ANALYZED",
+    monster: { emotion: "ANXIETY", hp: 20, maxHp: 20, status: "ALIVE" },
+  };
+
+  async function findStage() {
+    const monster = (
+      await screen.findByText(/^(HP \d+\/\d+|분석 중)$/)
+    ).closest('[aria-label="몬스터"]') as HTMLElement;
+    return monster.parentElement as HTMLElement;
+  }
+
+  it("DS-US3-AC2 무대가 글의 감정 색이고 몬스터와 공감 버튼을 담는다", async () => {
+    renderDetail(
+      jsonResponse({
+        success: true,
+        data: detail({ ...ALIVE, mine: false }),
+        error: null,
+      }),
+    );
+    const stage = await findStage();
+    expect(stage).toHaveAttribute("data-emotion", "ANXIETY");
+    expect(stage).toHaveClass("bg-emotion-tint");
+    expect(within(stage).getByRole("button", { name: "공감 0" })).toHaveClass(
+      "bg-game",
+    );
+    expect(within(stage).getByText("댓글 0")).toBeInTheDocument();
+  });
+
+  it("DS-US3-AC2 무대가 본문보다 먼저 온다", async () => {
+    renderDetail(
+      jsonResponse({ success: true, data: detail(ALIVE), error: null }),
+    );
+    const stage = await findStage();
+    const body = screen.getByText(/내일 발표가/);
+    expect(stage).not.toContainElement(body);
+    expect(
+      stage.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("US3-AC8 내 글의 무대에는 공감 버튼이 없고 공감 수만 있다", async () => {
+    renderDetail(
+      jsonResponse({
+        success: true,
+        data: detail({ ...ALIVE, mine: true, likeCount: 4 }),
+        error: null,
+      }),
+    );
+    const stage = await findStage();
+    expect(
+      within(stage).queryByRole("button", { name: /^공감/ }),
+    ).not.toBeInTheDocument();
+    expect(within(stage).getByText("공감 4")).toBeInTheDocument();
+  });
+
+  it("DS-US3-AC4 위기 안내는 감정 색 무대 밖에 있다", async () => {
+    renderDetail(
+      jsonResponse({
+        success: true,
+        data: detail({
+          ...ALIVE,
+          safety: { level: "CRISIS", hidden: true, reviewRequested: false },
+        }),
+        error: null,
+      }),
+    );
+    const notice = await screen.findByRole("region", { name: "도움 안내" });
+    expect(notice.closest("[data-emotion]")).toBeNull();
+    expect(await findStage()).not.toContainElement(notice);
+  });
+
+  it("DS-US3-AC2 몬스터가 아직 없으면 무대는 감정 색 범위를 열지 않는다", async () => {
+    renderDetail(jsonResponse({ success: true, data: detail(), error: null }));
+    const stage = await findStage();
+    expect(stage).not.toHaveAttribute("data-emotion");
+    expect(within(stage).getByText("분석 중")).toBeInTheDocument();
   });
 });

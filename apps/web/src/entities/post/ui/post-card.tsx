@@ -1,9 +1,8 @@
-import { Heart, MessageCircle } from "lucide-react";
-
+import { ChatCircle, Heart } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { formatDate } from "@/shared/lib";
+import { formatDate, formatRelativeTime } from "@/shared/lib";
 
 import type { FeedItem } from "../model/types";
 
@@ -13,70 +12,83 @@ type MonsterView = NonNullable<FeedItem["monster"]>;
 export const HIDDEN_FROM_OTHERS_LABEL = "다른 회원에게 보이지 않아요";
 
 /**
- * 피드의 글 하나(US2-AC1). 직군과 경력 라벨, 몬스터 그림은 다른 엔티티(member, monster)의
- * 것이라 위젯이 넘긴다. 몬스터가 아직 없으면(`monster == null`) 분석 중이다.
- * 피드와 내 활동 목록에서 작성 시각도 보인다(`showCreatedAt`, 004 US3-AC1).
- * 읽는 순서는 누가 → 무슨 고민 → 몬스터 → 공감과 댓글 수다.
+ * 피드의 글 하나(US2-AC1). 감정 태그와 몬스터 그림은 다른 엔티티(monster)의 것이라 위젯이 넘긴다.
+ * 몬스터가 아직 없으면(`monster == null`) 분석 중이고 감정 태그도 없다.
+ * 읽는 순서는 감정과 누가 → 무슨 고민 → 몬스터와 HP → 공감과 댓글 수다.
+ * 작성 시각(`showCreatedAt`, 004 US3-AC1)은 "12분 전"처럼 쓰고, 정확한 시각은 `datetime`과 `title`에 둔다.
  */
 export function PostCard({
   item,
   authorMeta,
+  renderEmotion,
   renderMonster,
   showCreatedAt = false,
 }: {
   item: FeedItem;
   authorMeta: string;
+  renderEmotion: (monster: MonsterView) => ReactNode;
   renderMonster: (monster: MonsterView) => ReactNode;
   showCreatedAt?: boolean;
 }) {
+  const relativeTime = formatRelativeTime(item.createdAt);
+
   return (
     <Link
       href={`/post/${item.postId}`}
-      className="group focus-visible:ring-brand-600 block border-b border-neutral-200 bg-white px-4 py-5 transition-colors hover:bg-neutral-50 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset active:bg-neutral-100 sm:px-6"
+      className="hover:bg-surface-sunken active:bg-line block px-5 py-[18px] transition-colors focus-visible:-outline-offset-2"
     >
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-xs text-neutral-500">
-        <span className="text-sm font-bold break-words text-neutral-900">
+      <div className="text-label text-fg-subtle flex flex-wrap items-center gap-x-2 gap-y-1">
+        {item.monster ? renderEmotion(item.monster) : null}
+        <span className="text-fg font-bold break-words">
           {item.author.nickname}
         </span>
         <span>{authorMeta}</span>
         {showCreatedAt ? (
-          <time dateTime={item.createdAt} className="ml-auto tabular-nums">
-            {formatDate(item.createdAt, "YYYY.MM.DD HH:mm")}
+          <time
+            dateTime={item.createdAt}
+            title={
+              relativeTime
+                ? formatDate(item.createdAt, "YYYY.MM.DD HH:mm")
+                : undefined
+            }
+            className="ml-auto tabular-nums"
+          >
+            {relativeTime}
           </time>
         ) : null}
       </div>
-      <p className="mt-2 line-clamp-4 text-base leading-7 break-words whitespace-pre-line text-neutral-900">
+      <p className="text-body text-fg mt-2.5 line-clamp-4 break-words whitespace-pre-line">
         {item.contentPreview}
       </p>
-      <div aria-label="몬스터" className="mt-3 max-w-[260px]">
-        {item.monster ? (
-          renderMonster(item.monster)
-        ) : (
-          <p className="text-sm text-neutral-500">분석 중</p>
-        )}
-      </div>
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-neutral-600 tabular-nums">
-        <span className="inline-flex items-center gap-1.5">
-          <Heart
-            size={15}
-            aria-hidden
-            className={item.likedByMe ? "fill-brand-100 text-brand-700" : ""}
-          />
-          공감 {item.likeCount}
-        </span>
-        {item.likedByMe ? (
-          <span className="text-brand-700 font-medium">내가 공감함</span>
-        ) : null}
-        <span className="inline-flex items-center gap-1.5">
-          <MessageCircle size={15} aria-hidden />
-          댓글 {item.commentCount}
-        </span>
-        {item.hidden ? (
-          <span className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-800">
-            {HIDDEN_FROM_OTHERS_LABEL}
+      <div className="mt-3.5 flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div className="min-w-0 flex-auto">
+          {item.monster ? (
+            renderMonster(item.monster)
+          ) : (
+            <p className="text-label text-fg-subtle">분석 중</p>
+          )}
+        </div>
+        <div className="text-label text-fg-muted ml-auto flex shrink-0 items-center gap-3.5 font-medium tabular-nums">
+          <span className="inline-flex items-center gap-1">
+            <Heart
+              size={18}
+              weight={item.likedByMe ? "fill" : "regular"}
+              aria-hidden
+            />
+            공감 {item.likeCount}
           </span>
-        ) : null}
+          {item.likedByMe ? <span className="sr-only">내가 공감함</span> : null}
+          <span className="inline-flex items-center gap-1">
+            <ChatCircle size={18} aria-hidden />
+            댓글 {item.commentCount}
+          </span>
+        </div>
       </div>
+      {item.hidden ? (
+        <p className="bg-warning-tint text-caption text-warning mt-3 inline-flex rounded-full px-2 py-0.5 font-medium">
+          {HIDDEN_FROM_OTHERS_LABEL}
+        </p>
+      ) : null}
     </Link>
   );
 }

@@ -21,7 +21,7 @@ export function DistributionBar({
     <div className="flex flex-col gap-3">
       <div
         aria-hidden
-        className="flex h-3 w-full gap-0.5 overflow-hidden rounded bg-neutral-100"
+        className="bg-surface-sunken flex h-3 w-full gap-0.5 overflow-hidden rounded-full"
       >
         {shown.map((share) => (
           <div
@@ -37,20 +37,20 @@ export function DistributionBar({
       </div>
       <ul
         aria-label="감정 분포"
-        className="grid grid-cols-1 gap-x-4 gap-y-1 text-sm sm:grid-cols-2"
+        className="text-body-sm grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2"
       >
         {distribution.map((share) => (
           <li key={share.emotion} className="flex items-center gap-2">
             <span
               aria-hidden
-              className="size-2.5 shrink-0 rounded-sm"
+              className="size-2.5 shrink-0 rounded-full"
               style={{ backgroundColor: EMOTION_COLORS[share.emotion] }}
             />
-            <span className="text-neutral-800">{labels[share.emotion]}</span>
-            <span className="ml-auto text-neutral-500 tabular-nums">
+            <span className="text-fg">{labels[share.emotion]}</span>
+            <span className="text-fg-subtle ml-auto tabular-nums">
               {share.count}마리
             </span>
-            <span className="w-10 text-right font-medium text-neutral-900 tabular-nums">
+            <span className="text-fg w-10 text-right font-medium tabular-nums">
               {share.percent}%
             </span>
           </li>

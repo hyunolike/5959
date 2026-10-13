@@ -23,10 +23,10 @@ export default function MyPage() {
     <div className="flex w-full max-w-xl flex-col gap-6">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div className="min-w-40">
-          <p className="mb-1 text-xs font-bold text-neutral-600">
+          <p className="text-label text-fg-subtle mb-1 font-bold">
             내 마음 기록
           </p>
-          <h1 className="text-2xl font-bold text-neutral-900">마이페이지</h1>
+          <h1 className="text-heading text-fg font-bold">마이페이지</h1>
         </div>
         <div className="ml-auto flex items-center gap-2">
           <Button asChild variant="ghost" size="sm">
@@ -65,7 +65,7 @@ function Profile() {
   if (isError || !member) {
     return (
       <Card className="w-full">
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-body-sm text-danger">
           프로필을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
         </p>
       </Card>
@@ -74,30 +74,30 @@ function Profile() {
 
   return (
     <Card className="flex w-full flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-200 pb-4">
-        <p className="min-w-0 text-base font-bold break-words text-neutral-900">
+      <div className="border-line flex flex-wrap items-center justify-between gap-2 border-b pb-4">
+        <p className="text-body text-fg min-w-0 font-bold break-words">
           {member.nickname}님의 마음 기록
         </p>
-        <Button asChild variant="outline" size="sm" className="ml-auto">
+        <Button asChild variant="secondary" size="sm" className="ml-auto">
           <Link href="/my/edit">프로필 수정</Link>
         </Button>
       </div>
-      <dl className="flex flex-col gap-3 text-sm">
+      <dl className="text-body-sm flex flex-col gap-3">
         <div className="flex items-center justify-between gap-4">
-          <dt className="shrink-0 text-neutral-600">닉네임</dt>
-          <dd className="min-w-0 font-medium break-words text-neutral-900">
+          <dt className="text-fg-subtle shrink-0">닉네임</dt>
+          <dd className="text-fg min-w-0 font-medium break-words">
             {member.nickname}
           </dd>
         </div>
         <div className="flex items-center justify-between gap-4">
-          <dt className="shrink-0 text-neutral-600">직군</dt>
-          <dd className="font-medium text-neutral-900">
+          <dt className="text-fg-subtle shrink-0">직군</dt>
+          <dd className="text-fg font-medium">
             {member.jobRole ? JOB_ROLE_LABELS[member.jobRole] : "-"}
           </dd>
         </div>
         <div className="flex items-center justify-between gap-4">
-          <dt className="shrink-0 text-neutral-600">경력</dt>
-          <dd className="font-medium text-neutral-900">
+          <dt className="text-fg-subtle shrink-0">경력</dt>
+          <dd className="text-fg font-medium">
             {member.careerYear ? CAREER_YEAR_LABELS[member.careerYear] : "-"}
           </dd>
         </div>

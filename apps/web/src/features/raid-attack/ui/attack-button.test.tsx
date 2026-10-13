@@ -189,4 +189,33 @@ describe("AttackButton", () => {
       "공격하지 못했어요. 잠시 후 다시 시도해 주세요.",
     );
   });
+
+  it("DS-US3-AC3 공격 버튼은 게임 버튼이다", () => {
+    renderButton();
+    expect(button()).toHaveClass("bg-game", "shadow-game");
+    expect(button()).not.toHaveClass("translate-y-1");
+  });
+
+  it("DS-US3-AC3 쿨다운 동안에는 눌린 채로 내려가 있다가 다시 올라온다", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(accepted(199, 1000)));
+    renderButton();
+    act(() => button().click());
+    await waitFor(() => expect(button()).toHaveClass("translate-y-1"));
+    expect(button()).not.toBeDisabled();
+  });
+
+  it("쉬는 중이면 회색으로 잠기고 초점은 받을 수 있다", () => {
+    renderButton(true);
+    expect(button()).toHaveClass("bg-surface-sunken", "text-fg-subtle");
+    expect(button()).not.toBeDisabled();
+    expect(button()).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("DS-US4-AC3 움직임 줄이기에서는 쿨다운 동안에도 자리가 움직이지 않는다", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(accepted(199, 1000)));
+    renderButton();
+    act(() => button().click());
+    await waitFor(() => expect(button()).toHaveClass("translate-y-1"));
+    expect(button()).toHaveClass("motion-reduce:translate-y-0");
+  });
 });

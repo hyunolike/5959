@@ -1,9 +1,15 @@
 export { Button } from "./button";
+export { GameButton } from "./game-button";
+export { IconButton } from "./icon-button";
 export { BrandMark } from "./brand-mark";
 export { Card } from "./card";
+export { Chip } from "./chip";
 export { ConfirmDialog } from "./confirm-dialog";
 export { Input } from "./input";
 export { Label } from "./label";
+export { Select } from "./select";
+export { TextField } from "./text-field";
+export { Textarea } from "./textarea";
 export { Spinner } from "./spinner";
 export { TOAST_DURATION_MS, Toaster, useToasts } from "./toast";
 export type { ToastItem } from "./toast";

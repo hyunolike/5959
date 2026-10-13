@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell } from "lucide-react";
+import { Bell } from "@phosphor-icons/react";
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -18,7 +18,6 @@ import { useMarkReadMutation } from "@/features/read-notification";
 import { Toaster, useToasts } from "@/shared/ui";
 
 const NOTIFICATIONS_PATH = "/notifications";
-const SUPPORT_TOAST_DURATION_MS = 8000;
 
 /**
  * 알림 종. 마운트된 동안 실시간 연결을 열어 두고, 안 읽은 수를 배지로 보이며, 새 알림을 토스트로 띄운다.
@@ -47,11 +46,9 @@ export function NotificationBell() {
     const href = notificationHref(notification);
     show({
       message: notificationMessage(notification),
-      // 도움 안내는 놓치면 안 되므로 다른 알림보다 오래 둔다(005 research R16).
-      durationMs:
-        notification.type === "SUPPORT_NOTICE"
-          ? SUPPORT_TOAST_DURATION_MS
-          : undefined,
+      // 도움 안내는 놓치면 안 된다. 키보드나 화면 낭독기로는 몇 초 안에 닿기 어려워 닫을 때까지 둔다
+      // (005 research R16).
+      durationMs: notification.type === "SUPPORT_NOTICE" ? null : undefined,
       // 그 사이 글이 지워졌으면 갈 곳이 없다. 누르면 닫히기만 한다(US2-AC5의 "삭제된 글" 안내는 목록이 맡는다).
       onClick:
         href === null
@@ -77,14 +74,14 @@ export function NotificationBell() {
         prefetch={false}
         aria-label={badge ? `알림, 안 읽은 알림 ${badge}개` : "알림"}
         data-stream-status={status}
-        className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-neutral-700 hover:bg-neutral-200 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none"
+        className="text-fg hover:bg-surface-sunken relative inline-flex size-11 items-center justify-center rounded-full"
       >
-        <Bell aria-hidden size={22} strokeWidth={1.8} />
+        <Bell aria-hidden size={24} />
         {badge ? (
           <span
             aria-hidden="true"
             data-testid="notification-badge"
-            className="absolute -top-0.5 -right-0.5 min-w-5 rounded-full bg-red-600 px-1 text-center text-xs leading-5 font-semibold text-white"
+            className="bg-danger text-caption text-on-danger absolute -top-0.5 -right-0.5 min-w-5 rounded-full px-1 text-center leading-5 font-bold"
           >
             {badge}
           </span>
