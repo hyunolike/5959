@@ -56,7 +56,7 @@ export function MyActivity() {
       <div
         role="tablist"
         aria-label="내 활동"
-        className="relative grid grid-cols-4 border-b border-neutral-200"
+        className="border-line relative grid grid-cols-4 border-b"
       >
         {MY_ACTIVITY_TABS.map((tab) => (
           <button
@@ -90,10 +90,10 @@ export function MyActivity() {
                 ?.focus();
             }}
             className={cn(
-              "focus-visible:ring-brand-600 ogu-pressable rounded-control active:bg-brand-100 min-h-11 px-1 py-2 text-xs leading-5 focus-visible:ring-2 focus-visible:outline-none sm:text-sm",
+              "ogu-pressable rounded-control active:bg-surface-sunken text-caption sm:text-body-sm min-h-11 px-1 py-2 leading-5",
               tab.id === active
-                ? "text-brand-700 font-bold"
-                : "text-neutral-500 hover:text-neutral-800",
+                ? "text-fg font-bold"
+                : "text-fg-subtle hover:text-fg",
             )}
             onClick={() => select(tab.id)}
           >

@@ -17,7 +17,7 @@ export default async function WeeklyReportPage({
   return (
     <div className="flex w-full max-w-xl flex-col gap-6">
       <header className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-neutral-900">주간 리포트</h1>
+        <h1 className="text-heading text-fg font-bold">주간 리포트</h1>
         <Button asChild variant="ghost" size="sm">
           <Link href="/my?tab=reports">지난 리포트</Link>
         </Button>

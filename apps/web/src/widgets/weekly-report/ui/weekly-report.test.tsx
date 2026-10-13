@@ -255,4 +255,24 @@ describe("WeeklyReport", () => {
     // 없는 것은 다시 묻지 않는다
     expect(reportCalls).toHaveBeenCalledTimes(1);
   });
+
+  it("DS-US3-AC4 위기 글이 있던 주의 안내는 주의 색이고 감정 색을 쓰지 않는다", async () => {
+    renderReport(ok(report({ letterStatus: "SUPPORT", letter: null })));
+    const notice = await screen.findByRole("region", { name: "도움 안내" });
+    expect(notice).toHaveClass("bg-warning-tint", "border-warning");
+    expect(
+      notice.querySelector('[data-emotion], [class*="emotion"]'),
+    ).toBeNull();
+  });
+
+  it("DS-US3-AC6 지난주의 수치는 굵은 숫자이고 이름은 글자 토큰을 쓴다", async () => {
+    renderReport(ok(report()));
+    const figures = await screen.findByLabelText("지난주의 수치");
+    for (const value of figures.querySelectorAll("dd")) {
+      expect(value).toHaveClass("text-title", "font-extrabold");
+    }
+    for (const label of figures.querySelectorAll("dt")) {
+      expect(label).toHaveClass("text-fg-subtle");
+    }
+  });
 });

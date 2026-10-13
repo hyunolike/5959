@@ -14,9 +14,9 @@ export default function EditProfilePage() {
   return (
     <div className="flex w-full max-w-md flex-col gap-5">
       <header>
-        <p className="mb-1 text-xs font-bold text-neutral-600">내 마음 기록</p>
-        <h1 className="text-2xl font-bold text-neutral-900">프로필 수정</h1>
-        <p className="mt-1 text-sm leading-6 text-neutral-600">
+        <p className="text-label text-fg-subtle mb-1 font-bold">내 마음 기록</p>
+        <h1 className="text-heading text-fg font-bold">프로필 수정</h1>
+        <p className="text-body-sm text-fg-subtle mt-1 leading-6">
           닉네임, 직군, 경력은 내가 쓴 글에 함께 보여요.
         </p>
       </header>
@@ -26,7 +26,7 @@ export default function EditProfilePage() {
             <Spinner />
           </div>
         ) : isError || !member ? (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-body-sm text-danger">
             프로필을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
           </p>
         ) : (

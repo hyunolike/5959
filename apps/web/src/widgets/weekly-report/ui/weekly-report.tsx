@@ -41,7 +41,7 @@ export function WeeklyReport({ weekStart }: { weekStart: string }) {
   if (isNotFound(error)) {
     return (
       <Card className="flex w-full flex-col items-center gap-3 text-center">
-        <p role="alert" className="text-sm text-neutral-600">
+        <p role="alert" className="text-body-sm text-fg-subtle">
           이 주의 리포트가 없어요.
         </p>
         <Button asChild variant="ghost" size="sm">
@@ -53,7 +53,7 @@ export function WeeklyReport({ weekStart }: { weekStart: string }) {
   if (!data) {
     return (
       <Card className="w-full text-center">
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-body-sm text-danger">
           리포트를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
         </p>
       </Card>
@@ -65,7 +65,7 @@ export function WeeklyReport({ weekStart }: { weekStart: string }) {
 function WeeklyReportContent({ report }: { report: WeeklyReportData }) {
   return (
     <article aria-label="주간 리포트" className="flex w-full flex-col gap-4">
-      <p className="text-sm text-neutral-600">
+      <p className="text-body-sm text-fg-subtle">
         {formatWeek(report.weekStart, report.weekEnd)}
       </p>
       <Letter report={report} />
@@ -82,10 +82,8 @@ function Letter({ report }: { report: WeeklyReportData }) {
     case "DONE":
       return (
         <Card role="region" aria-label="편지" className="flex flex-col gap-2">
-          <h2 className="text-sm font-semibold text-neutral-900">
-            한 주를 돌아보며
-          </h2>
-          <p className="text-base whitespace-pre-wrap text-neutral-900">
+          <h2 className="text-body-sm text-fg font-bold">한 주를 돌아보며</h2>
+          <p className="text-body text-fg whitespace-pre-wrap">
             {report.letter}
           </p>
         </Card>
@@ -93,7 +91,7 @@ function Letter({ report }: { report: WeeklyReportData }) {
     case "PENDING":
       return (
         <Card role="region" aria-label="편지">
-          <p aria-live="polite" className="text-sm text-neutral-500">
+          <p aria-live="polite" className="text-body-sm text-fg-subtle">
             {LETTER_PENDING_NOTICE}
           </p>
         </Card>
@@ -103,12 +101,10 @@ function Letter({ report }: { report: WeeklyReportData }) {
         <Card
           role="region"
           aria-label="도움 안내"
-          className="flex flex-col gap-3 border-amber-300 bg-amber-50"
+          className="border-warning bg-warning-tint flex flex-col gap-3"
         >
-          <p className="text-sm font-semibold text-neutral-900">
-            {SUPPORT_LETTER}
-          </p>
-          <p className="text-sm text-neutral-700">
+          <p className="text-body-sm text-fg font-bold">{SUPPORT_LETTER}</p>
+          <p className="text-body-sm text-fg-muted">
             전화번호를 누르면 바로 연결돼요.
           </p>
           <SupportResourceList />
@@ -129,10 +125,8 @@ function Emotions({ report }: { report: WeeklyReportData }) {
   return (
     <Card className="flex flex-col gap-3">
       <div className="flex items-baseline justify-between gap-2">
-        <h2 className="text-sm font-semibold text-neutral-900">
-          지난주의 감정
-        </h2>
-        <p className="text-xs text-neutral-600">
+        <h2 className="text-body-sm text-fg font-bold">지난주의 감정</h2>
+        <p className="text-caption text-fg-subtle">
           {report.topEmotion
             ? `가장 많았던 감정 ${EMOTION_LABELS[report.topEmotion]}`
             : "감정 분석이 끝난 글이 없어요"}
@@ -140,31 +134,31 @@ function Emotions({ report }: { report: WeeklyReportData }) {
       </div>
       <ul aria-label="감정별 글 수" className="flex flex-col gap-2">
         {report.emotionCounts.map(({ emotion, count }) => (
-          <li key={emotion} className="flex items-center gap-3 text-sm">
-            <span className="w-16 shrink-0 text-neutral-800">
+          <li key={emotion} className="text-body-sm flex items-center gap-3">
+            <span className="text-fg w-16 shrink-0">
               {EMOTION_LABELS[emotion]}
             </span>
             <span
               aria-hidden
-              className="h-2.5 flex-1 overflow-hidden rounded bg-neutral-100"
+              className="bg-surface-sunken h-2.5 flex-1 overflow-hidden rounded-full"
             >
               <span
                 data-testid="emotion-bar"
-                className="block h-full rounded"
+                className="block h-full rounded-full"
                 style={{
                   width: `${(count / max) * 100}%`,
                   backgroundColor: EMOTION_COLORS[emotion],
                 }}
               />
             </span>
-            <span className="w-10 shrink-0 text-right text-neutral-900 tabular-nums">
+            <span className="text-fg w-10 shrink-0 text-right tabular-nums">
               {count}개
             </span>
           </li>
         ))}
       </ul>
       {report.unanalyzedCount > 0 ? (
-        <p className="text-xs text-neutral-500">
+        <p className="text-caption text-fg-subtle">
           분석되지 않은 글 {report.unanalyzedCount}개
         </p>
       ) : null}
@@ -185,8 +179,8 @@ function Numbers({ report }: { report: WeeklyReportData }) {
       <dl aria-label="지난주의 수치" className="grid grid-cols-2 gap-4">
         {items.map(([label, value]) => (
           <div key={label} className="flex flex-col gap-1">
-            <dt className="text-xs text-neutral-500">{label}</dt>
-            <dd className="text-lg font-semibold text-neutral-900 tabular-nums">
+            <dt className="text-caption text-fg-subtle">{label}</dt>
+            <dd className="text-title text-fg font-extrabold tabular-nums">
               {value}
             </dd>
           </div>
@@ -211,7 +205,7 @@ function Comparison({ report }: { report: WeeklyReportData }) {
 
   return (
     <Card role="region" aria-label="앞 주와 견주기">
-      <ul className="flex flex-col gap-1 text-sm text-neutral-700">
+      <ul className="text-body-sm text-fg-muted flex flex-col gap-1">
         <li>{posts}</li>
         {emotion ? <li>{emotion}</li> : null}
       </ul>

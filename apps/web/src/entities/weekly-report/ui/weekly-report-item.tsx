@@ -22,20 +22,20 @@ export function WeeklyReportItem({
   return (
     <Link
       href={weeklyReportHref(report.weekStart)}
-      className="block rounded-lg focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:outline-none"
+      className="rounded-surface block"
     >
-      <Card className="flex items-center justify-between gap-4 transition-colors hover:bg-neutral-50">
+      <Card className="hover:bg-surface-sunken flex items-center justify-between gap-4 transition-colors">
         <div className="flex flex-col gap-1">
-          <p className="text-sm font-semibold text-neutral-900">
+          <p className="text-body-sm text-fg font-bold">
             {formatWeek(report.weekStart, report.weekEnd)}
           </p>
-          <p className="text-xs text-neutral-600">
+          <p className="text-caption text-fg-subtle">
             {topEmotionLabel
               ? `가장 많았던 감정 ${topEmotionLabel}`
               : "감정 분석이 끝난 글이 없어요"}
           </p>
         </div>
-        <p className="shrink-0 text-xs text-neutral-600 tabular-nums">
+        <p className="text-caption text-fg-subtle shrink-0 tabular-nums">
           글 {report.postCount}개
         </p>
       </Card>
