@@ -12,7 +12,7 @@ import { sanitizeNextPath } from "@/shared/lib";
  * | `/` | `ogu_rt` 있음 | `/home` |
  * | `/` | `ogu_rt` 없음 | `/login` |
  * | 정확한 `/home` | `ogu_rt` 없음 | 익명 서비스 안내(회원 데이터 없음) |
- * | 그 밖의 보호 경로(`/home` 하위, `/write`, `/post`, `/my`, `/settings`, `/notifications` 이하) | `ogu_rt` 없음 | `/login?next=<원래 경로>` |
+ * | 그 밖의 보호 경로(`/home` 하위, `/write`, `/post`, `/my`, `/settings`, `/notifications`, `/raid`, `/report`, `/cards` 이하) | `ogu_rt` 없음 | `/login?next=<원래 경로>` |
  * | 보호 경로 | `ogu_rt` 있고 `ogu_ob` 없음 | `/onboarding` |
  * | `/onboarding` | `ogu_rt` 없음 | `/login` |
  * | `/onboarding` | `ogu_ob` 있음 | `/home`(검증한 `next`가 있으면 그곳) |
@@ -35,6 +35,8 @@ const PROTECTED_PATH_PREFIXES = [
   "/notifications",
   "/raid",
   "/report",
+  // 몬스터 도감(010 US1-AC8). 목록에 없는 경로는 가드가 그냥 통과시킨다.
+  "/cards",
 ];
 
 export interface RouteGuardCookies {

@@ -502,6 +502,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/members/me/monster-cards": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 내 몬스터 카드, 최근에 물리친 것부터 (010 US1, US2, US4) */
+    get: operations["getMyMonsterCards"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/members/me/weekly-reports": {
     parameters: {
       query?: never;
@@ -1239,6 +1256,55 @@ export interface components {
       previous: components["schemas"]["WeeklyReportPrevious"] | null;
       /** Format: date-time */
       publishedAt: string;
+    };
+    /**
+     * @description 몬스터의 세기로 정해진다. COMMON 일반(HP 10), RARE 희귀(HP 20), LEGENDARY 전설(HP 30). 무작위가 아니다
+     * @enum {string}
+     */
+    MonsterCardGrade: "COMMON" | "RARE" | "LEGENDARY";
+    /**
+     * @description MINE 내 글의 몬스터, TOGETHER 다른 회원의 몬스터를 내가 HP를 줄여 함께 물리쳤다
+     * @enum {string}
+     */
+    MonsterCardRole: "MINE" | "TOGETHER";
+    /**
+     * @description 처치된 몬스터 하나. 지우지도 숨기지도 않은 글의 몬스터만 카드가 된다.
+     *     글의 본문, 미리보기, 글쓴이, 함께 물리친 회원이 누구인지는 싣지 않는다(010 FR-007).
+     */
+    MonsterCard: {
+      /**
+       * Format: int64
+       * @description 몬스터의 고유 번호. 바뀌지 않는다
+       */
+      cardNo: number;
+      emotion: components["schemas"]["EmotionType"];
+      grade: components["schemas"]["MonsterCardGrade"];
+      role: components["schemas"]["MonsterCardRole"];
+      /** Format: date-time */
+      defeatedAt: string;
+      /** @description 내가 줄인 HP. MINE이면 0이다 */
+      myDamage: number;
+      /** @description HP를 줄인 회원 수. MINE일 때만 있다 */
+      helperCount: number | null;
+      /**
+       * Format: int64
+       * @description 이 몬스터의 글. 지금 보이는 글이다
+       */
+      postId: number;
+    };
+    MonsterCardEmotionCount: {
+      emotion: components["schemas"]["EmotionType"];
+      count: number;
+    };
+    MonsterCardSummary: {
+      total: number;
+      /** @description 모든 감정이 정해진 순서로 들어 있다. 없는 감정은 0이다 */
+      byEmotion: components["schemas"]["MonsterCardEmotionCount"][];
+    };
+    MonsterCardPage: {
+      items: components["schemas"]["MonsterCard"][];
+      nextCursor: string | null;
+      summary: components["schemas"]["MonsterCardSummary"];
     };
     EmotionStats: {
       /** @description 지우지 않은 내 글의 몬스터 수 */
@@ -2642,6 +2708,39 @@ export interface operations {
           };
         };
       };
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+    };
+  };
+  getMyMonsterCards: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        size?: number;
+        /** @description 이 감정의 카드만. 요약은 거르기 전의 전체다 */
+        emotion?: components["schemas"]["EmotionType"];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 카드가 없으면 빈 목록이고 요약의 수는 모두 0이다 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["MonsterCardPage"];
+            error: null;
+          };
+        };
+      };
+      400: components["responses"]["BadRequest"];
       401: components["responses"]["Unauthorized"];
       403: components["responses"]["Forbidden"];
     };

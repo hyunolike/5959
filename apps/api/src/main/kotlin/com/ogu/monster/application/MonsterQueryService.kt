@@ -1,6 +1,7 @@
 package com.ogu.monster.application
 
 import com.ogu.monster.MonsterApi
+import com.ogu.monster.MonsterCardRow
 import com.ogu.monster.MonsterStatRow
 import com.ogu.monster.MonsterView
 import com.ogu.monster.domain.MonsterHpLogRepository
@@ -35,6 +36,11 @@ class MonsterQueryService(
     }
 
     override fun defeatedPostIdsDamagedBy(memberId: Long): Set<Long> = hpLogRepository.defeatedPostIds(memberId)
+
+    override fun cardRows(
+        memberId: Long,
+        ownPostIds: Collection<Long>,
+    ): List<MonsterCardRow> = hpLogRepository.cardRows(memberId, ownPostIds.toSet())
 
     override fun defeatedCountBetween(
         postIds: Collection<Long>,

@@ -31,6 +31,15 @@ interface MonsterApi {
      */
     fun defeatedPostIdsDamagedBy(memberId: Long): Set<Long>
 
+    /**
+     * 도감의 카드가 될 몬스터(010 research R2, R3). 처치된 몬스터 가운데 [ownPostIds]의 글의 것과, [memberId]가 HP를
+     * 실제로 줄인 것이다. 지웠거나 숨긴 글의 몬스터도 들어 있으니 부르는 쪽이 뺀다. 쿼리 한 번이다.
+     */
+    fun cardRows(
+        memberId: Long,
+        ownPostIds: Collection<Long>,
+    ): List<MonsterCardRow>
+
     /** [postIds]의 글에 있는 몬스터 가운데 [from]부터(포함) [until] 전까지(제외) 처치된 수(008 research R5). */
     fun defeatedCountBetween(
         postIds: Collection<Long>,
