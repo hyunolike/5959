@@ -109,12 +109,20 @@ export function OnboardingForm({ next }: OnboardingFormProps) {
         <Label htmlFor="nickname">닉네임</Label>
         <Input
           id="nickname"
+          aria-required
           autoComplete="off"
           maxLength={10}
           aria-invalid={errors.nickname ? true : undefined}
-          aria-describedby={errors.nickname ? "nickname-error" : undefined}
+          aria-describedby={
+            errors.nickname
+              ? "nickname-rule nickname-error"
+              : "nickname-rule nickname-status"
+          }
           {...register("nickname")}
         />
+        <p id="nickname-rule" className="text-caption text-fg-subtle">
+          한글, 영문, 숫자 1~10자
+        </p>
         {errors.nickname ? (
           <p
             id="nickname-error"
@@ -123,26 +131,28 @@ export function OnboardingForm({ next }: OnboardingFormProps) {
           >
             {errors.nickname.message}
           </p>
-        ) : (
-          nicknameHint && (
-            <p
-              className={cn(
-                "text-label",
-                settledNicknameResult?.available
-                  ? "text-fg font-medium"
-                  : "text-danger",
-              )}
-            >
-              {nicknameHint}
-            </p>
-          )
-        )}
+        ) : null}
+        {/* 확인 결과는 400ms 뒤 조용히 바뀐다. 자리를 처음부터 그려 두어 화면 낭독기가 읽게 한다. */}
+        <p
+          id="nickname-status"
+          role="status"
+          className={cn(
+            "text-label",
+            settledNicknameResult?.available
+              ? "text-fg font-medium"
+              : "text-danger",
+            !nicknameHint && "sr-only",
+          )}
+        >
+          {nicknameHint}
+        </p>
       </div>
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="jobRole">직군</Label>
         <Select
           id="jobRole"
+          aria-required
           defaultValue=""
           aria-invalid={errors.jobRole ? true : undefined}
           aria-describedby={errors.jobRole ? "jobRole-error" : undefined}
@@ -168,6 +178,7 @@ export function OnboardingForm({ next }: OnboardingFormProps) {
         <Label htmlFor="careerYear">경력</Label>
         <Select
           id="careerYear"
+          aria-required
           defaultValue=""
           aria-invalid={errors.careerYear ? true : undefined}
           aria-describedby={errors.careerYear ? "careerYear-error" : undefined}

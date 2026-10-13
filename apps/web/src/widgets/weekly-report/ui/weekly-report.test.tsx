@@ -185,7 +185,7 @@ describe("WeeklyReport", () => {
 
     const notice = await screen.findByRole("region", { name: "도움 안내" });
     expect(notice).toHaveTextContent(SUPPORT_LETTER);
-    const link = await within(notice).findByRole("link", { name: "109" });
+    const link = await within(notice).findByRole("link", { name: /109/ });
     expect(link).toHaveAttribute("href", "tel:109");
     expect(
       screen.queryByRole("region", { name: "편지" }),

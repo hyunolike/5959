@@ -61,7 +61,7 @@ export function PostCard({
         {item.contentPreview}
       </p>
       <div className="mt-3.5 flex flex-wrap items-center gap-x-3 gap-y-2">
-        <div aria-label="몬스터" className="min-w-0 flex-auto">
+        <div className="min-w-0 flex-auto">
           {item.monster ? (
             renderMonster(item.monster)
           ) : (

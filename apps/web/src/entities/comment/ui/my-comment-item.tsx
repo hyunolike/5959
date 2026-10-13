@@ -1,14 +1,16 @@
 import Link from "next/link";
 
-import { formatDate } from "@/shared/lib";
+import { formatDate, formatRelativeTime } from "@/shared/lib";
 
 import type { MyComment } from "../model/types";
 
 /**
- * 마이페이지 "내 댓글"의 한 줄(004 US3-AC2): 댓글 본문, 달린 글의 앞부분, 시각. 누르면 그 글 상세로 간다.
+ * 마이페이지 "내 댓글"의 한 줄(004 US3-AC2): 댓글 본문, 달린 글의 앞부분, 시각("2시간 전"). 누르면 그 글 상세로 간다.
  * 답글이면 "답글"이라고 글자로 알린다.
  */
 export function MyCommentItem({ comment }: { comment: MyComment }) {
+  const relativeTime = formatRelativeTime(comment.createdAt);
+
   return (
     <Link
       href={`/post/${comment.postId}`}
@@ -30,9 +32,14 @@ export function MyCommentItem({ comment }: { comment: MyComment }) {
       </span>
       <time
         dateTime={comment.createdAt}
-        className="text-caption text-fg-subtle"
+        title={
+          relativeTime
+            ? formatDate(comment.createdAt, "YYYY.MM.DD HH:mm")
+            : undefined
+        }
+        className="text-caption text-fg-subtle tabular-nums"
       >
-        {formatDate(comment.createdAt, "YYYY.MM.DD HH:mm")}
+        {relativeTime}
       </time>
     </Link>
   );

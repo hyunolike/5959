@@ -227,6 +227,18 @@ describe("MonsterDisplay HP 숫자", () => {
     expect(screen.getByText("4,120")).toHaveClass("text-numeric");
   });
 
+  it("006 US5-AC1 보스의 HP 막대는 보스 HP라는 이름과 HP 숫자로 읽힌다", () => {
+    render(
+      <MonsterDisplay
+        monster={{ emotion: "LETHARGY", hp: 200, maxHp: 300, status: "ALIVE" }}
+        variant="boss"
+      />,
+    );
+    expect(
+      screen.getByRole("progressbar", { name: "보스 HP" }),
+    ).toHaveAttribute("aria-valuetext", "HP 200/300");
+  });
+
   it("세 자리 이하 보스의 HP 글자는 그대로다", () => {
     render(
       <MonsterDisplay

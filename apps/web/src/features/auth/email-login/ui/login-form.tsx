@@ -73,6 +73,7 @@ export function LoginForm({ next }: LoginFormProps) {
         <Label htmlFor="email">이메일</Label>
         <Input
           id="email"
+          aria-required
           type="email"
           autoComplete="email"
           placeholder="이메일 주소를 입력해주세요"
@@ -91,6 +92,7 @@ export function LoginForm({ next }: LoginFormProps) {
         <Label htmlFor="password">비밀번호</Label>
         <Input
           id="password"
+          aria-required
           type="password"
           autoComplete="current-password"
           placeholder="비밀번호를 입력해주세요"

@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Button } from "@/shared/ui";
 import { RaidArena } from "@/widgets/raid-arena";
+
+export const metadata: Metadata = { title: "레이드" };
 
 /**
  * 보스 레이드(006). 로그인과 온보딩은 proxy.ts의 라우트 가드가 먼저 확인한다(US1-AC7).

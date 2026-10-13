@@ -82,9 +82,10 @@ for (const viewport of [
       "font-size",
       "36px",
     );
-    await expect(
-      stage.getByRole("progressbar", { name: "몬스터 HP" }),
-    ).toHaveCSS("height", "22px");
+    await expect(stage.getByRole("progressbar", { name: "보스 HP" })).toHaveCSS(
+      "height",
+      "22px",
+    );
     await expect(page.getByRole("button", { name: "공격하기" })).toHaveCSS(
       "background-color",
       "rgb(255, 214, 10)",

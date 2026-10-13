@@ -1,11 +1,13 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
+
+import { QUERY_KEYS } from "@/shared/config";
 
 import { PostDetail } from "./post-detail";
 
@@ -101,6 +103,87 @@ describe("PostDetail", () => {
     expect(bar).toHaveAttribute("aria-valuemax", "20");
     expect(screen.getByText("HP 20/20")).toBeInTheDocument();
     expect(screen.queryByText("분석 중")).not.toBeInTheDocument();
+  });
+
+  it("US1-AC1 화면의 첫 제목은 누구의 고민인지 알리고, 몬스터 자리는 이름 있는 묶음이다", async () => {
+    renderDetail(jsonResponse({ success: true, data: detail(), error: null }));
+
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "오구님의 고민" }),
+    ).toHaveClass("sr-only");
+    // 이름은 역할이 있는 요소에만 붙일 수 있다.
+    expect(screen.getByRole("group", { name: "몬스터" })).toHaveTextContent(
+      "분석 중",
+    );
+  });
+
+  it("US1-AC3 분석 중이던 몬스터가 나타나면 처음부터 있던 알림 자리로 알린다", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockImplementation(async (input: RequestInfo | URL) =>
+          String(input) === "/api/posts/7"
+            ? jsonResponse({ success: true, data: detail(), error: null })
+            : jsonResponse({ success: false, data: null, error: null }, 500),
+        ),
+    );
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <PostDetail postId={7} />
+      </QueryClientProvider>,
+    );
+    await screen.findByText("분석 중");
+    const status = within(
+      screen.getByRole("group", { name: "몬스터" }),
+    ).getByRole("status");
+    expect(status).toBeEmptyDOMElement();
+
+    act(() => {
+      queryClient.setQueryData(QUERY_KEYS.postDetail(7), {
+        ...detail(),
+        analysisStatus: "ANALYZED",
+        monster: { emotion: "ANXIETY", hp: 20, maxHp: 20, status: "ALIVE" },
+      });
+    });
+
+    expect(await screen.findByText("불안 몬스터가 나타났어요.")).toBe(status);
+  });
+
+  it("US1-AC4 처음부터 몬스터가 있던 글에서는 나타났다고 알리지 않는다", async () => {
+    renderDetail(
+      jsonResponse({
+        success: true,
+        data: detail({
+          analysisStatus: "ANALYZED",
+          monster: { emotion: "ANXIETY", hp: 20, maxHp: 20, status: "ALIVE" },
+        }),
+        error: null,
+      }),
+    );
+    await screen.findByText("HP 20/20");
+    expect(
+      within(screen.getByRole("group", { name: "몬스터" })).getByRole("status"),
+    ).toBeEmptyDOMElement();
+  });
+
+  it("글을 못 보여 줄 때도 화면에 첫 제목이 있다", async () => {
+    renderDetail(
+      jsonResponse(
+        {
+          success: false,
+          data: null,
+          error: { code: "INTERNAL_ERROR", message: "실패" },
+        },
+        500,
+      ),
+    );
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "고민 글" }),
+    ).toHaveClass("sr-only");
   });
 
   it("404 POST_NOT_FOUND면 삭제된 글이라고 안내한다", async () => {

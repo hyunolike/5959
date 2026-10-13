@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Button } from "@/shared/ui";
 import { NotificationList } from "@/widgets/notification-list";
+
+export const metadata: Metadata = { title: "알림" };
 
 /**
  * 알림 목록(004 US2). 로그인과 온보딩은 proxy.ts의 라우트 가드가 먼저 확인한다(FR-014).

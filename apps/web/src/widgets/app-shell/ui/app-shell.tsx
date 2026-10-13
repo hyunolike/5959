@@ -84,7 +84,7 @@ function ShellContents({
         <div className="mx-auto flex h-16 max-w-[1120px] items-center justify-between px-5 sm:h-18 sm:px-8">
           <Link
             href={showNavigation ? "/home" : "/login"}
-            aria-label="오구오구 홈"
+            aria-label="5959 오구오구 홈"
           >
             <BrandMark />
           </Link>
@@ -106,6 +106,27 @@ function ShellContents({
           </div>
         </div>
       </header>
+      {/*
+        좁은 화면의 메뉴는 화면 아래에 붙어 있지만 DOM에서는 본문보다 앞에 둔다. 뒤에 두면 Tab으로는
+        끝없이 늘어나는 피드를 다 지나야 메뉴에 닿는다.
+      */}
+      {showNavigation ? (
+        <nav
+          aria-label="모바일 주요 메뉴"
+          className="border-line bg-surface fixed right-0 bottom-0 left-0 z-30 flex border-t px-3 pt-1 pb-[max(8px,env(safe-area-inset-bottom))] md:hidden"
+        >
+          {NAVIGATION.map((item) => (
+            <NavigationItem
+              key={item.href}
+              {...item}
+              current={current(item.href)}
+              mobile
+              locked={!authenticated && item.href !== "/home"}
+              {...guestNavigation(item.href)}
+            />
+          ))}
+        </nav>
+      ) : null}
       <div
         className={cn(
           "mx-auto flex w-full max-w-[1120px] flex-1 gap-12 px-5 sm:px-8",
@@ -137,23 +158,7 @@ function ShellContents({
           {children}
         </main>
       </div>
-      {showNavigation ? (
-        <nav
-          aria-label="모바일 주요 메뉴"
-          className="border-line bg-surface fixed right-0 bottom-0 left-0 z-30 flex border-t px-3 pt-1 pb-[max(8px,env(safe-area-inset-bottom))] md:hidden"
-        >
-          {NAVIGATION.map((item) => (
-            <NavigationItem
-              key={item.href}
-              {...item}
-              current={current(item.href)}
-              mobile
-              locked={!authenticated && item.href !== "/home"}
-              {...guestNavigation(item.href)}
-            />
-          ))}
-        </nav>
-      ) : (
+      {showNavigation ? null : (
         <footer className="text-caption text-fg-subtle pb-6 text-center">
           오구오구
         </footer>

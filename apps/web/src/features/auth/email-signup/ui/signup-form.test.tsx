@@ -37,4 +37,17 @@ describe("SignupForm 모양", () => {
     expect(error).toHaveClass("text-label", "text-danger");
     expect(email).toHaveAccessibleDescription(error?.textContent ?? "");
   });
+
+  it("DS-US2-AC1 비밀번호 규칙이 입력과 이어져 있고, 꼭 채워야 하는 칸임을 알린다", () => {
+    renderForm();
+    const password = screen.getByLabelText("비밀번호");
+    expect(password).toHaveAccessibleDescription(
+      "영문과 숫자를 포함해 8~20자로 입력하세요.",
+    );
+    expect(password).toHaveAttribute("aria-required", "true");
+    expect(screen.getByLabelText("이메일")).toHaveAttribute(
+      "aria-required",
+      "true",
+    );
+  });
 });

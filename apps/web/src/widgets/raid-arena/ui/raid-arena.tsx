@@ -2,11 +2,7 @@
 
 import Link from "next/link";
 
-import {
-  EMOTION_LABELS,
-  MonsterDisplay,
-  MonsterStage,
-} from "@/entities/monster";
+import { emotionLabel, MonsterDisplay, MonsterStage } from "@/entities/monster";
 import {
   RAID_TOPIC,
   useRaidQuery,
@@ -24,6 +20,7 @@ import { Button, Card, Spinner } from "@/shared/ui";
 /** 레이드가 쉬는 중일 때의 안내(006 US3-AC6). 공격은 반영되지 않는다. */
 export const RAID_PAUSED_NOTICE =
   "레이드가 잠시 쉬고 있어요. 조금 뒤에 다시 공격할 수 있어요.";
+const PAUSED_NOTICE_ID = "raid-paused-notice";
 
 /**
  * 레이드 화면의 본문(006 US1, US2, US4).
@@ -77,9 +74,9 @@ function Battle({ state, boss }: { state: RaidState; boss: RaidBoss }) {
       className="rounded-surface flex flex-col items-center gap-4 p-5"
     >
       <div className="flex w-full flex-col gap-1">
-        <p className="text-label text-emotion-fg font-bold">오늘의 보스</p>
+        <p className="text-label text-emotion-fg font-bold">지금의 보스</p>
         <h2 className="text-display text-fg font-extrabold">
-          {EMOTION_LABELS[boss.emotion]}
+          {emotionLabel(boss.emotion)} <span className="sr-only">보스</span>
         </h2>
         <p className="text-body-sm text-emotion-fg font-medium break-keep">
           요즘 가장 많이 나타난 감정이 보스가 됐어요. 함께 물리쳐요.
@@ -99,9 +96,14 @@ function Battle({ state, boss }: { state: RaidState; boss: RaidBoss }) {
         participantCount={boss.participantCount}
         myDamage={state.myDamage}
       />
-      <AttackButton bossId={boss.bossId} disabled={!state.available} />
+      <AttackButton
+        bossId={boss.bossId}
+        disabled={!state.available}
+        aria-describedby={state.available ? undefined : PAUSED_NOTICE_ID}
+      />
       {state.available ? null : (
         <p
+          id={PAUSED_NOTICE_ID}
           role="status"
           className="text-body-sm text-warning text-center break-keep"
         >
@@ -123,8 +125,8 @@ function Result({ state, boss }: { state: RaidState; boss: RaidBoss }) {
     >
       <h2 className="text-title text-fg text-center font-bold">
         {defeated
-          ? `${EMOTION_LABELS[boss.emotion]} 보스를 함께 물리쳤어요`
-          : `${EMOTION_LABELS[boss.emotion]} 보스가 물러났어요`}
+          ? `${emotionLabel(boss.emotion)} 보스를 함께 물리쳤어요`
+          : `${emotionLabel(boss.emotion)} 보스가 물러났어요`}
       </h2>
       <MonsterDisplay
         monster={{
@@ -175,9 +177,11 @@ function Figures({
   children?: React.ReactNode;
 }) {
   return (
-    // 공격이 몰려도 화면 낭독기가 따라올 수 있게, 바뀐 값만 정중하게 읽는다.
+    // 공격이 몰려도 화면 낭독기가 따라올 수 있게 정중하게 읽는다. 바뀐 숫자만 읽으면 무엇의 값인지
+    // 알 수 없어 이름까지 통째로 읽힌다.
     <dl
       aria-live="polite"
+      aria-atomic="true"
       className={cn(
         "grid w-full grid-cols-2 gap-3",
         children ? "sm:grid-cols-3" : null,

@@ -21,7 +21,7 @@ export function HomeInstall() {
       size="sm"
       aria-label="홈 화면 추가 방법"
       onClick={() => setGuideOpen(true)}
-      className="text-caption text-fg-subtle self-start px-2 font-medium underline underline-offset-4"
+      className="text-caption text-fg-subtle min-w-11 self-start px-2 font-medium underline underline-offset-4"
     >
       {state.promotionVisible ? "방법" : "홈 화면 추가 방법"}
     </Button>

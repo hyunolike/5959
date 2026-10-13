@@ -1,4 +1,9 @@
-export { EMOTION_COLORS, EMOTION_LABELS } from "./model/types";
+export {
+  EMOTION_COLORS,
+  EMOTION_LABELS,
+  emotionLabel,
+  formatHp,
+} from "./model/types";
 export type { EmotionType, MonsterView } from "./model/types";
 export { hpStage, hpStageOfRatio } from "./model/hp-stage";
 export type { HpStage } from "./model/hp-stage";

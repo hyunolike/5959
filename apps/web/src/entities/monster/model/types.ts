@@ -24,3 +24,16 @@ export const EMOTION_COLORS: Record<EmotionType, string> = {
   SELF_DEPRECATION: "#a3b03c",
   IRRITATION: "#cf2f38",
 };
+
+/**
+ * 감정의 한국어 이름. 실시간으로 받은 값이 계약에 없는 감정이어도 화면에 "undefined"가
+ * 보이지 않게 "감정"으로 대신한다.
+ */
+export function emotionLabel(emotion: EmotionType | string): string {
+  return EMOTION_LABELS[emotion as EmotionType] ?? "감정";
+}
+
+/** HP를 쉼표와 함께 적는다. 값이 없거나 숫자가 아니면(계약을 어긴 값) 0으로 적어 화면이 죽지 않게 한다. */
+export function formatHp(value: number): string {
+  return Number.isFinite(value) ? value.toLocaleString("ko-KR") : "0";
+}

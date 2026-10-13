@@ -21,10 +21,13 @@ const DEFAULT_COOLDOWN_MS = 1_000;
 export function AttackButton({
   bossId,
   disabled = false,
+  "aria-describedby": describedBy,
 }: {
   bossId: number;
   /** 레이드가 쉬는 중이면 부르는 쪽이 막는다. */
   disabled?: boolean;
+  /** 잠긴 까닭을 적은 안내의 id. 버튼에 초점이 오면 함께 읽힌다. */
+  "aria-describedby"?: string;
 }) {
   const attack = useRaidAttackMutation();
   const [cooling, setCooling] = useState(false);
@@ -56,6 +59,7 @@ export function AttackButton({
       <GameButton
         // 잠긴 동안에도 초점이 남도록 disabled 대신 aria-disabled로 막는다. 연달아 누르는 버튼이다.
         aria-disabled={locked}
+        aria-describedby={describedBy}
         onClick={() => {
           if (locked) {
             return;

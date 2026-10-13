@@ -35,7 +35,7 @@ function renderButton(targetType: "POST" | "COMMENT" = "POST") {
 
 async function openDialog(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: "신고" }));
-  return screen.getByRole("alertdialog");
+  return screen.getByRole("dialog");
 }
 
 const sentBody = (fetchMock: ReturnType<typeof stub>) =>
@@ -75,7 +75,7 @@ describe("ReportButton", () => {
     expect(await screen.findByRole("status")).toHaveTextContent(
       "신고가 접수됐어요",
     );
-    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "신고" })).toBeNull();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/reports",
@@ -160,7 +160,7 @@ describe("ReportButton", () => {
     expect(await screen.findByRole("status")).toHaveTextContent(
       "이미 신고한 글이에요",
     );
-    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("US3-AC5 429면 대화상자 안에 잠시 뒤 다시 시도하라고 안내한다", async () => {
@@ -177,7 +177,7 @@ describe("ReportButton", () => {
     expect(await within(dialog).findByRole("alert")).toHaveTextContent(
       "신고를 너무 자주 보내고 있어요.",
     );
-    expect(screen.getByRole("alertdialog")).toBeVisible();
+    expect(screen.getByRole("dialog")).toBeVisible();
   });
 
   it("취소하면 고른 것과 적은 것을 비우고 닫는다", async () => {
@@ -190,11 +190,38 @@ describe("ReportButton", () => {
 
     await user.click(within(dialog).getByRole("button", { name: "취소" }));
 
-    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     dialog = await openDialog(user);
     expect(
       within(dialog).getByRole("radio", { name: "기타" }),
     ).not.toBeChecked();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("US3-AC1 고르고 적는 대화상자라 경고 대화상자가 아니고, 열리면 첫 사유에 초점이 온다", async () => {
+    const user = userEvent.setup();
+    stub(204);
+    renderButton();
+
+    const dialog = await openDialog(user);
+    expect(dialog).toHaveAttribute("role", "dialog");
+    const radios = within(dialog).getAllByRole("radio");
+    expect(radios[0]).toHaveFocus();
+    // 사유 한 줄의 누르는 영역은 44px이다.
+    for (const radio of radios) {
+      expect(radio.closest("label")).toHaveClass("min-h-11");
+    }
+  });
+
+  it("US3-AC1 접수되어 신고 버튼이 사라지면 초점이 접수 안내로 간다", async () => {
+    const user = userEvent.setup();
+    stub(204);
+    renderButton();
+
+    const dialog = await openDialog(user);
+    await user.click(within(dialog).getByRole("radio", { name: "기타" }));
+    await user.click(within(dialog).getByRole("button", { name: "신고하기" }));
+
+    expect(await screen.findByText("신고가 접수됐어요")).toHaveFocus();
   });
 });

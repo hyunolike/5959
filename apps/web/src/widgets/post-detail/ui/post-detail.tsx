@@ -4,9 +4,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { CaretLeft } from "@phosphor-icons/react";
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 
 import { CAREER_YEAR_LABELS, JOB_ROLE_LABELS } from "@/entities/member";
-import { MonsterDisplay, MonsterStage } from "@/entities/monster";
+import { emotionLabel, MonsterDisplay, MonsterStage } from "@/entities/monster";
 import {
   COMMENT_TONE_LABELS,
   DELETED_POST_NOTICE,
@@ -47,6 +48,7 @@ function Unavailable({
 }) {
   return (
     <Card className="w-full max-w-xl py-10 text-center sm:py-10">
+      <h1 className="sr-only">고민 글</h1>
       <Image
         src="/brand/ogu-companion.png"
         alt=""
@@ -95,7 +97,7 @@ export function PostDetail({ postId }: { postId: number }) {
   if (isPending) {
     return (
       <Card className="flex w-full max-w-xl items-center justify-center py-12 sm:py-12">
-        <Spinner />
+        <Spinner label="글을 불러오는 중" />
       </Card>
     );
   }
@@ -119,11 +121,15 @@ export function PostDetail({ postId }: { postId: number }) {
 function PostDetailContent({ detail }: { detail: PostDetailData }) {
   const { author, monster } = detail;
   const queryClient = useQueryClient();
+  // 몬스터 없이 열린 화면에서만, 몬스터가 생겼을 때 화면 낭독기에 알린다.
+  const [openedWithoutMonster] = useState(!monster);
 
   return (
     <div className="flex w-full max-w-xl flex-col gap-4">
       <BackToFeed />
       <article aria-label="고민 글" className="flex flex-col gap-5">
+        {/* 무대가 본문보다 먼저 와서, 화면 낭독기로는 누구의 글인지부터 듣게 한다. */}
+        <h1 className="sr-only">{author.nickname}님의 고민</h1>
         {/* 내 글이 우려나 위기로 판정됐거나 숨겨졌을 때만 보인다(005 US1). 화면 맨 위에 둔다. */}
         <SafetyNotice
           safety={detail.safety}
@@ -152,17 +158,20 @@ function PostDetailContent({ detail }: { detail: PostDetailData }) {
           emotion={monster?.emotion}
           className="rounded-surface flex flex-col gap-4 p-5"
         >
-          <div aria-label="몬스터">
+          <div role="group" aria-label="몬스터">
             {monster ? (
               <MonsterDisplay monster={monster} variant="detail" />
             ) : (
-              <p
-                aria-live="polite"
-                className="text-body-sm text-fg-subtle py-6 text-center"
-              >
+              <p className="text-body-sm text-fg-subtle py-6 text-center">
                 분석 중
               </p>
             )}
+            {/* "분석 중"은 몬스터가 오면 통째로 사라져 읽히지 않는다. 늘 있는 자리에 글자를 채운다. */}
+            <p role="status" className="sr-only">
+              {openedWithoutMonster && monster
+                ? `${emotionLabel(monster.emotion)} 몬스터가 나타났어요.`
+                : null}
+            </p>
           </div>
           <div
             role="group"

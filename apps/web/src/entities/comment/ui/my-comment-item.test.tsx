@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { MyComment } from "../model/types";
 import { MyCommentItem } from "./my-comment-item";
@@ -15,6 +15,25 @@ const comment = (overrides: Partial<MyComment> = {}): MyComment => ({
 });
 
 describe("MyCommentItem", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-06T05:04:00Z"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("DS-US3-AC1 시각은 다른 목록처럼 상대 시각으로 쓰고 정확한 시각은 title에 둔다", () => {
+    render(<MyCommentItem comment={comment()} />);
+
+    const time = screen.getByText("2시간 전");
+    expect(time.tagName).toBe("TIME");
+    expect(time).toHaveAttribute("datetime", "2026-10-06T03:04:00Z");
+    expect(time.getAttribute("title")).toMatch(/^2026\.10\.06 \d{2}:04$/);
+    expect(time).toHaveClass("tabular-nums");
+  });
+
   it("US3-AC2 댓글 본문, 달린 글의 앞부분, 시각을 보이고 누르면 그 글로 간다", () => {
     render(<MyCommentItem comment={comment()} />);
 

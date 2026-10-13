@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* 테스트 파일에는 검사용 예시 클래스(옛 색 이름 등)가 적혀 있다. 화면용 CSS에 섞이지 않게 뺀다. */
+@source not "../../**/*.test.{ts,tsx}";
+
 /* 원색 층. 화면에서 직접 쓰지 않는다. 유틸리티가 생기지 않게 @theme 밖에 둔다. */
 :root {
   --ink-900: #17171c;
@@ -93,6 +96,9 @@
 }
 
 @theme {
+  /* transition-* 유틸리티의 기본 시간도 가장 짧은 단계에 맞춘다. */
+  --default-transition-duration: 120ms;
+
   --font-sans:
     "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
     system-ui, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
@@ -165,6 +171,20 @@ body {
   ):focus-visible {
     outline: 2px solid var(--ink-900);
     outline-offset: 2px;
+  }
+
+  /*
+   * 머리말은 위에, 좁은 화면의 메뉴는 아래에 붙어 있다. 키보드로 옮긴 초점이나 건너뛰기 링크의
+   * 목적지가 그 밑에 깔리지 않게 스크롤 여백을 둔다. 넓은 화면에는 아래 메뉴가 없다.
+   */
+  html {
+    scroll-padding-top: 5.5rem;
+    scroll-padding-bottom: calc(6.5rem + env(safe-area-inset-bottom));
+  }
+  @media (min-width: 48rem) {
+    html {
+      scroll-padding-bottom: 1rem;
+    }
   }
 }
 

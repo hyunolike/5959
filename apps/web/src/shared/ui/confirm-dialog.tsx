@@ -54,7 +54,7 @@ function returnFromDialog(marker: string, openedUrl: string) {
 
 /**
  * 되돌릴 수 없는 동작 전에 묻는 화면 안 대화상자(`window.confirm` 대신).
- * 열리면 취소 버튼에 초점을 두고, Tab과 Shift+Tab은 대화상자 안에서만 돈다(aria-modal).
+ * 열리면 취소 버튼에 초점을 두고(`initialFocus="first"`면 안의 첫 입력에), Tab과 Shift+Tab은 대화상자 안에서만 돈다(aria-modal).
  * Escape나 바깥 배경을 누르면 취소한다. 닫히면 연 요소로 초점을 돌려주고, 그 요소가
  * 사라질 수 있으면(지운 댓글의 메뉴 등) `finalFocus`로 옮길 곳을 준다.
  * `pending`이면 두 버튼을 잠근다(요청이 끝나기 전에 다시 누르지 않게).
@@ -69,6 +69,7 @@ export function ConfirmDialog({
   error,
   finalFocus,
   role = "alertdialog",
+  initialFocus = "cancel",
   presentation = "dialog",
   confirmVariant = "danger",
   dismissOnBack = false,
@@ -87,6 +88,8 @@ export function ConfirmDialog({
   /** 닫힐 때 초점을 옮길 요소. 없거나 null을 돌려주면 연 요소(아직 화면에 있으면)로 돌려준다. */
   finalFocus?: () => HTMLElement | null;
   role?: "dialog" | "alertdialog";
+  /** 열릴 때 초점을 둘 곳. 고르거나 적을 것이 있는 대화상자는 `first`로 첫 입력에 둔다. */
+  initialFocus?: "cancel" | "first";
   presentation?: "dialog" | "sheet";
   confirmVariant?: "primary" | "danger";
   /** 모바일 안내창에서 뒤로 가기는 페이지를 떠나기 전에 안내창을 닫는다. */
@@ -111,9 +114,9 @@ export function ConfirmDialog({
   );
   // 부모가 다시 그릴 때마다 새 함수가 와도 아래 effect가 다시 돌지 않게(초점이 취소로 튀지 않게) ref로 읽는다.
   // layout effect라 같은 커밋에서 닫힐 때도 cleanup이 최신 값을 본다.
-  const latest = useRef({ onCancel, pending, finalFocus });
+  const latest = useRef({ onCancel, pending, finalFocus, initialFocus });
   useLayoutEffect(() => {
-    latest.current = { onCancel, pending, finalFocus };
+    latest.current = { onCancel, pending, finalFocus, initialFocus };
   });
 
   useEffect(() => {
@@ -171,7 +174,11 @@ export function ConfirmDialog({
         latest.current.onCancel();
     };
     if (dismissOnBack) window.addEventListener("popstate", onPopState);
-    cancelRef.current?.focus();
+    const firstFocusable =
+      latest.current.initialFocus === "first"
+        ? dialogRef.current?.querySelector<HTMLElement>(FOCUSABLE)
+        : null;
+    (firstFocusable ?? cancelRef.current)?.focus();
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {

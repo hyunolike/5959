@@ -203,7 +203,7 @@ describe("BossBanner", () => {
     renderWith(<BossBanner />, raid());
 
     const link = screen.getByRole("link", {
-      name: "레이드: 불안 보스, HP 200/300",
+      name: /^레이드: 불안 보스가 나타났어요, HP 200\/300/,
     });
     expect(link).toHaveAttribute("href", "/raid");
     expect(link).toHaveTextContent("불안 보스가 나타났어요");
@@ -252,7 +252,7 @@ describe("레이드의 감정 색", () => {
   it("DS-US3-AC3 홈의 보스 안내는 보스의 감정 색이다", () => {
     renderWith(<BossBanner />, raid());
     const link = screen.getByRole("link", {
-      name: "레이드: 불안 보스, HP 200/300",
+      name: /^레이드: 불안 보스가 나타났어요, HP 200\/300/,
     });
     expect(link).toHaveAttribute("data-emotion", "ANXIETY");
     expect(link).toHaveClass("bg-emotion-tint");
@@ -271,24 +271,62 @@ describe("레이드의 감정 색", () => {
     );
   });
 
-  it("DS-US3-AC3 전투 무대는 보스의 이름을 가장 큰 글자로 보인다", () => {
-    renderWith(<RaidArena />, raid());
-    const boss = screen.getByRole("region", { name: "보스" });
-    expect(within(boss).getByText("오늘의 보스")).toBeInTheDocument();
-    expect(within(boss).getByRole("heading", { name: "불안" })).toHaveClass(
-      "text-display",
-    );
-  });
-
-  it("DS-US3-AC3 홈의 보스 안내는 큰 HP에 쉼표를 넣고 이름은 그대로 둔다", () => {
+  it("DS-US3-AC3 홈의 보스 안내는 큰 HP에 쉼표를 넣는다", () => {
     const state = raid();
     renderWith(<BossBanner />, {
       ...state,
       boss: { ...state.boss!, hp: 4120, maxHp: 10000 },
     });
-    const link = screen.getByRole("link", {
-      name: "레이드: 불안 보스, HP 4120/10000",
-    });
+    const link = screen.getByRole("link", { name: /^레이드: 불안 보스/ });
     expect(link).toHaveTextContent("HP 4,120/10,000");
+  });
+
+  it("006 US5-AC7 홈의 보스 안내는 눈에 보이는 글자를 이름에 그대로 담는다", () => {
+    const state = raid();
+    renderWith(<BossBanner />, {
+      ...state,
+      boss: { ...state.boss!, hp: 4120, maxHp: 10000 },
+    });
+    // 보이는 글자를 말해 누르는 음성 제어가 링크를 찾을 수 있어야 한다.
+    expect(screen.getByRole("link")).toHaveAccessibleName(
+      "레이드: 불안 보스가 나타났어요, HP 4,120/10,000, 5명이 함께하고 있어요, 함께 공격하기",
+    );
+  });
+
+  it("006 US5-AC5 보스는 여러 날 살아 있을 수 있어 오늘의 보스라고 하지 않고, 제목은 보스까지 읽힌다", () => {
+    renderWith(<RaidArena />, raid());
+    const boss = screen.getByRole("region", { name: "보스" });
+    expect(within(boss).queryByText("오늘의 보스")).not.toBeInTheDocument();
+    expect(within(boss).getByText("지금의 보스")).toBeInTheDocument();
+    expect(
+      within(boss).getByRole("heading", { name: "불안 보스" }),
+    ).toHaveClass("text-display");
+  });
+
+  it("DS-US3-AC3 홈의 보스 안내는 계약을 어긴 HP 값이 와도 죽지 않는다", () => {
+    const state = raid();
+    renderWith(<BossBanner />, {
+      ...state,
+      boss: {
+        ...state.boss!,
+        hp: undefined as unknown as number,
+        maxHp: Number.NaN,
+      },
+    });
+    expect(screen.getByRole("link")).toHaveTextContent("HP 0/0");
+  });
+
+  it("006 US5-AC1 수치는 바뀐 숫자만이 아니라 이름과 함께 읽힌다", () => {
+    renderWith(<RaidArena />, raid());
+    const figures = screen.getByText("함께한 회원").closest("dl");
+    expect(figures).toHaveAttribute("aria-live", "polite");
+    expect(figures).toHaveAttribute("aria-atomic", "true");
+  });
+
+  it("006 US5-AC6 쉬는 중이면 공격 버튼이 잠긴 까닭이 버튼과 이어져 있다", () => {
+    renderWith(<RaidArena />, raid({ available: false }));
+    expect(
+      screen.getByRole("button", { name: "공격하기" }),
+    ).toHaveAccessibleDescription(RAID_PAUSED_NOTICE);
   });
 });

@@ -57,7 +57,7 @@ export function NotificationItem({
         className={cn(
           "text-body-sm break-words",
           href === null
-            ? "text-fg-subtle italic"
+            ? "text-fg-subtle"
             : read
               ? "text-fg-subtle"
               : "text-fg-muted",

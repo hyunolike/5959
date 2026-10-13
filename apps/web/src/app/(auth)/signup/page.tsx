@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { SignupForm } from "@/features/auth/email-signup";
@@ -9,6 +10,8 @@ import { AuthWelcome } from "@/widgets/auth-welcome";
 function firstValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
+
+export const metadata: Metadata = { title: "회원가입" };
 
 export default async function SignupPage({
   searchParams,

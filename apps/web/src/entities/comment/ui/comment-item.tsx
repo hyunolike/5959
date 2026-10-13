@@ -72,9 +72,7 @@ function CommentBody({
             : "flex flex-col gap-1"
         }
       >
-        <p className="text-body-sm text-fg-subtle italic">
-          {HIDDEN_COMMENT_LABEL}
-        </p>
+        <p className="text-body-sm text-fg-subtle">{HIDDEN_COMMENT_LABEL}</p>
       </article>
     );
   }

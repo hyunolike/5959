@@ -55,7 +55,7 @@ describe("RequestReviewButton", () => {
 
     await user.click(screen.getByRole("button", { name: LABEL }));
 
-    expect(await screen.findByRole("status")).toHaveTextContent(DONE);
+    expect(await screen.findByText(DONE)).toHaveAttribute("role", "status");
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0][0]).toBe("/api/review-requests");
@@ -73,7 +73,7 @@ describe("RequestReviewButton", () => {
 
     await user.click(screen.getByRole("button", { name: LABEL }));
 
-    expect(await screen.findByRole("status")).toHaveTextContent(DONE);
+    expect(await screen.findByText(DONE)).toHaveAttribute("role", "status");
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
     expect(onRequested).toHaveBeenCalledTimes(1);
   });
@@ -99,5 +99,45 @@ describe("RequestReviewButton", () => {
     );
     expect(screen.getByRole("button", { name: LABEL })).toBeEnabled();
     expect(onRequested).not.toHaveBeenCalled();
+  });
+
+  it("005 US4-AC8 접수 결과를 알릴 자리가 처음부터 있고, 접수되면 초점이 그 안내로 간다", async () => {
+    const user = userEvent.setup();
+    stub(204);
+    renderButton();
+
+    // 내용이 든 채로 새로 생긴 status는 읽히지 않는 일이 많아, 빈 채로 먼저 그려 둔다.
+    const status = screen.getByRole("status");
+    expect(status).toBeEmptyDOMElement();
+
+    await user.click(screen.getByRole("button", { name: LABEL }));
+
+    expect(await screen.findByText(DONE)).toBe(status);
+    // 버튼이 사라져도 키보드 초점이 문서 처음으로 떨어지지 않는다.
+    expect(status).toHaveFocus();
+  });
+
+  it("005 US4-AC8 요청하는 동안 버튼은 초점을 잃지 않고 두 번 보내지 않는다", async () => {
+    const user = userEvent.setup();
+    let finish: (response: Response) => void = () => {};
+    const fetchMock = vi.fn().mockReturnValue(
+      new Promise<Response>((resolve) => {
+        finish = resolve;
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    renderButton();
+
+    const button = screen.getByRole("button", { name: LABEL });
+    await user.click(button);
+    await user.click(button);
+
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    expect(button).not.toBeDisabled();
+    expect(button).toHaveFocus();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    finish(new Response(null, { status: 204 }));
+    expect(await screen.findByText(DONE)).toBeInTheDocument();
   });
 });

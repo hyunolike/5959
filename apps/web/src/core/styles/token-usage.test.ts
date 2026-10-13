@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 const SRC = path.resolve(__dirname, "../..");
 
 const COLOR_UTILITY = String.raw`(?:bg|text|border(?:-[trblxyse])?|ring(?:-offset)?|inset-ring|outline|fill|stroke|divide|placeholder|decoration|accent|caret|from|via|to|shadow|inset-shadow)`;
-const PALETTE = String.raw`(?:brand|neutral|leaf|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|slate|gray|zinc|stone|white|black)`;
+const PALETTE = String.raw`(?:brand|neutral|leaf|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|slate|gray|zinc|stone|mauve|olive|mist|taupe|white|black)`;
 
 /**
  * 옛 토큰 이름, Tailwind 기본 색, 색을 직접 적은 임의 값, 원색 층을 직접 가리키는 값,
@@ -15,7 +15,7 @@ const PALETTE = String.raw`(?:brand|neutral|leaf|red|orange|amber|yellow|lime|gr
 const LEGACY = new RegExp(
   [
     String.raw`\b${COLOR_UTILITY}-${PALETTE}(?:-\d{2,3})?\b`,
-    String.raw`\b${COLOR_UTILITY}-\[#[0-9a-fA-F]{3,8}\]`,
+    String.raw`\b${COLOR_UTILITY}-\[(?:#[0-9a-fA-F]{3,8}|(?:rgb|hsl|oklch|oklab|color)a?\(|var\(--(?:ink-\d+|white|game-yellow|danger-\d+|warning-\d+)\))`,
     String.raw`\b${COLOR_UTILITY}-\(--(?:ink-\d+|white|game-yellow|danger-\d+|warning-\d+)\)`,
     String.raw`\bfont-(?:thin|extralight|light|semibold|black)\b`,
     String.raw`\bfont-\[\d+\]`,
@@ -64,6 +64,12 @@ describe("옛 색 이름을 찾는 규칙", () => {
     "shadow-lg",
     "shadow-xs",
     "shadow-[0_2px_4px_#000]",
+    "bg-mauve-500",
+    "text-olive-700",
+    "bg-mist-100",
+    "border-taupe-300",
+    "bg-[rgb(118,85,180)]",
+    "text-[var(--ink-900)]",
   ])("DS-US1-AC1 %s를 옛 이름으로 잡는다", (className) => {
     expect(countLegacy(`className="flex ${className} gap-2"`)).toBe(1);
   });
