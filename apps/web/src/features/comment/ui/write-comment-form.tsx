@@ -130,9 +130,7 @@ export function WriteCommentForm({
     <form onSubmit={onSubmit} noValidate className="flex flex-col gap-2">
       {replyTo ? (
         <div className="text-caption text-fg-subtle flex items-center justify-between gap-2">
-          <span>
-            {replyTo.author ? `${replyTo.author.nickname}님에게 답글` : "답글"}
-          </span>
+          <span>{replyLabel(replyTo)}</span>
           <Button
             type="button"
             variant="ghost"
@@ -144,6 +142,12 @@ export function WriteCommentForm({
             취소
           </Button>
         </div>
+      ) : null}
+      {replyTo?.author?.ai ? (
+        // AI 친구는 한 글에 한 번만 답한다. 답글을 쓰기 전에 알린다(009 FR-006).
+        <p className="text-caption text-fg-subtle">
+          AI 친구는 답글에 다시 답하지 못해요.
+        </p>
       ) : null}
       <label htmlFor={contentId} className="sr-only">
         {label}
@@ -195,4 +199,12 @@ export function WriteCommentForm({
       </div>
     </form>
   );
+}
+
+/** 답글을 다는 상대. AI 친구면 닉네임이 보이는 이 자리에도 AI임을 적는다(009 US2-AC1). */
+function replyLabel(replyTo: Comment): string {
+  if (!replyTo.author) return "답글";
+  return replyTo.author.ai
+    ? `AI 친구 ${replyTo.author.nickname}에게 답글`
+    : `${replyTo.author.nickname}님에게 답글`;
 }

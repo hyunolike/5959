@@ -84,6 +84,19 @@ class CompanionCommentValidatorTest {
         assertRejected(comment)
     }
 
+    @ParameterizedTest
+    @ValueSource(
+        strings = [
+            "힘들면 01012345678로 연락 주세요.",
+            "궁금한 건 1588-0000에 물어보면 돼요.",
+            "여기 bit.ly/abc123 한번 봐요.",
+            "자세한 건 t.me/someone 에 있어요.",
+        ],
+    )
+    fun `US3-AC5 이어 쓴 번호와 대표 번호, 짧은 주소도 실패다`(comment: String) {
+        assertRejected(comment)
+    }
+
     @Test
     fun `US4-AC4 한글이 절반이 안 되면 실패다`() {
         assertRejected("That sounds really tough. Hang in there, okay?")

@@ -19,14 +19,17 @@ interface PostCompanionApi {
      *
      * 남기기 전에 글의 행을 잠그고 다시 본다. 글이 사라졌으면 [CompanionReactionOutcome.GONE], [companionIds] 가운데
      * 누가 이미 댓글을 달았으면 [CompanionReactionOutcome.ALREADY_REACTED], 그 사이 다른 회원이 댓글을 달았으면
-     * [CompanionReactionOutcome.HUMAN_COMMENTED]다. 댓글이 규칙에 맞지 않거나 공감이 실패하면 사람의 요청과 같은 예외가
-     * 나가고 아무것도 남지 않는다.
+     * [CompanionReactionOutcome.HUMAN_COMMENTED]다. [contentVersion]을 주면 본문이 그 판([CompanionTarget.contentVersion])
+     * 그대로일 때만 남긴다. 댓글을 쓰는 사이에 본문이 고쳐졌으면 [CompanionReactionOutcome.STALE]이다(옛 본문에 맞춘
+     * 댓글이고, 고친 글의 위험 판정은 아직이다). 댓글이 규칙에 맞지 않거나 공감이 실패하면 사람의 요청과 같은 예외가 나가고
+     * 아무것도 남지 않는다. [memberId]는 [companionIds] 가운데 하나여야 한다.
      */
     fun react(
         postId: Long,
         memberId: Long,
         content: String,
         companionIds: Collection<Long>,
+        contentVersion: Instant? = null,
     ): CompanionReactionResult
 }
 
@@ -37,6 +40,8 @@ data class CompanionTarget(
     val content: String,
     val commentTone: CommentTone,
     val createdAt: Instant,
+    /** 본문의 판. 본문을 고칠 때만 바뀐다(말투만 고치면 그대로다). */
+    val contentVersion: Instant,
     /** 다른 회원에게 보이지 않는 글이면 true. */
     val hidden: Boolean,
     /** AI 친구가 이 글에 이미 남긴 댓글(지우지 않은 것). 없으면 null이다. */
@@ -50,6 +55,9 @@ enum class CompanionReactionOutcome {
     ALREADY_REACTED,
     GONE,
     HUMAN_COMMENTED,
+
+    /** 대상을 읽은 뒤에 본문이 고쳐졌다. 아무것도 남기지 않았다. */
+    STALE,
 }
 
 /** [commentId]는 [CompanionReactionOutcome.REACTED]와 [CompanionReactionOutcome.ALREADY_REACTED]일 때만 있다. */

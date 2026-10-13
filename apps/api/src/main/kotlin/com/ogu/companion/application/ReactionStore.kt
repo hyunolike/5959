@@ -44,6 +44,12 @@ class ReactionStore(
     /** 한 차례에 맡는 글 수. */
     val batchSize: Int get() = properties.batchSize
 
+    /** 기능이 켜져 있는가. 꺼져 있으면 주기 작업이 DB를 읽지도 않는다. */
+    val enabled: Boolean get() = properties.enabled
+
+    /** 한 글에 댓글을 청하는 횟수의 상한. */
+    val maxAttempts: Int get() = properties.maxAttempts
+
     /**
      * 차례가 된 기록을 맡는다. [postId]를 주면 그 글만 본다. 맡을 것이 없으면 null이고, 올라온 지 `max-age`가 지났으면
      * 시도 없이 닫고 [ReactionClaim.Closed]다(FR-015). 기능이 꺼져 있으면 아무것도 맡지 않는다(US5-AC1). 기록은 그대로

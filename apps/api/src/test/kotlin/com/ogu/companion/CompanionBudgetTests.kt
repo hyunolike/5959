@@ -14,7 +14,10 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
+import java.sql.Date
 import java.time.Duration
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.concurrent.Callable
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
@@ -115,6 +118,27 @@ class CompanionBudgetTests : CompanionTestBase() {
         assertThat(statusOf(postId)).isEqualTo("DONE")
         assertThat(spent()).isEqualTo(1)
     }
+
+    @Test
+    fun `SC-007 자정 전에 받은 몫은 자정 뒤에 돌려줘도 받은 날의 몫이 준다`() {
+        val day = budget.reserveDay()!!
+        val usedThatDay = usedOn(day)
+        val seoul = ZoneId.of("Asia/Seoul")
+        val nextMidnight = day.plusDays(1).atStartOfDay(seoul).toInstant()
+        companions.pass(Duration.between(clock.instant(), nextMidnight).plusHours(1))
+        val usedNextDay = usedOn(day.plusDays(1))
+
+        budget.release(day)
+
+        assertThat(usedOn(day)).isEqualTo(usedThatDay - 1)
+        // 새 날의 몫을 줄이지 않는다. 줄면 그날 상한보다 한 번 더 청하게 된다
+        assertThat(usedOn(day.plusDays(1))).isEqualTo(usedNextDay)
+    }
+
+    private fun usedOn(day: LocalDate): Int =
+        jdbcTemplate
+            .queryForList("select used from companion_daily_usage where day = ?", Int::class.java, Date.valueOf(day))
+            .firstOrNull() ?: 0
 
     @Test
     fun `US5-AC2 한국 시간으로 날이 바뀌면 다시 반응한다`() {

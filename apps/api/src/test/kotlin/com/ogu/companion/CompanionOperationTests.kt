@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import java.time.Duration
+import java.time.Instant
 
 /** 운영자가 정하는 것(기다리는 시간, 24시간 기한, 운영 기록)과 세 친구의 말투, 말씨(009 US5, US4). */
 @SpringBootTest(
@@ -97,6 +98,44 @@ class CompanionOperationTests : CompanionTestBase() {
         assertThat(reactAfter(recent, WAIT)).isTrue()
         assertThat(statusOf(recent)).isEqualTo("DONE")
         old.forEach { assertThat(writer.callsOf(it)).isZero() }
+    }
+
+    @Test
+    fun `US3-AC3 미뤄 둔 글은 뒤로 가서 뒤의 글을 막지 않고, 처리 중인 기록은 한 번에 닫을 때 건드리지 않는다`() {
+        // 다른 테스트의 기록과 섞이지 않게 아주 옛날(1999년)의 기록 셋을 직접 넣는다
+        val deferred = insertWaiting(postCreatedAt = "1999-01-01T00:00:00Z", nextAttemptAt = "1999-06-01T00:00:00Z")
+        val fresh = insertWaiting(postCreatedAt = "1999-02-01T00:00:00Z", nextAttemptAt = "1999-02-01T00:00:00Z")
+        val inFlight = insertWaiting(postCreatedAt = "1999-01-15T00:00:00Z", nextAttemptAt = "2001-01-01T00:00:00Z")
+        val now = Instant.parse("2000-01-01T00:00:00Z")
+        try {
+            // 먼저 올라왔지만 판정을 기다리느라 미뤄 둔 글보다, 다시 볼 때가 먼저 된 글을 먼저 맡는다
+            assertThat(reactions.lockDue(now, now)?.postId).isEqualTo(fresh)
+
+            val closed = reactions.expireOlderThan(now, now)
+
+            assertThat(closed).isEqualTo(2)
+            assertThat(skipReasonOf(deferred)).isEqualTo("EXPIRED")
+            assertThat(skipReasonOf(fresh)).isEqualTo("EXPIRED")
+            // 다른 실행기가 맡아 다음 차례를 미뤄 둔 기록이다. 그 실행기가 닫는다
+            assertThat(statusOf(inFlight)).isEqualTo("WAITING")
+        } finally {
+            jdbcTemplate.update("delete from companion_reaction where post_id in (?, ?, ?)", deferred, fresh, inFlight)
+        }
+    }
+
+    private fun insertWaiting(
+        postCreatedAt: String,
+        nextAttemptAt: String,
+    ): Long {
+        val postId = -System.nanoTime()
+        jdbcTemplate.update(
+            "insert into companion_reaction (post_id, post_created_at, status, next_attempt_at, created_at) " +
+                "values (?, cast(? as timestamptz), 'WAITING', cast(? as timestamptz), now())",
+            postId,
+            postCreatedAt,
+            nextAttemptAt,
+        )
+        return postId
     }
 
     @Test

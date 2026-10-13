@@ -45,7 +45,8 @@ class CompanionReactionRepository(
 
     /**
      * 차례가 된 기록 하나를 잠근다: 올라온 지 기다리는 시간이 지났고([createdBefore]) 다시 볼 때가 됐다. [postId]를 주면
-     * 그 글만 본다. 다른 실행기가 잡고 있으면 건너뛴다. 먼저 올라온 글부터 잡는다.
+     * 그 글만 본다. 다른 실행기가 잡고 있으면 건너뛴다. 다시 볼 때가 먼저 된 글부터 잡는다. 처음에는 올라온 순서이고,
+     * 판정을 기다리느라 미뤄 둔 글은 뒤로 간다. 올라온 순서로만 잡으면 판정이 오래 끝나지 않는 글 몇 개가 뒤의 글을 막는다.
      */
     fun lockDue(
         now: Instant,
@@ -58,7 +59,7 @@ class CompanionReactionRepository(
                 select id, post_id, post_created_at, attempts from companion_reaction
                 where status = 'WAITING' and post_created_at <= :createdBefore and next_attempt_at <= :now
                   ${if (postId != null) "and post_id = :postId" else ""}
-                order by post_created_at
+                order by next_attempt_at, post_created_at
                 limit 1
                 for update skip locked
                 """.trimIndent(),
@@ -176,7 +177,8 @@ class CompanionReactionRepository(
 
     /**
      * [createdBefore]까지 올라온, 아직 기다리는 기록을 한 문장으로 닫는다(`EXPIRED`). 닫은 수를 돌려준다. 기능이 오래 꺼져
-     * 있었으면 기다리는 기록이 쌓여 있다. 하나씩 맡아 닫으면 새 글이 그 뒤에서 기다린다.
+     * 있었으면 기다리는 기록이 쌓여 있다. 하나씩 맡아 닫으면 새 글이 그 뒤에서 기다린다. 다른 실행기가 맡아 처리 중인
+     * 기록(다음 차례가 미뤄져 있다)은 건드리지 않는다. 그 실행기가 남긴 댓글의 기록이 `EXPIRED`로 어긋나지 않게 한다.
      */
     fun expireOlderThan(
         createdBefore: Instant,
@@ -187,7 +189,7 @@ class CompanionReactionRepository(
                 """
                 update companion_reaction
                 set status = 'SKIPPED', skip_reason = 'EXPIRED', next_attempt_at = null, completed_at = :now
-                where status = 'WAITING' and post_created_at <= :createdBefore
+                where status = 'WAITING' and post_created_at <= :createdBefore and next_attempt_at <= :now
                 """.trimIndent(),
             ).param("now", Timestamp.from(now))
             .param("createdBefore", Timestamp.from(createdBefore))

@@ -15,6 +15,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.DefaultMockMvcBuilder
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.context.WebApplicationContext
@@ -70,6 +71,45 @@ class PostCompanionApiTests {
         assertThat(likesBy(postId, companions[0])).isEqualTo(1)
         assertThat(counts(postId)).isEqualTo(1 to 1)
         assertThat(companionApi.target(postId, companions)!!.companionCommentId).isEqualTo(result.commentId)
+    }
+
+    @Test
+    fun `US3-AC3 대상을 읽은 뒤 본문이 고쳐졌으면 STALE이고 아무것도 남지 않는다`() {
+        val author = members.onboarded()
+        val postId = loop.postWithoutMonster(author)
+        val read = companionApi.target(postId, companions)!!
+
+        loop.updatePost(author, postId, mapOf("content" to "[실패] 고친 본문이에요")).andExpect(status().isNoContent)
+        val result = companionApi.react(postId, companions[0], "옛 본문에 맞춘 댓글", companions, read.contentVersion)
+
+        assertThat(result.outcome).isEqualTo(CompanionReactionOutcome.STALE)
+        assertThat(commentsBy(postId, companions[0])).isEmpty()
+        assertThat(likesBy(postId, companions[0])).isZero()
+        assertThat(counts(postId)).isEqualTo(0 to 0)
+    }
+
+    @Test
+    fun `US4-AC1 말투만 고쳤으면 본문의 판이 그대로라 남긴다`() {
+        val author = members.onboarded()
+        val postId = loop.postWithoutMonster(author)
+        val read = companionApi.target(postId, companions)!!
+
+        loop.updatePost(author, postId, mapOf("commentTone" to "WARM_ADVICE")).andExpect(status().isNoContent)
+        val result = companionApi.react(postId, companions[0], "곁에 있을게요", companions, read.contentVersion)
+
+        assertThat(companionApi.target(postId, companions)!!.contentVersion).isEqualTo(read.contentVersion)
+        assertThat(result.outcome).isEqualTo(CompanionReactionOutcome.REACTED)
+    }
+
+    @Test
+    fun `FR-016 AI 친구가 아닌 회원의 이름으로는 남기지 않는다`() {
+        val author = members.onboarded()
+        val human = members.onboarded()
+        val postId = loop.postWithoutMonster(author)
+
+        assertThatThrownBy { companionApi.react(postId, human.id, "사람의 이름으로 남기려는 댓글", companions) }
+            .isInstanceOf(IllegalArgumentException::class.java)
+        assertThat(counts(postId)).isEqualTo(0 to 0)
     }
 
     @Test

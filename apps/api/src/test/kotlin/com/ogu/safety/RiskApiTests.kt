@@ -91,6 +91,40 @@ class RiskApiTests {
     }
 
     @Test
+    fun `US3-AC3 가장 새 판정이 AI 분류 없이 닫혔으면 settled가 아니다`() {
+        val postId = loop.createPost(members.onboarded(), "[실패] $SAFE_TEXT")
+        awaitAssessment(postId) { it["status"] == "DONE" }
+
+        // 고쳐서 버려진 판정(SUPERSEDED)은 AI가 본 것이 아니다. 위험이 없다고 읽으면 안 된다
+        jdbcTemplate.update(
+            "update risk_assessment set status = 'SUPERSEDED' where target_type = 'POST' and target_id = ?",
+            postId,
+        )
+
+        assertThat(riskApi.postRisk(postId).settled).isFalse()
+    }
+
+    @Test
+    fun `US3-AC3 말투만 고친 글은 기다리던 판정의 판이 그대로라 버려지지 않는다`() {
+        val author = members.onboarded()
+        val postId = loop.createPost(author, "[실패] [위험분류실패] $SAFE_TEXT")
+        awaitAssessment(postId) { (it["attempts"] as Int) >= 1 }
+
+        loop.updatePost(author, postId, mapOf("commentTone" to "WARM_ADVICE")).andExpect(status().isNoContent)
+
+        // 판정은 본문의 판(updated_at)에 묶인다. 말투만 바꾸면 판이 바뀌지 않아 다음 분류가 그대로 이어진다
+        val sameVersion =
+            jdbcTemplate.queryForObject(
+                "select p.updated_at = a.content_version from posts p join risk_assessment a " +
+                    "on a.target_type = 'POST' and a.target_id = p.id where p.id = ? order by a.id desc limit 1",
+                Boolean::class.java,
+                postId,
+            )
+        assertThat(sameVersion).isTrue()
+        assertThat(riskApi.postRisk(postId).settled).isFalse()
+    }
+
+    @Test
     fun `US3-AC3 판정 기록이 없는 글은 끝난 것으로 보고 글에 적힌 단계를 따른다`() {
         val postId = safety.insertPost(members.onboarded(), SAFE_TEXT)
 

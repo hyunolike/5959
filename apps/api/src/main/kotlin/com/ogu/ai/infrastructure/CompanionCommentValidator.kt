@@ -33,6 +33,11 @@ object CompanionCommentValidator {
             Regex("[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+\\.[A-Za-z]{2,}"),
             Regex("\\b[A-Za-z0-9-]+\\.(com|net|org|io|kr|co\\.kr)\\b", RegexOption.IGNORE_CASE),
             Regex("\\d{2,4}[-.\\s]\\d{3,4}[-.\\s]\\d{4}"),
+            // 구분자 없이 이어 쓴 번호와 대표 번호(1588-0000)
+            Regex("\\d{9,}"),
+            Regex("\\b1[5-9]\\d{2}[-.\\s]?\\d{4}\\b"),
+            // 목록에 없는 최상위 도메인의 짧은 주소(bit.ly/x, t.me/x)
+            Regex("\\b[A-Za-z0-9-]+\\.[A-Za-z]{2,}/\\S"),
             Regex("오픈\\s*채팅|카톡|카카오톡|연락처|전화번호|디엠|\\bDM\\b", RegexOption.IGNORE_CASE),
         )
 

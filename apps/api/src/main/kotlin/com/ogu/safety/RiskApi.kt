@@ -15,7 +15,7 @@ interface RiskApi {
     fun keywordLevel(text: String): RiskLevel
 }
 
-/** [settled]가 false면 AI 분류를 기다리는 중이고 [level]은 그때까지의 키워드 단계다. */
+/** [settled]가 false면 AI 분류가 끝나지 않았고(기다리는 중이거나 보지 못한 채 닫혔다) [level]은 그때까지의 키워드 단계다. */
 data class PostRisk(
     val settled: Boolean,
     val level: RiskLevel,

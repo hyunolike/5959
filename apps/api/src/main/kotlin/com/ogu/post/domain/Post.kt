@@ -111,9 +111,13 @@ class Post private constructor(
         commentTone: CommentTone?,
         now: Instant,
     ) {
-        content?.let { this.content = normalizeContent(it) }
         commentTone?.let { this.commentTone = it }
-        updatedAt = now
+        // `updated_at`은 본문의 판(版)이다. 위험 판정이 이 값에 묶인다. 말투만 고칠 때 바꾸면 기다리던 판정이 다른 판의
+        // 것으로 읽혀 AI 분류 없이 버려진다
+        content?.let {
+            this.content = normalizeContent(it)
+            updatedAt = now
+        }
     }
 
     companion object {

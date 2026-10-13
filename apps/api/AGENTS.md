@@ -280,6 +280,8 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   동기 `@EventListener`로 받아 판정하고 위기면 그 자리에서 숨긴다. 저장과 숨김이 함께 커밋되므로 목록에 있는
   위기 표현이 든 글은 한 번도 공개되지 않는다(SC-001). 여기서는 메모리 계산과 짧은 쓰기만 한다.
   글과 댓글을 고치는 쪽은 이벤트를 내기 전에 flush한다(`PostModerationService`가 JdbcClient라서).
+- **`updated_at`은 본문의 판이다.** 글의 `updated_at`은 본문을 고칠 때만 바뀐다. 위험 판정(`risk_assessment.content_version`)과
+  AI 친구가 남길 때의 재확인이 이 값에 묶여 있다. 말투만 고칠 때 바꾸면 기다리던 판정이 AI 분류 없이 버려진다(009 research R15).
 - **AI 분류는 커밋 뒤에 따로 돈다.** `RiskClassificationRunner`가 트랜잭션 밖에서 `RiskClassifier`를 부르고,
   실패하면 `risk_assessment.next_attempt_at`으로 다시 시도한다(30초부터 두 배씩, 최대 5분, 24시간 뒤 `FALLBACK`).
   감정 분석의 `AnalysisStore`, `AnalysisRetryScheduler`와 같은 구조다. 판정은 키워드와 AI 가운데 높은 쪽이고,

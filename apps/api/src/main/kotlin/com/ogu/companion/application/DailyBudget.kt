@@ -21,11 +21,17 @@ class DailyBudget(
     private val clock: Clock,
 ) {
     /** 오늘의 몫 하나를 받는다. 남은 것이 없으면 false다. */
-    fun reserve(): Boolean = usage.reserve(today(), properties.dailyLimit)
+    fun reserve(): Boolean = reserveDay() != null
 
-    /** 호출이 공급자에 나가지 않았을 때 받은 몫을 돌려준다. */
-    fun release() {
-        usage.release(today())
+    /** 오늘의 몫 하나를 받고 그 날짜를 돌려준다. 남은 것이 없으면 null이다. 돌려줄 때 이 날짜를 넘긴다. */
+    fun reserveDay(): LocalDate? = today().takeIf { usage.reserve(it, properties.dailyLimit) }
+
+    /**
+     * 호출이 공급자에 나가지 않았을 때 받은 몫을 돌려준다. 받은 날짜([day])로 돌려준다. 자정 직전에 받아 자정 뒤에
+     * 돌려줄 때 오늘의 몫이 줄어 새 날에 상한보다 한 번 더 청하게 되지 않는다.
+     */
+    fun release(day: LocalDate = today()) {
+        usage.release(day)
     }
 
     private fun today(): LocalDate = clock.instant().atZone(SEOUL).toLocalDate()

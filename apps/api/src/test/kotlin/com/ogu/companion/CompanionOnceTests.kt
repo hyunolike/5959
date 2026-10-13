@@ -80,6 +80,20 @@ class CompanionOnceTests : CompanionTestBase() {
     }
 
     @Test
+    fun `FR-002 남긴 뒤 적기 전에 글이 숨겨졌어도 남긴 댓글의 기록은 DONE이다`() {
+        val postId = postOf(members.onboarded())
+        val left = companionApi.react(postId, companions.memberIds[0], "먼저 남겨진 댓글이에요.", companions.memberIds)
+        jdbcTemplate.update("update posts set hidden_at = now(), hidden_reason = 'OPERATOR' where id = ?", postId)
+
+        assertThat(reactAfter(postId)).isTrue()
+
+        val row = companions.reaction(postId)!!
+        assertThat(row["status"]).isEqualTo("DONE")
+        assertThat(row["comment_id"]).isEqualTo(left.commentId)
+        assertThat(writer.callsOf(postId)).isZero()
+    }
+
+    @Test
     fun `FR-002 댓글을 남긴 뒤 적기 전에 멈췄다 다시 돌면 DONE으로 닫고 댓글이 늘지 않는다`() {
         val postId = postOf(members.onboarded())
         // 댓글과 공감은 커밋됐는데 기록은 아직 WAITING인 상태

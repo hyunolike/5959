@@ -43,6 +43,39 @@ import java.time.Duration
 @Import(TestcontainersConfiguration::class, CompanionTestConfiguration::class)
 @ExtendWith(OutputCaptureExtension::class)
 class CompanionSafetyTests : CompanionTestBase() {
+    @Test
+    fun `US3-AC3 댓글을 쓰는 사이에 본문이 고쳐지면 그 댓글은 올리지 않고 다시 본다`() {
+        val author = members.onboarded()
+        val postId = postOf(author)
+        // AI가 답하기 직전에 글쓴이가 본문을 고친다. 고친 글의 위험 판정은 아직이다
+        writer.beforeAnswer(postId) {
+            loop.updatePost(author, postId, mapOf("content" to "[실패] 고친 본문이에요")).andExpect(status().isNoContent)
+        }
+
+        reactAfter(postId)
+
+        assertThat(writer.callsOf(postId)).isEqualTo(1)
+        assertThat(companions.comments(postId)).isEmpty()
+        assertThat(companions.likers(postId)).isEmpty()
+        val row = companions.reaction(postId)!!
+        assertThat(row["status"]).isEqualTo("WAITING")
+        assertThat(row["last_error"]).isEqualTo("STALE")
+    }
+
+    @Test
+    fun `US3-AC3 말투만 고친 글은 판정이 끝나기 전에는 반응하지 않는다`() {
+        val author = members.onboarded()
+        val postId = postOf(author, "[실패] [위험분류실패] 판정이 끝나지 않는 글", ready = false)
+
+        loop.updatePost(author, postId, mapOf("commentTone" to "WARM_ADVICE")).andExpect(status().isNoContent)
+        reactAfter(postId)
+
+        // 말투를 고쳐도 기다리던 판정은 그대로다. 끝난 것으로 읽히지 않는다
+        assertThat(writer.callsOf(postId)).isZero()
+        assertThat(companions.comments(postId)).isEmpty()
+        assertThat(statusOf(postId)).isEqualTo("WAITING")
+    }
+
     @Autowired
     lateinit var riskRunner: RiskClassificationRunner
 

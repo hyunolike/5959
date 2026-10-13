@@ -43,9 +43,11 @@ class ReactionEligibility(
         val target = postApi.target(postId, companionMemberIds)
         val reacted = target?.companionCommentId
         return when {
-            // 위기로 판정된 글은 숨겨져 있어 여기서 닫힌다
-            target == null || target.hidden -> Eligibility.Closed(SkipReason.GONE)
+            target == null -> Eligibility.Closed(SkipReason.GONE)
+            // 남긴 뒤에 기록을 적지 못하고 멈췄다. 그 사이 글이 숨겨졌어도 남긴 것은 남긴 것으로 적는다
             reacted != null -> Eligibility.AlreadyReacted(reacted)
+            // 위기로 판정된 글은 숨겨져 있어 여기서 닫힌다
+            target.hidden -> Eligibility.Closed(SkipReason.GONE)
             target.otherCommented -> Eligibility.Closed(SkipReason.HUMAN_COMMENT)
             else -> byRisk(target)
         }

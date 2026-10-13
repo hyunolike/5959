@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
+import java.time.LocalDate
 
 /**
  * 글 하나에 대한 AI 친구의 반응 한 번(009 research R4): 맡기(짧은 트랜잭션) → 대상인지 확인 → 하루의 몫 받기 → AI에 댓글
@@ -39,6 +40,7 @@ class ReactionRunner(
 
     /** 차례가 된 글을 `batch-size`개까지 먼저 올라온 것부터 하나씩 맡는다. 맡은 수를 돌려준다. 꺼져 있으면 0이다. */
     fun runDue(): Int {
+        if (!store.enabled) return 0
         // 오래 꺼져 있다 켜졌으면 24시간이 지난 기록이 쌓여 있다. 먼저 한 번에 닫아 새 글이 그 뒤에서 기다리지 않게 한다
         store.expireOld()
         var handled = 0
@@ -65,26 +67,33 @@ class ReactionRunner(
         target: CompanionTarget,
         memberIds: List<Long>,
     ) {
+        // 시도하다 죽어 횟수만 오르고 닫히지 못한 기록이다. 정해 둔 횟수를 넘겨 청하지 않는다
+        if (reaction.attempts >= store.maxAttempts) {
+            store.skip(reaction, SkipReason.FAILED)
+            return
+        }
         // 몫이 떨어져 건너뛴 글은 다음 날 다시 보지 않는다. 밀린 글이 다음 날의 몫을 먼저 쓰지 않게 한다
-        if (!budget.reserve()) {
+        val day = budget.reserveDay()
+        if (day == null) {
             store.skip(reaction, SkipReason.DAILY_LIMIT)
             return
         }
         val friend = picker.pick()
         store.beginAttempt(reaction, friend)
         when (val draft = composer.compose(target, friend.voice)) {
-            is Draft.Written -> leave(reaction, friend, draft.comment, memberIds)
-            is Draft.Failed -> onFailure(reaction, draft)
+            is Draft.Written -> leave(reaction, friend, draft.comment, Posting(target, memberIds))
+            is Draft.Failed -> onFailure(reaction, draft, day)
         }
     }
 
     private fun onFailure(
         reaction: Reaction,
         failed: Draft.Failed,
+        reservedOn: LocalDate,
     ) {
         if (failed.notSent) {
-            // 회로가 열려 호출이 나가지 않았다. 몫을 돌려주고 시도로 세지 않는다
-            budget.release()
+            // 회로가 열려 호출이 나가지 않았다. 받은 날의 몫을 돌려주고 시도로 세지 않는다
+            budget.release(reservedOn)
             store.revertAttempt(reaction, failed.kind)
         } else {
             store.recordFailure(reaction, failed.kind, failed.rejected)
@@ -95,13 +104,15 @@ class ReactionRunner(
         reaction: Reaction,
         friend: Friend,
         comment: String,
-        memberIds: List<Long>,
+        posting: Posting,
     ) {
-        val result = posted(reaction, friend, comment, memberIds) ?: return
+        val result = posted(reaction, friend, comment, posting) ?: return
         val commentId = result.commentId
         when (result.outcome) {
             CompanionReactionOutcome.GONE -> store.skip(reaction, SkipReason.GONE)
             CompanionReactionOutcome.HUMAN_COMMENTED -> store.skip(reaction, SkipReason.HUMAN_COMMENT)
+            // 쓰는 사이에 본문이 고쳐졌다. 옛 본문에 맞춘 댓글은 버리고, 고친 글의 판정이 끝난 뒤 다시 본다
+            CompanionReactionOutcome.STALE -> store.recordFailure(reaction, STALE, rejected = false)
             // 다른 실행기가 먼저 남겼어도 그 댓글로 닫는다. 댓글은 하나다
             CompanionReactionOutcome.REACTED, CompanionReactionOutcome.ALREADY_REACTED ->
                 store.complete(reaction, checkNotNull(commentId) { "남긴 댓글의 번호가 없습니다" })
@@ -114,10 +125,11 @@ class ReactionRunner(
         reaction: Reaction,
         friend: Friend,
         comment: String,
-        memberIds: List<Long>,
+        posting: Posting,
     ): CompanionReactionResult? =
         try {
-            postApi.react(reaction.postId, friend.memberId, comment, memberIds)
+            // 대상을 읽을 때의 본문 그대로일 때만 남긴다
+            postApi.react(reaction.postId, friend.memberId, comment, posting.memberIds, posting.target.contentVersion)
         } catch (e: BusinessException) {
             // 확인한 뒤에 글이 지워졌다(댓글 수를 올리다 알았다)
             if (e.errorCode == ErrorCode.POST_NOT_FOUND) {
@@ -132,8 +144,15 @@ class ReactionRunner(
             null
         }
 
+    /** 남길 때 다시 견줄 것: 대상을 읽을 때의 글과 AI 친구들의 회원 번호. */
+    private data class Posting(
+        val target: CompanionTarget,
+        val memberIds: List<Long>,
+    )
+
     private companion object {
         const val POST_ERROR = "POST_ERROR"
+        const val STALE = "STALE"
     }
 }
 

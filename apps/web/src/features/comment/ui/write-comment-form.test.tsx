@@ -163,6 +163,30 @@ describe("WriteCommentForm", () => {
     });
   });
 
+  it("US2-AC1 AI 친구의 댓글에 답글을 달 때도 AI 친구임이 보이고 답하지 못한다고 알린다", () => {
+    renderForm({
+      replyTo: {
+        ...PARENT,
+        author: {
+          id: 9,
+          nickname: "다정한 오구",
+          jobRole: null,
+          careerYear: null,
+          ai: true,
+        },
+      },
+      onReplyDone: vi.fn(),
+    });
+
+    expect(
+      screen.getByText("AI 친구 다정한 오구에게 답글"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("AI 친구는 답글에 다시 답하지 못해요."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/다정한 오구님에게/)).not.toBeInTheDocument();
+  });
+
   it("답글 쓰기를 취소할 수 있다", async () => {
     const user = userEvent.setup({ delay: null });
     const onReplyDone = vi.fn();
