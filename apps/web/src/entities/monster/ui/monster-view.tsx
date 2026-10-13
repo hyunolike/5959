@@ -15,6 +15,11 @@ import { useHitReaction } from "./use-hit-reaction";
 const DETAIL_SIZES = "(min-width: 640px) 224px, 176px";
 const BOSS_SIZES = "(min-width: 640px) 288px, 248px";
 
+/** 보스의 큰 HP 숫자. 실시간으로 받은 값이 계약을 어겨도(없거나 숫자가 아니어도) 화면이 죽지 않게 0으로 그린다. */
+function formatHp(value: number): string {
+  return Number.isFinite(value) ? value.toLocaleString("ko-KR") : "0";
+}
+
 /**
  * 무대에 올리는 큰 몬스터(US5): 그림, 감정 태그와 단계 이름, 큰 HP 막대와 숫자.
  *
@@ -94,10 +99,10 @@ export function MonsterDisplay({
               {"HP "}
             </span>
             <span className="text-numeric font-extrabold">
-              {monster.hp.toLocaleString("ko-KR")}
+              {formatHp(monster.hp)}
             </span>
             <span className="text-body text-fg-muted font-medium">
-              /{monster.maxHp.toLocaleString("ko-KR")}
+              /{formatHp(monster.maxHp)}
             </span>
           </p>
           <HpBar

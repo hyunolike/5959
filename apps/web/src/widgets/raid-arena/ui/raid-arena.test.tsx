@@ -257,4 +257,17 @@ describe("레이드의 감정 색", () => {
     expect(link).toHaveAttribute("data-emotion", "ANXIETY");
     expect(link).toHaveClass("bg-emotion-tint");
   });
+
+  it("DS-US3-AC6 결과의 수치는 좁은 화면에서 두 칸으로 나누고 값이 단어 중간에서 끊기지 않는다", () => {
+    renderWith(<RaidArena />, ended("DEFEATED"));
+    const result = screen.getByRole("region", { name: "레이드 결과" });
+    const figures = within(result).getByText("걸린 시간").closest("dl");
+    expect(figures).toHaveClass("grid", "grid-cols-2");
+    expect(within(result).getByText("2시간 30분")).toHaveClass("break-keep");
+    // 세 번째 칸은 좁은 화면에서 한 줄을 다 쓴다.
+    expect(within(result).getByText("걸린 시간").parentElement).toHaveClass(
+      "col-span-2",
+      "sm:col-span-1",
+    );
+  });
 });

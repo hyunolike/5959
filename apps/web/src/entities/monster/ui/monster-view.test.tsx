@@ -237,6 +237,21 @@ describe("MonsterDisplay HP 숫자", () => {
     expect(bossHpParagraph()).toHaveTextContent(/^HP 30\/30$/);
   });
 
+  it("DS-US3-AC3 계약을 어긴 HP 값이 와도 화면이 죽지 않는다", () => {
+    render(
+      <MonsterDisplay
+        monster={{
+          emotion: "IRRITATION",
+          hp: undefined as unknown as number,
+          maxHp: Number.NaN,
+          status: "ALIVE",
+        }}
+        variant="boss"
+      />,
+    );
+    expect(bossHpParagraph()).toHaveTextContent(/^HP 0\/0$/);
+  });
+
   it("상세의 HP 글자에는 쉼표를 넣지 않는다", () => {
     render(
       <MonsterDisplay

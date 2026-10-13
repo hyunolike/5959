@@ -18,7 +18,7 @@ import {
   useStreamTopic,
 } from "@/features/notification-stream";
 import { AttackButton } from "@/features/raid-attack";
-import { formatDate } from "@/shared/lib";
+import { cn, formatDate } from "@/shared/lib";
 import { Button, Card, Spinner } from "@/shared/ui";
 
 /** 레이드가 쉬는 중일 때의 안내(006 US3-AC6). 공격은 반영되지 않는다. */
@@ -95,7 +95,10 @@ function Battle({ state, boss }: { state: RaidState; boss: RaidBoss }) {
       />
       <AttackButton bossId={boss.bossId} disabled={!state.available} />
       {state.available ? null : (
-        <p role="status" className="text-body-sm text-warning text-center">
+        <p
+          role="status"
+          className="text-body-sm text-warning text-center break-keep"
+        >
           {RAID_PAUSED_NOTICE}
         </p>
       )}
@@ -135,11 +138,13 @@ function Result({ state, boss }: { state: RaidState; boss: RaidBoss }) {
           <Figure
             label="걸린 시간"
             value={elapsedLabel(boss.spawnedAt, boss.endedAt)}
+            // 좁은 화면에서는 세 번째 수치가 한 줄을 다 쓴다.
+            className="col-span-2 sm:col-span-1"
           />
         ) : null}
       </Figures>
       {state.nextBossAt ? (
-        <p className="text-body-sm text-fg-muted text-center">
+        <p className="text-body-sm text-fg-muted text-center break-keep">
           다음 보스는{" "}
           <time dateTime={state.nextBossAt}>
             {formatDate(state.nextBossAt, "M월 D일 HH:mm")}
@@ -165,7 +170,13 @@ function Figures({
 }) {
   return (
     // 공격이 몰려도 화면 낭독기가 따라올 수 있게, 바뀐 값만 정중하게 읽는다.
-    <dl aria-live="polite" className="flex w-full gap-3">
+    <dl
+      aria-live="polite"
+      className={cn(
+        "grid w-full grid-cols-2 gap-3",
+        children ? "sm:grid-cols-3" : null,
+      )}
+    >
       <Figure label="함께한 회원" value={`${participantCount}명`} />
       <Figure label="내 기여" value={String(myDamage)} />
       {children}
@@ -173,12 +184,25 @@ function Figures({
   );
 }
 
-function Figure({ label, value }: { label: string; value: string }) {
+function Figure({
+  label,
+  value,
+  className,
+}: {
+  label: string;
+  value: string;
+  className?: string;
+}) {
   return (
     // 이름 바로 뒤에 값이 오게 둔다. e2e가 "함께한 회원5명"처럼 이어진 글자를 읽는다.
-    <div className="rounded-control bg-surface flex min-w-0 flex-1 flex-col gap-0.5 px-4 py-3">
+    <div
+      className={cn(
+        "rounded-control bg-surface flex min-w-0 flex-col gap-0.5 px-3 py-3",
+        className,
+      )}
+    >
       <dt className="text-caption text-fg-subtle">{label}</dt>
-      <dd className="text-title text-fg font-extrabold tabular-nums">
+      <dd className="text-title text-fg font-extrabold break-keep tabular-nums">
         {value}
       </dd>
     </div>
