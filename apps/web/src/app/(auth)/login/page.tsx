@@ -63,7 +63,9 @@ export default async function LoginPage({
               공감과 댓글로 함께 물리쳐요.
             </p>
           </div>
+          {/* 목록 모양을 지운 ul은 Safari에서 목록으로 읽히지 않는다. 역할을 적어 이름이 읽히게 한다. */}
           <ul
+            role="list"
             aria-label="감정 몬스터의 종류"
             className="flex flex-wrap justify-center gap-2 md:justify-start"
           >
@@ -78,7 +80,11 @@ export default async function LoginPage({
         <div className="flex flex-col gap-2.5">
           <OAuthLoginErrorNotice error={error} />
           <OAuthButtons next={next} kakaoEnabled={env.KAKAO_LOGIN_ENABLED} />
-          <EmailLoginDisclosure next={next} />
+          {/* "이메일과 비밀번호로 로그인해주세요"라고 알린 화면에서는 입력란을 펼쳐 둔다. */}
+          <EmailLoginDisclosure
+            next={next}
+            defaultOpen={firstValue(error) === "email_registered"}
+          />
           <p className="text-body-sm text-fg-subtle flex items-center justify-center gap-1 pt-1">
             <Link
               href="/home"

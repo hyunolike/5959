@@ -5,8 +5,14 @@ import LoginPage, { metadata } from "./page";
 
 vi.mock("@/shared/config", () => ({ env: { KAKAO_LOGIN_ENABLED: true } }));
 vi.mock("@/features/auth/email-login", () => ({
-  EmailLoginDisclosure: ({ next }: { next?: string }) => (
-    <button type="button" data-next={next}>
+  EmailLoginDisclosure: ({
+    next,
+    defaultOpen,
+  }: {
+    next?: string;
+    defaultOpen?: boolean;
+  }) => (
+    <button type="button" data-next={next} aria-expanded={!!defaultOpen}>
       이메일로 로그인
     </button>
   ),
@@ -64,6 +70,21 @@ it("POLISH-AC20 카카오, 구글, 이메일 순으로 놓이고 가려던 곳�
     "href",
     "/signup?next=%2Fwrite",
   );
+});
+
+it("POLISH-AC19 이메일로 가입한 계정이라고 돌아오면 이메일 입력란을 펼쳐 둔다", async () => {
+  await renderPage({ error: "email_registered" });
+  expect(screen.getByRole("alert")).toHaveTextContent("이메일");
+  expect(
+    screen.getByRole("button", { name: "이메일로 로그인" }),
+  ).toHaveAttribute("aria-expanded", "true");
+});
+
+it("POLISH-AC19 다른 까닭으로 돌아오면 접어 둔다", async () => {
+  await renderPage({ error: "oauth_failed" });
+  expect(
+    screen.getByRole("button", { name: "이메일로 로그인" }),
+  ).toHaveAttribute("aria-expanded", "false");
 });
 
 it("US3-AC4 외부 계정 로그인이 실패해 돌아오면 버튼 위에서 알린다", async () => {

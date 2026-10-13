@@ -496,7 +496,10 @@ test("US1-AC8 로그인하지 않으면 알림 종이 없고 스트림 요청이
   const requests = recordStreamRequests(page);
 
   await page.goto("/login");
-  await expect(page.getByRole("button", { name: "로그인" })).toBeVisible();
+  // 로그인 화면이다. 이메일 입력란은 접혀 있어 "로그인" 버튼은 아직 없다.
+  await expect(
+    page.getByRole("button", { name: "이메일로 로그인" }),
+  ).toBeVisible();
   await expect(bell(page)).toHaveCount(0);
   await page.goto("/");
   await expect(page).toHaveURL(/\/login$/);
@@ -533,7 +536,10 @@ test("US1-AC8 로그아웃하면 알림 종이 사라지고 연결을 닫으며,
   const afterLogout = recordStreamRequests(page);
   await page.getByRole("button", { name: "로그아웃" }).click();
   await page.waitForURL("**/login");
-  await expect(page.getByRole("button", { name: "로그인" })).toBeVisible();
+  // 로그인 화면이다. 이메일 입력란은 접혀 있어 "로그인" 버튼은 아직 없다.
+  await expect(
+    page.getByRole("button", { name: "이메일로 로그인" }),
+  ).toBeVisible();
   await expect(bell(page)).toHaveCount(0);
 
   // 범용 프록시로는 티켓을 받을 수 없다(전용 라우트만 발급한다).
@@ -754,7 +760,10 @@ test("로그인하지 않고 알림 목록을 열면 로그인 화면으로 간�
   await page.goto("/notifications");
 
   await page.waitForURL(/\/login\?next=%2Fnotifications$/);
-  await expect(page.getByRole("button", { name: "로그인" })).toBeVisible();
+  // 로그인 화면이다. 이메일 입력란은 접혀 있어 "로그인" 버튼은 아직 없다.
+  await expect(
+    page.getByRole("button", { name: "이메일로 로그인" }),
+  ).toBeVisible();
 
   await context.close();
 });

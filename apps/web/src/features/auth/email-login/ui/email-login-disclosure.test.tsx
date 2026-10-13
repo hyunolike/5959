@@ -9,10 +9,10 @@ vi.mock("next/navigation", () => ({
 
 import { EmailLoginDisclosure } from "./email-login-disclosure";
 
-function renderDisclosure() {
+function renderDisclosure(defaultOpen = false) {
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <EmailLoginDisclosure next="/write" />
+      <EmailLoginDisclosure next="/write" defaultOpen={defaultOpen} />
     </QueryClientProvider>,
   );
   return screen.getByRole("button", { name: "이메일로 로그인" });
@@ -42,6 +42,14 @@ describe("EmailLoginDisclosure", () => {
     );
     expect(screen.getByLabelText("이메일")).toHaveFocus();
     expect(screen.getByRole("button", { name: "로그인" })).toBeVisible();
+  });
+
+  it("POLISH-AC19 처음부터 펼쳐 두면 입력란이 보이고 초점은 가져가지 않는다", () => {
+    // 이메일로 가입한 회원이 외부 계정으로 시도하다 돌아왔을 때다. 안내를 먼저 읽게 둔다.
+    const toggle = renderDisclosure(true);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByLabelText("이메일")).toBeVisible();
+    expect(screen.getByLabelText("이메일")).not.toHaveFocus();
   });
 
   it("POLISH-AC19 다시 접어도 적어 둔 값이 남는다", async () => {

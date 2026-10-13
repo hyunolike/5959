@@ -28,7 +28,7 @@ describe("OAuthButtons", () => {
     render(<OAuthButtons />);
     const kakao = screen.getByRole("link", { name: "카카오로 계속하기" });
     expect(kakao).toHaveClass("bg-kakao", "text-fg", "min-h-14");
-    expect(kakao).not.toHaveClass("bg-surface");
+    expect(kakao).not.toHaveClass("bg-surface-sunken", "border-line-strong");
     expect(screen.getByRole("link", { name: "구글로 계속하기" })).toHaveClass(
       "border-line-strong",
       "bg-surface",
