@@ -112,6 +112,29 @@ describe("색 토큰", () => {
   });
 });
 
+describe("모양 토큰", () => {
+  it("POLISH-AC1 모서리는 8, 12, 16, 24px이다", () => {
+    expect(css).toMatch(/--radius-inline:\s*8px;/);
+    expect(css).toMatch(/--radius-control-sm:\s*12px;/);
+    expect(css).toMatch(/--radius-control:\s*16px;/);
+    expect(css).toMatch(/--radius-surface:\s*24px;/);
+  });
+
+  it("POLISH-AC1 떠 있는 것과 고른 칸의 그림자가 있다", () => {
+    expect(css).toMatch(
+      /--shadow-float:\s*0 8px 24px rgb\(23 23 28 \/ 0\.18\);/,
+    );
+    expect(css).toMatch(
+      /--shadow-raised:\s*0 1px 2px rgb\(23 23 28 \/ 0\.08\);/,
+    );
+  });
+
+  it("POLISH-AC2 카카오 바탕 위의 잉크 글자는 4.5:1 이상이다", () => {
+    expect(primitive("kakao-yellow")).toBe("#fee500");
+    expect(contrast(role("fg"), role("kakao"))).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
 describe("옛 토큰", () => {
   it("DS-US1-AC1 옛 토큰 이름이 globals.css에 남아 있지 않다", () => {
     expect(css).not.toMatch(
