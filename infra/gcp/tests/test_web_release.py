@@ -170,6 +170,36 @@ class WebReleaseTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 m.gate(99, SHA)
 
+    def test_US1_AC2_gate_retries_transient_github_read_failures_then_fails_closed(self):
+        m = load()
+        responses = {
+            "repos/hyunolike/5959/actions/runs/99": run_fixture(),
+            "repos/hyunolike/5959/actions/runs/99/jobs?filter=latest&per_page=100":
+                [{"jobs": [{"name": "ci-ok", "conclusion": "success", "status": "completed"}]}],
+            "repos/hyunolike/5959/git/ref/heads/main": {"object": {"sha": SHA}},
+        }
+        jobs = "repos/hyunolike/5959/actions/runs/99/jobs?filter=latest&per_page=100"
+        failures = {jobs: 2}
+        calls = []
+        def github(args, binary=False):
+            calls.append(args[-1])
+            if failures.get(args[-1], 0) > 0:
+                failures[args[-1]] -= 1
+                raise RuntimeError("gh api failed (exit 1); inspect the provider console")
+            return json.dumps(responses[args[-1]])
+        with mock.patch.object(m, "command", side_effect=github), \
+                mock.patch.object(m.time, "sleep") as sleep:
+            self.assertEqual(m.gate(99, SHA), SHA)
+            self.assertEqual(calls.count(jobs), 3)
+            self.assertEqual([c.args[0] for c in sleep.call_args_list], [5, 10])
+            # A read that never recovers still stops the release before any mutation.
+            failures[jobs] = 99
+            calls.clear()
+            with self.assertRaises(RuntimeError):
+                m.gate(99, SHA)
+            self.assertEqual(calls.count(jobs), 4)
+            self.assertNotIn("repos/hyunolike/5959/git/ref/heads/main", calls)
+
     def test_DEPLOY_AC4_public_smoke_accepts_copy_changes_and_rejects_missing_or_remote_assets(self):
         m = load()
         html = '<html><input type="email"><input type="password"><link rel="icon" href="/brand-icon.png"></html>'
