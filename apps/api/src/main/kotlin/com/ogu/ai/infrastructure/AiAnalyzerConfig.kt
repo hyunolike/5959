@@ -160,6 +160,7 @@ class FakeEmotionAnalyzerConfig {
     @Bean
     fun fakeWeeklyLetterWriter(): WeeklyLetterWriter = FakeWeeklyLetterWriter()
 
+    /** e2e는 기능을 켠 채 돈다. 본문에 `[AI친구]`가 있는 글에만 답해 다른 시나리오를 흔들지 않는다. */
     @Bean
-    fun fakeCompanionCommentWriter(): CompanionCommentWriter = FakeCompanionCommentWriter()
+    fun fakeCompanionCommentWriter(): CompanionCommentWriter = FakeCompanionCommentWriter(optInOnly = true)
 }

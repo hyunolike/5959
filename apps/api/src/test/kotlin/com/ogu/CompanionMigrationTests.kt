@@ -47,7 +47,8 @@ class CompanionMigrationTests {
     fun `US4-AC3 친구 셋은 AI 회원을 하나씩 가리키고 말씨가 서로 다르다`() {
         val rows =
             jdbcTemplate.queryForList(
-                "select c.id, c.voice, m.nickname, m.kind from companion c join member m on m.id = c.member_id order by c.id",
+                "select c.id, c.voice, m.nickname, m.kind from companion c " +
+                    "join member m on m.id = c.member_id order by c.id",
             )
 
         assertThat(rows.map { it["voice"] }).containsExactly("GENTLE", "HEARTY", "CALM")
@@ -59,26 +60,30 @@ class CompanionMigrationTests {
 
     @Test
     fun `FR-016 AI 회원에게 직군이나 이메일이나 운영자 역할을 줄 수 없다`() {
-        assertRejected { insertMember("직군있는", kind = "AI", authMethod = "NONE", jobRole = "DEVELOPMENT", careerYear = "YEAR_1") }
-        assertRejected { insertMember("이메일있는", kind = "AI", authMethod = "NONE", email = "ai@example.com") }
-        assertRejected { insertMember("로그인되는", kind = "AI", authMethod = "GOOGLE") }
-        assertRejected { insertMember("수단없는사람", kind = "HUMAN", authMethod = "NONE") }
-        assertRejected { insertMember("온보딩전", kind = "AI", authMethod = "NONE", onboarded = false) }
-        assertRejected { insertMember("운영자", kind = "AI", authMethod = "NONE", role = "OPERATOR") }
-        assertRejected { insertMember("모르는종류", kind = "BOT", authMethod = "NONE") }
+        val ai = MemberRow("AI회원", kind = "AI", authMethod = "NONE")
+
+        assertRejected { insert(ai.copy(nickname = "직군있는", jobRole = "DEVELOPMENT", careerYear = "YEAR_1")) }
+        assertRejected { insert(ai.copy(nickname = "이메일있는", email = "ai@example.com")) }
+        assertRejected { insert(ai.copy(nickname = "로그인되는", authMethod = "GOOGLE")) }
+        assertRejected { insert(ai.copy(nickname = "수단없는사람", kind = "HUMAN")) }
+        assertRejected { insert(ai.copy(nickname = "온보딩전", onboarded = false)) }
+        assertRejected { insert(ai.copy(nickname = "운영자", role = "OPERATOR")) }
+        assertRejected { insert(ai.copy(nickname = "모르는종류", kind = "BOT")) }
     }
 
     @Test
     fun `사람 회원의 온보딩 제약은 그대로다`() {
         val suffix = (System.nanoTime() % 100_000).toString()
+        val human = MemberRow("사람$suffix", kind = "HUMAN", authMethod = "GOOGLE")
 
-        insertMember("사람$suffix", kind = "HUMAN", authMethod = "GOOGLE", jobRole = "HR", careerYear = "YEAR_2")
-        insertMember(nickname = null, kind = "HUMAN", authMethod = "GOOGLE", onboarded = false)
+        insert(human.copy(jobRole = "HR", careerYear = "YEAR_2"))
+        insert(human.copy(nickname = null, onboarded = false))
 
-        assertRejected { insertMember("직군없$suffix", kind = "HUMAN", authMethod = "GOOGLE") }
+        assertRejected { insert(human.copy(nickname = "직군없$suffix")) }
         val kind =
             jdbcTemplate.queryForObject(
-                "select column_default from information_schema.columns where table_name = 'member' and column_name = 'kind'",
+                "select column_default from information_schema.columns " +
+                    "where table_name = 'member' and column_name = 'kind'",
                 String::class.java,
             )
         assertThat(kind).contains("HUMAN")
@@ -88,28 +93,31 @@ class CompanionMigrationTests {
     fun `FR-002 한 글의 반응 기록은 하나다`() {
         val post = -System.nanoTime()
 
-        insertReaction(post)
+        insert(ReactionRow(post))
 
-        assertRejected { insertReaction(post) }
+        assertRejected { insert(ReactionRow(post)) }
         assertThat(indexDef("companion_reaction_post_key")).contains("UNIQUE").contains("(post_id)")
         assertThat(indexDef("companion_reaction_due_idx")).contains("(post_created_at)").contains("'WAITING'")
-        assertThat(indexDef("companion_reaction_done_idx")).contains("(companion_id, completed_at DESC)").contains("'DONE'")
+        assertThat(indexDef("companion_reaction_done_idx")).contains("(companion_id, id DESC)").contains("'DONE'")
     }
 
     @Test
     fun `US5-AC5 상태와 어긋난 반응 기록은 거절한다`() {
         val post = -System.nanoTime()
 
-        assertRejected { insertReaction(post - 1, status = "SKIPPED", skipReason = null, next = null, completed = "now()") }
-        assertRejected { insertReaction(post - 2, status = "WAITING", skipReason = "RISK") }
-        assertRejected { insertReaction(post - 3, status = "DONE", commentId = null, next = null, completed = "now()") }
-        assertRejected { insertReaction(post - 4, status = "WAITING", next = null) }
-        assertRejected { insertReaction(post - 5, status = "WAITING", completed = "now()") }
-        assertRejected { insertReaction(post - 6, status = "SKIPPED", skipReason = "BORED", next = null, completed = "now()") }
-        assertRejected { insertReaction(post - 7, status = "REACTING") }
-        insertReaction(post - 8, status = "DONE", commentId = 1, next = null, completed = "now()")
+        val waiting = ReactionRow(post)
+        val closed = ReactionRow(post, next = null, completed = "now()")
+
+        assertRejected { insert(closed.copy(postId = post - 1, status = "SKIPPED", skipReason = null)) }
+        assertRejected { insert(waiting.copy(postId = post - 2, skipReason = "RISK")) }
+        assertRejected { insert(closed.copy(postId = post - 3, status = "DONE", commentId = null)) }
+        assertRejected { insert(waiting.copy(postId = post - 4, next = null)) }
+        assertRejected { insert(waiting.copy(postId = post - 5, completed = "now()")) }
+        assertRejected { insert(closed.copy(postId = post - 6, status = "SKIPPED", skipReason = "BORED")) }
+        assertRejected { insert(waiting.copy(postId = post - 7, status = "REACTING")) }
+        insert(closed.copy(postId = post - 8, status = "DONE", commentId = 1))
         for ((index, reason) in SKIP_REASONS.withIndex()) {
-            insertReaction(post - 10 - index, status = "SKIPPED", skipReason = reason, next = null, completed = "now()")
+            insert(closed.copy(postId = post - 10 - index, status = "SKIPPED", skipReason = reason))
         }
     }
 
@@ -126,49 +134,55 @@ class CompanionMigrationTests {
         assertThatThrownBy { insert() }.isInstanceOf(DataAccessException::class.java)
     }
 
-    private fun insertMember(
-        nickname: String?,
-        kind: String,
-        authMethod: String,
-        email: String? = null,
-        jobRole: String? = null,
-        careerYear: String? = null,
-        onboarded: Boolean = true,
-        role: String = "MEMBER",
-    ) {
+    private fun insert(row: MemberRow) {
         jdbcTemplate.update(
             "insert into member (kind, auth_method, email, nickname, nickname_key, job_role, career_year, " +
                 "onboarded_at, role, created_at, updated_at) values (?, ?, ?, ?, ?, ?, ?, " +
-                "${if (onboarded) "now()" else "null"}, ?, now(), now())",
-            kind,
-            authMethod,
-            email,
-            nickname,
-            nickname,
-            jobRole,
-            careerYear,
-            role,
+                "${if (row.onboarded) "now()" else "null"}, ?, now(), now())",
+            row.kind,
+            row.authMethod,
+            row.email,
+            row.nickname,
+            row.nickname,
+            row.jobRole,
+            row.careerYear,
+            row.role,
         )
     }
 
-    private fun insertReaction(
-        postId: Long,
-        status: String = "WAITING",
-        skipReason: String? = null,
-        commentId: Long? = null,
-        next: String? = "now()",
-        completed: String? = null,
-    ) {
+    private fun insert(row: ReactionRow) {
         jdbcTemplate.update(
             "insert into companion_reaction (post_id, post_created_at, status, skip_reason, comment_id, " +
-                "next_attempt_at, created_at, completed_at) values (?, now(), ?, ?, ?, ${next ?: "null"}, now(), " +
-                "${completed ?: "null"})",
-            postId,
-            status,
-            skipReason,
-            commentId,
+                "next_attempt_at, created_at, completed_at) values (?, now(), ?, ?, ?, ${row.next ?: "null"}, " +
+                "now(), ${row.completed ?: "null"})",
+            row.postId,
+            row.status,
+            row.skipReason,
+            row.commentId,
         )
     }
+
+    /** 넣어 볼 회원 한 행. [onboarded]면 `onboarded_at`을 지금으로 넣는다. */
+    private data class MemberRow(
+        val nickname: String?,
+        val kind: String,
+        val authMethod: String,
+        val email: String? = null,
+        val jobRole: String? = null,
+        val careerYear: String? = null,
+        val onboarded: Boolean = true,
+        val role: String = "MEMBER",
+    )
+
+    /** 넣어 볼 반응 기록 한 행. [next]와 [completed]는 SQL 식(`now()`)이거나 null이다. */
+    private data class ReactionRow(
+        val postId: Long,
+        val status: String = "WAITING",
+        val skipReason: String? = null,
+        val commentId: Long? = null,
+        val next: String? = "now()",
+        val completed: String? = null,
+    )
 
     private fun indexDef(name: String): String =
         jdbcTemplate.queryForObject("select indexdef from pg_indexes where indexname = ?", String::class.java, name)!!

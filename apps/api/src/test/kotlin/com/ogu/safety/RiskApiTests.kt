@@ -117,7 +117,8 @@ class RiskApiTests {
         await().atMost(SafetyFixture.AWAIT_LIMIT).pollInterval(SafetyFixture.POLL).until {
             jdbcTemplate
                 .queryForList(
-                    "select * from risk_assessment where target_type = 'POST' and target_id = ? order by id desc limit 1",
+                    "select * from risk_assessment where target_type = 'POST' and target_id = ? " +
+                        "order by id desc limit 1",
                     postId,
                 ).firstOrNull()
                 ?.let(until) ?: false

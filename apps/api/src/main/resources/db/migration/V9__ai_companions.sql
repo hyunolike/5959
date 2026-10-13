@@ -88,8 +88,8 @@ CREATE TABLE companion_reaction
 
 -- 주기 작업이 먼저 올라온 글부터 맡는다
 CREATE INDEX companion_reaction_due_idx ON companion_reaction (post_created_at) WHERE status = 'WAITING';
--- 가장 오래 쉰 친구를 고를 때 쓴다
-CREATE INDEX companion_reaction_done_idx ON companion_reaction (companion_id, completed_at DESC) WHERE status = 'DONE';
+-- 가장 오래 쉰 친구를 고를 때 쓴다. 친구마다 가장 최근에 반응한 기록의 번호를 본다(시계에 기대지 않는다)
+CREATE INDEX companion_reaction_done_idx ON companion_reaction (companion_id, id DESC) WHERE status = 'DONE';
 
 -- companion_daily_usage: 하루(한국 시간)에 AI에 댓글을 청한 횟수(research R8)
 CREATE TABLE companion_daily_usage

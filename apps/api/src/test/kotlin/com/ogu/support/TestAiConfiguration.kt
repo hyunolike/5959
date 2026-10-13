@@ -50,7 +50,10 @@ class TestAiConfiguration {
     /** AI 친구의 댓글도 가짜가 쓴다(009 research R11). 글의 본문에 든 `[AI댓글실패:N]` 같은 표지로 결과가 정해진다. */
     @Bean
     @Primary
-    fun scriptedCompanionCommentWriter(): ScriptedCompanionCommentWriter = ScriptedCompanionCommentWriter(FakeCompanionCommentWriter())
+    fun scriptedCompanionCommentWriter(): ScriptedCompanionCommentWriter {
+        val fake = FakeCompanionCommentWriter()
+        return ScriptedCompanionCommentWriter(fake)
+    }
 }
 
 /**

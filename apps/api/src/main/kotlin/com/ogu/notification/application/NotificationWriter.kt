@@ -70,7 +70,14 @@ class NotificationWriter(
     ): Boolean {
         requireTransaction()
         // 받을 사람이 AI 친구면 쓰지 않는다. 아무것도 쓰지 않았으니 트랜잭션을 되돌릴 것도 없다
-        if (receiverId !in humansAmong(listOf(receiverId))) return false
+        return receiverId in humansAmong(listOf(receiverId)) && addToGroup(receiverId, postId, likerId)
+    }
+
+    private fun addToGroup(
+        receiverId: Long,
+        postId: Long,
+        likerId: Long,
+    ): Boolean {
         val seq = sequences.next(receiverId)
         val now = now()
         val groupId = notifications.upsertLikeGroup(receiverId, postId, likerId, seq, now)

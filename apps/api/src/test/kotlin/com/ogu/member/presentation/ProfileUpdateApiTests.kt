@@ -135,7 +135,8 @@ class ProfileUpdateApiTests {
     fun `US2-AC5 이미 그런 닉네임을 가진 회원은 다른 항목을 고칠 수 있다`() {
         val member = members.onboarded()
         val legacy = "오구" + (System.nanoTime() % 1_000_000) + "AI"
-        jdbcTemplate.update("update member set nickname = ?, nickname_key = ? where id = ?", legacy, legacy.lowercase(), member.id)
+        val rename = "update member set nickname = ?, nickname_key = ? where id = ?"
+        jdbcTemplate.update(rename, legacy, legacy.lowercase(), member.id)
 
         update(member, mapOf("nickname" to legacy, "careerYear" to "YEAR_5"))
             .andExpect(status().isOk)

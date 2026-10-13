@@ -60,13 +60,21 @@ class PostCompanionService(
     ): CompanionReactionResult {
         // 글의 행을 먼저 잠근다(잠금 순서: 행 먼저, 글 잠금은 댓글과 공감의 리스너가 그다음에 잡는다). 같은 글에 겹쳐 온
         // 요청이 여기서 줄을 서고, 뒤에 온 쪽은 앞의 댓글을 보고 물러난다.
-        if (!lockVisible(postId)) return CompanionReactionResult(CompanionReactionOutcome.GONE)
-        val state = target(postId, companionIds) ?: return CompanionReactionResult(CompanionReactionOutcome.GONE)
-        state.companionCommentId?.let {
-            return CompanionReactionResult(CompanionReactionOutcome.ALREADY_REACTED, it)
+        val state = if (lockVisible(postId)) target(postId, companionIds) else null
+        val reacted = state?.companionCommentId
+        return when {
+            state == null -> CompanionReactionResult(CompanionReactionOutcome.GONE)
+            reacted != null -> CompanionReactionResult(CompanionReactionOutcome.ALREADY_REACTED, reacted)
+            state.otherCommented -> CompanionReactionResult(CompanionReactionOutcome.HUMAN_COMMENTED)
+            else -> leave(postId, memberId, content)
         }
-        if (state.otherCommented) return CompanionReactionResult(CompanionReactionOutcome.HUMAN_COMMENTED)
+    }
 
+    private fun leave(
+        postId: Long,
+        memberId: Long,
+        content: String,
+    ): CompanionReactionResult {
         val comment = comments.write(postId, memberId, content, parentId = null)
         likes.likePost(postId, memberId)
         return CompanionReactionResult(CompanionReactionOutcome.REACTED, comment.commentId)
