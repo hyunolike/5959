@@ -111,17 +111,23 @@ export function OnboardingForm({ next }: OnboardingFormProps) {
           id="nickname"
           autoComplete="off"
           maxLength={10}
+          aria-invalid={errors.nickname ? true : undefined}
+          aria-describedby={errors.nickname ? "nickname-error" : undefined}
           {...register("nickname")}
         />
         {errors.nickname ? (
-          <p role="alert" className="text-body-sm text-danger">
+          <p
+            id="nickname-error"
+            role="alert"
+            className="text-label text-danger"
+          >
             {errors.nickname.message}
           </p>
         ) : (
           nicknameHint && (
             <p
               className={cn(
-                "text-body-sm",
+                "text-label",
                 settledNicknameResult?.available
                   ? "text-fg font-medium"
                   : "text-fg-subtle",
@@ -135,7 +141,13 @@ export function OnboardingForm({ next }: OnboardingFormProps) {
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="jobRole">직군</Label>
-        <Select id="jobRole" defaultValue="" {...register("jobRole")}>
+        <Select
+          id="jobRole"
+          defaultValue=""
+          aria-invalid={errors.jobRole ? true : undefined}
+          aria-describedby={errors.jobRole ? "jobRole-error" : undefined}
+          {...register("jobRole")}
+        >
           <option value="" disabled>
             직군을 선택하세요
           </option>
@@ -146,7 +158,7 @@ export function OnboardingForm({ next }: OnboardingFormProps) {
           ))}
         </Select>
         {errors.jobRole && (
-          <p role="alert" className="text-body-sm text-danger">
+          <p id="jobRole-error" role="alert" className="text-label text-danger">
             직군을 선택하세요.
           </p>
         )}
@@ -154,7 +166,13 @@ export function OnboardingForm({ next }: OnboardingFormProps) {
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="careerYear">경력</Label>
-        <Select id="careerYear" defaultValue="" {...register("careerYear")}>
+        <Select
+          id="careerYear"
+          defaultValue=""
+          aria-invalid={errors.careerYear ? true : undefined}
+          aria-describedby={errors.careerYear ? "careerYear-error" : undefined}
+          {...register("careerYear")}
+        >
           <option value="" disabled>
             경력을 선택하세요
           </option>
@@ -165,7 +183,11 @@ export function OnboardingForm({ next }: OnboardingFormProps) {
           ))}
         </Select>
         {errors.careerYear && (
-          <p role="alert" className="text-body-sm text-danger">
+          <p
+            id="careerYear-error"
+            role="alert"
+            className="text-label text-danger"
+          >
             경력을 선택하세요.
           </p>
         )}

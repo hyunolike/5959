@@ -234,7 +234,7 @@ describe("OnboardingForm 완료 뒤 이동", () => {
     );
   });
 
-  it("DS-US3-AC4 쓸 수 있는 닉네임 안내는 초록색 없이 굵은 글씨다", async () => {
+  it("DS-US2-AC1 쓸 수 있는 닉네임 안내는 초록색 없이 굵은 글씨다", async () => {
     vi.stubGlobal(
       "fetch",
       vi
@@ -253,5 +253,24 @@ describe("OnboardingForm 완료 뒤 이동", () => {
     const hint = await screen.findByText("사용할 수 있는 닉네임입니다.");
     expect(hint).toHaveClass("text-fg", "font-medium");
     expect(hint.className).not.toContain("leaf");
+  });
+
+  it("DS-US2-AC1 고르지 않고 내면 선택 상자가 잘못됨으로 표시되고 오류 문구와 이어진다", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async () => nicknameAvailability("오구")),
+    );
+    const user = userEvent.setup();
+    renderForm();
+    await user.click(screen.getByRole("button", { name: "완료" }));
+    const jobRole = screen.getByLabelText("직군");
+    await waitFor(() =>
+      expect(jobRole).toHaveAttribute("aria-invalid", "true"),
+    );
+    expect(jobRole).toHaveAccessibleDescription("직군을 선택하세요.");
+    expect(document.getElementById("jobRole-error")).toHaveClass(
+      "text-label",
+      "text-danger",
+    );
   });
 });

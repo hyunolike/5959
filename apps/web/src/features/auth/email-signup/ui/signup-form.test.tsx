@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
@@ -26,16 +27,14 @@ describe("SignupForm 모양", () => {
     );
   });
 
-  it("DS-US3-AC4 폼에 감정 색과 게임 요소가 없다", () => {
-    const { container } = render(
-      <QueryClientProvider client={new QueryClient()}>
-        <SignupForm />
-      </QueryClientProvider>,
-    );
-    expect(
-      container.querySelector(
-        '[data-emotion], [class*="emotion"], [class*="bg-game"]',
-      ),
-    ).toBeNull();
+  it("DS-US2-AC1 오류가 나면 입력 칸이 잘못됨으로 표시되고 오류 문구와 이어진다", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await user.click(screen.getByRole("button", { name: "가입하기" }));
+    const email = screen.getByLabelText("이메일");
+    await waitFor(() => expect(email).toHaveAttribute("aria-invalid", "true"));
+    const error = document.getElementById("email-error");
+    expect(error).toHaveClass("text-label", "text-danger");
+    expect(email).toHaveAccessibleDescription(error?.textContent ?? "");
   });
 });

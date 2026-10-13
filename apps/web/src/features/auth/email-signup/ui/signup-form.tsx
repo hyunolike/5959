@@ -74,10 +74,12 @@ export function SignupForm({ next }: SignupFormProps) {
           id="email"
           type="email"
           autoComplete="email"
+          aria-invalid={errors.email ? true : undefined}
+          aria-describedby={errors.email ? "email-error" : undefined}
           {...register("email")}
         />
         {errors.email && (
-          <p role="alert" className="text-body-sm text-danger">
+          <p id="email-error" role="alert" className="text-label text-danger">
             {errors.email.message}
           </p>
         )}
@@ -89,10 +91,18 @@ export function SignupForm({ next }: SignupFormProps) {
           id="password"
           type="password"
           autoComplete="new-password"
+          aria-invalid={errors.password ? true : undefined}
+          aria-describedby={
+            errors.password ? "password-error" : "password-hint"
+          }
           {...register("password")}
         />
         {errors.password ? (
-          <p role="alert" className="text-body-sm text-danger">
+          <p
+            id="password-error"
+            role="alert"
+            className="text-label text-danger"
+          >
             {errors.password.message}
           </p>
         ) : (

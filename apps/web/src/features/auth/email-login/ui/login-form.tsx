@@ -76,10 +76,12 @@ export function LoginForm({ next }: LoginFormProps) {
           type="email"
           autoComplete="email"
           placeholder="이메일 주소를 입력해주세요"
+          aria-invalid={errors.email ? true : undefined}
+          aria-describedby={errors.email ? "email-error" : undefined}
           {...register("email")}
         />
         {errors.email && (
-          <p role="alert" className="text-body-sm text-danger">
+          <p id="email-error" role="alert" className="text-label text-danger">
             {errors.email.message}
           </p>
         )}
@@ -92,10 +94,16 @@ export function LoginForm({ next }: LoginFormProps) {
           type="password"
           autoComplete="current-password"
           placeholder="비밀번호를 입력해주세요"
+          aria-invalid={errors.password ? true : undefined}
+          aria-describedby={errors.password ? "password-error" : undefined}
           {...register("password")}
         />
         {errors.password && (
-          <p role="alert" className="text-body-sm text-danger">
+          <p
+            id="password-error"
+            role="alert"
+            className="text-label text-danger"
+          >
             {errors.password.message}
           </p>
         )}
