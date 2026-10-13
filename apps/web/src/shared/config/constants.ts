@@ -50,6 +50,9 @@ export const QUERY_KEYS = {
   weeklyReports: ["my", "weekly-reports"] as const,
   weeklyReport: (weekStart: string) =>
     ["my", "weekly-reports", weekStart] as const,
+  /** 몬스터 도감(010). 고른 감정마다 따로 둔다. 몬스터가 처치되면 늘어나므로 열 때마다 다시 받는다. */
+  monsterCards: (emotion: string | null) =>
+    ["my", "monster-cards", emotion ?? "all"] as const,
 };
 
 /**

@@ -1,6 +1,12 @@
 "use client";
 
-import { House, PencilSimpleLine, Sword, User } from "@phosphor-icons/react";
+import {
+  Cards,
+  House,
+  PencilSimpleLine,
+  Sword,
+  User,
+} from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -23,14 +29,9 @@ const NAVIGATION = [
     icon: PencilSimpleLine,
     primary: true,
   },
-  // 좁은 화면에서는 고민 쓰기가 정가운데 칸에 오도록 오른쪽의 하나가 두 칸을 쓴다.
-  {
-    href: "/my",
-    label: "내 마음 기록",
-    shortLabel: "기록",
-    icon: User,
-    wide: true,
-  },
+  // 좁은 화면에서는 다섯 칸이라 고민 쓰기가 정가운데 칸에 온다(010 US5-AC1).
+  { href: "/cards", label: "몬스터 도감", shortLabel: "도감", icon: Cards },
+  { href: "/my", label: "내 마음 기록", shortLabel: "기록", icon: User },
 ];
 
 export function AppShell({

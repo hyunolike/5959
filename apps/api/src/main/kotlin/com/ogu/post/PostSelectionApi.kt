@@ -6,11 +6,12 @@ package com.ogu.post
  */
 interface PostSelectionApi {
     /**
-     * [postIds] 가운데 다른 회원에게 보이는 글(지우지 않았고 숨기지 않은 글)의 ID. [exceptAuthorId]가 쓴 글은 뺀다.
+     * [postIds] 가운데 다른 회원에게 보이는 글(지우지 않았고 숨기지 않은 글)의 ID. [exceptAuthorId]를 주면 그 회원이
+     * 쓴 글은 뺀다(추천). 주지 않으면 작성자를 가리지 않는다(도감, 010 research R2).
      */
     fun visibleIds(
         postIds: Collection<Long>,
-        exceptAuthorId: Long,
+        exceptAuthorId: Long? = null,
     ): Set<Long>
 
     /** [postIds]의 보이는 글을 준 순서대로 피드 한 쪽 모양으로 준다. 보이지 않는 글은 빠진다. 다음 쪽은 없다. */

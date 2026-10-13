@@ -16,9 +16,10 @@ class PostSelectionReader(
 ) : PostSelectionApi {
     override fun visibleIds(
         postIds: Collection<Long>,
-        exceptAuthorId: Long,
+        exceptAuthorId: Long?,
     ): Set<Long> {
         if (postIds.isEmpty()) return emptySet()
+        // 없는 회원 번호(0)를 주면 작성자 조건이 아무 글도 빼지 않는다
         return jdbcClient
             .sql(
                 """
@@ -26,7 +27,7 @@ class PostSelectionReader(
                 where p.id in (:postIds) and p.author_id <> :exceptAuthorId and ${Visibility.visible("p")}
                 """.trimIndent(),
             ).param("postIds", postIds.toSet())
-            .param("exceptAuthorId", exceptAuthorId)
+            .param("exceptAuthorId", exceptAuthorId ?: NO_AUTHOR)
             .query { rs, _ -> rs.getLong("id") }
             .list()
             .toSet()
@@ -71,4 +72,9 @@ class PostSelectionReader(
             .param("limit", limit)
             .query { rs, _ -> PostAuthorRef(rs.getLong("id"), rs.getLong("author_id")) }
             .list()
+
+    private companion object {
+        /** 어떤 회원의 번호도 아닌 값. 번호는 1부터 매겨진다. */
+        const val NO_AUTHOR = 0L
+    }
 }

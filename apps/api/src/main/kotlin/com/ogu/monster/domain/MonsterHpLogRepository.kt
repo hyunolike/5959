@@ -1,5 +1,7 @@
 package com.ogu.monster.domain
 
+import com.ogu.emotion.EmotionType
+import com.ogu.monster.MonsterCardRow
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Repository
 import java.sql.Timestamp
@@ -94,4 +96,51 @@ class MonsterHpLogRepository(
             .list()
             .filterNotNull()
             .toSet()
+
+    /**
+     * 도감의 카드가 될 처치된 몬스터(010 research R2, R3): 글이 [ownPostIds]에 있거나, [memberId]의 기록 가운데 HP를
+     * 실제로 줄인 것(`hp_after < hp_before`)이 있는 몬스터다. 함께 읽는 것은 그 회원이 줄인 HP의 합과 HP를 줄인 회원 수다.
+     * 처치된 뒤의 응원(`hp_before = hp_after = 0`)은 어느 쪽에도 들지 않는다.
+     */
+    fun cardRows(
+        memberId: Long,
+        ownPostIds: Set<Long>,
+    ): List<MonsterCardRow> {
+        val owned = if (ownPostIds.isEmpty()) "false" else "m.post_id in (:ownPostIds)"
+        val spec =
+            jdbcClient
+                .sql(
+                    """
+                    with picked as (
+                        select m.id from monsters m
+                        where m.status = 'DEFEATED' and m.defeated_at is not null and $owned
+                        union
+                        select l.monster_id from monster_hp_log l join monsters m on m.id = l.monster_id
+                        where l.member_id = :memberId and l.hp_after < l.hp_before
+                          and m.status = 'DEFEATED' and m.defeated_at is not null
+                    )
+                    select m.id, m.post_id, m.emotion, m.max_hp, m.defeated_at,
+                           coalesce(sum(l.hp_before - l.hp_after) filter (where l.member_id = :memberId), 0) as damage_by,
+                           count(distinct l.member_id) as damager_count
+                    from picked
+                    join monsters m on m.id = picked.id
+                    -- 처치된 뒤의 응원(0에서 0)은 읽지 않는다. 공감이 아주 많은 글에서 읽는 행이 준다
+                    left join monster_hp_log l on l.monster_id = m.id and l.hp_after < l.hp_before
+                    group by m.id
+                    """.trimIndent(),
+                ).param("memberId", memberId)
+        val bound = if (ownPostIds.isEmpty()) spec else spec.param("ownPostIds", ownPostIds)
+        return bound
+            .query { rs, _ ->
+                MonsterCardRow(
+                    monsterId = rs.getLong("id"),
+                    postId = rs.getLong("post_id"),
+                    emotion = EmotionType.valueOf(rs.getString("emotion")),
+                    maxHp = rs.getInt("max_hp"),
+                    defeatedAt = rs.getTimestamp("defeated_at").toInstant(),
+                    damageBy = rs.getInt("damage_by"),
+                    damagerCount = rs.getInt("damager_count"),
+                )
+            }.list()
+    }
 }

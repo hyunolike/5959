@@ -398,6 +398,7 @@ id, 연달아 실패한 횟수만 둔다. 알림과 안 읽은 수는 TanStack Q
 - `widgets/my-activity`: "주간 리포트" 탭.
 - `app/report/[weekStart]/page.tsx`: 조립만. `/report`는 라우트 가드의 보호 경로다.
 - `entities/support-resource`: 도움받을 곳 목록과 그 조회. 글 상세의 도움 안내와 리포트가 함께 써서 위젯에서 엔티티로 옮겼다.
+
 - 감정의 색(`EMOTION_COLORS`)은 `entities/monster`에 있다. 마이페이지 통계와 리포트가 같은 색을 쓴다.
 
 규칙:
@@ -407,6 +408,12 @@ id, 연달아 실패한 횟수만 둔다. 알림과 안 읽은 수는 TanStack Q
 - 날짜는 서버가 한국 시간으로 자른 문자열(`2026-10-05`)을 그대로 읽는다. `Date`로 바꾸지 않는다. 브라우저의 시간대가 달라도 날짜가 밀리지 않는다.
 - 엔티티끼리는 가져올 수 없다. 리포트 목록의 감정 이름은 위젯이 넘기고, 알림의 리포트 주소는 `entities/notification`에 따로 적혀 있다.
 - 막대는 장식이고 값은 이름과 숫자가 전한다. 마이페이지 분포와 같은 원칙이다.
+
+## 몬스터 도감 (010-monster-cards)
+
+- `entities/monster`: 카드의 타입과 이름(`model/card.ts`), 조회(`useMonsterCardsQuery`, 감정마다 따로 캐시한다), 카드 한 장(`MonsterCard`). 카드는 몬스터의 그림과 감정 이름을 쓰므로 새 엔티티가 아니라 몬스터 엔티티에 둔다. 엔티티끼리는 서로 가져올 수 없다.
+- `widgets/monster-collection`: 도감의 본문. 요약과 감정 고르기(`CollectionSummary`), 목록, 크게 보기(`CardDialog`), 기울기(`useCardTilt`). 기울기는 CSS 변수만 고치고 다시 그리지 않는다.
+- `app/cards/page.tsx`: 조립만. `/cards`는 라우트 가드의 보호 경로다. 목록에 없는 경로는 가드가 그냥 통과시키므로 화면을 더할 때 목록도 함께 고친다.
 
 ## Recent-practice choices worth calling out
 

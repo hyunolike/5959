@@ -19,6 +19,11 @@
   --danger-50: #fef3f2;
   --warning-700: #b54708;
   --warning-50: #fffaeb;
+  /* 도감의 전설 카드에만 쓰는 무지갯빛(010). 다른 곳에서는 쓰지 않는다. */
+  --holo-pink: #ff5aa5;
+  --holo-yellow: #ffdc5a;
+  --holo-mint: #5affbe;
+  --holo-blue: #5aa0ff;
 
   /* 감정이 정해지지 않은 곳의 기본값. */
   --emotion: var(--ink-600);
@@ -196,6 +201,69 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/*
+ * 도감의 카드(010 research R7). 반짝임은 등급(`data-grade`)에 따라 다르다. 일반은 없고, 희귀는 은빛 줄기 하나,
+ * 전설은 무지갯빛 줄무늬다. 빛의 자리(--card-x)와 기울기(--card-rx, --card-ry)는 크게 본 카드에서만
+ * 포인터를 따라 바뀐다. 움직임 줄이기가 켜져 있으면 기울지 않고 빛도 가운데에 멈춘다.
+ */
+.ogu-card {
+  --card-x: 50%;
+  --card-rx: 0deg;
+  --card-ry: 0deg;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.ogu-card-shine {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+}
+/* 글자는 빛 위에 그린다. 빛이 글자의 색과 대비를 바꾸지 않는다. */
+.ogu-card-text {
+  position: relative;
+  z-index: 2;
+}
+/* 흰 면 위에서도 보이게 곱하기로 섞는다. 글자는 이 위에 그려진다. */
+.ogu-card[data-grade="RARE"] .ogu-card-shine {
+  opacity: 0.75;
+  mix-blend-mode: multiply;
+  background: linear-gradient(
+    115deg,
+    transparent calc(var(--card-x) - 24%),
+    var(--ink-300) var(--card-x),
+    transparent calc(var(--card-x) + 24%)
+  );
+}
+.ogu-card[data-grade="LEGENDARY"] .ogu-card-shine {
+  opacity: 0.5;
+  mix-blend-mode: multiply;
+  background: linear-gradient(
+    115deg,
+    transparent calc(var(--card-x) - 60%),
+    var(--holo-pink) calc(var(--card-x) - 36%),
+    var(--holo-yellow) calc(var(--card-x) - 12%),
+    var(--holo-mint) calc(var(--card-x) + 12%),
+    var(--holo-blue) calc(var(--card-x) + 36%),
+    transparent calc(var(--card-x) + 60%)
+  );
+}
+/* 손가락을 움직일 때 브라우저가 스크롤로 가져가면 포인터 이벤트가 끊긴다. 카드 위에서는 넘기지 않는다. */
+.ogu-card-tilt {
+  touch-action: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ogu-card-tilt {
+    transform: perspective(900px) rotateX(var(--card-rx))
+      rotateY(var(--card-ry));
+    transition: transform var(--duration-fast) ease-out;
+    will-change: transform;
   }
 }
 
