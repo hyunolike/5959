@@ -170,6 +170,7 @@ flowchart BT
     feed --> emotion
     feed --> recommend
     feed --> raid
+    feed --> safety
 ```
 
 - `post`는 `member` 말고는 어떤 도메인 모듈도 모른다. 글에 몬스터 HP나 감정을 붙여 보여 주는 일은 `feed` 모듈이 각 파사드를 불러 조합한다.
@@ -177,7 +178,8 @@ flowchart BT
 - 순환이 생기면 `ModularityTests`가 실패한다.
 - M5까지 만든 모듈은 `shared`, `member`, `post`, `ai`, `emotion`, `monster`, `feed`, `notification`, `safety`, `raid`다. 나머지는 표에 적힌 마일스톤에서 들어온다.
 - `raid`는 `monster`를 모른다. 보스는 글의 몬스터와 다른 것이고, 공격도 댓글이 아니라 레이드 화면의 버튼이다. `raid`와 `notification`은 서로를 부르지 않는다. 실시간 전달은 `shared`의 `TopicBroadcaster` 인터페이스를 `notification`의 스트림이 구현해 잇는다(006 research R1, R6).
-- `post`는 `safety`를 모른다. 숨김 상태와 위험 단계는 `post`의 열이고 `safety`가 `PostModerationApi`로 바꾼다. 욕설 가리기는 `shared`의 `ContentMask` 인터페이스를 `safety`가 구현해, 본문을 내보내는 `post`, `feed`가 `safety`에 의존하지 않는다(005 research R1, R6).
+- `post`는 `safety`를 모른다. 숨김 상태와 위험 단계는 `post`의 열이고 `safety`가 `PostModerationApi`로 바꾼다. 욕설 가리기는 `shared`의 `ContentMask` 인터페이스를 `safety`가 구현해, 본문을 내보내는 `post`, `feed`가 욕설을 가리려고 `safety`에 의존하지 않는다(005 research R1, R6).
+- `feed`는 비회원 둘러보기 피드(011) 하나 때문에 `safety`의 `RiskApi`에 의존한다. 로그인 없이 보이는 글은 위험 판정이 끝난 것만이어야 해서 `RiskApi.unsettledPostIds`로 묻는다. 그 조회(`GET /api/v1/public/feed`)는 닉네임과 회원 번호 없이 최근 20개만 주고 넘겨 볼 방법이 없다. 글 상세와 댓글, 회원의 피드는 그대로 로그인해야 한다.
 - `companion`(009)에는 아무도 의존하지 않는다. 글의 상태와 댓글 남기기는 `post`의 `PostCompanionApi`, 위험 판정은 `safety`의 `RiskApi`로만 한다. `post`는 AI를 모르고, 어느 회원이 AI 친구인지는 `companion`이 번호로 넘긴다(009 research R1, R5).
 - 감정 통계는 `emotion`이 아니라 `feed`가 계산한다. 숫자의 원천이 `monsters`와 `monster_hp_log`라서 `emotion`이 `monster`를 알면 `monster → emotion`과 순환이 생긴다(004 research R1, R12).
 - 공격 반영, 몬스터 생성, 글 삭제가 함께 쓰는 글 단위 잠금(`PostLock`)은 두 모듈이 같은 키를 써야 해서 `shared/lock`에 둔다.
