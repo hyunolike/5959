@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { waitForHomeLoaded } from "./support/home";
+import { openEmailLogin } from "./support/login";
 
 // infra/compose.e2e.yaml로 띄운 실제 API + DB를 상대로 확인한다. 이 API는
 // access 토큰 유효 시간이 5초(OGU_AUTH_JWT_ACCESS_TOKEN_TTL=5s)라서, 몇 초만
@@ -36,9 +37,10 @@ async function createOnboardedMember(page: Page, prefix: string) {
 }
 
 async function submitLogin(page: Page, email: string) {
+  await openEmailLogin(page);
   await page.getByLabel("이메일").fill(email);
   await page.getByLabel("비밀번호").fill(PASSWORD);
-  await page.getByRole("button", { name: "로그인" }).click();
+  await page.getByRole("button", { name: "로그인", exact: true }).click();
 }
 
 async function cookieValue(page: Page, name: string) {

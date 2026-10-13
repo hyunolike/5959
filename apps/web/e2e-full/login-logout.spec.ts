@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { waitForHomeLoaded } from "./support/home";
+import { openEmailLogin } from "./support/login";
 
 // infra/compose.e2e.yaml로 띄운 실제 API + DB를 상대로 확인한다. BFF 라우트나
 // API를 목(mock)하지 않는다.
@@ -49,9 +50,10 @@ async function createOnboardedMember(
 
 async function login(page: Page, email: string, password = PASSWORD) {
   await page.goto("/login");
+  await openEmailLogin(page);
   await page.getByLabel("이메일").fill(email);
   await page.getByLabel("비밀번호").fill(password);
-  await page.getByRole("button", { name: "로그인" }).click();
+  await page.getByRole("button", { name: "로그인", exact: true }).click();
 }
 
 test("US2-AC1 가입과 온보딩을 마친 사용자가 올바른 이메일과 비밀번호로 로그인하면 홈으로 이동한다", async ({
@@ -103,16 +105,17 @@ test("US2-AC3 한 출처에서 5번 로그인에 실패하면 올바른 비밀�
   const formAlert = page.locator('form [role="alert"]');
 
   await page.goto("/login");
+  await openEmailLogin(page);
   for (let i = 0; i < 5; i += 1) {
     await page.getByLabel("이메일").fill(email);
     await page.getByLabel("비밀번호").fill("wrongpass123");
-    await page.getByRole("button", { name: "로그인" }).click();
+    await page.getByRole("button", { name: "로그인", exact: true }).click();
     await expect(formAlert).toBeVisible();
   }
 
   await page.getByLabel("이메일").fill(email);
   await page.getByLabel("비밀번호").fill(PASSWORD);
-  await page.getByRole("button", { name: "로그인" }).click();
+  await page.getByRole("button", { name: "로그인", exact: true }).click();
 
   await expect(formAlert).toContainText("분 후");
   // 여전히 로그인 화면이다(막혔으니 홈으로 가지 않는다).

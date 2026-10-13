@@ -26,7 +26,24 @@ for (const viewport of [
     await expect(
       page.getByRole("link", { name: "구글로 계속하기" }),
     ).toHaveAttribute("href", /next=%2Fwrite$/);
-    await page.getByLabel("이메일", { exact: true }).focus();
+    // POLISH-AC19: 이메일 입력란은 접혀 있다가 누르면 펼쳐지고 초점이 이메일 칸으로 간다.
+    const emailToggle = page.getByRole("button", { name: "이메일로 로그인" });
+    await expect(emailToggle).toHaveAttribute("aria-expanded", "false");
+    await expect(page.getByLabel("이메일", { exact: true })).toBeHidden();
+    // POLISH-AC18: 카카오 버튼은 카카오가 정한 노란 바탕이다(카카오가 켜져 있을 때).
+    const kakao = page.getByRole("link", { name: "카카오로 계속하기" });
+    if ((await kakao.count()) > 0) {
+      await expect(kakao).toHaveCSS("background-color", "rgb(254, 229, 0)");
+    }
+    if (viewport.width < 768) {
+      // POLISH-AC20: 접힌 채로는 들어가는 길 전부와 회원가입이 첫 화면 안에 있다.
+      const signup = await page
+        .getByRole("link", { name: "회원가입", exact: true })
+        .boundingBox();
+      expect(signup!.y + signup!.height).toBeLessThan(viewport.height);
+      await page.screenshot({ path: testInfo.outputPath("login.png") });
+    }
+    await emailToggle.click();
     await expect(page.getByLabel("이메일", { exact: true })).toBeFocused();
     // DS-US2-AC2: 입력과 제출 버튼은 56px이고 주요 버튼은 먹색이다.
     await expect(page.getByLabel("이메일", { exact: true })).toHaveCSS(
@@ -45,19 +62,11 @@ for (const viewport of [
     expect(layout.overflow).toBe(false);
     expect(layout.background).toBe("rgb(255, 255, 255)");
     expect(layout.font).toContain("Pretendard");
-    if (viewport.width < 768) {
-      const google = await page
-        .getByRole("link", { name: "구글로 계속하기" })
-        .boundingBox();
-      const signup = await page
-        .getByRole("link", { name: "회원가입", exact: true })
-        .boundingBox();
-      expect(google!.y).toBeLessThan(360);
-      expect(signup!.y + signup!.height).toBeLessThan(viewport.height);
-    }
     await page.screenshot({
-      path: testInfo.outputPath("login.png"),
-      fullPage: viewport.width >= 768,
+      path: testInfo.outputPath(
+        viewport.width < 768 ? "login-email.png" : "login.png",
+      ),
+      fullPage: true,
     });
   });
   test(`US2-AC1, US1-AC1 탐색을 반복하고 실패 후 다시 작성할 수 있다 (${viewport.width}px)`, async ({

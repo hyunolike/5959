@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { waitForHomeLoaded } from "./support/home";
+import { openEmailLogin } from "./support/login";
 
 // 모든 데이터/쓰기 대상은 격리된 E2E API다. 운영 회원이나 게시글을 사용하지 않는다.
 for (const width of [320, 390, 1440]) {
@@ -98,6 +99,7 @@ for (const width of [320, 390, 1440]) {
       .getByRole("button", { name: "로그인하기", exact: true })
       .click();
     await expect(page).toHaveURL(/\/login\?next=%2Fwrite$/);
+    await openEmailLogin(page);
     await page
       .getByRole("textbox", { name: "이메일", exact: true })
       .fill(email);

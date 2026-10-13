@@ -8,6 +8,7 @@ import {
 } from "@playwright/test";
 
 import { waitForHomeLoaded } from "./support/home";
+import { openEmailLogin } from "./support/login";
 
 // infra/compose.e2e.yaml로 띄운 실제 API, DB, Redis를 상대로 확인한다. 브라우저는 티켓을 같은 출처
 // BFF에서 받고, 스트림은 API 도메인(SSE_PUBLIC_ORIGIN)에 바로 붙는다(004 research R3).
@@ -539,11 +540,12 @@ test("US1-AC8 로그아웃하면 알림 종이 사라지고 연결을 닫으며,
   const viaProxy = await call(page, "/api/notifications/stream-tickets");
   expect(viaProxy.status()).toBe(404);
 
+  await openEmailLogin(page);
   await page.getByLabel("이메일").fill(member.email);
   await page.getByLabel("비밀번호").fill(PASSWORD);
   // 로그아웃한 뒤 로그인하기 전까지는 티켓 요청도 스트림 요청도 없었다.
   expect(afterLogout).toEqual([]);
-  await page.getByRole("button", { name: "로그인" }).click();
+  await page.getByRole("button", { name: "로그인", exact: true }).click();
   await page.waitForURL("**/home");
 
   await waitForHomeLoaded(page);
