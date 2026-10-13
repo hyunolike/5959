@@ -159,17 +159,27 @@ export function PostComments({ postId }: { postId: number }) {
         </Button>
       ) : null}
 
-      <WriteCommentForm
-        postId={postId}
-        replyTo={replyTo}
-        onReplyDone={() => setReplyTo(null)}
-        onOptimisticAttack={() =>
-          attackOptimistically(queryClient, postId, "COMMENT")
-        }
-        onAttackSettled={() =>
-          settleAttack(queryClient, postId, { refreshComments: true })
-        }
-      />
+      {/*
+        좁은 화면에서는 입력줄을 화면 아래에 붙인다. 이 화면에는 하단 메뉴가 없다(화면 틀이 숨긴다).
+        본문 아래의 여백은 화면 틀이 두고 있어 마지막 댓글이 입력줄에 가리지 않는다.
+        넓은 화면에서는 제자리(댓글 목록 아래)에 둔다.
+      */}
+      <div
+        data-comment-dock
+        className="border-line bg-surface fixed inset-x-0 bottom-0 z-30 border-t px-5 pt-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] md:static md:z-auto md:border-t-0 md:bg-transparent md:p-0"
+      >
+        <WriteCommentForm
+          postId={postId}
+          replyTo={replyTo}
+          onReplyDone={() => setReplyTo(null)}
+          onOptimisticAttack={() =>
+            attackOptimistically(queryClient, postId, "COMMENT")
+          }
+          onAttackSettled={() =>
+            settleAttack(queryClient, postId, { refreshComments: true })
+          }
+        />
+      </div>
     </section>
   );
 }

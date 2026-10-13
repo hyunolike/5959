@@ -111,6 +111,11 @@ describe("PostDetail", () => {
     expect(
       await screen.findByRole("heading", { level: 1, name: "오구님의 고민" }),
     ).toHaveClass("sr-only");
+    // POLISH-AC16: 머리말은 뒤로 가기이고 화면의 h1은 그 하나다.
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(
+      screen.getByRole("link", { name: "마음 이야기로 돌아가기" }),
+    ).toHaveAttribute("href", "/home");
     // 이름은 역할이 있는 요소에만 붙일 수 있다.
     expect(screen.getByRole("group", { name: "몬스터" })).toHaveTextContent(
       "분석 중",
@@ -344,6 +349,22 @@ describe("PostDetail 공감과 댓글", () => {
         "before:-inset-y-[3px]",
       );
     }
+  });
+
+  it("POLISH-AC17 댓글 입력줄은 좁은 화면에서 화면 아래에 붙고 넓은 화면에서는 제자리다", async () => {
+    renderDetailWithComments(detail({ ...ANALYZED, mine: false }));
+    const input = await screen.findByLabelText("댓글");
+    const dock = input.closest("[data-comment-dock]");
+    expect(dock).toHaveClass(
+      "fixed",
+      "inset-x-0",
+      "bottom-0",
+      "border-t",
+      "bg-surface",
+      "md:static",
+    );
+    // 홈 표시줄이 있는 기기에서 입력줄이 그 위에 놓인다.
+    expect(dock!.className).toContain("env(safe-area-inset-bottom)");
   });
 
   it("댓글 목록 구역은 초점을 받아도 외곽선을 그리지 않는다", async () => {

@@ -195,9 +195,40 @@ for (const viewport of [
             () => document.documentElement.scrollWidth > innerWidth,
           ),
         ).toBe(false);
+        // POLISH-AC12, AC17: 좁은 화면의 글 상세는 하단 메뉴 대신 댓글 입력줄이 화면 아래에 붙는다.
+        const dock = page.locator("[data-comment-dock]");
+        const mobileNav = page.getByRole("navigation", {
+          name: "모바일 주요 메뉴",
+        });
+        if (viewport.width < 768) {
+          await expect(mobileNav).toHaveCount(0);
+          await expect(dock).toHaveCSS("position", "fixed");
+          const box = (await dock.boundingBox())!;
+          expect(Math.round(box.y + box.height)).toBe(viewport.height);
+          // 맨 아래로 내려도 본문의 끝이 입력줄에 가리지 않는다.
+          await page.evaluate(() =>
+            window.scrollTo(0, document.documentElement.scrollHeight),
+          );
+          const lastBottom = await page.getByRole("main").evaluate((main) => {
+            const flow = [...main.querySelectorAll("section, article")].filter(
+              (element) => !element.closest("[data-comment-dock]"),
+            );
+            return Math.max(
+              ...flow.map((element) => element.getBoundingClientRect().bottom),
+            );
+          });
+          expect(lastBottom).toBeLessThanOrEqual(
+            (await dock.boundingBox())!.y + 1,
+          );
+          await page.evaluate(() => window.scrollTo(0, 0));
+        } else {
+          await expect(dock).toHaveCSS("position", "static");
+        }
+        await expect(
+          page.getByRole("link", { name: "마음 이야기로 돌아가기" }),
+        ).toBeVisible();
         await page.screenshot({
           path: testInfo.outputPath("post-detail.png"),
-          fullPage: true,
         });
       }
       await page.goBack();
