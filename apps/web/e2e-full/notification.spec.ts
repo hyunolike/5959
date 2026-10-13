@@ -8,6 +8,7 @@ import {
 } from "@playwright/test";
 
 import { waitForHomeLoaded } from "./support/home";
+import { openEmailLogin } from "./support/login";
 
 // infra/compose.e2e.yaml로 띄운 실제 API, DB, Redis를 상대로 확인한다. 브라우저는 티켓을 같은 출처
 // BFF에서 받고, 스트림은 API 도메인(SSE_PUBLIC_ORIGIN)에 바로 붙는다(004 research R3).
@@ -495,7 +496,10 @@ test("US1-AC8 로그인하지 않으면 알림 종이 없고 스트림 요청이
   const requests = recordStreamRequests(page);
 
   await page.goto("/login");
-  await expect(page.getByRole("button", { name: "로그인" })).toBeVisible();
+  // 로그인 화면이다. 이메일 입력란은 접혀 있어 "로그인" 버튼은 아직 없다.
+  await expect(
+    page.getByRole("button", { name: "이메일로 로그인" }),
+  ).toBeVisible();
   await expect(bell(page)).toHaveCount(0);
   await page.goto("/");
   await expect(page).toHaveURL(/\/login$/);
@@ -532,18 +536,22 @@ test("US1-AC8 로그아웃하면 알림 종이 사라지고 연결을 닫으며,
   const afterLogout = recordStreamRequests(page);
   await page.getByRole("button", { name: "로그아웃" }).click();
   await page.waitForURL("**/login");
-  await expect(page.getByRole("button", { name: "로그인" })).toBeVisible();
+  // 로그인 화면이다. 이메일 입력란은 접혀 있어 "로그인" 버튼은 아직 없다.
+  await expect(
+    page.getByRole("button", { name: "이메일로 로그인" }),
+  ).toBeVisible();
   await expect(bell(page)).toHaveCount(0);
 
   // 범용 프록시로는 티켓을 받을 수 없다(전용 라우트만 발급한다).
   const viaProxy = await call(page, "/api/notifications/stream-tickets");
   expect(viaProxy.status()).toBe(404);
 
+  await openEmailLogin(page);
   await page.getByLabel("이메일").fill(member.email);
   await page.getByLabel("비밀번호").fill(PASSWORD);
   // 로그아웃한 뒤 로그인하기 전까지는 티켓 요청도 스트림 요청도 없었다.
   expect(afterLogout).toEqual([]);
-  await page.getByRole("button", { name: "로그인" }).click();
+  await page.getByRole("button", { name: "로그인", exact: true }).click();
   await page.waitForURL("**/home");
 
   await waitForHomeLoaded(page);
@@ -752,7 +760,10 @@ test("로그인하지 않고 알림 목록을 열면 로그인 화면으로 간�
   await page.goto("/notifications");
 
   await page.waitForURL(/\/login\?next=%2Fnotifications$/);
-  await expect(page.getByRole("button", { name: "로그인" })).toBeVisible();
+  // 로그인 화면이다. 이메일 입력란은 접혀 있어 "로그인" 버튼은 아직 없다.
+  await expect(
+    page.getByRole("button", { name: "이메일로 로그인" }),
+  ).toBeVisible();
 
   await context.close();
 });

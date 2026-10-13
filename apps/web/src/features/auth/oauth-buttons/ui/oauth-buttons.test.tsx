@@ -24,6 +24,17 @@ describe("OAuthButtons", () => {
     ).toHaveAttribute("href", "/api/auth/oauth/google?next=%2Fhome");
   });
 
+  it("POLISH-AC18 카카오 버튼은 카카오가 정한 노란 바탕이고 구글 버튼은 테두리 버튼이다", () => {
+    render(<OAuthButtons />);
+    const kakao = screen.getByRole("link", { name: "카카오로 계속하기" });
+    expect(kakao).toHaveClass("bg-kakao", "text-fg", "min-h-14");
+    expect(kakao).not.toHaveClass("bg-surface-sunken", "border-line-strong");
+    expect(screen.getByRole("link", { name: "구글로 계속하기" })).toHaveClass(
+      "border-line-strong",
+      "bg-surface",
+    );
+  });
+
   it("next를 받으면 인코딩해 쿼리에 담는다", () => {
     render(<OAuthButtons next="/my/posts?tab=1" />);
 

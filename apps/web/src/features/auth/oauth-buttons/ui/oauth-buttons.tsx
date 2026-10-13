@@ -28,7 +28,16 @@ export function OAuthButtons({
     <div className="flex flex-col gap-2">
       {PROVIDERS.filter(({ id }) => id !== "kakao" || kakaoEnabled).map(
         ({ id, label }) => (
-          <Button key={id} asChild variant="outline" size="lg">
+          <Button
+            key={id}
+            asChild
+            // 카카오 버튼은 카카오가 정한 노란 바탕에 검은 글자다. 구글은 흰 바탕에 테두리다.
+            variant={id === "kakao" ? "secondary" : "outline"}
+            size="lg"
+            className={
+              id === "kakao" ? "bg-kakao hover:bg-kakao hover:opacity-90" : ""
+            }
+          >
             <a href={`/api/auth/oauth/${id}?${query}`}>
               {id === "google" ? (
                 <Image src="/brand/google.png" alt="" width={18} height={18} />
