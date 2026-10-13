@@ -130,7 +130,7 @@ test("실제 RSC 대기와 현재 선택을 분리하고 연속 클릭의 마지
 
 test("320px 감정 통계의 낭독용 표가 페이지 가로 스크롤을 만들지 않는다", async ({
   page,
-}) => {
+}, testInfo) => {
   await page.setViewportSize({ width: 320, height: 844 });
   const emotions = [
     "ANXIETY",
@@ -145,22 +145,22 @@ test("320px 감정 통계의 낭독용 표가 페이지 가로 스크롤을 만�
         success: true,
         error: null,
         data: {
-          totalMonsters: 4,
-          defeatedMonsters: 2,
-          defeatedTogether: 1,
-          raidBossesDefeated: 0,
+          totalMonsters: 128,
+          defeatedMonsters: 96,
+          defeatedTogether: 1024,
+          raidBossesDefeated: 12,
           topEmotion: "ANXIETY",
           distribution: emotions.map((emotion, i) => ({
             emotion,
-            count: i === 0 ? 4 : 0,
-            percent: i === 0 ? 100 : 0,
+            count: [64, 32, 16, 16, 0][i],
+            percent: [50, 25, 13, 12, 0][i],
           })),
           weekly: [
             {
               weekStart: "2026-10-05",
               counts: emotions.map((emotion, i) => ({
                 emotion,
-                count: i === 0 ? 4 : 0,
+                count: [4, 2, 1, 1, 0][i],
               })),
             },
           ],
@@ -172,6 +172,29 @@ test("320px 감정 통계의 낭독용 표가 페이지 가로 스크롤을 만�
   await expect(
     page.getByRole("table", { name: "최근 8주 감정별 몬스터 수" }),
   ).toBeAttached();
+  // DS-US3-AC6: 큰 수치 네 개가 320px에서도 한 줄이다(줄 높이 40px).
+  const panel = page.getByRole("region", { name: "감정 통계" });
+  for (const value of ["128", "96", "1024", "12"]) {
+    const box = await panel.getByText(value, { exact: true }).boundingBox();
+    expect(box!.height).toBeLessThan(48);
+  }
+  // DS-US1-AC3: 분포 막대의 조각은 다시 잡은 감정 색이고 인접한 조각끼리 다르다.
+  const colors = await panel
+    .getByTestId("distribution-segment")
+    .evaluateAll((segments) =>
+      segments.map((segment) => getComputedStyle(segment).backgroundColor),
+    );
+  expect(colors).toEqual([
+    "rgb(109, 40, 217)",
+    "rgb(113, 135, 224)",
+    "rgb(69, 198, 221)",
+    "rgb(163, 176, 60)",
+  ]);
+  await page.evaluate(() => document.fonts.ready);
+  await page.screenshot({
+    path: testInfo.outputPath("my-320.png"),
+    fullPage: true,
+  });
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth > innerWidth,
