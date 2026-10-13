@@ -1,0 +1,103 @@
+# 013-member-withdrawal이 루트 계약(contracts/openapi.yaml)에 더하는 것. 구현 전에 루트에 합친다(0.14.0).
+openapi: 3.1.0
+info:
+  title: 오구오구 API - 회원 탈퇴
+  version: 0.14.0
+paths:
+  /api/v1/members/me/withdrawal:
+    post:
+      tags: [member]
+      operationId: withdraw
+      summary: 회원 탈퇴 (013 US1, US2). 온보딩 전에도 호출할 수 있다
+      description: |
+        탈퇴한다. 되돌릴 수 없다. 응답이 온 때부터 그 회원의 모든 세션이 끝나고 글과 댓글은 지운 것으로 다뤄진다(013 FR-004, FR-007).
+        본문과 알림, 주간 리포트를 저장소에서 지우는 일은 뒤에서 이어진다(FR-017). BFF는 204일 때만 쿠키를 지운다.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WithdrawalRequest' }
+      responses:
+        '204':
+          description: 탈퇴했다
+        '400':
+          description: 확인이 없다 (INVALID_REQUEST). `confirmed`가 없거나 false다
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: 운영자로 지정된 회원이다 (OPERATOR_CANNOT_WITHDRAW). 지정을 푼 뒤에 탈퇴한다
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /api/v1/safety/withdrawal-notice:
+    get:
+      tags: [safety]
+      operationId: getWithdrawalNotice
+      summary: 탈퇴 화면에 도움받을 곳을 보일지 (013 US1-AC10)
+      security: [{ bearer: [] }]
+      responses:
+        '200':
+          description: 최근 30일에 위기로 판정된 내 글이나 댓글이 있었는지
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, error]
+                properties:
+                  success: { type: boolean, const: true }
+                  data: { $ref: '#/components/schemas/WithdrawalNotice' }
+                  error: { type: 'null' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/operator/withdrawals/cleanup:
+    get:
+      tags: [operator]
+      operationId: getWithdrawalCleanupStatus
+      summary: 정리가 끝나지 않은 탈퇴 (013 US5-AC6). 운영자만
+      security: [{ bearer: [] }]
+      responses:
+        '200':
+          description: 끝나지 않은 탈퇴의 수와 가장 오래된 것의 때
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data, error]
+                properties:
+                  success: { type: boolean, const: true }
+                  data: { $ref: '#/components/schemas/WithdrawalCleanupStatus' }
+                  error: { type: 'null' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+components:
+  schemas:
+    WithdrawalRequest:
+      type: object
+      required: [confirmed]
+      properties:
+        confirmed:
+          type: boolean
+          description: 회원이 안내를 읽고 확인 칸을 채웠다. true가 아니면 탈퇴하지 않는다(013 FR-003)
+    WithdrawalNotice:
+      type: object
+      required: [recentCrisis]
+      properties:
+        recentCrisis:
+          type: boolean
+          description: true면 탈퇴 화면에 도움받을 곳을 함께 보인다. 탈퇴를 막지 않는다(013 FR-019)
+    WithdrawalCleanupStatus:
+      type: object
+      description: 개인 정보가 없다. 수와 때뿐이다(013 FR-018)
+      required: [pending, oldestWithdrawnAt]
+      properties:
+        pending:
+          type: integer
+          description: 글과 댓글의 본문, 알림, 주간 리포트 가운데 지우는 일이 하나라도 끝나지 않은 탈퇴의 수
+        oldestWithdrawnAt:
+          oneOf: [{ type: string, format: date-time }, { type: 'null' }]
+          description: 그 가운데 가장 오래된 탈퇴의 때. 없으면 null이다
