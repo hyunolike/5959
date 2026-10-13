@@ -425,7 +425,7 @@ test("manifest와 공개 아이콘을 제공하고 서비스 워커를 등록하
   });
   for (const icon of manifest.icons)
     expect((await request.get(icon.src)).ok()).toBe(true);
-  expect((await request.get("/brand/ogu-symbol.webp")).ok()).toBe(true);
+  expect((await request.get("/brand/ogu-logo-symbol.svg")).ok()).toBe(true);
   await page.goto("/login");
   await expect(page.locator('link[rel="manifest"]')).toHaveAttribute(
     "href",
@@ -433,7 +433,7 @@ test("manifest와 공개 아이콘을 제공하고 서비스 워커를 등록하
   );
   await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute(
     "href",
-    "/brand/ogu-lettering-v1-apple-touch-180.png",
+    "/brand/ogu-logo-v2-apple-touch-180.png",
   );
   expect(
     await page.evaluate(

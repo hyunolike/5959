@@ -4,19 +4,17 @@ import { cookies } from "next/headers";
 import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 import "@/core/styles/globals.css";
 import { AppProviders } from "@/core/providers/app-providers";
+import { env } from "@/shared/config";
 import { ONBOARDED_COOKIE, REFRESH_TOKEN_COOKIE } from "@/shared/server";
 import { AppShell } from "@/widgets/app-shell";
 import { NotificationBell } from "@/widgets/notification-bell";
 
-export const metadata: Metadata = {
-  title: { default: "오구오구", template: "%s | 오구오구" },
-  description: "감정을 나누고 함께 이겨내는 서비스",
-  appleWebApp: { capable: true, title: "오구오구", statusBarStyle: "default" },
-  icons: {
-    icon: "/icon.png",
-    apple: "/brand/ogu-lettering-v1-apple-touch-180.png",
-  },
-};
+import { rootMetadata } from "./root-metadata";
+
+/** 서비스 주소는 배포마다 다르므로 요청을 받을 때 환경 변수에서 읽는다. 내용은 `root-metadata.ts`에 있다. */
+export function generateMetadata(): Metadata {
+  return rootMetadata(env.APP_ORIGIN);
+}
 
 export const viewport: Viewport = {
   width: "device-width",

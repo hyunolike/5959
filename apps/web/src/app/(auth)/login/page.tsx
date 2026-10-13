@@ -49,7 +49,7 @@ export default async function LoginPage({
               alt=""
               width={132}
               height={132}
-              priority
+              loading="eager"
               className="size-33"
             />
           </span>

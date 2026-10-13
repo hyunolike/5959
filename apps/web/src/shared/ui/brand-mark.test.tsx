@@ -8,23 +8,27 @@ describe("BrandMark", () => {
     render(<BrandMark />);
     expect(screen.getAllByRole("img", { name: /^오구오구$/ })).toHaveLength(1);
   });
-  it("DS-US5-AC1 로고는 오구의 얼굴과 서비스 이름이다", () => {
+
+  it("LOGO-AC1 로고는 심볼과 글자가 든 가로형 SVG 하나다", () => {
     const { container } = render(<BrandMark />);
 
-    expect(screen.getByText("오구오구")).toBeInTheDocument();
+    expect(screen.getByText("오구오구")).toHaveClass("sr-only");
     expect(container).not.toHaveTextContent("5959");
-    // 이름이 글자로 있으므로 그림은 낭독하지 않는다.
-    const image = container.querySelector("img");
-    expect(image).toHaveAttribute("alt", "");
-    expect(image?.getAttribute("src")).toContain("ogu-symbol.webp");
+    const images = container.querySelectorAll("img");
+    expect(images).toHaveLength(1);
+    // 이름은 감싼 요소가 읽힌다. 그림은 낭독하지 않는다.
+    expect(images[0]).toHaveAttribute("alt", "");
+    expect(images[0].getAttribute("src")).toBe("/brand/ogu-logo.svg");
   });
 
-  it("DS-US5-AC1 서비스 이름은 글자 단계 안의 크기로 쓴다", () => {
+  it("LOGO-AC1 머리말에서 좁은 화면 28px, 넓은 화면 32px 높이로 놓이고 비율을 지킨다", () => {
     const { container } = render(<BrandMark />);
-    expect(container.firstElementChild).toHaveClass(
-      "text-title",
-      "font-extrabold",
-    );
-    expect(container.firstElementChild?.className).not.toMatch(/text-\[/);
+    const image = container.querySelector("img")!;
+    expect(image).toHaveClass("h-7", "w-auto", "sm:h-8");
+    // 머리말의 로고는 늘 첫 화면에 있다. 늦게 불러오지 않는다.
+    expect(image).toHaveAttribute("loading", "eager");
+    // 가로형 원본은 304×64다.
+    expect(image).toHaveAttribute("width", "304");
+    expect(image).toHaveAttribute("height", "64");
   });
 });

@@ -91,7 +91,7 @@ Pretendard 가변 글꼴이다. 굵기는 400, 500, 700, 800만 쓴다.
 | `ConfirmDialog`, `Toaster`                          | `shared/ui`        | 대화상자와 알림 토스트. 시트에는 손잡이가 있고 토스트는 잉크 띠다      |
 | `Card`                                              | `shared/ui`        | 폼과 안내를 담는 면. 목록에는 쓰지 않는다                              |
 | `Spinner`, `ListSkeleton`                           | `shared/ui`        | 불러오는 중. 둘 다 "불러오는 중"을 글자로 읽힌다                       |
-| `BrandMark`                                         | `shared/ui`        | 머리말의 로고                                                          |
+| `BrandMark`                                         | `shared/ui`        | 머리말의 로고. 가로형 SVG 하나를 28px(넓은 화면 32px) 높이로 놓는다    |
 | `ReactionIcon`, `SelectionIndicator`                | `shared/ui`        | 공감 하트의 반응, 탭의 선택 선                                         |
 | `AiBadge`                                           | `shared/ui`        | AI 친구의 닉네임 옆 표시. 안내 화면으로 가는 링크                      |
 | `EmotionTag`                                        | `entities/monster` | 점과 감정 이름                                                         |
@@ -149,13 +149,14 @@ AI 친구(009)는 반응 없는 글에 댓글과 공감을 남기는 AI 회원�
 
 ## 에셋과 출처
 
-| 에셋          | 위치                                                             | 출처 / 라이선스                                                                                          |
-| ------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| 감정 몬스터   | `public/monsters`                                                | 이 서비스를 위해 만든 그림(ADR-0006)                                                                     |
-| 오구 캐릭터   | `public/brand/ogu-*.webp`                                        | 이 서비스를 위해 만든 그림. 몬스터와 같은 굵은 외곽선과 평평한 채색이고, 보라색은 쓰지 않는다(불안의 색) |
-| 로고와 아이콘 | `public/brand/ogu-symbol.webp`, `public/pwa`, `src/app/icon.png` | 오구의 얼굴. 아이콘은 먹색(#17171c) 타일 위에 둔다                                                       |
-| 한글 글꼴     | npm `pretendard`                                                 | [Pretendard](https://github.com/orioncactus/pretendard), SIL Open Font License 1.1                       |
-| 아이콘        | npm `@phosphor-icons/react`                                      | [Phosphor](https://phosphoricons.com), MIT                                                               |
-| 구글 로그인 G | `public/brand/google.png`                                        | [Google 로그인 브랜딩](https://developers.google.com/identity/branding-guidelines). 원본 색과 비율 유지  |
+| 에셋                 | 위치                                                                                                                              | 출처 / 라이선스                                                                                                                                                              |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 감정 몬스터          | `public/monsters`                                                                                                                 | 이 서비스를 위해 만든 그림(ADR-0006)                                                                                                                                         |
+| 오구 캐릭터          | `public/brand/ogu-*.webp`                                                                                                         | 이 서비스를 위해 만든 그림. 몬스터와 같은 굵은 외곽선과 평평한 채색이고, 보라색은 쓰지 않는다(불안의 색)                                                                     |
+| 로고                 | `public/brand/ogu-logo.svg`(가로형), `ogu-logo-symbol.svg`(심볼)                                                                  | 이 서비스를 위해 codex가 그린 SVG. 오구의 얼굴과 둥근 선 글자다. 잉크 한 색에 잎만 초록이고 글꼴 파일에 기대지 않는다. 잎의 초록은 로고에만 쓰는 색이라 토큰으로 두지 않는다 |
+| 아이콘과 공유 이미지 | `public/pwa/ogu-logo-v2-*.png`, `public/brand/ogu-logo-v2-apple-touch-180.png`, `src/app/icon.png`, `src/app/opengraph-image.png` | `scripts/brand`의 원본 SVG에서 `scripts/generate-brand-icons.mjs`가 만든다. 설치 아이콘의 모양을 바꾸면 이름의 판(v2)을 올린다                                               |
+| 한글 글꼴            | npm `pretendard`                                                                                                                  | [Pretendard](https://github.com/orioncactus/pretendard), SIL Open Font License 1.1                                                                                           |
+| 아이콘               | npm `@phosphor-icons/react`                                                                                                       | [Phosphor](https://phosphoricons.com), MIT                                                                                                                                   |
+| 구글 로그인 G        | `public/brand/google.png`                                                                                                         | [Google 로그인 브랜딩](https://developers.google.com/identity/branding-guidelines). 원본 색과 비율 유지                                                                      |
 
 모양 규칙은 넥스터즈, 디프만 등 동아리 서비스의 공개 저장소에서 되풀이되는 값을 참고했다(목록은 위의 설계 문서). 그 저장소들에는 라이선스가 없어 구조와 규칙만 참고했고 코드와 에셋은 가져오지 않았다.

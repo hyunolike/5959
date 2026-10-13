@@ -137,16 +137,18 @@ GitHub의 Nexters, depromeet, YAPP-Github, dnd-side-project, sopt-makers에서 2
 
 **한 벌**
 
-| 파일                                                    | 쓰임                                                                                                                       |
-| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `public/brand/ogu-logo-symbol.svg`                      | 심볼. 정사각형                                                                                                             |
-| `public/brand/ogu-logo-wordmark.svg`                    | 글자                                                                                                                       |
-| `public/brand/ogu-logo.svg`                             | 가로형. `BrandMark`가 쓴다                                                                                                 |
-| `src/app/icon.svg`, `public/brand/apple-touch-icon.png` | 파비콘과 애플 아이콘                                                                                                       |
-| `public/pwa/ogu-logo-v2-{192,512,maskable-512}.png`     | 설치 아이콘. `scripts/generate-brand-icons.mjs`가 SVG에서 만든다. 파일 이름의 판을 올려 설치된 기기의 아이콘이 바뀌게 한다 |
-| `src/app/opengraph-image.png`                           | 공유 이미지(1200×630). 로고와 한 줄 소개                                                                                   |
+| 파일 | 쓰임 |
+| --- | --- |
+| `public/brand/ogu-logo.svg` | 가로형(심볼과 글자, 304×64). `BrandMark`가 쓴다 |
+| `public/brand/ogu-logo-symbol.svg` | 심볼. 홈 화면 추가 안내가 쓴다 |
+| `scripts/brand/{icon,app-icon,app-icon-maskable,og-image}.svg` | 아이콘과 공유 이미지의 원본. 화면이 직접 쓰지 않는다 |
+| `src/app/icon.png`, `public/brand/ogu-logo-v2-apple-touch-180.png` | 파비콘(96px)과 애플 아이콘. 파비콘은 지금처럼 PNG로 둔다 |
+| `public/pwa/ogu-logo-v2-{192,512,maskable-512}.png` | 설치 아이콘. 파일 이름의 판을 올려 설치된 기기의 아이콘이 바뀌게 한다 |
+| `src/app/opengraph-image.png` | 공유 이미지(1200×630). 로고와 감정 색 다섯 |
 
-옛 파일(`ogu-wordmark.svg`, `ogu-lettering-v1-*`, `icon-*.png`)은 쓰는 곳을 옮긴 뒤 지운다. `ogu-symbol.webp`는 다른 화면이 쓰는지 확인하고 정한다.
+PNG는 `scripts/generate-brand-icons.mjs`가 원본 SVG에서 만든다. 공유 이미지의 주소가 절대 경로가 되도록 루트 메타데이터에 서비스 주소(`APP_ORIGIN`)를 `metadataBase`로 둔다.
+
+글자만 있는 파일은 쓰는 곳이 없어 넣지 않았다. 옛 파일(`ogu-wordmark.svg`, `ogu-symbol.webp`, `ogu-lettering-v1-*`, `icon-*.png`, `apple-touch-icon.png`)은 지웠다.
 
 ## codex로 만드는 에셋
 
