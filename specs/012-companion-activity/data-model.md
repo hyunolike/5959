@@ -2,7 +2,7 @@
 
 PR마다 Flyway 스크립트가 하나다. 모든 제약에 이름을 붙인다. `companion`의 테이블은 다른 모듈의 테이블에 FK를 걸지 않는다.
 
-## PR 1: `V10__companion_multi_reaction.sql`
+## PR 1: `V11__companion_multi_reaction.sql`
 
 ### `companion_reaction` (고치는 것)
 
@@ -88,7 +88,7 @@ PR마다 Flyway 스크립트가 하나다. 모든 제약에 이름을 붙인다.
 | `ogu.companion.follow-up.min-gap` | `${AI_COMPANION_FOLLOW_UP_MIN:3m}` | 앞 댓글 뒤 다음 친구까지의 가장 짧은 간격. e2e는 2s |
 | `ogu.companion.follow-up.max-gap` | `${AI_COMPANION_FOLLOW_UP_MAX:10m}` | 가장 긴 간격. e2e는 4s |
 
-## PR 2: `V11__companion_posts.sql`
+## PR 2: `V12__companion_posts.sql`
 
 ### `posts` (고치는 것, post 모듈)
 

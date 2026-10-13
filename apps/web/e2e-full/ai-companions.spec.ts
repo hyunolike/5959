@@ -80,8 +80,8 @@ async function commentsOf(member: Member, postId: number) {
     .items;
 }
 
-/** AI 친구가 이 글에 댓글을 남길 때까지 기다린다. */
-async function waitForCompanion(member: Member, postId: number) {
+/** AI 친구가 이 글에 댓글을 [count]개 남길 때까지 기다린다. */
+async function waitForCompanion(member: Member, postId: number, count = 1) {
   await expect
     .poll(
       async () =>
@@ -89,7 +89,7 @@ async function waitForCompanion(member: Member, postId: number) {
           .length,
       { timeout: REACTION_TIMEOUT, intervals: [1_000] },
     )
-    .toBe(1);
+    .toBe(count);
 }
 
 function companionComment(page: Page): Locator {
@@ -186,6 +186,53 @@ test("US1-AC2, US3-AC1 다른 회원이 먼저 댓글을 단 글과 우려로 �
   const onAnswered = await commentsOf(author, answered);
   expect(onAnswered.map((item) => item.author?.ai)).toEqual([false]);
   expect(await commentsOf(author, concern)).toEqual([]);
+});
+
+// 012: e2e 프로필에서는 반응할 친구의 수를 본문의 [AI친구:3]으로 정하고, 뒤따르는 친구는 2초에서 4초 뒤에 온다.
+test("012 US1-AC5 수가 3으로 정해진 글에 서로 다른 AI 친구 셋이 차례로 답한다", async ({
+  browser,
+}) => {
+  const author = await newMember(browser, "ai");
+  members.push(author);
+  const postId = await writePost(
+    author,
+    "[실패] [AI친구:3] 오늘 회의가 길었어요",
+  );
+
+  await waitForCompanion(author, postId, 3);
+
+  const comments = await commentsOf(author, postId);
+  const names = comments.map((item) => item.author?.nickname);
+  expect(new Set(names)).toEqual(
+    new Set(["다정한 오구", "씩씩한 오구", "차분한 오구"]),
+  );
+  // 친구마다 다른 말을 한다
+  expect(new Set(comments.map((item) => item.content)).size).toBe(3);
+  await author.page.goto(`/post/${postId}`);
+  await expect(companionComment(author.page)).toHaveCount(3);
+});
+
+test("012 US2-AC1 첫 AI 친구가 답한 뒤 사람이 댓글을 달면 남은 AI 친구는 답하지 않는다", async ({
+  browser,
+}) => {
+  const author = await newMember(browser, "ai");
+  const other = await newMember(browser, "hu");
+  members.push(author, other);
+  const postId = await writePost(author, "[실패] [AI친구:3] 누가 끼어드는 글");
+  await waitForCompanion(author, postId, 1);
+  const response = await call(other.page, `/api/posts/${postId}/comments`, {
+    content: "저도 같은 날이 있었어요",
+  });
+  expect(response.status()).toBe(201);
+  // 같은 때에 쓴 다른 글이 셋을 다 받으면, 앞 글의 남은 차례도 지난 것이다
+  const control = await writePost(author, "[실패] [AI친구:3] 셋이 답하는 글");
+
+  await waitForCompanion(author, control, 3);
+
+  const comments = await commentsOf(author, postId);
+  // 사람이 끼어드는 순간 둘째 친구가 이미 쓰고 있었을 수 있다. 셋째는 오지 않는다
+  expect(comments.filter((item) => item.author?.ai).length).toBeLessThan(3);
+  expect(comments.filter((item) => item.author?.ai === false)).toHaveLength(1);
 });
 
 test("US2-AC5 AI 친구와 헷갈리는 닉네임은 쓸 수 없다고 안내한다", async ({

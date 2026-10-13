@@ -149,7 +149,7 @@ def configuration():
 
 def companion_settings(config):
     """AI companion switches (009). Off unless the deployment config turns it on."""
-    limit = config.get("ai_companion_daily_limit", 30)
+    limit = config.get("ai_companion_daily_limit", 45)
     if isinstance(limit, bool) or not isinstance(limit, int) or limit < 0:
         raise ValueError("ai_companion_daily_limit must be a non-negative integer")
     wait = config.get("ai_companion_wait", "10m")

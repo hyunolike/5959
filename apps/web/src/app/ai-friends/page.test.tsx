@@ -18,6 +18,21 @@ describe("AI 친구 안내", () => {
     expect(metadata.title).toBe("AI 친구");
   });
 
+  it("US4-AC6 한 글에 여러 명이 답할 수 있고 사람이 답하면 멈춘다는 것을 알린다", () => {
+    const { container: page } = render(<AiFriendsPage />);
+
+    expect(
+      screen.getByRole("heading", {
+        name: "한 명이 답하기도, 두세 명이 답하기도 해요",
+      }),
+    ).toBeInTheDocument();
+    expect(page).toHaveTextContent("몇 명이 답할지는 글마다 달라요");
+    expect(page).toHaveTextContent(
+      "다른 회원이 댓글을 달면 남은 AI 친구는 답하지 않아요",
+    );
+    expect(page).toHaveTextContent("저마다 한 글에 한 번만 답해요");
+  });
+
   it("US2-AC4 세 친구의 이름과 도움받을 곳으로 가는 길이 있다", () => {
     render(<AiFriendsPage />);
 

@@ -87,8 +87,10 @@ JSON 파일을 `infra/gcp/secrets/credentials.json`에 준비한다(이 디렉�
 
 AI 친구(009)는 꺼진 채로 배포된다. `specs/009-ai-companions/quickstart.md`의 운영 준비를 마친 뒤
 `terraform.tfvars`에 `ai_companion_enabled = true`를 지정하고 apply한다. 하루에 AI에 댓글을 청하는 횟수
-(`ai_companion_daily_limit`, 기본 30)와 기다리는 시간(`ai_companion_wait`, 기본 `10m`)도 같은 곳에서 바꾼다.
+(`ai_companion_daily_limit`, 기본 45)와 기다리는 시간(`ai_companion_wait`, 기본 `10m`)도 같은 곳에서 바꾼다.
 끄려면 `false`로 되돌리고 다시 apply한다. 이미 남긴 댓글은 그대로 남는다.
+한 글에 반응하는 AI 친구의 수를 뽑는 무게(`AI_COMPANION_COUNT_WEIGHTS`, 기본 `60,30,10`)와 다음 친구가 오기까지의 간격
+(`AI_COMPANION_FOLLOW_UP_MIN`, `AI_COMPANION_FOLLOW_UP_MAX`, 기본 `3m`, `10m`)은 비밀 값(JSON)의 같은 이름 필드로 바꾼다(012).
 
 ```bash
 python3 infra/gcp/scripts/prepare-secrets.py infra/gcp/secrets/credentials.json

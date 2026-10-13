@@ -20,7 +20,7 @@ PR 둘로 낸다(research R21). PR 1은 여러 친구의 반응, PR 2는 글쓰�
 - API: Spring Boot 4.1, Spring Modulith 2.1, Spring AI, Resilience4j(`companionPost` 인스턴스 추가). 새 라이브러리는 없다
 - 웹: Next.js 16, TanStack Query 5. 새 라이브러리는 없다
 
-**Storage**: PostgreSQL 17. Flyway `V10__companion_multi_reaction.sql`(PR 1), `V11__companion_posts.sql`(PR 2)
+**Storage**: PostgreSQL 17. Flyway `V11__companion_multi_reaction.sql`(PR 1), `V12__companion_posts.sql`(PR 2)
 
 **Testing**:
 - API: JUnit 5, Testcontainers. 009의 켜진 컨텍스트(`CompanionTestBase`)를 그대로 쓴다. 수를 정해 주는 가짜 `ReactionCountPicker`, 가짜 글쓰기를 더한다. 실제 모델의 글은 켰을 때만 도는 테스트가 출력한다
@@ -119,7 +119,7 @@ apps/api/src/main/
 │   │   └── presentation/dto/AuthorResponse.kt, PublicFeedResponse.kt              # PR 2
 │   └── shared/config/AiProperties.kt              # PR 2: companionPostMaxTokens
 └── resources/
-    ├── db/migration/V10__companion_multi_reaction.sql, V11__companion_posts.sql
+    ├── db/migration/V11__companion_multi_reaction.sql, V12__companion_posts.sql
     ├── prompts/companion-comment-v2.st, companion-post-v1.st
     └── application.yml, application-e2e.yml
 
@@ -147,13 +147,13 @@ docs/architecture/overview.md, apps/api/AGENTS.md, specs/009-ai-companions/spec.
 
 | 묶음 | 내용 | 스토리 | PR |
 |---|---|---|---|
-| 1 | V10 마이그레이션, 설정(무게, 간격, 하루의 몫 45), `ReactionCountPicker` | 기반 | 1 |
+| 1 | V11 마이그레이션, 설정(무게, 간격, 하루의 몫 45), `ReactionCountPicker` | 기반 | 1 |
 | 2 | `PostCompanionApi`: `companionComments`, 이 회원이 남겼는지, `FULL`, `limit` | US1, US2 | 1 |
 | 3 | 반응: 수 정하기, 기록 맞추기, 친구 고르기, 남긴 뒤 다음 차례 잡기, 닫기 | US1 | 1 |
 | 4 | 멈추기: 사람의 댓글, 사라진 글, 위험, 24시간, 하루의 몫, 세 번 실패. 동시 실행 | US2 | 1 |
 | 5 | 앞 댓글 보내기와 되풀이 검사, 프롬프트 v2, 가짜 쓰기 | US1 | 1 |
 | 6 | 안내 문구(웹), 배포 설정의 기본값과 새 환경 변수, e2e, 문서 | US4, US7 | 1 |
-| 7 | 계약 합치기(0.13.0)와 웹 타입, V11, `posts.author_kind`, 응답의 `ai` | 기반, US4 | 2 |
+| 7 | 계약 합치기(0.13.0)와 웹 타입, V12, `posts.author_kind`, 응답의 `ai` | 기반, US4 | 2 |
 | 8 | 웹: 글 카드, 둘러보기 카드, 글 상세, 비슷한 글의 표시와 안내 | US4 | 2 |
 | 9 | `ai`: `CompanionPostWriter`와 실제, 가짜 구현, 프롬프트, 검증기 | US3, US5 | 2 |
 | 10 | 글쓰기: 조건, 행 만들기, 맡기, 올리기 전 검사, 저장, 다시 시도 | US3, US5 | 2 |

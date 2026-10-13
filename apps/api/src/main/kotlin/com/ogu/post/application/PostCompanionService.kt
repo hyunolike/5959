@@ -1,6 +1,8 @@
 package com.ogu.post.application
 
 import com.ogu.post.CommentTone
+import com.ogu.post.CompanionComment
+import com.ogu.post.CompanionReactionCheck
 import com.ogu.post.CompanionReactionOutcome
 import com.ogu.post.CompanionReactionResult
 import com.ogu.post.CompanionTarget
@@ -27,19 +29,19 @@ class PostCompanionService(
     override fun target(
         postId: Long,
         companionIds: Collection<Long>,
-    ): CompanionTarget? =
-        jdbcClient
+    ): CompanionTarget? {
+        val ids = idsOf(companionIds)
+        return jdbcClient
             .sql(
                 """
                 select p.id, p.author_id, p.content, p.comment_tone, p.created_at, p.updated_at,
                        p.hidden_at is not null as hidden,
-                       ($COMPANION_COMMENT) as companion_comment_id,
                        exists ($OTHER_COMMENT) as other_commented
                 from posts p
                 where p.id = :postId and ${Visibility.notDeleted("p")}
                 """.trimIndent(),
             ).param("postId", postId)
-            .param("companionIds", idsOf(companionIds))
+            .param("companionIds", ids)
             .query { rs, _ ->
                 CompanionTarget(
                     postId = rs.getLong("id"),
@@ -49,11 +51,37 @@ class PostCompanionService(
                     createdAt = rs.getTimestamp("created_at").toInstant(),
                     contentVersion = rs.getTimestamp("updated_at").toInstant(),
                     hidden = rs.getBoolean("hidden"),
-                    companionCommentId = rs.getObject("companion_comment_id")?.let { (it as Number).toLong() },
                     otherCommented = rs.getBoolean("other_commented"),
                 )
             }.optional()
             .orElse(null)
+            ?.copy(companionComments = companionComments(postId, ids))
+    }
+
+    /** AI 친구가 이 글에 남긴, 지우지 않은 댓글. 회원마다 가장 먼저 남긴 것 하나를 먼저 남긴 순으로 준다. */
+    private fun companionComments(
+        postId: Long,
+        companionIds: Set<Long>,
+    ): List<CompanionComment> =
+        jdbcClient
+            .sql(
+                """
+                select distinct on (c.author_id) c.author_id, c.id, c.content, c.hidden_at is null as visible
+                from comments c
+                where c.post_id = :postId and c.author_id in (:companionIds) and ${Visibility.notDeleted("c")}
+                order by c.author_id, c.id
+                """.trimIndent(),
+            ).param("postId", postId)
+            .param("companionIds", companionIds)
+            .query { rs, _ ->
+                CompanionComment(
+                    memberId = rs.getLong("author_id"),
+                    commentId = rs.getLong("id"),
+                    content = rs.getString("content"),
+                    visible = rs.getBoolean("visible"),
+                )
+            }.list()
+            .sortedBy { it.commentId }
 
     @Transactional
     override fun react(
@@ -61,19 +89,22 @@ class PostCompanionService(
         memberId: Long,
         content: String,
         companionIds: Collection<Long>,
-        contentVersion: Instant?,
+        check: CompanionReactionCheck,
     ): CompanionReactionResult {
         require(memberId in companionIds) { "AI 친구가 아닌 회원의 이름으로는 남기지 않는다" }
         // 글의 행을 먼저 잠근다(잠금 순서: 행 먼저, 글 잠금은 댓글과 공감의 리스너가 그다음에 잡는다). 같은 글에 겹쳐 온
         // 요청이 여기서 줄을 서고, 뒤에 온 쪽은 앞의 댓글을 보고 물러난다.
         val state = if (lockVisible(postId)) target(postId, companionIds) else null
-        val reacted = state?.companionCommentId
+        require(state?.authorId != memberId) { "글쓴이의 이름으로는 자기 글에 반응을 남기지 않는다" }
+        val mine = state?.companionComments?.firstOrNull { it.memberId == memberId }
         return when {
             state == null -> CompanionReactionResult(CompanionReactionOutcome.GONE)
-            reacted != null -> CompanionReactionResult(CompanionReactionOutcome.ALREADY_REACTED, reacted)
+            mine != null -> CompanionReactionResult(CompanionReactionOutcome.ALREADY_REACTED, mine.commentId)
+            // 정해진 수를 잠금 안에서 다시 본다. 맡은 시간이 지나 두 실행기가 함께 남겨도 넘지 않는다(012 FR-005)
+            state.companionComments.size >= check.limit -> CompanionReactionResult(CompanionReactionOutcome.FULL)
             state.otherCommented -> CompanionReactionResult(CompanionReactionOutcome.HUMAN_COMMENTED)
             // 행을 잠근 뒤라 이 뒤로는 본문이 바뀌지 않는다
-            contentVersion != null && !state.contentVersion.sameMicros(contentVersion) ->
+            check.contentVersion != null && !state.contentVersion.sameMicros(check.contentVersion) ->
                 CompanionReactionResult(CompanionReactionOutcome.STALE)
             else -> leave(postId, memberId, content)
         }
@@ -112,13 +143,6 @@ class PostCompanionService(
 
     private companion object {
         const val NOBODY = -1L
-
-        /** AI 친구가 이 글에 남긴, 지우지 않은 댓글 가운데 가장 먼저 것. 숨겨진 것도 센다(다시 남기지 않는다). */
-        val COMPANION_COMMENT =
-            """
-            select min(c.id) from comments c
-            where c.post_id = p.id and c.author_id in (:companionIds) and ${Visibility.notDeleted("c")}
-            """.trimIndent()
 
         /** 글쓴이도 AI 친구도 아닌 회원의 보이는 댓글. 달았다가 지운 댓글은 글쓴이에게 남은 반응이 아니다. */
         val OTHER_COMMENT =

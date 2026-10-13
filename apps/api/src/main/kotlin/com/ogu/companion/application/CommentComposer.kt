@@ -38,7 +38,8 @@ sealed interface Draft {
 
 /**
  * AI에 댓글을 청하고 올리기 전에 검사한다(009 research R6, R11). 공급자에 보내는 것은 글의 본문, 글쓴이가 고른 말투, 분석된
- * 감정, 친구의 말씨뿐이다(FR-012). 감정은 분석이 끝났을 때만 보낸다. 글의 본문과 AI의 답은 로그에 남기지 않는다.
+ * 감정, 친구의 말씨, 그리고 같은 글에 앞서 남긴 보이는 AI 친구의 댓글뿐이다(012 FR-010). 사람의 댓글은 보내지 않는다.
+ * 감정은 분석이 끝났을 때만 보낸다. 글의 본문과 AI의 답은 로그에 남기지 않는다.
  */
 @Component
 class CommentComposer(
@@ -51,21 +52,26 @@ class CommentComposer(
     fun compose(
         target: CompanionTarget,
         voice: Voice,
-    ): Draft =
-        when (val draft = write(target, voice)) {
+    ): Draft {
+        // 숨겨진 댓글은 보내지 않는다. 숨겨진 까닭이 있는 글을 다시 공급자에 보내지 않는다(012 research R6)
+        val previous = target.companionComments.filter { it.visible }.map { it.content }
+        return when (val draft = write(target, voice, previous)) {
             is Draft.Failed -> draft
             is Draft.Written ->
-                gate.rejectionOf(target.postId, draft.comment)?.let { Draft.Failed(it, rejected = true) } ?: draft
+                gate.rejectionOf(target.postId, draft.comment, previous)?.let { Draft.Failed(it, rejected = true) }
+                    ?: draft
         }
+    }
 
     @Suppress("TooGenericExceptionCaught") // 댓글 쓰기의 어떤 실패도 재시도 일정으로 넘긴다(constitution V)
     private fun write(
         target: CompanionTarget,
         voice: Voice,
+        previous: List<String>,
     ): Draft {
         val key = "POST:${target.postId}"
         return try {
-            Draft.Written(writer.write(key, inputOf(target, voice)))
+            Draft.Written(writer.write(key, inputOf(target, voice, previous)))
         } catch (e: CompanionCommentFailed) {
             failed(e.kind)
         } catch (e: RuntimeException) {
@@ -80,6 +86,7 @@ class CommentComposer(
     private fun inputOf(
         target: CompanionTarget,
         voice: Voice,
+        previous: List<String>,
     ): CompanionCommentInput {
         val analysis = emotionApi.findByPostIds(listOf(target.postId))[target.postId]
         // 24시간 동안 분석하지 못해 기본값을 받은 감정은 글에서 읽은 것이 아니라 보내지 않는다
@@ -89,6 +96,7 @@ class CommentComposer(
             tone = CompanionTone.valueOf(target.commentTone.name),
             emotion = emotion?.let { ClassifiedEmotion.valueOf(it.name) },
             voice = CompanionVoice.valueOf(voice.name),
+            previous = previous,
         )
     }
 }
@@ -106,12 +114,17 @@ class CommentGate(
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    /** 걸린 검사의 이름. 통과하면 null이다. 싼 검사부터 본다. */
+    /**
+     * 걸린 검사의 이름. 통과하면 null이다. 싼 검사부터 본다. [previous]는 같은 글에 앞서 남긴 AI 친구의 댓글이다. 그 문장을
+     * 되풀이한 답은 올리지 않는다(012 FR-010).
+     */
     fun rejectionOf(
         postId: Long,
         comment: String,
+        previous: List<String> = emptyList(),
     ): String? =
         when {
+            Repetition.repeats(comment, previous) -> REPEATED
             // 다른 회원에게 가려져 보일 낱말이 있다
             contentMask.mask(comment) != comment -> PROFANITY
             riskApi.keywordLevel(comment) != RiskLevel.NONE -> KEYWORD_RISK
@@ -136,8 +149,36 @@ class CommentGate(
         }
 
     private companion object {
+        const val REPEATED = "REPEATED"
         const val PROFANITY = "PROFANITY"
         const val KEYWORD_RISK = "KEYWORD_RISK"
         const val AI_RISK = "AI_RISK"
     }
+}
+
+/**
+ * 뒤따르는 AI 친구의 댓글이 앞 댓글을 되풀이하는지 본다(012 research R6). 글자와 숫자만 남겨 견준다. 띄어쓰기와 문장
+ * 부호만 다른 것은 같은 말이다. 전체가 같거나, 다듬은 길이가 [MIN_SENTENCE]자 이상인 문장 하나가 앞 댓글의 문장과 같으면
+ * 되풀이다. 짧은 맞장구("그랬군요")는 겹쳐도 되풀이로 보지 않는다.
+ */
+internal object Repetition {
+    private const val MIN_SENTENCE = 8
+    private val SENTENCE_END = Regex("[.!?。…\\n]+")
+
+    fun repeats(
+        comment: String,
+        previous: List<String>,
+    ): Boolean {
+        if (previous.isEmpty()) return false
+        val whole = normalized(comment)
+        val earlier = previous.flatMap(::sentencesOf).toSet()
+        return previous.any { normalized(it) == whole } || sentencesOf(comment).any { it in earlier }
+    }
+
+    private fun sentencesOf(text: String): List<String> {
+        val sentences = text.split(SENTENCE_END).map(::normalized)
+        return sentences.filter { it.length >= MIN_SENTENCE }
+    }
+
+    private fun normalized(text: String): String = text.filter { it.isLetterOrDigit() }.lowercase()
 }

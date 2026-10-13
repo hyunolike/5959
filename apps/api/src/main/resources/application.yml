@@ -243,7 +243,7 @@ ogu:
     wait: ${AI_COMPANION_WAIT:10m}
     max-age: 24h
     # 하루(한국 시간)에 AI에 댓글을 청하는 횟수. 실패한 시도도 든다(research R8)
-    daily-limit: ${AI_COMPANION_DAILY_LIMIT:30}
+    daily-limit: ${AI_COMPANION_DAILY_LIMIT:45}
     max-attempts: 3
     poll-interval: 30s
     batch-size: 3
@@ -251,6 +251,12 @@ ogu:
       initial-interval: 1m
       max-interval: 5m
     risk-wait: 30s
+    # 012: 한 글에 반응할 AI 친구의 수(1명, 2명, 3명)를 뽑는 무게. 글의 반응 기록이 생길 때 한 번 정한다(research R2)
+    count-weights: ${AI_COMPANION_COUNT_WEIGHTS:60,30,10}
+    # 012: 앞 친구의 댓글이 올라간 뒤 다음 친구가 반응하기까지의 간격. 이 범위에서 무작위로 고른다(research R3)
+    follow-up:
+      min-gap: ${AI_COMPANION_FOLLOW_UP_MIN:3m}
+      max-gap: ${AI_COMPANION_FOLLOW_UP_MAX:10m}
   # 006 레이드(data-model.md "설정"). 바꾸면 다음에 나오는 보스부터 적용된다
   raid:
     cooldown: 1s

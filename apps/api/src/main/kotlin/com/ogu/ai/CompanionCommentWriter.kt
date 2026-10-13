@@ -13,8 +13,9 @@ interface CompanionCommentWriter {
 }
 
 /**
- * 댓글을 쓸 때 공급자에 보내는 것의 전부다(009 FR-012). 글의 본문, 글쓴이가 고른 말투, 분석된 감정, 답하는 친구의 말씨뿐이다.
- * 글쓴이의 닉네임, 직군, 경력, 회원 번호, 다른 댓글이 들어갈 자리를 두지 않는다. 자리를 더하려면 스펙의 FR-012부터 고친다.
+ * 댓글을 쓸 때 공급자에 보내는 것의 전부다(009 FR-012, 012 FR-010). 글의 본문, 글쓴이가 고른 말투, 분석된 감정, 답하는
+ * 친구의 말씨, 그리고 같은 글에 앞서 남긴 AI 친구의 댓글뿐이다. 글쓴이의 닉네임, 직군, 경력, 회원 번호, 사람의 댓글이
+ * 들어갈 자리를 두지 않는다. 자리를 더하려면 스펙부터 고친다.
  */
 data class CompanionCommentInput(
     val content: String,
@@ -22,6 +23,8 @@ data class CompanionCommentInput(
     /** 분석이 끝났을 때만 있다. 없으면 요청에서 줄째로 빠진다. */
     val emotion: ClassifiedEmotion?,
     val voice: CompanionVoice,
+    /** 같은 글에 앞서 남긴 AI 친구의 댓글(먼저 남긴 순). 같은 말을 되풀이하지 않게 하려고 보낸다. 없으면 그 구획이 빠진다. */
+    val previous: List<String> = emptyList(),
 )
 
 /** 글쓴이가 바라는 댓글 말투. ai 모듈은 post 모듈 타입을 쓰지 않으므로 자체 enum을 쓰고, companion 모듈이 옮긴다. */

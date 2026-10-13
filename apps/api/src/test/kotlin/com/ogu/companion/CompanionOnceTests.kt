@@ -1,6 +1,7 @@
 package com.ogu.companion
 
 import com.ogu.TestcontainersConfiguration
+import com.ogu.post.CompanionReactionCheck
 import com.ogu.post.CompanionReactionOutcome
 import com.ogu.post.PostCompanionApi
 import com.ogu.post.PostCreated
@@ -127,6 +128,83 @@ class CompanionOnceTests : CompanionTestBase() {
     }
 
     @Test
+    fun `US2-AC9 수가 여럿인 글을 여러 실행기가 함께 맡아도 한 번에 한 친구만 남긴다`() {
+        val postId = postOf(members.onboarded(), count = 3)
+        companions.pass(CompanionFixture.WAIT)
+
+        val handled = together { runner.attempt(postId) }
+
+        assertThat(handled.count { it }).isEqualTo(1)
+        assertThat(companions.comments(postId)).hasSize(1)
+        assertThat(countsOf(postId)).isEqualTo(3 to 1)
+        assertThat(statusOf(postId)).isEqualTo("WAITING")
+    }
+
+    @Test
+    fun `US2-AC9 두 친구가 같은 글에 함께 남겨도 AI 친구의 댓글은 정해진 수를 넘지 않는다`() {
+        val postId = postOf(members.onboarded(), count = 2)
+        val ids = companions.memberIds
+
+        // 맡은 시간이 지나 실행기 셋이 같은 글을 서로 다른 친구로 함께 남기는 상황
+        val outcomes =
+            together(ids.size) { index ->
+                companionApi.react(postId, ids[index], "함께 남기는 말 ${index + 1}", ids, upTo(2)).outcome
+            }
+
+        assertThat(outcomes.count { it == CompanionReactionOutcome.REACTED }).isEqualTo(2)
+        assertThat(outcomes.count { it == CompanionReactionOutcome.FULL }).isEqualTo(1)
+        assertThat(companions.comments(postId)).hasSize(2)
+        assertThat(companions.likers(postId)).hasSize(2)
+    }
+
+    @Test
+    fun `US2-AC9 남긴 뒤 적기 전에 멈췄다 다시 돌면 기록이 댓글에 맞춰지고 댓글이 늘지 않는다`() {
+        val postId = postOf(members.onboarded(), count = 3)
+        val ids = companions.memberIds
+        // 두 친구의 댓글과 공감은 커밋됐는데 기록에는 아무것도 적히지 않은 상태
+        val left = listOf(ids[0], ids[2]).map { companionApi.react(postId, it, "먼저 남겨진 댓글", ids, upTo(3)) }
+        assertThat(countsOf(postId)).isEqualTo(3 to 0)
+
+        assertThat(reactAfter(postId)).isTrue()
+
+        // AI에 청하지 않고 남아 있는 댓글로 기록을 맞춘다. 남은 한 명의 차례는 뒤로 잡힌다
+        assertThat(writer.callsOf(postId)).isZero()
+        assertThat(countsOf(postId)).isEqualTo(3 to 2)
+        assertThat(companions.entries(postId).map { it["comment_id"] }).isEqualTo(left.map { it.commentId })
+        assertThat(statusOf(postId)).isEqualTo("WAITING")
+        assertThat(runner.attempt(postId)).isFalse()
+
+        assertThat(followUp(postId)).isTrue()
+
+        val authors = companions.comments(postId).map { it["author_id"] as Long }
+        assertThat(authors).containsExactly(ids[0], ids[2], ids[1])
+        assertThat(statusOf(postId)).isEqualTo("DONE")
+        assertThat(countsOf(postId)).isEqualTo(3 to 3)
+        assertThat(writer.callsOf(postId)).isEqualTo(1)
+    }
+
+    @Test
+    fun `US2-AC9 쓰는 사이에 다른 실행기가 정해진 수를 채웠으면 남기지 않고 기록을 맞춰 닫는다`() {
+        val postId = postOf(members.onboarded(), count = 2)
+        val ids = companions.memberIds
+        reactAfter(postId)
+        val first = companions.comments(postId).single()["author_id"] as Long
+        val others = ids - first
+        // 둘째 친구가 쓰는 사이에 다른 실행기가 셋째 친구의 이름으로 먼저 남긴다
+        val byCompanion = companions.memberIdByCompanion
+        val chosen = byCompanion.getValue(companions.restOrder().first { byCompanion[it] != first })
+        val rival = others.single { it != chosen }
+        writer.beforeAnswer(postId) { companionApi.react(postId, rival, "그 사이에 남겨진 댓글이에요.", ids, upTo(2)) }
+
+        followUp(postId)
+
+        assertThat(companions.comments(postId).map { it["author_id"] }).containsExactly(first, rival)
+        assertThat(statusOf(postId)).isEqualTo("DONE")
+        assertThat(skipReasonOf(postId)).isNull()
+        assertThat(countsOf(postId)).isEqualTo(2 to 2)
+    }
+
+    @Test
     fun `US1-AC2 쓰는 사이에 다른 회원이 댓글을 달았으면 남기지 않는다`() {
         val postId = postOf(members.onboarded())
         val human = members.onboarded()
@@ -166,6 +244,32 @@ class CompanionOnceTests : CompanionTestBase() {
         val rows = jdbcTemplate.queryForList("select * from companion_reaction where post_id = ?", postId)
         assertThat(rows).hasSize(1)
         assertThat(rows.single()["post_created_at"]).isEqualTo(createdAt)
+    }
+
+    /** 정해진 수가 [limit]인 글에 남길 때의 재확인. */
+    private fun upTo(limit: Int) = CompanionReactionCheck(limit = limit)
+
+    /** [count]개의 스레드가 같은 때에 [action]을 한다. */
+    private fun <T> together(
+        count: Int = CONCURRENCY,
+        action: (index: Int) -> T,
+    ): List<T> {
+        val start = CountDownLatch(1)
+        val executor = Executors.newFixedThreadPool(count)
+        return try {
+            (0 until count)
+                .map { index ->
+                    executor.submit(
+                        Callable {
+                            start.await(5, TimeUnit.SECONDS)
+                            action(index)
+                        },
+                    )
+                }.also { start.countDown() }
+                .map { it.get(30, TimeUnit.SECONDS) }
+        } finally {
+            executor.shutdownNow()
+        }
     }
 
     private fun pendingEnrolls(postId: Long): Int =

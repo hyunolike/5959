@@ -5,41 +5,52 @@ import org.springframework.stereotype.Repository
 import java.sql.Timestamp
 import java.time.Instant
 
-/** 맡은 반응 기록 하나. [attempts]는 지금까지 AI에 댓글을 청한 횟수다. */
+/**
+ * 맡은 반응 기록 하나. [targetCount]는 이 글에 반응할 AI 친구의 수이고 [doneCount]는 지금까지 반응한 수다. [attempts]는
+ * 지금 차례인 친구에게 댓글을 청한 횟수다.
+ */
 data class Reaction(
     val id: Long,
     val postId: Long,
     val postCreatedAt: Instant,
     val attempts: Int,
-)
+    val targetCount: Int = 1,
+    val doneCount: Int = 0,
+) {
+    val full: Boolean get() = doneCount >= targetCount
+}
 
 /**
- * `companion_reaction` 저장소(009 data-model.md). 글 하나에 행 하나다. 본문과 댓글은 담지 않는다. 닫는 쿼리는 모두
- * `status = 'WAITING'`일 때만 바꿔, 맡은 뒤 다른 실행기가 먼저 닫았으면 아무것도 하지 않는다.
+ * `companion_reaction` 저장소(009, 012 data-model.md). 글 하나에 행 하나다. 친구 한 명의 반응은
+ * [ReactionEntryRepository]가 한 행씩 적는다. 본문과 댓글은 담지 않는다. 닫는 쿼리는 모두 `status = 'WAITING'`일 때만 바꿔, 맡은 뒤 다른
+ * 실행기가 먼저 닫았으면 아무것도 하지 않는다.
  */
 @Repository
 class CompanionReactionRepository(
     private val jdbcClient: JdbcClient,
 ) {
     /**
-     * 글의 반응 기록을 만든다. 처음 볼 때는 글이 올라온 때로 둔다(기다리는 시간은 맡을 때 설정으로 본다). 같은 글의 기록이
-     * 이미 있으면 아무것도 하지 않는다. 한 글에 한 번을 지키는 것이 이 유일 제약이다(research R4).
+     * 글의 반응 기록을 만든다. 처음 볼 때는 글이 올라온 때로 둔다(기다리는 시간은 맡을 때 설정으로 본다). 반응할 친구의
+     * 수([targetCount])는 여기서 한 번 적고 바꾸지 않는다(012 FR-002). 같은 글의 기록이 이미 있으면 아무것도 하지 않는다.
      */
     fun enroll(
         postId: Long,
         postCreatedAt: Instant,
+        targetCount: Int,
         now: Instant,
     ) {
         jdbcClient
             .sql(
                 """
-                insert into companion_reaction (post_id, post_created_at, status, next_attempt_at, created_at)
-                values (:postId, :postCreatedAt, 'WAITING', :postCreatedAt, :now)
+                insert into companion_reaction
+                  (post_id, post_created_at, status, next_attempt_at, created_at, target_count)
+                values (:postId, :postCreatedAt, 'WAITING', :postCreatedAt, :now, :targetCount)
                 on conflict on constraint companion_reaction_post_key do nothing
                 """.trimIndent(),
             ).param("postId", postId)
             .param("postCreatedAt", Timestamp.from(postCreatedAt))
             .param("now", Timestamp.from(now))
+            .param("targetCount", targetCount)
             .update()
     }
 
@@ -56,7 +67,7 @@ class CompanionReactionRepository(
         jdbcClient
             .sql(
                 """
-                select id, post_id, post_created_at, attempts from companion_reaction
+                select id, post_id, post_created_at, attempts, target_count, done_count from companion_reaction
                 where status = 'WAITING' and post_created_at <= :createdBefore and next_attempt_at <= :now
                   ${if (postId != null) "and post_id = :postId" else ""}
                 order by next_attempt_at, post_created_at
@@ -72,6 +83,8 @@ class CompanionReactionRepository(
                     postId = rs.getLong("post_id"),
                     postCreatedAt = rs.getTimestamp("post_created_at").toInstant(),
                     attempts = rs.getInt("attempts"),
+                    targetCount = rs.getInt("target_count"),
+                    doneCount = rs.getInt("done_count"),
                 )
             }.optional()
             .orElse(null)
@@ -135,29 +148,55 @@ class CompanionReactionRepository(
             .update()
     }
 
-    /** 댓글과 공감을 남겼다고 닫는다. */
-    fun complete(
+    /**
+     * 이 글에 반응한 수를 친구별 반응의 수로 맞추고 그 수를 돌려준다. 그래서 같은 반응을 두 번 적어도 수가 늘지 않는다.
+     * 처음 남긴 댓글이면 기록의 댓글로 남긴다. 맡은 뒤 다른 실행기가 아무도 반응하지 않은 것으로 닫아 둔 기록이면 반응한
+     * 것으로 바로잡는다. 친구별 반응을 넣은 것([ReactionEntryRepository.insert])과 같은 트랜잭션에서 부른다.
+     */
+    fun syncDone(
         id: Long,
         commentId: Long,
-        now: Instant,
-    ): Boolean =
+    ): Int =
         jdbcClient
             .sql(
                 """
-                update companion_reaction
-                set status = 'DONE', comment_id = :commentId, next_attempt_at = null, last_error = null,
-                    completed_at = :now
-                where id = :id and status = 'WAITING'
+                update companion_reaction r
+                set done_count = least(r.target_count, e.total),
+                    comment_id = coalesce(r.comment_id, :commentId),
+                    status = case when r.status = 'SKIPPED' then 'DONE' else r.status end
+                from (select count(*) as total from companion_reaction_entry where reaction_id = :id) e
+                where r.id = :id
+                returning r.done_count
                 """.trimIndent(),
             ).param("commentId", commentId)
-            .param("now", Timestamp.from(now))
             .param("id", id)
-            .update() == 1
+            .query(Int::class.java)
+            .single()
 
-    /** 반응하지 않고 닫는다. [errorKind]가 있으면 마지막 실패의 분류로 남긴다. */
-    fun skip(
+    /** 다음 친구의 차례를 잡는다(012 research R3). 시도 횟수는 친구 한 명의 차례 안에서만 세므로 0으로 되돌린다. */
+    fun scheduleNext(
         id: Long,
-        reason: SkipReason,
+        nextAttemptAt: Instant,
+    ) {
+        jdbcClient
+            .sql(
+                """
+                update companion_reaction set attempts = 0, last_error = null, next_attempt_at = :next
+                where id = :id and status = 'WAITING'
+                """.trimIndent(),
+            ).param("next", Timestamp.from(nextAttemptAt))
+            .param("id", id)
+            .update()
+    }
+
+    /**
+     * 기록을 닫는다. 한 명 이상 반응했으면 `DONE`, 아무도 반응하지 않았으면 `SKIPPED`다(012 research R4). [reason]은 정해진
+     * 수를 채우지 못하고 멈춘 까닭이고, 다 채워서 닫을 때는 null이다. 까닭 없이는 한 명 이상 반응한 기록만 닫힌다.
+     * [errorKind]가 있으면 마지막 실패의 분류로 남긴다.
+     */
+    fun close(
+        id: Long,
+        reason: SkipReason?,
         now: Instant,
         errorKind: String? = null,
     ): Boolean =
@@ -165,11 +204,13 @@ class CompanionReactionRepository(
             .sql(
                 """
                 update companion_reaction
-                set status = 'SKIPPED', skip_reason = :reason, next_attempt_at = null, completed_at = :now,
-                    last_error = coalesce(:kind, last_error)
-                where id = :id and status = 'WAITING'
+                set status = case when done_count > 0 then 'DONE' else 'SKIPPED' end,
+                    skip_reason = :reason, next_attempt_at = null, completed_at = :now,
+                    last_error = case when :finished then null else coalesce(:kind, last_error) end
+                where id = :id and status = 'WAITING' and (not :finished or done_count > 0)
                 """.trimIndent(),
-            ).param("reason", reason.name)
+            ).param("reason", reason?.name)
+            .param("finished", reason == null)
             .param("now", Timestamp.from(now))
             .param("kind", errorKind)
             .param("id", id)
@@ -178,7 +219,8 @@ class CompanionReactionRepository(
     /**
      * [createdBefore]까지 올라온, 아직 기다리는 기록을 한 문장으로 닫는다(`EXPIRED`). 닫은 수를 돌려준다. 기능이 오래 꺼져
      * 있었으면 기다리는 기록이 쌓여 있다. 하나씩 맡아 닫으면 새 글이 그 뒤에서 기다린다. 다른 실행기가 맡아 처리 중인
-     * 기록(다음 차례가 미뤄져 있다)은 건드리지 않는다. 그 실행기가 남긴 댓글의 기록이 `EXPIRED`로 어긋나지 않게 한다.
+     * 기록과 뒤따르는 친구의 차례를 기다리는 기록(다음 차례가 미뤄져 있다)은 건드리지 않는다. 뒤의 것은 차례가 됐을 때
+     * 맡으면서 닫는다.
      */
     fun expireOlderThan(
         createdBefore: Instant,
@@ -188,26 +230,56 @@ class CompanionReactionRepository(
             .sql(
                 """
                 update companion_reaction
-                set status = 'SKIPPED', skip_reason = 'EXPIRED', next_attempt_at = null, completed_at = :now
+                set status = case when done_count > 0 then 'DONE' else 'SKIPPED' end,
+                    skip_reason = 'EXPIRED', next_attempt_at = null, completed_at = :now
                 where status = 'WAITING' and post_created_at <= :createdBefore and next_attempt_at <= :now
                 """.trimIndent(),
             ).param("now", Timestamp.from(now))
             .param("createdBefore", Timestamp.from(createdBefore))
             .update()
+}
 
+/**
+ * `companion_reaction_entry` 저장소(012 data-model.md). 한 글에 AI 친구 한 명이 남긴 반응 한 건이 한 행이다. 댓글의 번호만
+ * 담고 내용은 담지 않는다.
+ */
+@Repository
+class ReactionEntryRepository(
+    private val jdbcClient: JdbcClient,
+) {
     /**
-     * 친구마다 가장 최근에 반응한 기록의 번호. 반응한 적이 없는 친구는 결과에 없다. 완료 시각이 아니라 기록 번호로 견줘,
-     * 인스턴스의 시계가 조금 달라도 차례가 흐트러지지 않는다.
+     * 친구 한 명이 남긴 반응을 적는다. 같은 글에 같은 친구의 기록이 이미 있으면 다시 넣지 않는다. 한 글에 같은 친구는 한 번을
+     * 지키는 것이 이 유일 제약이다(012 FR-005, research R1).
      */
-    fun lastDoneByCompanion(): Map<Int, Long> =
+    fun insert(
+        reaction: Reaction,
+        companionId: Int,
+        commentId: Long,
+        now: Instant,
+    ) {
         jdbcClient
             .sql(
                 """
-                select companion_id, max(id) as last_id from companion_reaction
-                where status = 'DONE' and companion_id is not null
-                group by companion_id
+                insert into companion_reaction_entry (reaction_id, post_id, companion_id, comment_id, created_at)
+                values (:reactionId, :postId, :companionId, :commentId, :now)
+                on conflict on constraint companion_reaction_entry_post_companion_key do nothing
                 """.trimIndent(),
-            ).query { rs, _ -> rs.getInt("companion_id") to rs.getLong("last_id") }
+            ).param("reactionId", reaction.id)
+            .param("postId", reaction.postId)
+            .param("companionId", companionId)
+            .param("commentId", commentId)
+            .param("now", Timestamp.from(now))
+            .update()
+    }
+
+    /**
+     * 친구마다 가장 최근에 남긴 반응의 번호. 반응한 적이 없는 친구는 결과에 없다. 남긴 시각이 아니라 번호로 견줘,
+     * 인스턴스의 시계가 조금 달라도 차례가 흐트러지지 않는다.
+     */
+    fun lastByCompanion(): Map<Int, Long> =
+        jdbcClient
+            .sql("select companion_id, max(id) as last_id from companion_reaction_entry group by companion_id")
+            .query { rs, _ -> rs.getInt("companion_id") to rs.getLong("last_id") }
             .list()
             .toMap()
 }

@@ -16,4 +16,16 @@ describe("고민 쓰기 화면", () => {
       ),
     ).toBeInTheDocument();
   });
+
+  it("US4-AC7 AI 친구가 한 명 이상 답할 수 있다고 미리 알리고 안내 화면으로 간다", () => {
+    const { container: page } = render(<WritePage />);
+
+    expect(page).toHaveTextContent(
+      "한동안 댓글이 없으면 AI 친구가 한 명에서 세 명까지 먼저 답할 수 있어요.",
+    );
+    expect(screen.getByRole("link", { name: "AI 친구" })).toHaveAttribute(
+      "href",
+      "/ai-friends",
+    );
+  });
 });
