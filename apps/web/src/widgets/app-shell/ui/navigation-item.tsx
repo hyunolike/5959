@@ -43,7 +43,7 @@ export function NavigationItem({
       aria-describedby={locked ? lockedId : undefined}
       className={cn(
         "ogu-pressable group rounded-control relative",
-        mobile ? "min-h-16 min-w-0" : "min-h-12",
+        mobile ? "min-h-14 min-w-0" : "min-h-12",
         // 둥근 버튼은 칸 밖으로 올라와 있어 칸의 바탕을 바꾸지 않는다.
         filled
           ? "text-fg"
@@ -70,7 +70,7 @@ export function NavigationItem({
   );
 }
 
-/** Next의 실제 이동 대기만 보여준다. prefetched/동일 경로는 가짜 로딩을 만들지 않는다. */
+/** Next의 실제 이동 대기만 아이콘 자리의 돌아가는 표시로 보여준다. prefetched/동일 경로는 가짜 로딩을 만들지 않는다. */
 function NavigationContents({
   label,
   shortLabel,
@@ -154,22 +154,13 @@ function NavigationContents({
           )}
         >
           {mobile ? shortLabel : label}
-          {!mobile && pending ? (
-            <span
-              aria-hidden
-              className="text-fg-subtle absolute top-full left-0 text-[10px] leading-3"
-            >
-              이동 중
-            </span>
-          ) : null}
         </span>
       </span>
-      {mobile ? (
-        <span aria-hidden className="text-fg-subtle h-3 text-[10px] leading-3">
-          {pending ? "이동 중" : null}
-        </span>
-      ) : null}
-      {/* busy 영역 밖에 두어 이동 시작 안내가 busy로 인해 읽히지 않는 일을 피한다. */}
+      {/*
+        이동을 기다리는 것은 아이콘 자리의 돌아가는 표시로만 보인다. "이동 중"이라는 글자는 누를 때마다 깜빡여 띄우지
+        않는다. 화면 낭독기에는 어느 메뉴로 가는 중인지 알린다. busy 영역 밖에 두어 안내가 busy로 인해 읽히지 않는
+        일을 피한다.
+      */}
       <span aria-live="polite" className="sr-only">
         {pending ? `${label} 이동 중` : ""}
       </span>
