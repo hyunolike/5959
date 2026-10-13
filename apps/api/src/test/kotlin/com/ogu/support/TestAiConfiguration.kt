@@ -1,13 +1,18 @@
 package com.ogu.support
 
 import com.ogu.ai.ClassifiedRisk
+import com.ogu.ai.CompanionCommentFailed
+import com.ogu.ai.CompanionCommentInput
+import com.ogu.ai.CompanionCommentWriter
 import com.ogu.ai.Embedder
+import com.ogu.ai.EmotionAnalysisFailed
 import com.ogu.ai.EmotionAnalyzer
 import com.ogu.ai.EmotionClassification
 import com.ogu.ai.RiskClassifier
 import com.ogu.ai.WeeklyLetterInput
 import com.ogu.ai.WeeklyLetterWriter
 import com.ogu.ai.infrastructure.EmotionResponseParser
+import com.ogu.ai.infrastructure.FakeCompanionCommentWriter
 import com.ogu.ai.infrastructure.FakeEmbedder
 import com.ogu.ai.infrastructure.FakeEmotionAnalyzer
 import com.ogu.ai.infrastructure.FakeRiskClassifier
@@ -41,6 +46,49 @@ class TestAiConfiguration {
     @Bean
     @Primary
     fun scriptedWeeklyLetterWriter(): ScriptedWeeklyLetterWriter = ScriptedWeeklyLetterWriter(FakeWeeklyLetterWriter())
+
+    /** AI 친구의 댓글도 가짜가 쓴다(009 research R11). 글의 본문에 든 `[AI댓글실패:N]` 같은 표지로 결과가 정해진다. */
+    @Bean
+    @Primary
+    fun scriptedCompanionCommentWriter(): ScriptedCompanionCommentWriter = ScriptedCompanionCommentWriter(FakeCompanionCommentWriter())
+}
+
+/**
+ * [FakeCompanionCommentWriter]에 테스트용 손잡이를 단 것. 글마다 받은 입력과 호출 횟수를 기억한다. [answers]에 글 번호로
+ * 답을 정해 두면 검사 없이 그 답을 그대로 돌려주고(올리기 전 검사를 시험할 때), [failures]에 정해 두면 그 분류로 실패한다.
+ */
+class ScriptedCompanionCommentWriter(
+    private val delegate: CompanionCommentWriter,
+) : CompanionCommentWriter {
+    val answers = ConcurrentHashMap<Long, String>()
+    val failures = ConcurrentHashMap<Long, EmotionAnalysisFailed.Kind>()
+    private val inputs = ConcurrentHashMap<String, CompanionCommentInput>()
+    private val calls = ConcurrentHashMap<String, AtomicInteger>()
+    private val beforeAnswer = ConcurrentHashMap<Long, () -> Unit>()
+
+    override fun write(
+        key: String,
+        input: CompanionCommentInput,
+    ): String {
+        inputs[key] = input
+        calls.computeIfAbsent(key) { AtomicInteger() }.incrementAndGet()
+        val postId = key.substringAfter("POST:").toLongOrNull()
+        beforeAnswer.remove(postId)?.invoke()
+        failures[postId]?.let { throw CompanionCommentFailed(it) }
+        return answers[postId] ?: delegate.write(key, input)
+    }
+
+    fun callsOf(postId: Long): Int = calls["POST:$postId"]?.get() ?: 0
+
+    fun inputOf(postId: Long): CompanionCommentInput? = inputs["POST:$postId"]
+
+    /** 이 글의 댓글을 다음에 청할 때 답하기 직전에 [action]을 한 번 실행한다(쓰는 사이에 일어나는 일 흉내). */
+    fun beforeAnswer(
+        postId: Long,
+        action: () -> Unit,
+    ) {
+        beforeAnswer[postId] = action
+    }
 }
 
 /**

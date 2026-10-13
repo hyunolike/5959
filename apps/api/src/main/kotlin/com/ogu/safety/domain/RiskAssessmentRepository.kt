@@ -30,6 +30,27 @@ class RiskAssessmentRepository(
             .filterNotNull()
             .maxOfOrNull { RiskLevel.of(it) } ?: RiskLevel.NONE
 
+    /**
+     * 이 대상의 지금 판정(가장 새 행). 고쳐서 닫힌(`SUPERSEDED`) 행 뒤에는 언제나 새 행이 있으므로 가장 새 행이 지금
+     * 내용의 판정이다. 판정이 없으면 null이다.
+     */
+    fun latest(
+        type: ContentType,
+        id: Long,
+    ): RiskState? =
+        jdbcClient
+            .sql(
+                """
+                select status, level from risk_assessment
+                where target_type = :type and target_id = :id
+                order by id desc limit 1
+                """.trimIndent(),
+            ).param("type", type.name)
+            .param("id", id)
+            .query { rs, _ -> RiskState(rs.getString("status"), RiskLevel.of(rs.getString("level"))) }
+            .optional()
+            .orElse(null)
+
     /** 고쳐서 새 판정이 생기기 전에, 아직 AI를 기다리던 이전 판정을 닫는다. */
     fun supersedePending(
         type: ContentType,
@@ -190,6 +211,12 @@ class RiskAssessmentRepository(
             .param("id", id)
             .update() == 1
 }
+
+/** 판정 한 행의 상태(`PENDING`, `DONE`, `FALLBACK`, `SUPERSEDED`)와 그때의 단계. */
+data class RiskState(
+    val status: String,
+    val level: RiskLevel,
+)
 
 /** 맡은 판정 시도 하나. [attempts]는 이번 시도까지 센 횟수다. */
 data class RiskClaim(
