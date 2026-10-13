@@ -49,6 +49,13 @@ describe("hpPercent 살아 있는 동안", () => {
 });
 
 describe("HpBar", () => {
+  it("DS-US3-AC1 값은 퍼센트가 아니라 HP 숫자로 읽힌다", () => {
+    render(<HpBar emotion="ANXIETY" hp={62} maxHp={100} label="보스 HP" />);
+    expect(
+      screen.getByRole("progressbar", { name: "보스 HP" }),
+    ).toHaveAttribute("aria-valuetext", "HP 62/100");
+  });
+
   it("DS-US3-AC1 작은 막대는 6px이고 진행 막대로 읽힌다", () => {
     render(<HpBar emotion="ANXIETY" hp={62} maxHp={100} />);
     const bar = screen.getByRole("progressbar", { name: "몬스터 HP" });
@@ -136,5 +143,12 @@ describe("MonsterStage", () => {
     expect(fill()).not.toHaveClass("border-r-2");
     rerender(<HpBar emotion="LONELINESS" hp={0} maxHp={10} />);
     expect(fill()).not.toHaveClass("border-r-2");
+  });
+
+  it("DS-US1-AC3 계약에 없는 감정이면 그림의 이름도 undefined가 되지 않는다", () => {
+    render(<MonsterThumb emotion={"UNKNOWN" as never} stage="full" />);
+    expect(screen.getByRole("img").getAttribute("alt")).toBe(
+      "감정 몬스터, 멀쩡함",
+    );
   });
 });

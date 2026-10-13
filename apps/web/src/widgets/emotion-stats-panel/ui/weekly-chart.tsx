@@ -1,3 +1,5 @@
+import { CaretDown } from "@phosphor-icons/react/dist/ssr";
+
 import { formatDate } from "@/shared/lib";
 
 import {
@@ -80,9 +82,15 @@ export function WeeklyChart({
         막대의 색만으로는 감정별 수를 읽기 어렵고(밝은 색은 바탕과 3:1에 못 미친다) title은 마우스에서만 보인다.
         터치와 저시력 사용자가 값을 볼 수 있게 주별 수를 글자로 펼쳐 볼 수 있게 한다.
       */}
-      <details className="mt-3">
-        <summary className="rounded-inline text-label text-fg-muted inline-flex min-h-11 cursor-pointer items-center font-medium">
+      <details className="group mt-3">
+        {/* summary를 flex로 두면 기본 삼각형이 사라진다. 누를 수 있다는 표시를 화살표와 밑줄로 준다. */}
+        <summary className="rounded-inline text-label text-fg-muted inline-flex min-h-11 cursor-pointer list-none items-center gap-1 font-medium underline underline-offset-4">
           주별 수 보기
+          <CaretDown
+            size={14}
+            aria-hidden
+            className="transition-transform group-open:rotate-180 motion-reduce:transition-none"
+          />
         </summary>
         <ul className="text-label text-fg-muted mt-1 flex flex-col gap-1 tabular-nums">
           {weekly.map((week) => (

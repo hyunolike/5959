@@ -45,6 +45,8 @@ export function HpBar({
       aria-valuemin={0}
       aria-valuemax={max}
       aria-valuenow={now}
+      // 값만 두면 퍼센트로 읽는 화면 낭독기가 있다. 화면의 글자와 같은 말로 읽힌다.
+      aria-valuetext={`HP ${now}/${max}`}
       className={cn(
         "w-full overflow-hidden rounded-full",
         size === "lg"

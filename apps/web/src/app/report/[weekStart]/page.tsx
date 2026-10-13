@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Button } from "@/shared/ui";
 import { WeeklyReport } from "@/widgets/weekly-report";
+
+export const metadata: Metadata = { title: "주간 리포트" };
 
 /**
  * 한 주의 리포트(008). 로그인과 온보딩은 proxy.ts의 라우트 가드가 먼저 확인한다.

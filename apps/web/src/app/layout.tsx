@@ -9,10 +9,10 @@ import { AppShell } from "@/widgets/app-shell";
 import { NotificationBell } from "@/widgets/notification-bell";
 
 export const metadata: Metadata = {
-  title: "오구오구",
+  title: { default: "오구오구", template: "%s | 오구오구" },
   description: "감정을 나누고 함께 이겨내는 서비스",
   appleWebApp: { capable: true, title: "오구오구", statusBarStyle: "default" },
-  icons: { icon: "/icon.svg", apple: "/brand/ogu-companion.png" },
+  icons: { icon: "/icon.png", apple: "/brand/apple-touch-icon.png" },
 };
 
 export const viewport: Viewport = {

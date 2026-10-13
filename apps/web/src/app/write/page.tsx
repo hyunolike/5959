@@ -1,6 +1,9 @@
+import type { Metadata } from "next";
 import { WriteForm } from "@/features/write-post";
 
 /** 고민 글쓰기(US1). 로그인과 온보딩은 proxy.ts의 라우트 가드가 먼저 확인한다(US1-AC7). */
+export const metadata: Metadata = { title: "고민 쓰기" };
+
 export default function WritePage() {
   return (
     <div className="flex w-full max-w-xl flex-col gap-5">

@@ -185,7 +185,9 @@ describe("SafetyNotice", () => {
 
     renderNotice(safety({ level: "CRISIS", hidden: true }));
 
-    const link = await screen.findByRole("link", { name: "109" });
+    const link = await screen.findByRole("link", {
+      name: "자살예방상담전화 109 전화 걸기",
+    });
     expect(link).toHaveAttribute("href", "tel:109");
   });
 });

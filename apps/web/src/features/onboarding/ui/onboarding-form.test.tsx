@@ -294,4 +294,47 @@ describe("OnboardingForm 완료 뒤 이동", () => {
       "text-danger",
     );
   });
+
+  it("DS-US2-AC1 닉네임 규칙은 틀리기 전부터 보이고 입력과 이어져 있다", () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async () => nicknameAvailability("오구")),
+    );
+    renderForm();
+    const nickname = screen.getByLabelText("닉네임");
+    expect(screen.getByText("한글, 영문, 숫자 1~10자")).toBeVisible();
+    // 빈 알림 자리도 함께 이어져 있어 끝에 공백이 붙는다.
+    expect(nickname).toHaveAccessibleDescription(
+      /^한글, 영문, 숫자 1~10자\s*$/,
+    );
+    expect(nickname).toHaveAttribute("aria-required", "true");
+  });
+
+  it("DS-US2-AC1 닉네임 확인 결과는 처음부터 있던 알림 자리에 채워져 화면 낭독기가 읽는다", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockImplementation(async (input: RequestInfo | URL) =>
+          nicknameAvailability(
+            new URL(String(input), "http://localhost").searchParams.get(
+              "nickname",
+            ) ?? "",
+          ),
+        ),
+    );
+    const user = userEvent.setup();
+    renderForm();
+    const status = screen.getByRole("status");
+    expect(status).toBeEmptyDOMElement();
+
+    await user.type(screen.getByLabelText("닉네임"), "오구");
+
+    expect(await screen.findByText("사용할 수 있는 닉네임입니다.")).toBe(
+      status,
+    );
+    expect(screen.getByLabelText("닉네임")).toHaveAccessibleDescription(
+      "한글, 영문, 숫자 1~10자 사용할 수 있는 닉네임입니다.",
+    );
+  });
 });

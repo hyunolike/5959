@@ -119,32 +119,43 @@ export function ProfileForm({ member }: { member: MemberProfile }) {
         <Label htmlFor="nickname">닉네임</Label>
         <Input
           id="nickname"
+          aria-required
           autoComplete="off"
           maxLength={10}
           aria-invalid={!!errors.nickname}
-          aria-describedby="nickname-status"
+          aria-describedby={
+            errors.nickname
+              ? "nickname-rule nickname-error"
+              : "nickname-rule nickname-status"
+          }
           {...register("nickname")}
         />
-        <div id="nickname-status">
-          {errors.nickname ? (
-            <p role="alert" className="text-body-sm text-danger">
-              {errors.nickname.message}
-            </p>
-          ) : nicknameHint ? (
-            <p
-              className={cn(
-                "text-body-sm",
-                settledNicknameResult?.available
-                  ? "text-fg font-medium"
-                  : "text-danger",
-              )}
-            >
-              {nicknameHint}
-            </p>
-          ) : (
-            <p className="text-caption text-fg-subtle">최대 10자</p>
+        <p id="nickname-rule" className="text-caption text-fg-subtle">
+          한글, 영문, 숫자 1~10자
+        </p>
+        {errors.nickname ? (
+          <p
+            id="nickname-error"
+            role="alert"
+            className="text-body-sm text-danger"
+          >
+            {errors.nickname.message}
+          </p>
+        ) : null}
+        {/* 확인 결과는 400ms 뒤 조용히 바뀐다. 자리를 처음부터 그려 두어 화면 낭독기가 읽게 한다. */}
+        <p
+          id="nickname-status"
+          role="status"
+          className={cn(
+            "text-body-sm",
+            settledNicknameResult?.available
+              ? "text-fg font-medium"
+              : "text-danger",
+            !nicknameHint && "sr-only",
           )}
-        </div>
+        >
+          {nicknameHint}
+        </p>
       </div>
 
       <div className="flex flex-col gap-1.5">

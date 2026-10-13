@@ -113,7 +113,7 @@ describe("AppShell", () => {
     expect(
       screen.queryByRole("link", { name: "알림" }),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "오구오구 홈" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /오구오구 홈$/ })).toHaveAttribute(
       "href",
       "/login",
     );
@@ -148,7 +148,7 @@ describe("AppShell", () => {
       "href",
       "/notifications",
     );
-    expect(screen.getByRole("link", { name: "오구오구 홈" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /오구오구 홈$/ })).toHaveAttribute(
       "href",
       "/home",
     );
@@ -195,5 +195,30 @@ describe("AppShell", () => {
       nav.querySelectorAll('[data-navigation-pending="true"]').length,
     ).toBeGreaterThan(0);
     expect(within(nav).getAllByText("이동 중").length).toBeGreaterThan(0);
+  });
+
+  it("DS-US4-AC1 좁은 화면의 메뉴는 본문보다 앞에 있어 끝없는 피드를 지나지 않고 닿는다", () => {
+    render(
+      <AppShell authenticated>
+        <h1>마음 이야기</h1>
+      </AppShell>,
+    );
+    const menu = screen.getByRole("navigation", { name: "모바일 주요 메뉴" });
+    const main = screen.getByRole("main");
+    expect(
+      menu.compareDocumentPosition(main) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("DS-US4-AC1 홈 링크의 이름에는 눈에 보이는 글자가 그대로 들어 있다", () => {
+    render(
+      <AppShell authenticated>
+        <h1>마음 이야기</h1>
+      </AppShell>,
+    );
+    const home = screen.getByRole("link", { name: /오구오구 홈$/ });
+    expect(home).toHaveAccessibleName(
+      expect.stringContaining(home.textContent ?? ""),
+    );
   });
 });

@@ -21,7 +21,7 @@ export function HomeInstall() {
       size="sm"
       aria-label="홈 화면 추가 방법"
       onClick={() => setGuideOpen(true)}
-      className="text-caption text-fg-subtle self-start px-2 font-medium underline underline-offset-4"
+      className="text-caption text-fg-subtle min-w-11 self-start px-2 font-medium underline underline-offset-4"
     >
       {state.promotionVisible ? "방법" : "홈 화면 추가 방법"}
     </Button>
@@ -31,11 +31,11 @@ export function HomeInstall() {
       {state.promotionVisible ? (
         <div className="border-line flex items-start gap-2 border-y py-3 sm:items-center">
           <Image
-            src="/brand/ogu-companion.png"
+            src="/brand/ogu-symbol.webp"
             alt=""
             width={28}
-            height={23}
-            className="mt-1 shrink-0 object-contain"
+            height={28}
+            className="mt-1 shrink-0"
           />
           <div className="min-w-0 flex-1 sm:flex sm:items-center sm:justify-between sm:gap-3">
             <div>

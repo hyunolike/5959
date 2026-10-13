@@ -16,11 +16,11 @@ export function AuthWelcome({ children }: { children: ReactNode }) {
           여기서는 같은 마음을 만나 함께 이겨낼 수 있어요.
         </p>
         <Image
-          src="/brand/ogu-companion.png"
-          alt="작은 보라색 감정 몬스터를 다정하게 안아주는 오구"
+          src="/brand/ogu-hug.webp"
+          alt="불안 몬스터를 다정하게 안아 주는 오구"
           width={280}
-          height={231}
-          className="mt-7 h-[231px] w-[280px] object-contain"
+          height={280}
+          className="mt-7 size-70"
         />
       </section>
       {children}

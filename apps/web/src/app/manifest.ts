@@ -15,16 +15,23 @@ export default function manifest(): MetadataRoute.Manifest {
     prefer_related_applications: false,
     icons: [
       {
-        src: "/pwa/icon-192.svg",
+        src: "/pwa/icon-192.png",
         sizes: "192x192",
-        type: "image/svg+xml",
+        type: "image/png",
         purpose: "any",
       },
       {
-        src: "/pwa/icon-512.svg",
+        src: "/pwa/icon-512.png",
         sizes: "512x512",
-        type: "image/svg+xml",
+        type: "image/png",
         purpose: "any",
+      },
+      // 기기가 원이나 둥근 사각형으로 잘라 쓰는 아이콘. 얼굴을 가운데 안전 영역에 뒀다.
+      {
+        src: "/pwa/icon-maskable-512.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "maskable",
       },
     ],
   };

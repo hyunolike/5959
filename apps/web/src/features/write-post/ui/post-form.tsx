@@ -77,6 +77,7 @@ export function PostForm({
         </p>
         <Textarea
           id="content"
+          aria-required
           aria-invalid={!!errors.content || overLimit}
           aria-describedby={
             errors.content ? "content-error content-hint" : "content-hint"

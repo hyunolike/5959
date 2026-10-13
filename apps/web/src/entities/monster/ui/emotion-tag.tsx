@@ -1,6 +1,6 @@
 import { cn } from "@/shared/lib";
 
-import { EMOTION_LABELS, type EmotionType } from "../model/types";
+import { emotionLabel, type EmotionType } from "../model/types";
 
 /** 점과 감정 이름. 색은 `data-emotion`이 여는 감정 색 범위에서 온다. */
 export function EmotionTag({
@@ -19,8 +19,7 @@ export function EmotionTag({
       )}
     >
       <span aria-hidden className="bg-emotion size-1.5 rounded-full" />
-      {/* 계약에 없는 값이 와도 이름이 비지 않게 한다. */}
-      {EMOTION_LABELS[emotion] ?? "감정"}
+      {emotionLabel(emotion)}
     </span>
   );
 }

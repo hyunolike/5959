@@ -1,6 +1,7 @@
 "use client";
 
-import { SlidersHorizontal } from "@phosphor-icons/react";
+import { CaretDown, SlidersHorizontal } from "@phosphor-icons/react";
+import { useRef, useState } from "react";
 
 import { CAREER_YEAR_LABELS, JOB_ROLE_LABELS } from "@/entities/member";
 import type { FeedFilter, FeedOrder } from "@/entities/post";
@@ -27,6 +28,17 @@ export function FeedControls({
   onChange: (next: FeedFilter) => void;
 }) {
   const filtered = filter.jobRoles.length > 0 || filter.careerYears.length > 0;
+  // 여닫이는 쓰는 사람이 정한다. 마지막 필터를 껐다고 닫으면 초점이 있던 칩이 사라져 초점을 잃는다.
+  // 주소로 필터가 들어온 때처럼 필터가 새로 생기면 열어 준다.
+  const [open, setOpen] = useState(filtered);
+  const [wasFiltered, setWasFiltered] = useState(filtered);
+  if (filtered !== wasFiltered) {
+    setWasFiltered(filtered);
+    if (filtered) {
+      setOpen(true);
+    }
+  }
+  const summaryRef = useRef<HTMLElement>(null);
 
   return (
     <div className="flex flex-col gap-2">
@@ -41,13 +53,25 @@ export function FeedControls({
           </Chip>
         ))}
       </div>
-      <details open={filtered} className="pb-2">
-        <summary className="rounded-inline text-label text-fg-muted flex min-h-11 cursor-pointer list-none items-center gap-2 font-medium">
+      <details
+        open={open}
+        onToggle={(event) => setOpen(event.currentTarget.open)}
+        className="group pb-2"
+      >
+        <summary
+          ref={summaryRef}
+          className="rounded-inline text-label text-fg-muted flex min-h-11 w-fit cursor-pointer list-none items-center gap-2 font-medium [&::-webkit-details-marker]:hidden"
+        >
           <SlidersHorizontal size={18} aria-hidden />
           필터
           {filtered
             ? ` (${filter.jobRoles.length + filter.careerYears.length})`
             : ""}
+          <CaretDown
+            size={14}
+            aria-hidden
+            className="transition-transform group-open:rotate-180 motion-reduce:transition-none"
+          />
         </summary>
         <div className="mt-2 flex flex-col gap-3">
           <ChipGroup label="직군">
@@ -87,9 +111,11 @@ export function FeedControls({
               variant="ghost"
               size="sm"
               className="-ml-3 self-start underline underline-offset-4"
-              onClick={() =>
-                onChange({ ...DEFAULT_FEED_FILTER, order: filter.order })
-              }
+              onClick={() => {
+                onChange({ ...DEFAULT_FEED_FILTER, order: filter.order });
+                // 이 버튼은 필터가 없어지면 사라진다. 초점을 여닫이로 옮겨 둔다.
+                summaryRef.current?.focus();
+              }}
             >
               필터 지우기
             </Button>

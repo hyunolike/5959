@@ -103,4 +103,12 @@ describe("WeeklyChart", () => {
     expect(list).toHaveTextContent("8.17 주: 없음");
     expect(list?.closest("[aria-hidden]")).toBeNull();
   });
+
+  it("DS-US1-AC3 주별 수 펼침은 누를 수 있다는 표시(화살표와 밑줄)가 있다", () => {
+    render(<WeeklyChart weekly={WEEKLY} labels={LABELS} />);
+    const summary = screen.getByText("주별 수 보기").closest("summary");
+    expect(summary).toHaveClass("underline");
+    expect(summary?.querySelector("svg")).not.toBeNull();
+    expect(summary?.parentElement).toHaveClass("group");
+  });
 });

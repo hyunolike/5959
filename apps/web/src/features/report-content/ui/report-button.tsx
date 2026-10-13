@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import { ApiError } from "@/shared/api";
 import { countGraphemes } from "@/shared/lib";
@@ -44,6 +44,14 @@ export function ReportButton({
   const [detail, setDetail] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const noticeRef = useRef<HTMLSpanElement>(null);
+
+  // 접수되면 신고 버튼이 사라져 대화상자가 초점을 돌려줄 곳이 없다. 안내로 옮긴다.
+  useEffect(() => {
+    if (notice !== null) {
+      noticeRef.current?.focus();
+    }
+  }, [notice]);
 
   const target = TARGET_LABEL[targetType];
   const detailLength = countGraphemes(detail.trim());
@@ -98,7 +106,12 @@ export function ReportButton({
 
   if (notice !== null) {
     return (
-      <span role="status" className="text-caption text-fg-subtle">
+      <span
+        ref={noticeRef}
+        role="status"
+        tabIndex={-1}
+        className="text-caption text-fg-subtle"
+      >
         {notice}
       </span>
     );
@@ -120,17 +133,20 @@ export function ReportButton({
         title={`이 ${target}을 신고할까요?`}
         description="신고한 사람은 글쓴이에게 알려지지 않아요."
         confirmLabel="신고하기"
+        // 고르고 적는 대화상자다. 경고가 아니므로 dialog로 두고 첫 사유에서 시작한다.
+        role="dialog"
+        initialFocus="first"
         pending={report.isPending}
         error={error}
         onConfirm={submit}
         onCancel={close}
       >
-        <fieldset className="flex flex-col gap-2">
+        <fieldset className="flex flex-col">
           <legend className="sr-only">신고 사유</legend>
           {REPORT_REASONS.map((option) => (
             <label
               key={option.value}
-              className="text-body-sm text-fg flex items-center gap-2"
+              className="text-body-sm text-fg flex min-h-11 items-center gap-2"
             >
               <input
                 type="radio"

@@ -127,4 +127,14 @@ describe("CommentManageMenu", () => {
 
     expect(screen.getByRole("button", { name: "삭제" })).toHaveFocus();
   });
+
+  it("US4-AC3 고치기를 그만두면 초점은 수정 버튼으로 돌아간다", async () => {
+    const user = userEvent.setup({ delay: null });
+    renderMenu();
+
+    await user.click(screen.getByRole("button", { name: "수정" }));
+    await user.click(screen.getByRole("button", { name: "취소" }));
+
+    expect(screen.getByRole("button", { name: "수정" })).toHaveFocus();
+  });
 });

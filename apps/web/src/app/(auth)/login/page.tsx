@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { LoginForm } from "@/features/auth/email-login";
@@ -12,6 +13,8 @@ import { AuthWelcome } from "@/widgets/auth-welcome";
 function firstValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
+
+export const metadata: Metadata = { title: "로그인" };
 
 export default async function LoginPage({
   searchParams,

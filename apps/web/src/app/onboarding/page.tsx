@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
 import { OnboardingForm } from "@/features/onboarding";
 import { AuthWelcome } from "@/widgets/auth-welcome";
 
 function firstValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
+
+export const metadata: Metadata = { title: "프로필 입력" };
 
 export default async function OnboardingPage({
   searchParams,

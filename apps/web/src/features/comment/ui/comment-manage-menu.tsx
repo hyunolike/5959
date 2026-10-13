@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 
 import type { Comment } from "@/entities/comment";
@@ -58,11 +58,22 @@ export function CommentManageMenu({
     deleteMutation.reset();
   };
 
+  // 고치기를 마치거나 그만두면 폼이 사라진다. 초점을 다시 생긴 "수정" 버튼으로 돌려준다.
+  const editButtonRef = useRef<HTMLButtonElement>(null);
+  const returnFocusToEdit = useRef(false);
+  useEffect(() => {
+    if (!editing && returnFocusToEdit.current) {
+      returnFocusToEdit.current = false;
+      editButtonRef.current?.focus();
+    }
+  }, [editing]);
+
   return (
     <>
       {editing ? null : (
         <>
           <Button
+            ref={editButtonRef}
             type="button"
             variant="ghost"
             size="sm"
@@ -86,7 +97,10 @@ export function CommentManageMenu({
         <EditCommentForm
           postId={postId}
           comment={comment}
-          onDone={() => setEditing(false)}
+          onDone={() => {
+            returnFocusToEdit.current = true;
+            setEditing(false);
+          }}
         />
       ) : null}
       <ConfirmDialog

@@ -165,4 +165,19 @@ describe("DESIGN_SYSTEM.md", () => {
     expect(pressable?.[1]).toContain("var(--duration-fast)");
     expect(css).not.toMatch(/\b150ms\b/);
   });
+
+  it("DS-US4-AC3 Tailwind의 기본 전환 시간도 가장 짧은 단계다", () => {
+    expect(css).toMatch(/--default-transition-duration:\s*120ms;/);
+  });
+
+  it("DS-US4-AC1 초점이 간 요소가 고정된 머리말과 하단 메뉴에 가리지 않게 스크롤 여백을 둔다", () => {
+    expect(css).toMatch(/html\s*{[^}]*scroll-padding-top:\s*5\.5rem;/);
+    expect(css).toMatch(
+      /html\s*{[^}]*scroll-padding-bottom:\s*calc\(6\.5rem \+ env\(safe-area-inset-bottom\)\);/,
+    );
+  });
+
+  it("DS-US1-AC1 테스트 파일의 예시 클래스는 화면용 CSS에 들어가지 않는다", () => {
+    expect(css).toMatch(/@source not "[^"]*\.test\.\{ts,tsx\}";/);
+  });
 });

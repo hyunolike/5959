@@ -72,6 +72,7 @@ export function SignupForm({ next }: SignupFormProps) {
         <Label htmlFor="email">이메일</Label>
         <Input
           id="email"
+          aria-required
           type="email"
           autoComplete="email"
           aria-invalid={errors.email ? true : undefined}
@@ -89,6 +90,7 @@ export function SignupForm({ next }: SignupFormProps) {
         <Label htmlFor="password">비밀번호</Label>
         <Input
           id="password"
+          aria-required
           type="password"
           autoComplete="new-password"
           aria-invalid={errors.password ? true : undefined}
@@ -106,7 +108,7 @@ export function SignupForm({ next }: SignupFormProps) {
             {errors.password.message}
           </p>
         ) : (
-          <p className="text-caption text-fg-subtle">
+          <p id="password-hint" className="text-caption text-fg-subtle">
             영문과 숫자를 포함해 8~20자로 입력하세요.
           </p>
         )}

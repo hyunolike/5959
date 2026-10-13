@@ -22,6 +22,9 @@
 | 오류와 삭제      | `text-danger`, `bg-danger-tint`   | #b42318, #fef3f2 |
 | 주의와 숨김 표시 | `text-warning`, `bg-warning-tint` | #b54708, #fffaeb |
 | 게임 버튼        | `bg-game`, `border-game-line`     | #ffd60a, #17171c |
+| 초점 표시        | `outline-focus`                   | #17171c          |
+| 삭제 버튼의 글자 | `text-on-danger`                  | #ffffff          |
+| 대화상자 배경    | `bg-scrim`                        | 먹색 40%         |
 
 원색(`--ink-900` 등)은 `:root`의 CSS 변수로만 있고 Tailwind 유틸리티로는 생기지 않는다.
 
@@ -78,12 +81,26 @@ Pretendard 가변 글꼴이다. 굵기는 400, 500, 700, 800만 쓴다.
 | `Chip`                                              | `shared/ui`        | 필터와 선택. `pressed`로 상태를 전한다                                 |
 | `TextField`, `Textarea`, `Input`, `Select`, `Label` | `shared/ui`        | 입력. 모두 52px이고 오류가 난 칸은 `aria-invalid`로 빨간 테두리가 된다 |
 | `ConfirmDialog`, `Toaster`                          | `shared/ui`        | 대화상자와 알림 토스트                                                 |
+| `Card`                                              | `shared/ui`        | 폼과 안내를 담는 면. 목록에는 쓰지 않는다                              |
+| `Spinner`, `ListSkeleton`                           | `shared/ui`        | 불러오는 중. 둘 다 "불러오는 중"을 글자로 읽힌다                       |
+| `BrandMark`                                         | `shared/ui`        | 머리말의 로고                                                          |
+| `ReactionIcon`, `SelectionIndicator`                | `shared/ui`        | 공감 하트의 반응, 탭의 선택 선                                         |
 | `EmotionTag`                                        | `entities/monster` | 점과 감정 이름                                                         |
 | `HpBar`                                             | `entities/monster` | `sm`(피드), `lg`(글 상세와 레이드)                                     |
 | `MonsterThumb`                                      | `entities/monster` | 48px 몬스터                                                            |
 | `MonsterSummary`                                    | `entities/monster` | 목록용 요약: 썸네일, HP 숫자, 작은 HP 막대                             |
 | `MonsterDisplay`                                    | `entities/monster` | 무대에 올리는 큰 몬스터. `detail`(글 상세), `boss`(레이드)             |
 | `MonsterStage`                                      | `entities/monster` | 감정 색으로 채운 무대                                                  |
+
+## 접근성
+
+- 화면마다 제목이 다르다. 경로의 `metadata.title`이 "레이드 | 오구오구"처럼 붙는다. 클라이언트 페이지는 같은 폴더의 `layout.tsx`가 제목을 낸다.
+- 화면에는 `h1`이 하나 있다. 글 상세처럼 보이는 제목이 없으면 `sr-only`로 둔다.
+- 조용히 바뀌는 내용은 처음부터 그려 둔 `role="status"` 자리에 글자를 채운다. 내용이 든 채로 새로 생긴 자리는 읽히지 않는 일이 많다.
+- 누른 버튼이 사라지는 곳(재검토 요청, 신고, 댓글 고치기)은 초점을 남은 안내나 버튼으로 옮긴다. 요청하는 동안에는 `disabled` 대신 `aria-disabled`로 막아 초점을 지킨다.
+- `aria-label`은 역할이 있는 요소에만 붙이고, 보이는 글자가 있으면 그 글자를 이름에 그대로 담는다.
+- 상담 전화 링크는 44px이고 이름에 기관 이름이 들어간다. 도움 안내 토스트는 닫을 때까지 남는다.
+- 초점 표시는 공통 외곽선을 쓴다. `outline-none`에 `ring`으로 바꿔 그리지 않는다(고대비 모드에서 사라진다).
 
 ## 게임 요소를 쓰는 곳
 
@@ -101,10 +118,11 @@ Pretendard 가변 글꼴이다. 굵기는 400, 500, 700, 800만 쓴다.
 
 ## 에셋과 출처
 
-| 에셋          | 위치                             | 출처 / 라이선스                                                                                         |
-| ------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| 감정 몬스터   | `public/monsters`                | 이 서비스를 위해 만든 그림(ADR-0006)                                                                    |
-| 오구 캐릭터   | `public/brand/ogu-companion.png` | 이 서비스를 위해 만든 그림                                                                              |
-| 한글 글꼴     | npm `pretendard`                 | [Pretendard](https://github.com/orioncactus/pretendard), SIL Open Font License 1.1                      |
-| 아이콘        | npm `@phosphor-icons/react`      | [Phosphor](https://phosphoricons.com), MIT                                                              |
-| 구글 로그인 G | `public/brand/google.png`        | [Google 로그인 브랜딩](https://developers.google.com/identity/branding-guidelines). 원본 색과 비율 유지 |
+| 에셋          | 위치                                                             | 출처 / 라이선스                                                                                          |
+| ------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| 감정 몬스터   | `public/monsters`                                                | 이 서비스를 위해 만든 그림(ADR-0006)                                                                     |
+| 오구 캐릭터   | `public/brand/ogu-*.webp`                                        | 이 서비스를 위해 만든 그림. 몬스터와 같은 굵은 외곽선과 평평한 채색이고, 보라색은 쓰지 않는다(불안의 색) |
+| 로고와 아이콘 | `public/brand/ogu-symbol.webp`, `public/pwa`, `src/app/icon.png` | 오구의 얼굴. 아이콘은 먹색(#17171c) 타일 위에 둔다                                                       |
+| 한글 글꼴     | npm `pretendard`                                                 | [Pretendard](https://github.com/orioncactus/pretendard), SIL Open Font License 1.1                       |
+| 아이콘        | npm `@phosphor-icons/react`                                      | [Phosphor](https://phosphoricons.com), MIT                                                               |
+| 구글 로그인 G | `public/brand/google.png`                                        | [Google 로그인 브랜딩](https://developers.google.com/identity/branding-guidelines). 원본 색과 비율 유지  |
