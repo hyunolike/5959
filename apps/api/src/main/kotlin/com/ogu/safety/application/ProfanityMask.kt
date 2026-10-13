@@ -21,6 +21,9 @@ class ProfanityMask(
  *
  * 허용 목록의 낱말 안에 든 욕설은 가리지 않는다(US5-AC3, "시발점"). 다만 허용 낱말이 원문에서 끊기지 않고 이어져 있을
  * 때만이다. "시발 점심"은 다듬으면 "시발점"이 들어 있지만 원문에서는 띄어 쓴 두 말이므로 가린다.
+ *
+ * 띄어 쓴 욕설은 앞뒤 말에 붙어 있지 않을 때만 가린다. "다시 발표"와 "김 씨 발표"는 다듬으면 욕설이 들어 있지만 따로 쓴 두
+ * 낱말이 만난 것이다. 그래서 "야시 발"처럼 앞말에 붙여 쓴 것은 놓친다. 멀쩡한 글을 가리는 것보다 낫다고 보았다.
  */
 object ProfanityMasker {
     private const val STAR = '*'
@@ -30,12 +33,13 @@ object ProfanityMasker {
         terms: SafetyTerms,
     ): String {
         if (terms.profanity.isEmpty() || text.isEmpty()) return text
-        val ranges = rangesToMask(TextNormalizer.normalize(text), terms)
+        val ranges = rangesToMask(text, TextNormalizer.normalize(text), terms)
         return if (ranges.isEmpty()) text else replace(text, merge(ranges))
     }
 
-    /** 가릴 원문 구간. 허용 낱말 안에 든 욕설은 뺀다. */
+    /** 가릴 원문 구간. 허용 낱말 안에 든 욕설과 따로 쓴 두 낱말이 만나 생긴 것은 뺀다. */
     private fun rangesToMask(
+        text: String,
         normalized: NormalizedText,
         terms: SafetyTerms,
     ): List<IntRange> {
@@ -48,6 +52,15 @@ object ProfanityMasker {
         return matches
             .filterNot { match -> allowed.any { match.first >= it.first && match.last <= it.last } }
             .map { normalized.originalRange(it.first, it.last + 1) }
+            .filterNot { it.joinsSeparateWords(text) }
+    }
+
+    /** 원문의 구간이 띄어쓰기를 품고 있으면서 앞이나 뒤가 글자로 이어진다. */
+    private fun IntRange.joinsSeparateWords(text: String): Boolean {
+        if ((first..last).none { text[it].isWhitespace() }) return false
+        val attachedBefore = first > 0 && Character.isLetterOrDigit(text.codePointBefore(first))
+        val attachedAfter = last + 1 < text.length && Character.isLetterOrDigit(text.codePointAt(last + 1))
+        return attachedBefore || attachedAfter
     }
 
     /** [text] 안에서 [terms]의 낱말이 나오는 모든 자리. */

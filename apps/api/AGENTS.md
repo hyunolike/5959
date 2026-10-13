@@ -302,7 +302,8 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
 - **욕설은 읽을 때 가린다.** 원문은 바꾸지 않는다. `feed`(피드와 내 활동의 미리보기, 글 상세),
   `post`(댓글 목록, 내 댓글의 글 앞부분, 알림에 붙는 `previews`)가 `ContentMask.maskFor(viewerId, authorId, text)`로
   가린다. 작성자에게는 원문이다. 미리보기는 가린 뒤 자른다. 본문을 내보내는 응답을 새로 만들면 여기를 거쳐야 한다.
-  감정 분석과 위험 감지는 원문으로 한다.
+  감정 분석과 위험 감지는 원문으로 한다. 띄어 쓴 욕설은 앞뒤 말에 붙어 있지 않을 때만 가린다("다시 발표"는 그대로다).
+  낱말은 글의 어디에 있든 걸리므로, 목록에 더할 때는 멀쩡한 말 안에 들어 있지 않은지 먼저 본다(V10의 머리말).
 - **운영자.** `member.role`이 `OPERATOR`인 회원이다. 지정은 SQL로 한다(005 quickstart). `/api/v1/operator/**`는
   `OperatorInterceptor`가 입력을 읽기 전에 막아, 운영자가 아니면 언제나 404다. 역할은 요청마다 DB에서 읽고
   JWT에 넣지 않는다. 웹의 BFF는 이 경로를 넘기지 않는다. 상태를 바꾼 처리만 `moderation_action`에 남는다.
