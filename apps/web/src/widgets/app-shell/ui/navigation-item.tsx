@@ -13,6 +13,7 @@ export function NavigationItem({
   icon,
   current,
   mobile = false,
+  primary = false,
   locked = false,
   onClick,
   prefetch,
@@ -23,12 +24,15 @@ export function NavigationItem({
   icon: Icon;
   current?: "page" | "location";
   mobile?: boolean;
+  /** 좁은 화면의 메뉴에서 주요 동작 색으로 채워 보이는 메뉴. 넓은 화면에서는 다른 메뉴와 같다. */
+  primary?: boolean;
   /** 익명에게 로그인 안내를 먼저 여는 메뉴. 이름은 그대로 두고 설명으로만 알린다. */
   locked?: boolean;
   onClick?: MouseEventHandler<HTMLAnchorElement>;
   prefetch?: boolean;
 }) {
   const lockedId = useId();
+  const filled = mobile && primary;
   return (
     <Link
       href={href}
@@ -39,10 +43,13 @@ export function NavigationItem({
       aria-describedby={locked ? lockedId : undefined}
       className={cn(
         "ogu-pressable group rounded-control relative",
-        mobile ? "min-h-16 min-w-0 flex-1" : "min-h-12",
-        current
-          ? "text-fg"
-          : "text-fg-subtle hover:bg-surface-sunken active:bg-line",
+        mobile ? "min-h-16 min-w-0" : "min-h-12",
+        mobile && (filled ? "flex-[1.4]" : "flex-1"),
+        filled
+          ? "bg-action text-on-action hover:bg-action-hover"
+          : current
+            ? "text-fg"
+            : "text-fg-subtle hover:bg-surface-sunken active:bg-line",
       )}
     >
       <NavigationContents
@@ -51,6 +58,7 @@ export function NavigationItem({
         icon={icon}
         selected={!!current}
         mobile={mobile}
+        filled={filled}
         locked={locked}
       />
       {locked ? (
@@ -69,6 +77,7 @@ function NavigationContents({
   icon: NavIcon,
   selected,
   mobile,
+  filled,
   locked,
 }: {
   label: string;
@@ -76,6 +85,7 @@ function NavigationContents({
   icon: Icon;
   selected: boolean;
   mobile: boolean;
+  filled: boolean;
   locked: boolean;
 }) {
   const { pending } = useLinkStatus();
@@ -117,7 +127,11 @@ function NavigationContents({
           {locked && !pending ? (
             <span
               aria-hidden
-              className="bg-surface text-fg-subtle absolute -top-0.5 -right-1 flex size-4 items-center justify-center rounded-full"
+              data-navigation-lock
+              className={cn(
+                "bg-surface absolute -top-0.5 -right-1 flex size-4 items-center justify-center rounded-full",
+                filled ? "text-fg" : "text-fg-subtle",
+              )}
             >
               <LockSimple size={11} weight="fill" />
             </span>
@@ -127,7 +141,7 @@ function NavigationContents({
           className={cn(
             "relative whitespace-nowrap",
             mobile ? "text-caption" : "text-body-sm",
-            selected ? "font-bold" : "font-medium",
+            selected || filled ? "font-bold" : "font-medium",
           )}
         >
           {mobile ? shortLabel : label}
@@ -142,7 +156,13 @@ function NavigationContents({
         </span>
       </span>
       {mobile ? (
-        <span aria-hidden className="text-fg-subtle h-3 text-[10px] leading-3">
+        <span
+          aria-hidden
+          className={cn(
+            "h-3 text-[10px] leading-3",
+            filled ? "text-on-action" : "text-fg-subtle",
+          )}
+        >
           {pending ? "이동 중" : null}
         </span>
       ) : null}

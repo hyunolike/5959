@@ -21,6 +21,7 @@ const NAVIGATION = [
     label: "고민 쓰기",
     shortLabel: "고민 쓰기",
     icon: PencilSimpleLine,
+    primary: true,
   },
   { href: "/my", label: "내 마음 기록", shortLabel: "기록", icon: User },
 ];
@@ -113,7 +114,7 @@ function ShellContents({
       {showNavigation ? (
         <nav
           aria-label="모바일 주요 메뉴"
-          className="border-line bg-surface fixed right-0 bottom-0 left-0 z-30 flex border-t px-3 pt-1 pb-[max(8px,env(safe-area-inset-bottom))] md:hidden"
+          className="border-line bg-surface rounded-t-surface fixed right-0 bottom-0 left-0 z-30 flex gap-1 border border-b-0 px-3 pt-2 pb-[max(8px,env(safe-area-inset-bottom))] md:hidden"
         >
           {NAVIGATION.map((item) => (
             <NavigationItem

@@ -174,6 +174,61 @@ describe("AppShell", () => {
     expect(other).toHaveClass("text-fg-subtle");
   });
 
+  it("좁은 화면의 메뉴는 위쪽 모서리가 둥근 막대이고 그림자 없이 테두리로 본문과 나뉜다", () => {
+    render(<AppShell authenticated>{null}</AppShell>);
+    const menu = screen.getByRole("navigation", { name: "모바일 주요 메뉴" });
+    expect(menu).toHaveClass("rounded-t-surface", "border-line", "bg-surface");
+    expect(menu.className).not.toMatch(/shadow/);
+  });
+
+  it("좁은 화면의 고민 쓰기는 주요 동작 색으로 채운 버튼이고 다른 메뉴보다 넓다", () => {
+    render(<AppShell authenticated>{null}</AppShell>);
+    const nav = within(
+      screen.getByRole("navigation", { name: "모바일 주요 메뉴" }),
+    );
+    const write = nav.getByRole("link", { name: "고민 쓰기" });
+    expect(write).toHaveClass("bg-action", "text-on-action", "flex-[1.4]");
+    expect(write).not.toHaveClass("text-fg-subtle");
+    expect(within(write).getByText("고민 쓰기")).toBeVisible();
+    for (const name of ["마음 이야기", "함께 이겨내기", "내 마음 기록"]) {
+      const other = nav.getByRole("link", { name });
+      expect(other).not.toHaveClass("bg-action");
+      expect(other).toHaveClass("flex-1");
+    }
+  });
+
+  it("고민 쓰기 화면에 있으면 채운 버튼의 아이콘이 채워지고 현재 위치로 알린다", () => {
+    route.pathname = "/write";
+    render(<AppShell authenticated>{null}</AppShell>);
+    const write = within(
+      screen.getByRole("navigation", { name: "모바일 주요 메뉴" }),
+    ).getByRole("link", { name: "고민 쓰기" });
+    expect(write).toHaveAttribute("aria-current", "page");
+    expect(write).toHaveClass("bg-action", "text-on-action");
+    expect(write.querySelector("svg")).toHaveAttribute(
+      "data-icon-weight",
+      "fill",
+    );
+  });
+
+  it("넓은 화면의 메뉴에서는 고민 쓰기도 다른 메뉴와 같은 모양이다", () => {
+    render(<AppShell authenticated>{null}</AppShell>);
+    const write = within(
+      screen.getByRole("navigation", { name: "주요 메뉴" }),
+    ).getByRole("link", { name: "고민 쓰기" });
+    expect(write).not.toHaveClass("bg-action");
+    expect(write).toHaveClass("text-fg-subtle");
+  });
+
+  it("익명에게 잠긴 고민 쓰기의 자물쇠는 채운 버튼 위에서도 보이는 색이다", () => {
+    render(<AppShell authenticated={false}>{null}</AppShell>);
+    const write = within(
+      screen.getByRole("navigation", { name: "모바일 주요 메뉴" }),
+    ).getByRole("link", { name: "고민 쓰기" });
+    const lock = write.querySelector("[data-navigation-lock]");
+    expect(lock).toHaveClass("bg-surface", "text-fg");
+  });
+
   it("GUEST-US1-AC2 잠긴 메뉴는 아이콘이 바뀐 뒤에도 설명으로 잠김을 알린다", () => {
     render(<AppShell authenticated={false}>{null}</AppShell>);
     const nav = within(
