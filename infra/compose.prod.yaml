@@ -35,6 +35,10 @@ services:
       AI_API_KEY: ${AI_API_KEY}
       AI_MODEL: ${AI_MODEL:-openai/gpt-oss-20b}
       AI_RISK_MODEL: ${AI_RISK_MODEL:-nvidia/nemotron-3-super-120b-a12b}
+      # 009 AI 친구(research R12). 꺼진 채로 나간다. compose는 여기 적힌 변수만 컨테이너에 넣는다
+      AI_COMPANION_ENABLED: ${AI_COMPANION_ENABLED:-false}
+      AI_COMPANION_DAILY_LIMIT: ${AI_COMPANION_DAILY_LIMIT:-30}
+      AI_COMPANION_WAIT: ${AI_COMPANION_WAIT:-10m}
       JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:-}
       OTEL_SERVICE_NAME: ogu-api
       OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf

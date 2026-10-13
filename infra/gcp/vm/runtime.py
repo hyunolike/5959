@@ -147,9 +147,26 @@ def configuration():
     return json.loads(metadata("instance/attributes/deployment-config"))
 
 
+def companion_settings(config):
+    """AI companion switches (009). Off unless the deployment config turns it on."""
+    limit = config.get("ai_companion_daily_limit", 30)
+    if isinstance(limit, bool) or not isinstance(limit, int) or limit < 0:
+        raise ValueError("ai_companion_daily_limit must be a non-negative integer")
+    wait = config.get("ai_companion_wait", "10m")
+    if not isinstance(wait, str) or not re.fullmatch(r"[1-9][0-9]*[smh]", wait):
+        raise ValueError("ai_companion_wait must look like 10m, 30s or 1h")
+    return {
+        "AI_COMPANION_ENABLED": "true" if config.get("ai_companion_enabled", False) is True else "false",
+        "AI_COMPANION_DAILY_LIMIT": str(limit),
+        "AI_COMPANION_WAIT": wait,
+    }
+
+
 def environment(config, token):
     values = json.loads(secret(config["project_id"], config["api_secret"], token))
     values["KAKAO_LOGIN_ENABLED"] = "true" if config.get("kakao_login_enabled", True) else "false"
+    # The deployment config decides; a stray field in the secret must not switch the feature on.
+    values.update(companion_settings(config))
     validate_secrets(values)
     bff = secret(config["project_id"], config["bff_secret"], token)
     if len(bff) < 32:
