@@ -13,6 +13,7 @@ import { Button, Card, ListSkeleton } from "@/shared/ui";
 
 import { CardDialog } from "./card-dialog";
 import { CollectionSummary } from "./collection-summary";
+import { useCardTilt } from "./use-card-tilt";
 
 /**
  * 몬스터 도감(010). 물리친 몬스터가 카드로 모인다. 위에는 모은 수와 감정별 장수, 아래에는 최근에 물리친 것부터
@@ -105,10 +106,40 @@ export function MonsterCollection() {
   );
 }
 
+/** 빈 도감에 보이는 예시 카드. 가장 반짝이는 전설 카드로 어떤 카드가 생기는지 보인다. 저장된 카드가 아니다. */
+const SAMPLE_CARD: MonsterCardData = {
+  cardNo: 0,
+  emotion: "ANXIETY",
+  grade: "LEGENDARY",
+  role: "MINE",
+  defeatedAt: "2026-01-01T00:00:00Z",
+  myDamage: 0,
+  helperCount: 6,
+  postId: 0,
+};
+
 function EmptyCollection() {
+  const tilt = useCardTilt();
   return (
     <Card className="flex flex-col items-center gap-3 text-center">
-      <p className="text-body text-fg font-bold">아직 모은 카드가 없어요</p>
+      <figure
+        aria-label="예시 카드"
+        className="flex w-full flex-col items-center gap-2"
+      >
+        <MonsterCard
+          card={SAMPLE_CARD}
+          size="lg"
+          sample
+          className="ogu-card-tilt ogu-card-sweep max-w-[14rem]"
+          {...tilt}
+        />
+        <figcaption className="text-caption text-fg-subtle break-keep">
+          예시 카드예요. 몬스터를 물리치면 이런 카드가 생겨요.
+        </figcaption>
+      </figure>
+      <p className="text-body text-fg mt-2 font-bold">
+        아직 모은 카드가 없어요
+      </p>
       <p className="text-body-sm text-fg-subtle max-w-sm break-keep">
         내 글의 몬스터가 물리쳐지거나, 다른 회원의 몬스터를 공감과 댓글로 함께
         물리치면 카드가 생겨요.
