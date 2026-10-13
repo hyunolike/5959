@@ -28,10 +28,10 @@ for (const viewport of [
     ).toHaveAttribute("href", /next=%2Fwrite$/);
     await page.getByLabel("이메일", { exact: true }).focus();
     await expect(page.getByLabel("이메일", { exact: true })).toBeFocused();
-    // DS-US2-AC2: 입력과 제출 버튼은 52px이고 주요 버튼은 먹색이다.
+    // DS-US2-AC2: 입력과 제출 버튼은 56px이고 주요 버튼은 먹색이다.
     await expect(page.getByLabel("이메일", { exact: true })).toHaveCSS(
       "height",
-      "52px",
+      "56px",
     );
     const submit = page.getByRole("button", { name: "로그인", exact: true });
     await expect(submit).toHaveCSS("background-color", "rgb(23, 23, 28)");

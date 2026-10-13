@@ -2,7 +2,7 @@
 
 직장인의 고민을 나누고 공감으로 감정 몬스터를 함께 물리치는 커뮤니티다. 피드는 글을 읽기 좋게, 글 상세와 레이드는 몬스터가 주인공이 되게 한다. 브랜드 색은 두지 않는다. 화면의 색은 다섯 감정에서만 나온다.
 
-설계와 결정의 까닭은 저장소 루트의 `docs/superpowers/specs/2026-10-13-design-system-overhaul-design.md`에 있다. 토큰과 컴포넌트는 `ENABLE_DESIGN_CATALOG=1`로 띄운 `/debug/design`에서 한 화면으로 본다.
+설계와 결정의 까닭은 저장소 루트의 `docs/superpowers/specs/2026-10-13-design-system-overhaul-design.md`에 있다. 모양 규칙(모서리, 높이, 버튼의 무게)은 `2026-10-13-design-polish-and-logo-design.md`에서 다시 맞췄다. 토큰과 컴포넌트는 `ENABLE_DESIGN_CATALOG=1`로 띄운 `/debug/design`에서 한 화면으로 본다.
 
 ## 토큰
 
@@ -25,6 +25,7 @@
 | 초점 표시        | `outline-focus`                   | #17171c          |
 | 삭제 버튼의 글자 | `text-on-danger`                  | #ffffff          |
 | 대화상자 배경    | `bg-scrim`                        | 먹색 40%         |
+| 카카오 로그인    | `bg-kakao`                        | #fee500          |
 
 원색(`--ink-900` 등)은 `:root`의 CSS 변수로만 있고 Tailwind 유틸리티로는 생기지 않는다.
 
@@ -64,9 +65,12 @@ Pretendard 가변 글꼴이다. 굵기는 400, 500, 700, 800만 쓴다.
 
 ## 모양과 움직임
 
-- 모서리: `rounded-inline` 8px, `rounded-control` 14px(버튼, 입력, 썸네일), `rounded-surface` 20px(시트, 큰 면), `rounded-full`(칩, 태그).
-- 높이: 칩 36px, 버튼 44px, 입력과 큰 버튼 52px, 게임 버튼 56px. 누르는 영역은 44px 이상이다.
-- 기본은 1px 테두리이고 그림자는 쓰지 않는다. 게임 요소만 2px 외곽선과 `shadow-game`을 쓴다.
+- 모서리: `rounded-inline` 8px, `rounded-control-sm` 12px(40px 높이의 버튼, 세그먼트), `rounded-control` 16px(버튼, 입력, 썸네일), `rounded-surface` 24px(시트, 무대, 큰 면), `rounded-full`(칩, 태그).
+- 높이: 누르는 것은 40, 48, 56px 세 단계다. 칩과 작은 버튼 40px, 버튼 48px, 입력과 큰 버튼, 게임 버튼 56px. 보이는 높이가 44px보다 작은 것은 `::before`로 누르는 영역을 44px로 넓힌다.
+- 버튼은 채움의 무게로 구분한다. 주 버튼은 잉크, 보조 버튼은 옅은 채움이다. 테두리 버튼(`outline`)은 옅은 면 위처럼 채움이 묻히는 자리와 구글 로그인에만 쓴다.
+- 입력란은 테두리를 둔다. 경계가 흰 바탕과 3:1이 넘어야 하기 때문이다(WCAG 1.4.11). 채움만으로 그리지 않는다.
+- 그림자는 세 곳에만 쓴다. 떠 있는 토스트(`shadow-float`), 세그먼트에서 고른 칸(`shadow-raised`), 게임 요소(`shadow-game`과 2px 외곽선). 그 밖에는 테두리나 옅은 면으로 나눈다.
+- 누르면 `ogu-pressable`이 120ms 동안 0.98배로 줄인다. 움직임 줄이기가 켜져 있으면 줄이지 않는다.
 - 움직임의 시간은 세 단계다: `--duration-fast` 120ms(누름과 hover), `--duration-base` 200ms(값이 바뀌는 막대와 반응), `--duration-slow` 320ms(화면이 바뀌는 것).
 - 몬스터의 대기 움직임은 `monster-idle-*`다(ADR-0006). `prefers-reduced-motion`이면 움직이지 않고, 눌린 게임 버튼도 자리를 옮기지 않는다.
 - 좁은 화면의 메뉴는 위쪽 모서리가 둥근(`rounded-t-surface`) 막대다. 그림자 없이 테두리로 본문과 나눈다. 메뉴는 이야기, 함께, 고민 쓰기, 도감, 기록의 다섯 칸이라 고민 쓰기가 정가운데 칸에 오고, 주요 동작 색의 56px 원으로 막대 위에 올린다. 원의 둘레는 면 색 테두리로 본문과 나눈다. 넓은 화면의 메뉴에서는 다른 메뉴와 같다.
@@ -76,12 +80,15 @@ Pretendard 가변 글꼴이다. 굵기는 400, 500, 700, 800만 쓴다.
 
 | 컴포넌트                                            | 위치               | 쓰임                                                                   |
 | --------------------------------------------------- | ------------------ | ---------------------------------------------------------------------- |
-| `Button`                                            | `shared/ui`        | `primary`, `secondary`, `subtle`, `ghost`, `danger`                    |
+| `Button`                                            | `shared/ui`        | `primary`, `secondary`(옅은 채움), `outline`, `ghost`, `danger`        |
 | `GameButton`                                        | `shared/ui`        | 글 상세의 공감 보내기, 레이드의 공격하기에만                           |
 | `IconButton`                                        | `shared/ui`        | 아이콘만 있는 버튼. `aria-label` 필수                                  |
-| `Chip`                                              | `shared/ui`        | 필터와 선택. `pressed`로 상태를 전한다                                 |
-| `TextField`, `Textarea`, `Input`, `Select`, `Label` | `shared/ui`        | 입력. 모두 52px이고 오류가 난 칸은 `aria-invalid`로 빨간 테두리가 된다 |
-| `ConfirmDialog`, `Toaster`                          | `shared/ui`        | 대화상자와 알림 토스트                                                 |
+| `Chip`                                              | `shared/ui`        | 필터와 선택. `pressed`로 상태를 전한다. 고른 것은 잉크 채움            |
+| `SegmentedControl`                                  | `shared/ui`        | 둘이나 셋 가운데 하나(정렬). 고른 칸만 흰 면으로 떠 있다               |
+| `EmptyState`                                        | `shared/ui`        | 빈 화면과 오류. 오구 그림, 제목, 설명, 버튼 자리                       |
+| `PageHeader`                                        | `shared/ui`        | 안쪽 화면의 머리말. 뒤로 가기와 가운데 제목(`h1`)                      |
+| `TextField`, `Textarea`, `Input`, `Select`, `Label` | `shared/ui`        | 입력. 모두 56px이고 오류가 난 칸은 `aria-invalid`로 빨간 테두리가 된다 |
+| `ConfirmDialog`, `Toaster`                          | `shared/ui`        | 대화상자와 알림 토스트. 시트에는 손잡이가 있고 토스트는 잉크 띠다      |
 | `Card`                                              | `shared/ui`        | 폼과 안내를 담는 면. 목록에는 쓰지 않는다                              |
 | `Spinner`, `ListSkeleton`                           | `shared/ui`        | 불러오는 중. 둘 다 "불러오는 중"을 글자로 읽힌다                       |
 | `BrandMark`                                         | `shared/ui`        | 머리말의 로고                                                          |
@@ -149,3 +156,5 @@ AI 친구(009)는 반응 없는 글에 댓글과 공감을 남기는 AI 회원�
 | 한글 글꼴     | npm `pretendard`                                                 | [Pretendard](https://github.com/orioncactus/pretendard), SIL Open Font License 1.1                       |
 | 아이콘        | npm `@phosphor-icons/react`                                      | [Phosphor](https://phosphoricons.com), MIT                                                               |
 | 구글 로그인 G | `public/brand/google.png`                                        | [Google 로그인 브랜딩](https://developers.google.com/identity/branding-guidelines). 원본 색과 비율 유지  |
+
+모양 규칙은 넥스터즈, 디프만 등 동아리 서비스의 공개 저장소에서 되풀이되는 값을 참고했다(목록은 위의 설계 문서). 그 저장소들에는 라이선스가 없어 구조와 규칙만 참고했고 코드와 에셋은 가져오지 않았다.

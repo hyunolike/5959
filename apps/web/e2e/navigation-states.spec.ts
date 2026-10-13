@@ -70,7 +70,7 @@ for (const width of [320, 390, 430, 1440]) {
       const box = await page
         .getByRole("button", { name: tone, exact: true })
         .boundingBox();
-      expect(box!.height).toBe(36);
+      expect(box!.height).toBe(40);
       expect(box!.x + box!.width).toBeLessThanOrEqual(width);
     }
     const sizes = await nav.getByRole("link").evaluateAll((nodes) =>
