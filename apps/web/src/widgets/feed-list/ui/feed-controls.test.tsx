@@ -49,6 +49,20 @@ describe("FeedControls", () => {
     expect(panel().querySelector("summary")).toHaveFocus();
   });
 
+  it("POLISH-AC14 정렬과 필터 여닫이는 한 줄에 놓이고 펼친 칩은 그 아래 전체 너비다", () => {
+    render(<Harness initial={ONE_FILTER} />);
+    const sort = screen.getByRole("group", { name: "정렬" });
+    // 같은 격자 칸에 겹쳐 놓는다. 정렬은 왼쪽 위, 여닫이의 summary는 오른쪽으로 민다.
+    expect(sort.parentElement).toHaveClass("grid");
+    expect(sort).toHaveClass("col-start-1", "row-start-1", "z-10");
+    expect(panel()).toHaveClass("col-start-1", "row-start-1");
+    expect(panel().querySelector("summary")).toHaveClass(
+      "ml-auto",
+      "h-10",
+      "bg-surface-sunken",
+    );
+  });
+
   it("FR-011 필터가 없으면 닫힌 채로 시작하고, 여닫이에는 방향이 바뀌는 화살표가 있다", () => {
     render(
       <Harness initial={{ order: "LATEST", jobRoles: [], careerYears: [] }} />,

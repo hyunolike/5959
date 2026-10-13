@@ -526,6 +526,9 @@ test("US1-AC8 로그아웃하면 알림 종이 사라지고 연결을 닫으며,
   const { page } = member;
 
   // 스트림은 이미 열려 있다. 로그아웃을 누른 순간부터 나가는 요청을 모은다.
+  // 로그아웃은 기록 화면에 있다. 화면을 옮겨도 스트림은 레이아웃의 알림 종이 열어 둔다.
+  await page.getByRole("link", { name: "내 마음 기록" }).first().click();
+  await page.waitForURL("**/my");
   const afterLogout = recordStreamRequests(page);
   await page.getByRole("button", { name: "로그아웃" }).click();
   await page.waitForURL("**/login");

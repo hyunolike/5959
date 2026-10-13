@@ -258,7 +258,7 @@ describe("FeedList", () => {
     });
   });
 
-  it("DS-US2-AC1 정렬과 필터는 공용 칩이고 고른 것만 눌린 상태다", async () => {
+  it("POLISH-AC14 정렬은 세그먼트이고 고른 것만 눌린 상태다", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(ok({ items: [feedItem(1)], nextCursor: null })),
@@ -268,7 +268,10 @@ describe("FeedList", () => {
 
     const latest = screen.getByRole("button", { name: "최신순" });
     expect(latest).toHaveAttribute("aria-pressed", "true");
-    expect(latest).toHaveClass("h-10", "rounded-full");
+    expect(latest).toHaveClass("h-8", "aria-pressed:shadow-raised");
+    expect(screen.getByRole("group", { name: "정렬" })).toHaveClass(
+      "bg-surface-sunken",
+    );
     expect(screen.getByRole("button", { name: "인기순" })).toHaveAttribute(
       "aria-pressed",
       "false",
