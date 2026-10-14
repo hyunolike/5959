@@ -67,6 +67,8 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(values["AI_COMPANION_ENABLED"], "false")
         self.assertEqual(values["AI_COMPANION_POSTING_ENABLED"], "false")
         self.assertEqual(values["AI_COMPANION_DAILY_LIMIT"], "45")
+        # 015: the reset mail links to the configured web origin.
+        self.assertEqual(values["OGU_WEB_ORIGIN"], "https://web.example")
 
     def test_wrong_data_disk_is_rejected_before_docker_can_start(self):
         with mock.patch.object(runtime.os.path, "ismount", return_value=True):

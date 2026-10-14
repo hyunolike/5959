@@ -183,6 +183,8 @@ def environment(config, token):
         "OGU_BFF_KEY": bff,
         "REDIS_URL": "redis://:" + urllib.parse.quote(values["REDIS_PASSWORD"], safe="") + "@redis:6379",
         "OGU_SSE_ALLOWED_ORIGINS": origin,
+        # 015: the password-reset mail links to the web; the deployment config knows its origin.
+        "OGU_WEB_ORIGIN": origin,
         "OAUTH_ALLOWED_REDIRECT_URIS": ",".join(
             f"{origin}/api/auth/oauth/{provider}/callback"
             for provider in (["kakao", "google"] if values["KAKAO_LOGIN_ENABLED"] == "true" else ["google"])

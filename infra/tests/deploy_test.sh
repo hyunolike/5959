@@ -184,6 +184,13 @@ assert "운영 compose가 AI 친구의 글쓰기 설정을 api에 넘기고 기�
     && grep -qF "AI_COMPANION_POSTING_QUIET: \${AI_COMPANION_POSTING_QUIET:-6h}" <<< "$api_block" \
     && grep -qF "AI_COMPANION_POSTING_DAILY_POSTS: \${AI_COMPANION_POSTING_DAILY_POSTS:-3}" <<< "$api_block"'
 
+# 015: 비밀번호 재설정 메일은 꺼진 채로 나간다. SMTP 값은 비밀 값에서 온다
+assert "운영 compose가 메일 발송 설정을 api에 넘기고 기본은 꺼짐이다" \
+  'grep -qF "MAIL_ENABLED: \${MAIL_ENABLED:-false}" <<< "$api_block" \
+    && grep -qF "MAIL_SMTP_HOST: \${MAIL_SMTP_HOST:-}" <<< "$api_block" \
+    && grep -qF "MAIL_SMTP_PASSWORD: \${MAIL_SMTP_PASSWORD:-}" <<< "$api_block" \
+    && grep -qF "OGU_WEB_ORIGIN: \${OGU_WEB_ORIGIN:-}" <<< "$api_block"'
+
 assert "Caddyfile은 알림 스트림 경로를 압축에서 뺀다" \
   'grep -qE "^[[:space:]]*@compressible not path /api/v1/notifications/stream$" "$CADDYFILE" \
     && grep -qE "^[[:space:]]*encode @compressible " "$CADDYFILE" \
