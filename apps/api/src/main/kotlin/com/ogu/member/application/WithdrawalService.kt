@@ -1,13 +1,10 @@
 package com.ogu.member.application
 
 import com.ogu.member.MemberWithdrawn
-import com.ogu.member.domain.AuthSessionRepository
 import com.ogu.member.domain.Member
 import com.ogu.member.domain.MemberKind
 import com.ogu.member.domain.MemberRepository
 import com.ogu.member.domain.MemberRole
-import com.ogu.member.domain.OAuthIdentityRepository
-import com.ogu.member.domain.SseTicketRepository
 import com.ogu.shared.error.BusinessException
 import com.ogu.shared.error.ErrorCode
 import org.slf4j.LoggerFactory
@@ -29,9 +26,7 @@ import java.time.temporal.ChronoUnit
 @Service
 class WithdrawalService(
     private val memberRepository: MemberRepository,
-    private val sessions: AuthSessionRepository,
-    private val identities: OAuthIdentityRepository,
-    private val tickets: SseTicketRepository,
+    private val credentials: MemberCredentials,
     private val events: ApplicationEventPublisher,
     private val clock: Clock,
 ) {
@@ -51,9 +46,8 @@ class WithdrawalService(
         member.withdraw(now)
         // 뒤따르는 삭제와 리스너가 JDBC로 쓰므로 회원 행을 먼저 내보낸다. 탈퇴한 행의 제약도 여기서 확인된다
         memberRepository.flush()
-        identities.deleteAllByMemberId(memberId)
-        sessions.deleteAllByMemberId(memberId)
-        tickets.deleteAllByMember(memberId)
+        // 세션, 연결 표, 외부 계정 연결, 비밀번호 재설정 링크(015 FR-018)
+        credentials.deleteAll(memberId)
         events.publishEvent(MemberWithdrawn(memberId, now))
         log.info("회원이 탈퇴했습니다: memberId={}", memberId)
     }

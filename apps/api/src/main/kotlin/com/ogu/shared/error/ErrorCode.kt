@@ -51,6 +51,11 @@ enum class ErrorCode(
     WEEKLY_REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "주간 리포트를 찾을 수 없습니다."),
     STREAM_TICKET_INVALID(HttpStatus.UNAUTHORIZED, "실시간 연결 표가 유효하지 않습니다. 다시 연결해 주세요."),
 
+    // 015 비밀번호 재설정
+    PASSWORD_RESET_LINK_INVALID(HttpStatus.BAD_REQUEST, "쓸 수 없는 링크입니다. 비밀번호 재설정을 다시 요청해 주세요."),
+    PASSWORD_RESET_THROTTLED(HttpStatus.TOO_MANY_REQUESTS, "재설정 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."),
+    PASSWORD_RESET_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "지금은 비밀번호 재설정 메일을 보낼 수 없습니다."),
+
     // 014 닉네임 변경 제한
     NICKNAME_CHANGE_LIMITED(HttpStatus.CONFLICT, "닉네임을 바꾼 지 얼마 되지 않아 아직 다시 바꿀 수 없습니다."),
 

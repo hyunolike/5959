@@ -72,6 +72,48 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/auth/password-reset": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 비밀번호 재설정을 쓸 수 있는지 (015 US4-AC1, AC3) */
+    get: operations["getPasswordResetAvailability"];
+    put?: never;
+    /**
+     * 비밀번호 재설정 메일 요청 (015 US1, US3)
+     * @description 가입한 이메일이든 아니든 204다. 이메일로 가입했고 탈퇴하지 않은 회원에게만 뒤에서 메일이 간다(015 FR-002, FR-003).
+     *     같은 이메일로 한 시간에 세 번을 넘으면 응답은 같고 보내지 않는다.
+     */
+    post: operations["requestPasswordReset"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/password-reset/confirm": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 링크의 값으로 새 비밀번호를 정한다 (015 US2)
+     * @description 성공하면 그 회원의 모든 세션이 끝난다. 로그인시키지 않는다. 쓸 수 없는 링크는 까닭을 가르지 않고 같은 400이다.
+     */
+    post: operations["confirmPasswordReset"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/auth/logout": {
     parameters: {
       query?: never;
@@ -1715,6 +1757,18 @@ export interface components {
       /** @description 그 가운데 가장 오래된 탈퇴의 때. 없으면 null이다 */
       oldestWithdrawnAt: string | null;
     };
+    PasswordResetAvailability: {
+      available: boolean;
+    };
+    PasswordResetRequest: {
+      email: string;
+    };
+    PasswordResetConfirmRequest: {
+      /** @description 메일의 링크에 든 값 */
+      token: string;
+      /** @description 영문과 숫자를 포함한 8~20자. 가입과 같은 규칙이다 */
+      password: string;
+    };
   };
   responses: {
     /**
@@ -1971,6 +2025,103 @@ export interface operations {
         };
       };
       401: components["responses"]["Unauthorized"];
+    };
+  };
+  getPasswordResetAvailability: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 메일 발송이 켜져 있으면 available이 true다 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["PasswordResetAvailability"];
+            error: null;
+          };
+        };
+      };
+    };
+  };
+  requestPasswordReset: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PasswordResetRequest"];
+      };
+    };
+    responses: {
+      /** @description 받았다. 메일이 갔는지는 알려 주지 않는다 */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      400: components["responses"]["BadRequest"];
+      /** @description 같은 곳에서 너무 자주 요청했다 (PASSWORD_RESET_THROTTLED). error.retryAfterSeconds와 Retry-After 헤더가 있다 */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description 메일 발송이 꺼져 있다 (PASSWORD_RESET_UNAVAILABLE) */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  confirmPasswordReset: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PasswordResetConfirmRequest"];
+      };
+    };
+    responses: {
+      /** @description 비밀번호를 바꿨다 */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description 비밀번호가 규칙에 맞지 않는다 (INVALID_REQUEST). 또는 링크를 쓸 수 없다 (PASSWORD_RESET_LINK_INVALID) */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
     };
   };
   logout: {

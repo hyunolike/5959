@@ -312,6 +312,21 @@ ogu:
     writer-threads: 4
   stream-ticket:
     ttl: 30s
+  # 015 비밀번호 재설정. 메일 발송은 꺼진 채로 나간다. 켜려면 MAIL_ENABLED=true와 아래 값을 넣는다
+  # (specs/015-password-reset/quickstart.md). spring.mail.*를 쓰지 않는다. 그 자동 설정은 메일 헬스 지표를 함께 넣는다
+  mail:
+    enabled: ${MAIL_ENABLED:false}
+    from: ${MAIL_FROM:}
+    smtp:
+      host: ${MAIL_SMTP_HOST:}
+      port: ${MAIL_SMTP_PORT:587}
+      username: ${MAIL_SMTP_USERNAME:}
+      password: ${MAIL_SMTP_PASSWORD:}
+      timeout: 10s
+  password-reset:
+    # 메일의 링크가 가리키는 웹의 주소
+    link-base: ${OGU_WEB_ORIGIN:http://localhost:3000}
+    ttl: 30m
   sse:
     # 스트림에 바로 붙는 브라우저의 출처(콤마 구분). prod에서 비면 기동하지 않는다(ProdAuthSettingsCheck)
     allowed-origins: ${OGU_SSE_ALLOWED_ORIGINS:}

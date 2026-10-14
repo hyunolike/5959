@@ -8,5 +8,6 @@ import org.springframework.context.annotation.Configuration
     AuthProperties::class,
     StreamTicketProperties::class,
     NicknameChangeProperties::class,
+    PasswordResetProperties::class,
 )
 class AuthConfig

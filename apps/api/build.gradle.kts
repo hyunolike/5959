@@ -38,6 +38,8 @@ dependencies {
     implementation("io.github.resilience4j:resilience4j-spring-boot4:2.4.0")
     // 004-notification-mypage 실시간 알림의 인스턴스 간 신호(research R5). Lettuce 클라이언트를 쓴다.
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
+    // 015: 비밀번호 재설정 메일(SMTP). spring.mail.*를 설정하지 않으므로 Boot의 메일 자동 설정과 헬스 지표는 켜지지 않는다
+    implementation("org.springframework.boot:spring-boot-starter-mail")
 
     runtimeOnly("org.springframework.modulith:spring-modulith-runtime")
     runtimeOnly("org.postgresql:postgresql")
