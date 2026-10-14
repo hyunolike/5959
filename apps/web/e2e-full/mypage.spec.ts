@@ -496,6 +496,45 @@ test("US5-AC1 닉네임, 직군, 경력을 고치면 저장되고 마이페이�
   await closeAll(me);
 });
 
+test("014 US2-AC1, US2-AC6 닉네임을 바꾸기 전에 제한을 알리고, 바꾼 뒤 다시 열면 칸이 잠겨 있으며 직군은 바꿀 수 있다", async ({
+  browser,
+}) => {
+  const me = await newMember(browser, "a");
+  const renamed = uniqueNickname("lk");
+  await openProfileEdit(me.page);
+  await expect(
+    me.page.getByText("닉네임을 바꾸면 30일 동안 다시 바꿀 수 없어요."),
+  ).toBeVisible();
+  await me.page.getByLabel("닉네임").fill(renamed);
+  await expect(me.page.getByText("사용할 수 있는 닉네임입니다.")).toBeVisible();
+  await me.page.getByRole("button", { name: "저장" }).click();
+  await me.page.waitForURL(/\/my$/);
+
+  // 다시 열면 닉네임 칸이 잠겨 있고 언제부터 바꿀 수 있는지 보인다.
+  await openProfileEdit(me.page);
+  const nickname = me.page.getByLabel("닉네임");
+  await expect(nickname).toHaveValue(renamed);
+  await expect(nickname).not.toBeEditable();
+  await expect(
+    me.page.getByText(
+      /닉네임은 \d+월 \d+일 \d{2}:\d{2}부터 다시 바꿀 수 있어요\./,
+    ),
+  ).toBeVisible();
+
+  // 제한 중에도 직군은 바뀐다.
+  await me.page.getByLabel("직군").selectOption("MARKETING");
+  await me.page.getByRole("button", { name: "저장" }).click();
+  await me.page.waitForURL(/\/my$/);
+  await expect(profileRow(me.page, "직군")).toHaveText("마케팅");
+  await expect(profileRow(me.page, "닉네임")).toHaveText(renamed);
+
+  // 새로 받은 화면에서도 잠겨 있다(서버가 준 값이다).
+  await me.page.goto("/my/edit");
+  await expect(me.page.getByLabel("닉네임")).not.toBeEditable();
+
+  await closeAll(me);
+});
+
 test("US5-AC2 다른 회원의 닉네임(대소문자만 달라도)이나 허용되지 않는 문자는 저장되지 않고 온보딩과 같은 안내를 받는다", async ({
   browser,
 }) => {
