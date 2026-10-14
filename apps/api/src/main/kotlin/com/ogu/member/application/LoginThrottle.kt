@@ -71,15 +71,11 @@ class LoginThrottle(
     }
 
     /**
-     * 그 이메일의 로그인 시도 제한을 지운다(015 FR-017). 비밀번호를 재설정한 회원이 새 비밀번호로 바로 로그인하게 한다.
+     * 그 이메일의 로그인 시도 제한을 모두 지운다(015 FR-017). 집에서 막힌 회원이 휴대폰으로 재설정해도 집에서 바로 로그인한다.
      * 재설정은 메일함을 가진 사람만 하므로 여러 출처의 공격이 이것으로 초기화되지 않는다.
      */
-    fun forgive(
-        clientIp: String,
-        email: String,
-    ) {
-        repository.delete(ipEmailKey(clientIp, email))
-        repository.delete(emailKey(email))
+    fun forgive(email: String) {
+        repository.deleteAllOfEmail(emailKey(email))
     }
 
     /**

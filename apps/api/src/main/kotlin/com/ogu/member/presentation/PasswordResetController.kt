@@ -79,9 +79,8 @@ class PasswordResetController(
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun confirm(
         @RequestBody request: PasswordResetConfirmRequest,
-        httpRequest: HttpServletRequest,
     ) {
         val password = request.password ?: throw BusinessException(ErrorCode.INVALID_REQUEST, "새 비밀번호를 입력해 주세요.")
-        confirmation.confirm(request.token.orEmpty(), password, clientIpResolver.resolve(httpRequest))
+        confirmation.confirm(request.token.orEmpty(), password)
     }
 }

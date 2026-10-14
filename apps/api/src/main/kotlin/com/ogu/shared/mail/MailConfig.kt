@@ -66,7 +66,10 @@ internal class SmtpMailSender(
                 properties.smtp.username
                     .isNotBlank()
                     .toString()
+            // 링크 하나로 계정을 넘겨받을 수 있는 메일이다. 서버가 STARTTLS를 내리면 평문으로 보내지 않고 실패한다
             javaMailProperties["mail.smtp.starttls.enable"] = "true"
+            javaMailProperties["mail.smtp.starttls.required"] = "true"
+            javaMailProperties["mail.smtp.ssl.checkserveridentity"] = "true"
             javaMailProperties["mail.smtp.connectiontimeout"] = timeout
             javaMailProperties["mail.smtp.timeout"] = timeout
             javaMailProperties["mail.smtp.writetimeout"] = timeout

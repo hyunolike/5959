@@ -275,6 +275,21 @@ describe("callApi", () => {
     expect(result.headers).toBeUndefined();
   });
 
+  it("timeoutMs를 주면 그만큼만 기다리고, 주지 않으면 15초를 기다린다", async () => {
+    const timeout = vi.spyOn(AbortSignal, "timeout");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(null, { status: 204 })),
+    );
+
+    await callApi("/api/v1/auth/password-reset", "unknown", {
+      timeoutMs: 2_000,
+    });
+    await callApi("/api/v1/members/me", "203.0.113.1");
+
+    expect(timeout.mock.calls).toEqual([[2_000], [15_000]]);
+  });
+
   it("15초 안에 응답이 없으면(타임아웃) 504와 ApiResponse 오류 봉투로 바꾼다", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     vi.stubGlobal(

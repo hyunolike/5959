@@ -43,8 +43,8 @@ description: "Task list for 015-password-reset (비밀번호 재설정)"
 
 - [x] T013 [P] `infra/compose.prod.yaml`, `infra/gcp/vm/compose.yaml`에 `MAIL_ENABLED`, `MAIL_FROM`, `MAIL_SMTP_*`, `OGU_WEB_ORIGIN`의 통과(기본은 꺼짐). `bash infra/tests/deploy_test.sh`, `infra/gcp/tests`
 - [x] T014 [P] 문서: `apps/api/AGENTS.md`(재설정과 `shared/mail`), `README.md`, `docs/features.md`, `apps/web/docs/ARCHITECTURE.md`, 002 스펙의 "범위 밖" 문장
-- [ ] T015 API의 `ktlintCheck`, `detekt`, 재설정과 인증 테스트, 계약과 모듈 테스트. 웹의 `typecheck`, `lint`, `lint:fsd`, `format:check`, `test`. e2e-full의 재설정과 로그인 스펙
-- [ ] T016 별도 검토자가 브랜치 전체를 본다. 지적을 고친 뒤 `main`으로 PR을 연다
+- [x] T015 API의 `ktlintCheck`, `detekt`, 재설정과 인증 테스트, 계약과 모듈 테스트. 웹의 `typecheck`, `lint`, `lint:fsd`, `format:check`, `test`. e2e-full의 재설정과 로그인 스펙
+- [x] T016 별도 검토자가 브랜치 전체를 본다. 지적을 고친 뒤 `main`으로 PR을 연다
 
 ## Dependencies
 

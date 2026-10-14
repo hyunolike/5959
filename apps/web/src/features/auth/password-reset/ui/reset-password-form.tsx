@@ -147,8 +147,8 @@ export function InvalidLinkNotice() {
         쓸 수 없는 링크예요.
       </p>
       <p className="text-body-sm text-fg-muted break-keep">
-        링크는 30분 동안, 한 번만 쓸 수 있어요. 새로 요청했다면 마지막에 받은
-        메일의 링크만 쓸 수 있어요.
+        링크는 30분 동안, 한 번만 쓸 수 있어요. 여러 번 요청했다면 마지막
+        요청으로 받은 메일의 링크만 쓸 수 있어요.
       </p>
       <Link
         href="/forgot-password"

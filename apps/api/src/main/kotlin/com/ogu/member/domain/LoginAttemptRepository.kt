@@ -60,6 +60,17 @@ class LoginAttemptRepository(
         )
     }
 
+    /**
+     * 이메일 키([emailKey], `email:<hash>`)와 그 이메일의 모든 `ip:<hash>|email:<hash>` 키를 지운다. 해시는 hex라 LIKE의
+     * 와일드카드가 섞이지 않는다. 앞이 열린 LIKE라 표를 훑지만 재설정 때만 부르고 정리 작업이 표를 작게 둔다.
+     */
+    fun deleteAllOfEmail(emailKey: String) {
+        jdbc.update(
+            "DELETE FROM login_attempt WHERE scope_key = :emailKey OR scope_key LIKE :ipEmailKeys",
+            MapSqlParameterSource("emailKey", emailKey).addValue("ipEmailKeys", "ip:%|$emailKey"),
+        )
+    }
+
     /** 창이 아직 지나지 않았을 때만 수를 1 줄인다(0 아래로는 내려가지 않는다). */
     fun decrementIfWindowCurrent(
         scopeKey: String,

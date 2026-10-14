@@ -235,14 +235,33 @@ class PasswordResetApiTests {
     }
 
     @Test
-    fun `US2-AC8 로그인이 막혀 있던 회원도 새 비밀번호로 바로 로그인한다`() {
+    fun `US2-AC8 로그인이 막혀 있던 회원도 다른 곳에서 재설정하고 막혔던 곳에서 바로 로그인한다`() {
         val account = withdrawal.signUp()
-        repeat(LOGIN_LIMIT + 1) { loginFrom(account.email, "wrongpass123") }
-        loginFrom(account.email, WithdrawalFixture.PASSWORD).andExpect(status().isTooManyRequests)
+        repeat(LOGIN_LIMIT + 1) { loginFrom(account.email, "wrongpass123", HOME_IP) }
+        loginFrom(account.email, WithdrawalFixture.PASSWORD, HOME_IP).andExpect(status().isTooManyRequests)
 
         confirm(tokenFor(account), NEW_PASSWORD).andExpect(status().isNoContent)
 
-        loginFrom(account.email, NEW_PASSWORD).andExpect(status().isOk)
+        loginFrom(account.email, NEW_PASSWORD, HOME_IP).andExpect(status().isOk)
+    }
+
+    @Test
+    fun `US2-AC7 재설정하면 열려 있던 알림 스트림을 닫으라는 이벤트가 커밋 뒤에 처리된다`() {
+        val account = withdrawal.onboarded()
+
+        confirm(tokenFor(account), NEW_PASSWORD).andExpect(status().isNoContent)
+
+        await().atMost(AWAIT).until {
+            jdbcTemplate.queryForObject(
+                """
+                select count(*) from event_publication
+                where event_type like '%.MemberSessionsEnded' and completion_date is not null
+                  and serialized_event like ?
+                """.trimIndent(),
+                Int::class.java,
+                "%\"memberId\":${account.member.id}}%",
+            ) == 1
+        }
     }
 
     @Test
@@ -405,15 +424,16 @@ class PasswordResetApiTests {
                 .content(jsonMapper.writeValueAsString(mapOf("token" to token, "password" to password))),
         )
 
-    /** 로그인 제한을 재려고 같은 곳(재설정을 한 곳)에서 로그인한다. */
+    /** 로그인 제한을 재려고 정한 곳에서 로그인한다. 기본은 재설정을 한 곳이다. */
     private fun loginFrom(
         email: String,
         password: String,
+        clientIp: String = FIXED_IP,
     ): ResultActions =
         mockMvc.perform(
             post("/api/v1/auth/login")
                 .header(BffClientIpResolver.BFF_KEY_HEADER, authProperties.bffKey)
-                .header(BffClientIpResolver.CLIENT_IP_HEADER, FIXED_IP)
+                .header(BffClientIpResolver.CLIENT_IP_HEADER, clientIp)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(jsonMapper.writeValueAsString(mapOf("email" to email, "password" to password))),
         )
@@ -429,6 +449,7 @@ class PasswordResetApiTests {
         const val PATH = "/api/v1/auth/password-reset"
         const val NEW_PASSWORD = "newpass123"
         const val FIXED_IP = "2001:db8::15"
+        const val HOME_IP = "2001:db8::16"
         const val EMAIL_LIMIT = 3
         const val SOURCE_LIMIT = 10
         const val LOGIN_LIMIT = 5

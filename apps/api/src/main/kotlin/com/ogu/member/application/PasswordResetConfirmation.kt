@@ -11,6 +11,7 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
+import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 /**
@@ -38,21 +39,30 @@ class PasswordResetConfirmation(
     fun confirm(
         token: String,
         password: String,
-        clientIp: String,
     ) {
         PasswordPolicy.validate(password)
         val now = clock.instant().truncatedTo(ChronoUnit.MICROS)
-        val memberId = token.takeIf { it.isNotEmpty() }?.let { tokens.consume(RefreshTokens.hash(it), now) }
-        // 링크를 쓴 뒤 회원이 없거나 탈퇴했으면 예외로 되돌린다. 쓴 표시도 함께 되돌아간다
         val member =
-            memberId?.let(memberRepository::findByIdForUpdate)?.takeIf(::canReset)
+            token.takeIf { it.isNotEmpty() }?.let { lockAndConsume(RefreshTokens.hash(it), now) }
                 ?: throw BusinessException(ErrorCode.PASSWORD_RESET_LINK_INVALID)
         member.changePassword(requireNotNull(passwordEncoder.encode(password)))
         memberRepository.flush()
-        credentials.endSessions(member.id)
-        // 로그인을 여러 번 틀려 막혀 있던 회원도 새 비밀번호로 바로 들어온다(FR-017)
-        loginThrottle.forgive(clientIp, requireNotNull(member.email))
+        credentials.signOutEverywhere(member.id)
+        // 로그인을 여러 번 틀려 막혀 있던 회원도 새 비밀번호로 바로 들어온다(FR-017). 막힌 곳이 이 기기가 아니어도 풀린다
+        loginThrottle.forgive(requireNotNull(member.email))
         log.info("비밀번호를 재설정했습니다: memberId={}", member.id)
+    }
+
+    /**
+     * 회원 행을 먼저 잠그고 링크를 쓴다. 탈퇴(013)도 회원 행, 링크 순서로 잠근다. 링크를 먼저 쓰면 둘이 겹칠 때 서로를
+     * 기다려 교착이 난다. 회원이 없거나 탈퇴했으면 링크를 쓰지 않고 null이다.
+     */
+    private fun lockAndConsume(
+        tokenHash: String,
+        now: Instant,
+    ): Member? {
+        val member = tokens.memberOf(tokenHash)?.let(memberRepository::findByIdForUpdate)?.takeIf(::canReset)
+        return member?.takeIf { tokens.consume(tokenHash, now) == it.id }
     }
 
     private fun canReset(member: Member): Boolean {

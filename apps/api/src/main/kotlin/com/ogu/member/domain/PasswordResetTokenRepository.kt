@@ -57,6 +57,18 @@ class PasswordResetTokenRepository(
             .optional()
             .orElse(null)
 
+    /**
+     * 링크의 회원 번호를 잠그지 않고 읽는다. 링크를 쓰기 전에 회원 행부터 잠그려고 쓴다. 쓸 수 있는 링크인지는 보지 않는다
+     * ([consume]이 본다).
+     */
+    fun memberOf(tokenHash: String): Long? =
+        jdbcClient
+            .sql("select member_id from password_reset_token where token_hash = :tokenHash")
+            .param("tokenHash", tokenHash)
+            .query(Long::class.java)
+            .optional()
+            .orElse(null)
+
     /** 회원의 링크를 지운다. 탈퇴할 때 쓴다(FR-018). */
     fun deleteByMember(memberId: Long): Int =
         jdbcClient

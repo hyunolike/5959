@@ -26,7 +26,7 @@ e2e 프로필은 메일을 보내지 않고, 링크의 값이 이메일에서 �
 
 ## 켜는 방법 (운영)
 
-1. 메일 발송 서비스를 정하고(SMTP를 받는 곳이면 된다) 보내는 주소의 도메인에 SPF와 DKIM을 건다.
+1. 메일 발송 서비스를 정하고(SMTP를 받는 곳이면 된다) 보내는 주소의 도메인에 SPF와 DKIM을 건다. API는 STARTTLS를 강제하므로 587 포트처럼 STARTTLS를 주는 곳을 쓴다(465의 암묵적 TLS는 지원하지 않는다).
 2. API의 환경에 넣는다: `MAIL_ENABLED=true`, `MAIL_FROM`, `MAIL_SMTP_HOST`, `MAIL_SMTP_PORT`, `MAIL_SMTP_USERNAME`, `MAIL_SMTP_PASSWORD`, `OGU_WEB_ORIGIN=https://new.5959.site`. GCP에서는 비밀 값(JSON)의 같은 이름 필드다.
 3. API를 다시 올린다. 값이 빠졌으면 뜨지 않는다.
 4. 내 계정으로 재설정을 요청해 메일이 받은편지함에 오는지(스팸함이 아닌지) 본다. 1분 안에 로그인 화면에 들어가는 길이 보인다.

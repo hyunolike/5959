@@ -621,8 +621,13 @@ HTTP API도 이벤트도 없다. 글이 올라온 뒤 한동안 다른 회원의
   토큰 생성과 SMTP를 요청 안으로 옮기면 응답 시간과 장애가 가입 여부를 드러낸다.
 - **남용 확인은 `login_attempt`를 함께 쓴다(R4).** 키 `reset-ip:`는 한 시간에 10번을 넘으면 `429 PASSWORD_RESET_THROTTLED`와
   `Retry-After`, `reset-email:`은 3번을 넘으면 204를 주고 조용히 보내지 않는다(가입 여부를 숨긴다). 기존 정리 주기가 지운다.
-- **바꾸면 모든 세션이 끝난다(R5).** `PasswordResetConfirmation.confirm`이 규칙 → 링크 쓰기 → 해시 → `MemberCredentials.endSessions`
-  → `LoginThrottle.forgive` 순서다. 규칙에 맞지 않으면 링크를 쓰지 않는다. 탈퇴는 `MemberCredentials.deleteAll`로 토큰도 지운다.
+- **바꾸면 모든 세션이 끝난다(R5).** `PasswordResetConfirmation.confirm`이 규칙 → 회원 행 잠금 → 링크 쓰기 → 해시 →
+  `MemberCredentials.signOutEverywhere` → `LoginThrottle.forgive` 순서다. 규칙에 맞지 않으면 링크를 쓰지 않는다.
+  회원 행을 링크보다 먼저 잠그는 것은 탈퇴(`MemberCredentials.deleteAll`이 링크를 지운다)와 잠금 순서를 맞추려는 것이다.
+  바꾸면 둘이 겹칠 때 교착이 난다. `signOutEverywhere`는 `MemberSessionsEnded`를 내고 `notification`의
+  `SessionsEndedListener`가 커밋 뒤에 열린 알림 스트림을 닫는다. `forgive`는 그 이메일의 모든 IP 키를 지운다.
+- **SMTP는 STARTTLS를 강제한다.** `mail.smtp.starttls.required=true`라 TLS를 주지 않는 SMTP 서버로는 보내지 못한다.
+  메일에 계정을 넘겨받는 링크가 들어 있어 평문으로 보내지 않는다.
 - **테스트.** `e2e` 프로필의 `ResetTokenGenerator`는 이메일에서 값을 만든다(`"e2e-" + sha256("reset:" + email)`). Playwright가
   메일함 없이 링크를 안다. 운영에서는 난수다. API 테스트는 `@MockitoBean MailSender`로 보낸 메일을 본다.
 
