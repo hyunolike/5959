@@ -79,8 +79,12 @@ test("US1-AC1~AC5, US2-AC2, US4-AC1 탈퇴하면 로그인할 수 없고 글이 
   await expect(
     page.getByRole("region", { name: "탈퇴하면 사라져요" }),
   ).toContainText("내가 쓴 글과 댓글");
-  await page.getByRole("button", { name: "탈퇴하기" }).click();
+  const withdrawButton = page.getByRole("button", { name: "탈퇴하기" });
+  await expect(withdrawButton).toBeDisabled();
+  // 비활성으로 읽히는 버튼은 Playwright가 누르지 않는다. 억지로 눌러도 탈퇴되지 않는지 본다.
+  await withdrawButton.click({ force: true });
   await expect(page).toHaveURL(/\/withdraw$/);
+  await expect(page.getByText(/탈퇴가 끝났어요/)).toHaveCount(0);
 
   // US1-AC4
   await withdraw(page);
