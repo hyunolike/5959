@@ -23,7 +23,11 @@ function firstValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
-export const metadata: Metadata = { title: "로그인" };
+// 로그인 화면은 검색 결과에 띄우지 않는다. 첫 화면(`/`)이 서비스 소개를 맡는다.
+export const metadata: Metadata = {
+  title: "로그인",
+  robots: { index: false },
+};
 
 /**
  * 로그인 첫 화면(스펙 "로그인 첫 화면"). 오구와 서비스 소개가 먼저 오고, 그 아래에 카카오, 구글,

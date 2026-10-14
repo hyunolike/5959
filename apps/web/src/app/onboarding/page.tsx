@@ -7,7 +7,10 @@ function firstValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
-export const metadata: Metadata = { title: "프로필 입력" };
+export const metadata: Metadata = {
+  title: "프로필 입력",
+  robots: { index: false },
+};
 
 export default async function OnboardingPage({
   searchParams,

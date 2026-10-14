@@ -62,7 +62,7 @@ for (const width of [390, 1440]) {
     await expect(logo).toBeVisible();
     await expect(
       page.getByRole("link", { name: "오구오구 홈", exact: true }),
-    ).toHaveAttribute("href", "/login");
+    ).toHaveAttribute("href", "/");
     const image = logo.locator('img[src="/brand/ogu-logo.svg"]');
     await expect(image).toBeVisible();
     await expect

@@ -33,11 +33,8 @@ describe("resolveRouteGuardAction", () => {
       });
     });
 
-    it("US1-AC1 로그인하지 않았으면 /에서 로그인 화면으로 보낸다", () => {
-      expect(resolveRouteGuardAction("/", SIGNED_OUT)).toEqual({
-        type: "redirect",
-        to: "/login",
-      });
+    it("SEO-AC1 로그인하지 않았으면 /를 서비스 소개로 그대로 보여준다(002 FR-014)", () => {
+      expect(resolveRouteGuardAction("/", SIGNED_OUT)).toBeNull();
     });
   });
 

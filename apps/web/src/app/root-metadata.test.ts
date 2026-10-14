@@ -28,3 +28,20 @@ describe("루트 메타데이터", () => {
     });
   });
 });
+
+describe("검색 엔진 등록", () => {
+  it("SEO-AC2 네이버 서치어드바이저의 소유 확인 메타 태그가 들어간다", () => {
+    expect(rootMetadata("https://ogu.example").verification).toEqual({
+      other: {
+        "naver-site-verification": "4ceb3f333dd60e153d14cfc07a29041a3f555728",
+      },
+    });
+  });
+
+  it("SEO-AC3 설명에는 서비스가 무엇인지 검색어가 들어간다", () => {
+    const { description, openGraph } = rootMetadata("https://ogu.example");
+    expect(description).toContain("고민");
+    expect(description).toContain("오구오구");
+    expect(openGraph).toMatchObject({ description });
+  });
+});
