@@ -4,21 +4,36 @@ import { expect, it, vi } from "vitest";
 import LoginPage, { metadata } from "./page";
 
 vi.mock("@/shared/config", () => ({ env: { KAKAO_LOGIN_ENABLED: true } }));
+const { availableMock } = vi.hoisted(() => ({ availableMock: vi.fn() }));
+vi.mock("../password-reset-availability", () => ({
+  fetchPasswordResetAvailable: availableMock,
+}));
 vi.mock("@/features/auth/email-login", () => ({
   EmailLoginDisclosure: ({
     next,
     defaultOpen,
+    passwordResetAvailable,
   }: {
     next?: string;
     defaultOpen?: boolean;
+    passwordResetAvailable?: boolean;
   }) => (
-    <button type="button" data-next={next} aria-expanded={!!defaultOpen}>
+    <button
+      type="button"
+      data-next={next}
+      data-reset={String(!!passwordResetAvailable)}
+      aria-expanded={!!defaultOpen}
+    >
       이메일로 로그인
     </button>
   ),
 }));
 
-async function renderPage(params: Record<string, string> = { next: "/write" }) {
+async function renderPage(
+  params: Record<string, string> = { next: "/write" },
+  passwordResetAvailable = false,
+) {
+  availableMock.mockResolvedValue(passwordResetAvailable);
   return render(await LoginPage({ searchParams: Promise.resolve(params) }));
 }
 
@@ -106,4 +121,26 @@ it("013 US1-AC4 탈퇴를 마치고 오면 끝났다는 안내가 보인다", as
 it("013 탈퇴하고 온 것이 아니면 탈퇴 안내가 없다", async () => {
   await renderPage();
   expect(screen.queryByText(/탈퇴가 끝났어요/)).not.toBeInTheDocument();
+});
+
+it("015 US4-AC1 US4-AC3 메일 발송이 켜져 있을 때만 이메일 로그인에 재설정으로 가는 길을 넘긴다", async () => {
+  await renderPage({}, false);
+  expect(
+    screen.getByRole("button", { name: "이메일로 로그인" }),
+  ).toHaveAttribute("data-reset", "false");
+});
+
+it("015 US4-AC3 켜져 있으면 길을 넘긴다", async () => {
+  await renderPage({}, true);
+  expect(
+    screen.getByRole("button", { name: "이메일로 로그인" }),
+  ).toHaveAttribute("data-reset", "true");
+});
+
+it("015 US2-AC1 비밀번호를 바꾸고 오면 안내가 보이고 이메일 로그인이 펼쳐져 있다", async () => {
+  await renderPage({ reset: "1" });
+  expect(screen.getByRole("status")).toHaveTextContent("비밀번호를 바꿨어요.");
+  expect(
+    screen.getByRole("button", { name: "이메일로 로그인" }),
+  ).toHaveAttribute("aria-expanded", "true");
 });

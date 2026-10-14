@@ -9,10 +9,14 @@ vi.mock("next/navigation", () => ({
 
 import { EmailLoginDisclosure } from "./email-login-disclosure";
 
-function renderDisclosure(defaultOpen = false) {
+function renderDisclosure(defaultOpen = false, passwordResetAvailable = false) {
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <EmailLoginDisclosure next="/write" defaultOpen={defaultOpen} />
+      <EmailLoginDisclosure
+        next="/write"
+        defaultOpen={defaultOpen}
+        passwordResetAvailable={passwordResetAvailable}
+      />
     </QueryClientProvider>,
   );
   return screen.getByRole("button", { name: "이메일로 로그인" });
@@ -63,5 +67,23 @@ describe("EmailLoginDisclosure", () => {
     await user.click(toggle);
 
     expect(screen.getByLabelText("이메일")).toHaveValue("ogu@example.com");
+  });
+
+  it("015 US1-AC1 재설정을 쓸 수 있으면 펼친 입력란 아래에 비밀번호를 잊었을 때 가는 길이 있다", async () => {
+    const toggle = renderDisclosure(false, true);
+    await userEvent.click(toggle);
+
+    expect(
+      screen.getByRole("link", { name: "비밀번호를 잊으셨나요?" }),
+    ).toHaveAttribute("href", "/forgot-password");
+  });
+
+  it("015 US4-AC1 꺼져 있으면 그 길이 없다", async () => {
+    const toggle = renderDisclosure(false, false);
+    await userEvent.click(toggle);
+
+    expect(
+      screen.queryByRole("link", { name: "비밀번호를 잊으셨나요?" }),
+    ).not.toBeInTheDocument();
   });
 });

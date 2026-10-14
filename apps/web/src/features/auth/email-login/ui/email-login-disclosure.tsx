@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { Button } from "@/shared/ui";
@@ -14,10 +15,16 @@ import { LoginForm } from "./login-form";
 export function EmailLoginDisclosure({
   next,
   defaultOpen = false,
+  passwordResetAvailable = false,
 }: {
   next?: string;
   /** 처음부터 펼쳐 둔다. 이메일로 로그인하라는 안내와 함께 돌아왔을 때 쓴다. */
   defaultOpen?: boolean;
+  /**
+   * 비밀번호 재설정을 쓸 수 있으면 입력란 아래에 "비밀번호를 잊으셨나요?"를 둔다(015 US1-AC1). 메일 발송이 꺼져
+   * 있으면 그리지 않는다. 눌러 봐야 안 된다는 것을 아는 길을 두지 않는다(US4-AC1).
+   */
+  passwordResetAvailable?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const panelId = useId();
@@ -48,6 +55,16 @@ export function EmailLoginDisclosure({
       </Button>
       <div id={panelId} ref={panelRef} hidden={!open}>
         <LoginForm next={next} />
+        {passwordResetAvailable ? (
+          <p className="mt-2 text-center">
+            <Link
+              href="/forgot-password"
+              className="text-body-sm text-fg-subtle hover:text-fg inline-flex min-h-11 items-center px-2 font-medium underline underline-offset-4"
+            >
+              비밀번호를 잊으셨나요?
+            </Link>
+          </p>
+        ) : null}
       </div>
     </div>
   );

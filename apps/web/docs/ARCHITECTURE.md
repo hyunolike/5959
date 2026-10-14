@@ -86,7 +86,8 @@ JSON, so the browser only ever talks to its own origin.
 
 Dedicated route handlers under `src/app/api/auth/**` own the token/cookie
 translation (`src/app/api/auth/signup`, `login`, `logout`, `onboarding`,
-`withdraw`, `oauth/[provider]`, `oauth/[provider]/callback`). Each one calls the API,
+`withdraw`, `password-reset`, `password-reset/confirm`, `oauth/[provider]`,
+`oauth/[provider]/callback`). Each one calls the API,
 sets or clears cookies via `shared/server/auth-cookies.ts`, and strips
 `accessToken`/`refreshToken` out of the JSON body before it reaches the
 browser. The full request/response shape per route is in
@@ -102,7 +103,10 @@ tokens from the body. It also refuses `/api/notifications/stream-tickets`:
 stream tickets come only from `POST /api/notifications/stream-ticket`. And it refuses
 `/api/members/me/withdrawal` (013): withdrawal goes only through `POST /api/auth/withdraw`,
 which clears the three cookies **only on 204** — unlike logout, a failed withdrawal leaves
-the member signed in so they can retry. It also validates every path segment (rejects empty,
+the member signed in so they can retry. The password-reset routes (015) set no cookies;
+they exist so the proxy's `auth` refusal stays a single rule. Whether reset is offered is read
+on the server (`app/(auth)/password-reset-availability.ts`, revalidated every 60s): when mail is
+off, the login screen hides the link and `/forgot-password` says it is unavailable. It also validates every path segment (rejects empty,
 `.`, `..`, or segments containing `/`, `\`, `?`, `#`, including after a
 second percent-decode) before re-encoding and calling `API_ORIGIN`, to stop
 path-traversal or double-encoded-slash tricks from reaching an unintended
