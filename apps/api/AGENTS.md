@@ -601,6 +601,31 @@ HTTP API도 이벤트도 없다. 글이 올라온 뒤 한동안 다른 회원의
   겹침은 탈퇴의 트랜잭션을 커밋 직전에 붙잡아 만든다(`WithdrawalRaceTests`). 실패한 정리는 `WithdrawnContentCleaner`를
   스파이로 한 번 던지게 하고 `EventPublicationResubmitter.resubmit`을 직접 부른다(`WithdrawalCleanupFailureTests`).
 
+## Password reset (015)
+
+015-password-reset에서 생겼다. 새 모듈은 없다. 메일은 `shared/mail`이 보내고 재설정은 `member`가 한다.
+
+- **메일은 설정으로 켠다(research R1).** `ogu.mail.enabled`(env `MAIL_ENABLED`)의 기본은 false이고 운영도 꺼진 채로 나갔다.
+  꺼져 있으면 `GET /api/v1/auth/password-reset`가 `available: false`이고 요청은 `503 PASSWORD_RESET_UNAVAILABLE`, 웹은
+  들어가는 길을 숨긴다. `MailConfig`가 켜졌으면 `SmtpMailSender`, `e2e` 프로필이면 보내지 않는 구현을 만든다. Boot의
+  `spring.mail.*` 자동 구성을 쓰지 않고 `JavaMailSenderImpl`을 직접 만든다(켜고 끄는 것을 한 설정에 모은다). 운영에서
+  켰는데 `MAIL_FROM`, `MAIL_SMTP_HOST`가 비었거나 `ogu.password-reset.link-base`(`OGU_WEB_ORIGIN`)가 https가 아니면
+  `ProdMailSettingsCheck`, `ProdAuthSettingsCheck`가 기동을 막는다. 켜는 절차는 `specs/015-password-reset/quickstart.md`.
+- **링크의 값은 해시만, 회원마다 하나(R2).** `password_reset_token`의 PK가 `member_id`라 새로 요청하면 덮어써 앞의 링크가
+  죽는다. 쓰기는 `UPDATE … SET used_at = now() WHERE token_hash = ? AND used_at IS NULL AND expires_at > now() RETURNING`
+  한 문장이라 겹친 요청은 하나만 받는다. 실패한 까닭(없음, 만료, 사용)을 나누지 않고 모두 `400 PASSWORD_RESET_LINK_INVALID`.
+- **요청은 가입 여부와 상관없이 같은 204다(R3).** `PasswordResetService.request`는 남용 확인과 회원 조회 한 번만 하고
+  `PasswordResetRequested`를 낸다. 보낼 회원이 없으면 회원 번호가 null인 이벤트를 똑같이 낸다(이벤트에 이메일은 없다).
+  커밋 뒤 `PasswordResetMailer`가 회원을 다시 읽어 이메일 가입이고 탈퇴하지 않은 회원에게만 `ResetLinkIssuer`로 토큰을
+  만들어 보낸다. 발송이 실패하면 발행 기록이 다시 돌리고, `mail-valid-for`(한 시간)가 지난 요청은 보내지 않고 끝낸다.
+  토큰 생성과 SMTP를 요청 안으로 옮기면 응답 시간과 장애가 가입 여부를 드러낸다.
+- **남용 확인은 `login_attempt`를 함께 쓴다(R4).** 키 `reset-ip:`는 한 시간에 10번을 넘으면 `429 PASSWORD_RESET_THROTTLED`와
+  `Retry-After`, `reset-email:`은 3번을 넘으면 204를 주고 조용히 보내지 않는다(가입 여부를 숨긴다). 기존 정리 주기가 지운다.
+- **바꾸면 모든 세션이 끝난다(R5).** `PasswordResetConfirmation.confirm`이 규칙 → 링크 쓰기 → 해시 → `MemberCredentials.endSessions`
+  → `LoginThrottle.forgive` 순서다. 규칙에 맞지 않으면 링크를 쓰지 않는다. 탈퇴는 `MemberCredentials.deleteAll`로 토큰도 지운다.
+- **테스트.** `e2e` 프로필의 `ResetTokenGenerator`는 이메일에서 값을 만든다(`"e2e-" + sha256("reset:" + email)`). Playwright가
+  메일함 없이 링크를 안다. 운영에서는 난수다. API 테스트는 `@MockitoBean MailSender`로 보낸 메일을 본다.
+
 ## Gotchas
 
 - Kotlin can't express package-level annotations: module metadata such as
