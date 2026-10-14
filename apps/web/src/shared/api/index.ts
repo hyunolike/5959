@@ -1,4 +1,8 @@
-export { ANONYMOUS_QUERY_META, createQueryClient } from "./query-client";
+export {
+  ANONYMOUS_QUERY_META,
+  createQueryClient,
+  pauseUnauthorizedRedirect,
+} from "./query-client";
 export { ApiError } from "./api-error";
 export type { ApiErrorBody } from "./api-error";
 export { fetchApiHealth } from "./api-health";

@@ -5,6 +5,7 @@ import {
   SupportResourceList,
   useWithdrawalNoticeQuery,
 } from "@/entities/support-resource";
+import { stopNotificationStream } from "@/features/notification-stream";
 import { WithdrawForm } from "@/features/withdraw";
 import { Card, Spinner } from "@/shared/ui";
 
@@ -52,7 +53,10 @@ export default function WithdrawPage() {
             계정 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
           </p>
         ) : (
-          <WithdrawForm cancelHref={onboarded ? "/my/edit" : "/onboarding"} />
+          <WithdrawForm
+            cancelHref={onboarded ? "/my/edit" : "/onboarding"}
+            onWithdrawn={stopNotificationStream}
+          />
         )}
       </Card>
     </div>
