@@ -39,6 +39,8 @@ const DENIED_TOP_LEVEL_SEGMENTS = new Set(["auth", "operator"]);
  */
 const DENIED_EXACT_PATHS = new Set([
   "members/me/onboarding",
+  // 013: 탈퇴는 `/api/auth/withdraw`만 다룬다. 성공하면 쿠키를 지워야 하는데 이 캐치올은 지우지 않는다.
+  "members/me/withdrawal",
   "notifications/stream-tickets",
 ]);
 
@@ -97,7 +99,7 @@ function notFoundResponse(): NextResponse {
  * 바꾸는 요청에는 origin-guard를 적용한다. 세그먼트를 검증하고
  * `encodeURIComponent`로 다시 인코딩한 뒤 경로 접두사를 한 번 더 확인해
  * 경로 조작(`..`, 인코딩된 `/`)을 막고, `auth/**`, `members/me/onboarding`,
- * `notifications/stream-tickets`는 전용 라우트만 다루므로, `operator/**`는
+ * `members/me/withdrawal`, `notifications/stream-tickets`는 전용 라우트만 다루므로, `operator/**`는
  * 브라우저에서 부를 일이 없으므로 404로 막는다.
  *
  * 세션 갱신(US4-AC1)은 `callWithSessionRefresh`(shared/server/session-refresh.ts)

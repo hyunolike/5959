@@ -68,9 +68,9 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
 ## Auth (`member` module)
 
 - 다른 모듈에 노출하는 공개 타입은 모두 `member` 패키지 루트에 있다: `MemberApi`
-  (파사드, `getMember(memberId)`, 일괄 조회 `getMembers(ids)`), `MemberInfo`(온보딩 전에는 `nickname`/`jobRole`/
-  `careerYear`가 null), `AuthenticatedMember`(컨트롤러 인자, `memberId`/`sessionId`/
-  `onboarded`), `JobRole`, `CareerYear`.
+  (파사드, `getMember(memberId)`, 일괄 조회 `getMembers(ids)`, 013에서 `isWithdrawn(memberId)`), `MemberInfo`(온보딩 전에는
+  `nickname`/`jobRole`/`careerYear`가 null, 탈퇴한 회원은 `withdrawn`이 true이고 셋 다 null), `AuthenticatedMember`
+  (컨트롤러 인자, `memberId`/`sessionId`/`onboarded`), `JobRole`, `CareerYear`, 이벤트 `MemberWithdrawn`(013).
 - 보안 설정은 `member/infrastructure/security`에 모여 있다: `SecurityConfig`(필터
   체인 조립), `SecurityPaths`(공개 경로·온보딩 허용 목록·`/api/v1/**` 매처),
   `SessionCheckFilter`(JWT 서명 통과 뒤 세션 유효성 확인), `OnboardingGuard`
@@ -89,7 +89,7 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   `SecurityPaths.ONBOARDING_ALLOWED`에 있다: `GET /api/v1/members/me`(메서드까지 본다.
   같은 경로의 `PATCH` 프로필 수정은 온보딩 뒤에만 된다, 004 research R13),
   `/api/v1/members/nickname-availability`, `/api/v1/members/me/onboarding`,
-  `/api/v1/auth/logout`. 그 밖의 인증 필요 경로는 `OnboardingGuard`가
+  `/api/v1/auth/logout`, `POST /api/v1/members/me/withdrawal`(013). 그 밖의 인증 필요 경로는 `OnboardingGuard`가
   `403 ONBOARDING_REQUIRED`로 막는다.
 - 프로필 수정(004 US5, research R13)은 `PATCH /api/v1/members/me`이고 `ProfileService`가 한다. 보낸 항목만 바꾸고,
   하나도 없으면 `400 INVALID_REQUEST`다. 회원 행을 `FOR UPDATE`로 잠그고, 닉네임은 온보딩과 같은 `Nickname.of`로
@@ -543,6 +543,56 @@ HTTP API도 이벤트도 없다. 글이 올라온 뒤 한동안 다른 회원의
 - **실제 모델.** 프롬프트나 모델을 바꾸면 `OGU_RUN_AI_EVAL=true`로 `CompanionCommentLiveTest`를 돌려 댓글 40개를 읽는다.
   글쓰기는 `CompanionPostLiveTest`로 글 30개를 읽는다. 글쓰기를 켜기 전에도 읽는다(012 quickstart "운영 준비").
   규칙 검사는 낱말 목록이라 다 잡지 못한다. 기능을 켜기 전에도 읽는다(009 quickstart "운영 준비").
+
+## Member withdrawal (013)
+
+013-member-withdrawal에서 생겼다. 새 모듈과 새 의존은 없다. `member`가 이벤트 하나를 내고 `post`, `notification`, `report`가
+받는다. 셋 다 이미 `member`에 의존한다. `member`는 여전히 `shared`에만 의존하므로 다른 모듈을 부르는 길은 이벤트뿐이다.
+
+| 모듈 | 더한 것 | 받는 이벤트 |
+|---|---|---|
+| `member` | `MemberWithdrawn`, `MemberApi.isWithdrawn`, `MemberInfo.withdrawn`, `POST /api/v1/members/me/withdrawal`, `GET /api/v1/operator/withdrawals/cleanup` | - |
+| `post` | `WithdrawnContentRemover`, `WithdrawnContentCleaner` | `MemberWithdrawn`(같은 트랜잭션에서 동기, 그리고 커밋 뒤) |
+| `notification` | `WithdrawnReceiverRepository`, `NotificationSignal.Closed` | `MemberWithdrawn`(커밋 뒤) |
+| `report` | `WeeklyReportRepository.deleteAllOfMember` | `MemberWithdrawn`(커밋 뒤) |
+| `safety` | `GET /api/v1/safety/withdrawal-notice` | - |
+| `shared` | `PostLock.lockAll`, `ErrorCode.OPERATOR_CANNOT_WITHDRAW` | - |
+
+- **회원 행은 지우지 않고 비운다(research R1).** `WithdrawalService`가 `withdrawn_at`을 적고 이메일, 비밀번호 해시, 닉네임,
+  닉네임 키, 직군, 경력, `onboarded_at`을 NULL로 바꾼다. `post_likes`, `monster_hp_log`, `raid_contribution`, 안전 기록이 회원
+  번호를 가리키고 있어 행을 지우면 다른 회원의 공감 수와 HP가 흔들린다. `member_withdrawn_erased_check`가 "탈퇴한 행에는
+  개인 정보가 없다"를 지킨다. `oauth_identity`, `auth_session`, `sse_ticket`의 행은 지운다. 세션 행이 없으면
+  `SessionCheckFilter`가 이미 받은 토큰도 401로 막는다. 닉네임 키와 이메일이 비어 유일 제약에서 빠지므로 다시 가입하는
+  길은 고친 것이 없다.
+- **탈퇴는 새 상태를 만들지 않는다(research R3).** 글과 댓글에 회원이 스스로 지울 때와 같은 `deleted_at`을 적고 같은
+  `PostRemoved`, `CommentRemoved`를 낸다. 피드, 추천, 도감, 통계, 감정 분석과 임베딩의 재시도, AI 친구의 반응, 신고 닫기가
+  고치지 않아도 따라온다. 읽는 쿼리에 `member.withdrawn_at`을 조인하지 않는다. `Visibility`가 쓰이는 곳마다 조건을 더해야
+  하고 하나를 놓치면 샌다.
+- **보이지 않게 하는 일은 탈퇴와 같은 트랜잭션이다(research R2).** `WithdrawnContentListener.remove`가 동기 `@EventListener`다.
+  `WithdrawnContentRemover.removeAll`은 글과 댓글이 몇 개든 문장 셋이다(댓글과 답글과 댓글 수를 한 문장으로, 글, 글 잠금).
+  글마다 `PostService.delete`를 부르지 않는다. 여기에 글 수만큼 도는 일을 더하면 `WithdrawalRaceTests`의 SC-006이 잡는다.
+- **본문은 커밋 뒤에 나눠서 비운다(research R4).** `WithdrawnContentCleaner.clean`이 200개씩 맡아 이벤트를 내고 `content`를
+  빈 글자열로 바꾼다. 아직 비우지 않았다는 표지는 `content <> ''`다. 그래서 다시 불리면 남은 것만 한다. 리스너는
+  `Propagation.NOT_SUPPORTED`이고 묶음마다 트랜잭션이 따로다. 내 원 댓글 아래 다른 회원의 답글은 함께 지워지지만 본문은
+  비우지 않고, 신고를 닫으려고 `CommentRemoved`만 낸다. 지운 글과 댓글의 `content`를 읽는 코드를 새로 쓰면 빈 본문을 만난다.
+- **탈퇴와 겹친 쓰기(research R5).** 탈퇴는 회원 행을 `FOR UPDATE`로 잠근다(`MemberRepository.lockForWithdrawal`, 네이티브
+  쿼리). JPA의 `PESSIMISTIC_WRITE`는 PostgreSQL에서 `FOR NO KEY UPDATE`라 FK의 `FOR KEY SHARE`와 부딪히지 않는다. 그것으로
+  바꾸면 줄이 서지 않는다. `PostService.create`와 `CommentService.write`는 저장 직후에 `MemberApi.isWithdrawn`을 본다. 이
+  조회는 엔티티가 아니라 값을 읽는다. 같은 트랜잭션에서 앞서 읽은 회원 엔티티는 탈퇴 전의 모습이다. 커밋 뒤 정리도 맨
+  먼저 `removeAll`을 한 번 더 돈다. 공감과 레이드 공격은 막지 않는다(숫자는 남기기로 했다).
+- **알림은 받는 쪽에서 한 번에 거른다(research R7).** `NotificationWriter.readersAmong`이 AI 친구와 탈퇴한 회원을 뺀다.
+  행동한 회원이 탈퇴했으면 닉네임이 없어 `NotificationViewAssembler`가 `actor`를 null로 주고 웹이 "누군가"로 보인다.
+  응답에 탈퇴 여부를 싣지 않는다.
+- **열린 스트림은 신호로 닫는다.** `{memberId}:x`(`NotificationSignal.Closed`)를 받은 인스턴스가 그 회원의 연결을 닫는다.
+  Redis가 내려가 있으면 연결의 수명(15분)이 지나며 닫힌다.
+- **정리가 끝났는지는 발행 기록으로 본다(research R8).** `WithdrawalCleanupQuery`가 `event_publication`에서 끝나지 않은
+  `MemberWithdrawn`을 이벤트로 묶어 센다. 진행을 적는 테이블이 없다. 열 번 실패한 발행은 다시 나가지 않으므로 이 수가 줄지
+  않으면 로그의 `이벤트 발행이 10번 실패해`를 찾고, 고친 뒤 재시작한다("이벤트 재전송"과 같은 절차).
+- **운영자는 탈퇴하지 못한다(409).** 지정을 SQL로 푼 뒤에 한다. AI 친구는 로그인할 수 없어 닿지 않고 닿아도 거절한다.
+- **로그와 이벤트에는 회원 번호와 수만 남긴다.** 이메일, 닉네임, 본문을 싣지 않는다.
+- **테스트.** `WithdrawalFixture.withdrawAndClean`이 탈퇴하고 그 회원의 `MemberWithdrawn` 발행이 모두 끝날 때까지 기다린다.
+  겹침은 탈퇴의 트랜잭션을 커밋 직전에 붙잡아 만든다(`WithdrawalRaceTests`). 실패한 정리는 `WithdrawnContentCleaner`를
+  스파이로 한 번 던지게 하고 `EventPublicationResubmitter.resubmit`을 직접 부른다(`WithdrawalCleanupFailureTests`).
 
 ## Gotchas
 

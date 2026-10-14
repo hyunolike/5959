@@ -141,6 +141,27 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/members/me/withdrawal": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 회원 탈퇴 (013 US1, US2). 온보딩 전에도 호출할 수 있다
+     * @description 탈퇴한다. 되돌릴 수 없다. 응답이 온 때부터 그 회원의 모든 세션이 끝나고 글과 댓글은 지운 것으로 다뤄진다(013 FR-004, FR-007).
+     *     본문과 알림, 주간 리포트를 저장소에서 지우는 일은 뒤에서 이어진다(FR-017). BFF는 204일 때만 쿠키를 지운다.
+     */
+    post: operations["withdraw"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/posts": {
     parameters: {
       query?: never;
@@ -590,6 +611,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/safety/withdrawal-notice": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 탈퇴 화면에 도움받을 곳을 보일지 (013 US1-AC10) */
+    get: operations["getWithdrawalNotice"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/reports": {
     parameters: {
       query?: never;
@@ -785,6 +823,23 @@ export interface paths {
     post?: never;
     /** 낱말 빼기. 없어도 204 */
     delete: operations["removeTerm"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/operator/withdrawals/cleanup": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 정리가 끝나지 않은 탈퇴 (013 US5-AC6). 운영자만 */
+    get: operations["getWithdrawalCleanupStatus"];
+    put?: never;
+    post?: never;
+    delete?: never;
     options?: never;
     head?: never;
     patch?: never;
@@ -1639,6 +1694,21 @@ export interface components {
       /** @description 이 글의 임베딩을 아직 만들고 있다. true면 화면이 잠시 뒤 다시 받는다 */
       pending: boolean;
     };
+    WithdrawalRequest: {
+      /** @description 회원이 안내를 읽고 확인 칸을 채웠다. true가 아니면 탈퇴하지 않는다(013 FR-003) */
+      confirmed: boolean;
+    };
+    WithdrawalNotice: {
+      /** @description true면 탈퇴 화면에 도움받을 곳을 함께 보인다. 탈퇴를 막지 않는다(013 FR-019) */
+      recentCrisis: boolean;
+    };
+    /** @description 개인 정보가 없다. 수와 때뿐이다(013 FR-018) */
+    WithdrawalCleanupStatus: {
+      /** @description 글과 댓글의 본문, 알림, 주간 리포트 가운데 지우는 일이 하나라도 끝나지 않은 탈퇴의 수 */
+      pending: number;
+      /** @description 그 가운데 가장 오래된 탈퇴의 때. 없으면 null이다 */
+      oldestWithdrawnAt: string | null;
+    };
   };
   responses: {
     /**
@@ -2040,6 +2110,47 @@ export interface operations {
       400: components["responses"]["BadRequest"];
       401: components["responses"]["Unauthorized"];
       /** @description 닉네임 중복(NICKNAME_TAKEN) 또는 이미 온보딩함(ALREADY_ONBOARDED) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  withdraw: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["WithdrawalRequest"];
+      };
+    };
+    responses: {
+      /** @description 탈퇴했다 */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description 확인이 없다 (INVALID_REQUEST). `confirmed`가 없거나 false다 */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      /** @description 운영자로 지정된 회원이다 (OPERATOR_CANNOT_WITHDRAW). 지정을 푼 뒤에 탈퇴한다 */
       409: {
         headers: {
           [name: string]: unknown;
@@ -2944,6 +3055,33 @@ export interface operations {
       403: components["responses"]["Forbidden"];
     };
   };
+  getWithdrawalNotice: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 최근 30일에 위기로 판정된 내 글이나 댓글이 있었는지 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["WithdrawalNotice"];
+            error: null;
+          };
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+    };
+  };
   reportContent: {
     parameters: {
       query?: never;
@@ -3356,6 +3494,34 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+      401: components["responses"]["Unauthorized"];
+      403: components["responses"]["Forbidden"];
+      404: components["responses"]["OperatorOnly"];
+    };
+  };
+  getWithdrawalCleanupStatus: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 끝나지 않은 탈퇴의 수와 가장 오래된 것의 때 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /** @constant */
+            success: true;
+            data: components["schemas"]["WithdrawalCleanupStatus"];
+            error: null;
+          };
+        };
       };
       401: components["responses"]["Unauthorized"];
       403: components["responses"]["Forbidden"];

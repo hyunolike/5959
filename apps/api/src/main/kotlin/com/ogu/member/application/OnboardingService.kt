@@ -71,7 +71,10 @@ class OnboardingService(
      * `ALREADY_ONBOARDED`로 알린다.
      */
     private fun lockNotOnboardedMember(memberId: Long): Member {
-        val member = memberRepository.findByIdForUpdate(memberId) ?: throw BusinessException(ErrorCode.NOT_FOUND)
+        // 잠금을 기다리는 사이 탈퇴한 회원은 없는 회원으로 본다(013)
+        val member =
+            memberRepository.findByIdForUpdate(memberId)?.takeUnless { it.isWithdrawn }
+                ?: throw BusinessException(ErrorCode.NOT_FOUND)
         if (member.isOnboarded) throw BusinessException(ErrorCode.ALREADY_ONBOARDED)
         return member
     }

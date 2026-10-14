@@ -17,6 +17,13 @@ interface MemberApi {
      */
     fun isOperator(memberId: Long): Boolean
 
+    /**
+     * 탈퇴한 회원인가(013 research R5). 엔티티가 아니라 값 하나를 읽는다. 같은 트랜잭션에서 앞서 읽은 회원이 있어도
+     * 그 뒤에 커밋된 탈퇴가 보인다. 글과 댓글을 저장한 직후에 물어, 탈퇴와 겹쳐 들어온 것을 되돌리는 데 쓴다.
+     * 없는 회원이면 false다.
+     */
+    fun isWithdrawn(memberId: Long): Boolean
+
     /** 실시간 알림 스트림용 일회용 연결 표를 발급한다(004 research R3). 30초 안에 한 번만 쓸 수 있다. */
     fun issueStreamTicket(
         memberId: Long,

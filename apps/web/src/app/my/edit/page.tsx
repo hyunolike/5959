@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useMeQuery } from "@/entities/member";
 import { ProfileForm } from "@/features/edit-profile";
 import { Card, Spinner } from "@/shared/ui";
@@ -7,6 +9,8 @@ import { Card, Spinner } from "@/shared/ui";
 /**
  * 프로필 수정(004 US5). 로그인과 온보딩은 proxy.ts의 라우트 가드가 먼저 확인한다(`/my` 이하).
  * 폼은 지금 프로필로 채워야 하므로 내 정보를 받은 뒤에 그린다.
+ *
+ * 맨 아래에 탈퇴로 가는 길을 둔다(013 US1-AC1). 저장 버튼과 헷갈리지 않게 카드 밖에 따로 둔다.
  */
 export default function EditProfilePage() {
   const { data: member, isPending, isError } = useMeQuery();
@@ -33,6 +37,15 @@ export default function EditProfilePage() {
           <ProfileForm member={member} />
         )}
       </Card>
+      <p className="text-body-sm text-fg-subtle mt-4 text-center">
+        더 쓰지 않으려면{" "}
+        <Link
+          href="/withdraw"
+          className="text-fg-muted inline-flex min-h-11 items-center px-1 font-bold underline underline-offset-2"
+        >
+          회원 탈퇴
+        </Link>
+      </p>
     </div>
   );
 }

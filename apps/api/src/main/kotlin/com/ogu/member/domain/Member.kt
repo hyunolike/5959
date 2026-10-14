@@ -79,8 +79,16 @@ class Member private constructor(
     var kind: MemberKind = MemberKind.HUMAN
         protected set
 
+    /** 탈퇴한 때(013 research R1). 탈퇴한 행에는 번호와 이 값만 남는다. */
+    @Column(name = "withdrawn_at")
+    var withdrawnAt: Instant? = null
+        protected set
+
     val isOnboarded: Boolean
         get() = onboardedAt != null
+
+    val isWithdrawn: Boolean
+        get() = withdrawnAt != null
 
     /** 닉네임, 직군, 경력을 저장하고 온보딩을 마친다. 이미 마친 회원이면 `ALREADY_ONBOARDED`. */
     fun completeOnboarding(
@@ -114,6 +122,24 @@ class Member private constructor(
         }
         if (jobRole != null) this.jobRole = jobRole
         if (careerYear != null) this.careerYear = careerYear
+    }
+
+    /**
+     * 탈퇴한다(013 FR-008). 이메일, 비밀번호, 닉네임, 직군, 경력을 비우고 탈퇴한 때를 적는다. 닉네임 키와 이메일이 비어
+     * 유일 제약에서 빠지므로 같은 닉네임과 이메일을 바로 다시 쓸 수 있다(FR-013). 되돌리는 길은 없다.
+     * 가입한 방법([authMethod])은 기록으로 남는다.
+     */
+    fun withdraw(now: Instant) {
+        check(kind == MemberKind.HUMAN) { "AI 친구는 탈퇴하지 않는다" }
+        check(role == MemberRole.MEMBER) { "운영자는 지정을 푼 뒤에 탈퇴한다" }
+        email = null
+        passwordHash = null
+        nickname = null
+        nicknameKey = null
+        jobRole = null
+        careerYear = null
+        onboardedAt = null
+        withdrawnAt = now
     }
 
     companion object {

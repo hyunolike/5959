@@ -27,6 +27,14 @@ class NotificationSignalTest {
         assertThat(NotificationSignal.parse("42:r")).isEqualTo(signal)
     }
 
+    @Test
+    fun `탈퇴 신호는 회원ID_x 형식으로 직렬화되고 그대로 해석된다`() {
+        val signal = NotificationSignal.Closed(memberId = 42L)
+
+        assertThat(signal.encode()).isEqualTo("42:x")
+        assertThat(NotificationSignal.parse("42:x")).isEqualTo(signal)
+    }
+
     @ParameterizedTest(name = "\"{0}\"")
     @ValueSource(
         strings = ["", "42", "42:n", "42:n:", "42:x:1", "a:n:1", "42:n:b", "42:r:1", "-1:r", "42:n:-3", " 42:r"],

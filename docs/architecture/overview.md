@@ -118,17 +118,17 @@ Redis는 M3(004)에서 들어왔다. 실시간 알림의 인스턴스 간 pub/su
 | 모듈 | 책임 | 공개 파사드 | 발행 이벤트 | 구독 이벤트 |
 |---|---|---|---|---|
 | `shared` (OPEN) | 공통 응답, 예외, 설정 | - | - | - |
-| `member` | 회원, 인증(이메일/카카오/구글), 로그인 실패 제한, 세션(JWT access·refresh), 프로필 수정, 실시간 알림 연결 표 | `MemberApi`(회원 조회, 연결 표 발급 `issueStreamTicket`과 소비 `consumeStreamTicket`) | `MemberWithdrawn`(회원 탈퇴는 M1 범위 밖이라 아직 발행하지 않는다) | - |
-| `post` | 고민 글, 댓글, 공감, 숨김 상태와 위험 단계의 열 | `PostApi`, `PostActivityApi`(회원 한 명의 글, 댓글, 공감 조회), `PostModerationApi`(`safety`만 쓴다. 판정할 원문 읽기, 숨기기와 풀기) | `PostCreated`, `CommentCreated`, `PostLiked`, `CommentLiked`, `PostWritten`, `CommentWritten`, `PostRemoved`, `CommentRemoved` | - |
+| `member` | 회원, 인증(이메일/카카오/구글), 로그인 실패 제한, 세션(JWT access·refresh), 프로필 수정, 실시간 알림 연결 표 | `MemberApi`(회원 조회, 연결 표 발급 `issueStreamTicket`과 소비 `consumeStreamTicket`) | `MemberWithdrawn`(013. 회원 행을 비운 트랜잭션에서 낸다) | - |
+| `post` | 고민 글, 댓글, 공감, 숨김 상태와 위험 단계의 열 | `PostApi`, `PostActivityApi`(회원 한 명의 글, 댓글, 공감 조회), `PostModerationApi`(`safety`만 쓴다. 판정할 원문 읽기, 숨기기와 풀기) | `PostCreated`, `CommentCreated`, `PostLiked`, `CommentLiked`, `PostWritten`, `CommentWritten`, `PostRemoved`, `CommentRemoved` | `MemberWithdrawn`(같은 트랜잭션에서 글과 댓글을 지운 것으로 바꾸고, 커밋 뒤에 본문을 비운다) |
 | `ai` | LLM 게이트웨이 (Spring AI, Resilience4j, 요청 제한) | `EmotionAnalyzer`(M2), `RiskClassifier`(M4). `Embedder`, `LetterWriter`는 뒤 마일스톤 | - | - |
 | `emotion` | 감정 분석 결과 | `EmotionApi` | `EmotionAnalyzed` | `PostCreated` |
 | `monster` | 몬스터 생성, HP, 처치 | `MonsterApi` | `MonsterSpawned`, `MonsterDefeated` | `EmotionAnalyzed`(커밋 후 비동기), `PostLiked`, `CommentCreated`, `CommentLiked`(post 트랜잭션 안에서 동기) |
 | `safety` | 위험 감지(키워드 규칙과 AI 분류), 신고, 재검토 요청, 운영자 처리, 욕설 가리기. 위기 글은 `PostModerationApi.hide`로 숨긴다 | - (HTTP API와 `shared`의 `ContentMask` 구현) | `RiskDetected`, `ContentRestored`, `ReviewResolved` | `PostWritten`, `CommentWritten`, `PostRemoved`, `CommentRemoved`(post 트랜잭션 안에서 동기) |
 | `raid` | 보스 한 마리를 모든 회원이 버튼으로 함께 공격, 보스의 생애, 실시간으로 내보낼 레이드 상태 | `RaidApi`(끝난 보스의 참여자, 회원이 함께 물리친 보스 수) | `RaidBossDefeated` | - |
 | `recommend` | 글의 임베딩과 처리 일정, 비슷한 글 고르기(글 ID만), 같은 감정의 글로 대신하기 | `RecommendApi` | - | `PostWritten`, `PostRemoved`(커밋 뒤) |
-| `report` | 주간 리포트: 지난주 수치 세기와 저장, 없는 리포트를 채우는 주기 작업, AI 편지와 재시도 | - (HTTP API만) | `WeeklyReportPublished` | 자기 이벤트(편지 첫 시도) |
+| `report` | 주간 리포트: 지난주 수치 세기와 저장, 없는 리포트를 채우는 주기 작업, AI 편지와 재시도 | - (HTTP API만) | `WeeklyReportPublished` | 자기 이벤트(편지 첫 시도). `MemberWithdrawn`(커밋 뒤, 그 회원의 것을 지운다) |
 | `companion` | AI 친구(009, 012): 반응 없는 글에 AI 회원 한 명에서 세 명이 댓글과 공감을 남기고, 조용할 때 고민 글을 쓴다. 글마다의 반응 기록, 글 기록, 올리기 전 검사, 하루의 몫 | - | - | `PostCreated`(커밋 뒤) |
-| `notification` | SSE 알림, 알림 이력, 읽음 | - (HTTP API만) | - | `PostLiked`, `CommentCreated`, `MonsterSpawned`, `MonsterDefeated`(M3), `RiskDetected`, `ContentRestored`, `ReviewResolved`(M4). `WeeklyReportPublished`는 뒤 마일스톤 |
+| `notification` | SSE 알림, 알림 이력, 읽음 | - (HTTP API만) | - | `PostLiked`, `CommentCreated`, `MonsterSpawned`, `MonsterDefeated`(M3), `RiskDetected`, `ContentRestored`, `ReviewResolved`(M4). `WeeklyReportPublished`는 뒤 마일스톤. `MemberWithdrawn`(커밋 뒤, 그 회원의 것을 지운다) |
 | `feed` | 피드, 글 상세, 마이페이지 목록과 감정 통계 조합 | - (HTTP API만) | - | - |
 
 의존 방향은 한쪽으로만 흐른다. Spring Modulith는 다른 모듈의 이벤트 타입을 참조하는 것도 의존으로 보므로, 이벤트 구독도 아래 방향을 따라야 한다.

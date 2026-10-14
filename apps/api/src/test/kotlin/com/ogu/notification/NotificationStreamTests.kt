@@ -10,6 +10,7 @@ import com.ogu.support.SseStream
 import com.ogu.support.SseTestClient
 import com.ogu.support.StreamTickets
 import com.ogu.support.TestMember
+import com.ogu.support.WithdrawalFixture
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.AfterEach
@@ -31,6 +32,7 @@ import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.DefaultMockMvcBuilder
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.context.WebApplicationContext
@@ -75,6 +77,7 @@ class NotificationStreamTests {
     private lateinit var members: MemberFixture
     private lateinit var loop: CoreLoopFixture
     private lateinit var tickets: StreamTickets
+    private lateinit var withdrawal: WithdrawalFixture
     private val streams = mutableListOf<SseStream>()
 
     @BeforeEach
@@ -84,6 +87,7 @@ class NotificationStreamTests {
         members = MemberFixture(mockMvc)
         loop = CoreLoopFixture(mockMvc, jdbcTemplate, monsterApi)
         tickets = StreamTickets(mockMvc)
+        withdrawal = WithdrawalFixture(mockMvc, jdbcTemplate)
     }
 
     @AfterEach
@@ -116,6 +120,22 @@ class NotificationStreamTests {
         assertThat(notification.get("actorCount").asInt()).isEqualTo(1)
         assertThat(notification.get("read").asBoolean()).isFalse()
         assertThat(data.get("unreadCount").asLong()).isEqualTo(1)
+    }
+
+    @Test
+    fun `013 US1-AC6 회원이 탈퇴하면 그 회원의 열린 스트림이 닫히고 다른 회원의 스트림은 남는다`() {
+        val leaver = members.onboarded()
+        val other = members.onboarded()
+        val first = open(leaver)
+        val second = open(leaver)
+        open(other)
+
+        withdrawal.withdraw(leaver).andExpect(status().isNoContent)
+
+        first.awaitEnded()
+        second.awaitEnded()
+        await().atMost(AWAIT).until { hub.connectionCount(leaver.id) == 0 }
+        assertThat(hub.connectionCount(other.id)).isEqualTo(1)
     }
 
     @Test

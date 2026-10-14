@@ -28,6 +28,7 @@ class SessionService(
 ) {
     /**
      * 새 세션을 만들고 access, refresh 토큰을 발급한다. 가입, 로그인과 같은 트랜잭션에서 부른다.
+     * 그사이 회원이 탈퇴했으면 `401 SESSION_EXPIRED`로 되돌린다.
      */
     @Transactional
     fun issue(
@@ -37,7 +38,7 @@ class SessionService(
         val now = clock.instant()
         val refreshToken = RefreshTokens.generate()
         val session =
-            repository.save(
+            repository.saveAndFlush(
                 AuthSession.start(
                     memberId = memberId,
                     refreshTokenHash = RefreshTokens.hash(refreshToken),
@@ -46,6 +47,9 @@ class SessionService(
                     absoluteTtl = properties.session.absoluteTtl,
                 ),
             )
+        // 탈퇴와 겹친 로그인이면 위의 INSERT가 탈퇴의 커밋을 기다렸다 통과한다. 탈퇴한 회원에게 세션을 주지 않는다
+        // (013 research R5). 값을 읽는 조회라 앞서 읽은 회원 엔티티와 상관없이 DB의 지금 값이다
+        if (memberRepository.isWithdrawn(memberId)) throw BusinessException(ErrorCode.SESSION_EXPIRED)
         val accessToken = jwtIssuer.issue(memberId = memberId, sessionId = session.id, onboarded = onboarded)
         return IssuedTokens(
             sessionId = session.id,

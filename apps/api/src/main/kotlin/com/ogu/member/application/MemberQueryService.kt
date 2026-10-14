@@ -31,6 +31,8 @@ class MemberQueryService(
         return memberRepository.findAllById(ids.toSet()).associate { it.id to it.toInfo() }
     }
 
+    override fun isWithdrawn(memberId: Long): Boolean = memberRepository.isWithdrawn(memberId)
+
     override fun isOperator(memberId: Long): Boolean = memberRepository.existsByIdAndRole(memberId, MemberRole.OPERATOR)
 
     // 연결 표는 쓰기라 읽기 전용 트랜잭션 밖에서 한 문장씩 자동 커밋한다
@@ -56,4 +58,5 @@ private fun Member.toInfo(): MemberInfo =
         jobRole = jobRole,
         careerYear = careerYear,
         ai = kind == MemberKind.AI,
+        withdrawn = isWithdrawn,
     )

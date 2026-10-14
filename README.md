@@ -34,7 +34,7 @@ https://github.com/user-attachments/assets/f29e4b90-98a0-4528-bc08-66e4713ca181
 > 👤 **[장현호](https://github.com/hyunolike)** (DDD 13기 WEBBB 팀 백엔드)
 
 - 다시 만든 서비스는 [new.5959.site](https://new.5959.site)에 열려 있습니다. 로그인하지 않아도 둘러보기로 최근 이야기를 볼 수 있습니다.
-- 다시 만든 코드는 [`apps/`](apps)에 있습니다. 여덟 개 마일스톤(M0~M7)을 스펙부터 쓰고 구현했고, 그 뒤에 AI 친구와 몬스터 도감, 비회원 둘러보기를 더했습니다.
+- 다시 만든 코드는 [`apps/`](apps)에 있습니다. 여덟 개 마일스톤(M0~M7)을 스펙부터 쓰고 구현했고, 그 뒤에 AI 친구와 몬스터 도감, 비회원 둘러보기, 회원 탈퇴를 더했습니다.
 - 원본 서비스의 소개와 기술 스택, 구조, 팀원은 [원본 서비스 문서](docs/original-service.md)로 옮겼습니다. 원본 코드는 [`webbb-be/`](webbb-be)와 [`webbb-fe/`](webbb-fe)에 참고용으로 들어 있습니다.
 
 <br>
@@ -66,6 +66,7 @@ https://github.com/user-attachments/assets/f29e4b90-98a0-4528-bc08-66e4713ca181
 | AI 친구 | 10분 동안 사람의 댓글이 없는 글에 AI 친구 한 명이 댓글과 공감을 하나씩 남깁니다. 닉네임 옆에 AI라고 항상 표시합니다 | [009](specs/009-ai-companions/spec.md) |
 | 몬스터 도감 | 물리친 몬스터가 카드 한 장이 됩니다. 내 글의 몬스터와 함께 물리친 다른 회원의 몬스터를 모아 봅니다 | [010](specs/010-monster-cards/spec.md) |
 | 비회원 둘러보기 | 로그인하지 않아도 최근 이야기를 닉네임 없이 봅니다 | [011](specs/011-guest-feed/spec.md) |
+| 회원 탈퇴 | 스스로 계정을 지웁니다. 글과 댓글은 바로 보이지 않고 저장된 본문까지 지워지며, 다른 회원에게 준 공감 수와 줄인 HP는 숫자로 남습니다 | [013](specs/013-member-withdrawal/spec.md) |
 | 가입과 로그인 | 이메일과 카카오, 구글 로그인. 토큰은 브라우저 스크립트가 읽지 못하는 쿠키에만 둡니다 | [002](specs/002-auth/spec.md) |
 
 기능마다 어떻게 만들었고 무엇을 쟀는지는 [기능별 설명](docs/features.md)에 풀어 썼습니다.

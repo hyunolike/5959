@@ -54,6 +54,7 @@ class CommentService(
         val parent = parentId?.let { parentOf(postId, it) }
         val now = now()
         val comment = commentRepository.save(Comment.write(postId, authorId, parent, content, now))
+        rejectIfWithdrawn(authorId)
         // 앞의 확인 뒤에 글이 지워졌으면 0행이다. 404로 끝내 방금 넣은 댓글도 함께 되돌린다.
         if (postRepository.addCommentCount(postId, 1) == 0) throw BusinessException(ErrorCode.POST_NOT_FOUND)
         events.publishEvent(CommentCreated(postId, comment.id, authorId))
@@ -134,6 +135,11 @@ class CommentService(
         val replies = if (comment.isReply) 0 else commentRepository.softDeleteReplies(commentId, now)
         postRepository.addCommentCount(comment.postId, -(1 + replies))
         (listOf(commentId) + replyIds).forEach { events.publishEvent(CommentRemoved(it)) }
+    }
+
+    /** 탈퇴와 겹쳤으면 INSERT가 탈퇴의 커밋을 기다렸다 통과한다. 그때는 올리지 않고 되돌린다(013 research R5). */
+    private fun rejectIfWithdrawn(authorId: Long) {
+        if (memberApi.isWithdrawn(authorId)) throw BusinessException(ErrorCode.SESSION_EXPIRED)
     }
 
     private fun ownComment(

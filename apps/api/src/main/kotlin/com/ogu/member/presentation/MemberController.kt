@@ -4,21 +4,28 @@ import com.ogu.member.AuthenticatedMember
 import com.ogu.member.application.MemberQueryService
 import com.ogu.member.application.OnboardingService
 import com.ogu.member.application.ProfileService
+import com.ogu.member.application.WithdrawalService
 import com.ogu.member.presentation.dto.MemberProfileResponse
 import com.ogu.member.presentation.dto.NicknameAvailabilityResponse
 import com.ogu.member.presentation.dto.OnboardingRequest
 import com.ogu.member.presentation.dto.OnboardingResultResponse
 import com.ogu.member.presentation.dto.ProfileUpdateRequest
+import com.ogu.member.presentation.dto.WithdrawalRequest
+import com.ogu.shared.error.BusinessException
+import com.ogu.shared.error.ErrorCode
 import com.ogu.shared.response.ApiResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
+import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
+import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import io.swagger.v3.oas.annotations.responses.ApiResponse as DocResponse
 
@@ -34,6 +41,7 @@ class MemberController(
     private val memberQueryService: MemberQueryService,
     private val onboardingService: OnboardingService,
     private val profileService: ProfileService,
+    private val withdrawalService: WithdrawalService,
 ) {
     @Operation(
         operationId = "getMe",
@@ -114,6 +122,29 @@ class MemberController(
                 careerYear = request.careerYear,
             )
         return ApiResponse.success(OnboardingResultResponse.from(result))
+    }
+
+    @Operation(
+        operationId = "withdraw",
+        summary = "회원 탈퇴 (013 US1, US2). 온보딩 전에도 호출할 수 있다",
+        responses = [
+            DocResponse(responseCode = "204", description = "탈퇴했다"),
+            DocResponse(responseCode = "400", description = "확인이 없다 (INVALID_REQUEST)"),
+            DocResponse(responseCode = "401", description = UNAUTHORIZED_DESCRIPTION),
+            DocResponse(responseCode = "409", description = "운영자로 지정된 회원이다 (OPERATOR_CANNOT_WITHDRAW)"),
+        ],
+    )
+    @PostMapping("/me/withdrawal")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun withdraw(
+        member: AuthenticatedMember,
+        @RequestBody request: WithdrawalRequest,
+    ) {
+        // 되돌릴 수 없는 일이라 뜻을 값으로 받는다(research R9). 화면의 확인 칸과 같은 것을 서버도 본다
+        if (request.confirmed != true) {
+            throw BusinessException(ErrorCode.INVALID_REQUEST, "안내를 확인한 뒤에 탈퇴할 수 있습니다.")
+        }
+        withdrawalService.withdraw(member.memberId)
     }
 
     private companion object {

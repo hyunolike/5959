@@ -34,7 +34,7 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const { error, next: nextParam } = await searchParams;
+  const { error, next: nextParam, withdrawn } = await searchParams;
   const next = firstValue(nextParam);
 
   return (
@@ -78,6 +78,12 @@ export default async function LoginPage({
         </div>
 
         <div className="flex flex-col gap-2.5">
+          {/* 탈퇴를 마치고 돌아온 화면(013 US1-AC4). 오류가 아니라 끝났다는 소식이다. */}
+          {firstValue(withdrawn) === "1" ? (
+            <p role="status" className="text-body-sm text-fg-subtle break-keep">
+              탈퇴가 끝났어요. 그동안 함께해 주셔서 고마워요.
+            </p>
+          ) : null}
           <OAuthLoginErrorNotice error={error} />
           <OAuthButtons next={next} kakaoEnabled={env.KAKAO_LOGIN_ENABLED} />
           {/* "이메일과 비밀번호로 로그인해주세요"라고 알린 화면에서는 입력란을 펼쳐 둔다. */}
