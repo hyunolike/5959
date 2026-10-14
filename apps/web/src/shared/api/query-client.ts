@@ -20,6 +20,21 @@ function redirectToLogin(): void {
   );
 }
 
+let redirectPaused = false;
+
+/**
+ * 회원이 스스로 세션을 끝내는 동안(013 탈퇴)에는 조회의 401을 세션 만료로 보지 않는다.
+ * 탈퇴가 받아들여지면 화면에 떠 있던 조회들이 401을 받는다. 그것을 세션 만료로 다루면
+ * `/login?next=`로 먼저 튀어, 탈퇴가 끝났다는 안내 없이 로그인 화면에 닿는다.
+ * 돌려준 함수를 부르면 다시 세션 만료로 본다. 탈퇴에 실패했을 때 부른다.
+ */
+export function pauseUnauthorizedRedirect(): () => void {
+  redirectPaused = true;
+  return () => {
+    redirectPaused = false;
+  };
+}
+
 /**
  * 로그인 없이 부르는 조회에 붙이는 표시(011). 이런 조회의 401은 세션 만료가 아니다.
  * 웹이 API보다 먼저 배포되면 옛 API는 모르는 경로에 401을 준다. 로그인하지 않은 방문자를
@@ -33,7 +48,7 @@ export function createQueryClient(
   return new QueryClient({
     queryCache: new QueryCache({
       onError: (error, query) => {
-        if (query.meta?.anonymous === true) {
+        if (query.meta?.anonymous === true || redirectPaused) {
           return;
         }
         if (error instanceof ApiError && error.status === 401) {

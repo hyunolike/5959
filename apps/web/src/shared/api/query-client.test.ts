@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "./api-error";
-import { ANONYMOUS_QUERY_META, createQueryClient } from "./query-client";
+import {
+  ANONYMOUS_QUERY_META,
+  createQueryClient,
+  pauseUnauthorizedRedirect,
+} from "./query-client";
 
 describe("createQueryClient", () => {
   it("조회가 401(세션 만료)로 실패하면 로그인 화면으로 보내는 콜백을 부른다", async () => {
@@ -51,5 +55,30 @@ describe("createQueryClient", () => {
       .catch(() => {});
 
     expect(onUnauthorized).not.toHaveBeenCalled();
+  });
+
+  it("013 스스로 세션을 끝내는 동안에는 조회의 401로 로그인 화면에 보내지 않고, 되돌리면 다시 보낸다", async () => {
+    const onUnauthorized = vi.fn();
+    const client = createQueryClient(onUnauthorized);
+    const expire = () =>
+      client
+        .fetchQuery({
+          queryKey: ["me", Math.random()],
+          queryFn: () => {
+            throw new ApiError(401, {
+              message: "만료",
+              code: "SESSION_EXPIRED",
+            });
+          },
+        })
+        .catch(() => {});
+
+    const resume = pauseUnauthorizedRedirect();
+    await expire();
+    expect(onUnauthorized).not.toHaveBeenCalled();
+
+    resume();
+    await expire();
+    expect(onUnauthorized).toHaveBeenCalledOnce();
   });
 });

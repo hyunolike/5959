@@ -1,27 +1,42 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const { pushMock, refreshMock } = vi.hoisted(() => ({
-  pushMock: vi.fn(),
-  refreshMock: vi.fn(),
-}));
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: pushMock, refresh: refreshMock }),
-}));
+import { ApiError, createQueryClient } from "@/shared/api";
 
 import { WithdrawForm } from "./withdraw-form";
 
+/** 화면을 떠나는 이동. 실제로는 주소를 바꿔 끼우며 새로 받는다. */
+const navigateMock = vi.fn();
+/** 조회의 401을 세션 만료로 볼 때 불리는 것. 실제로는 `/login?next=`로 보낸다. */
+const sessionExpiredMock = vi.fn();
+
 function renderForm(onWithdrawn?: () => void) {
-  const queryClient = new QueryClient();
+  const queryClient = createQueryClient(sessionExpiredMock);
   queryClient.setQueryData(["me"], { id: 1 });
   render(
     <QueryClientProvider client={queryClient}>
-      <WithdrawForm cancelHref="/my/edit" onWithdrawn={onWithdrawn} />
+      <WithdrawForm
+        cancelHref="/my/edit"
+        onWithdrawn={onWithdrawn}
+        navigate={navigateMock}
+      />
     </QueryClientProvider>,
   );
   return queryClient;
+}
+
+/** 화면에 떠 있던 조회가 401을 받는다. 탈퇴가 받아들여진 뒤의 내 정보 조회가 그렇다. */
+async function queryFailsWith401(queryClient: QueryClient) {
+  await queryClient
+    .fetchQuery({
+      queryKey: ["unread"],
+      queryFn: () => {
+        throw new ApiError(401, { message: "만료", code: "SESSION_EXPIRED" });
+      },
+    })
+    .catch(() => {});
 }
 
 function stubFetch(response: Response) {
@@ -49,8 +64,8 @@ const withdrawButton = () => screen.getByRole("button", { name: "탈퇴하기" }
 
 afterEach(() => {
   vi.unstubAllGlobals();
-  pushMock.mockReset();
-  refreshMock.mockReset();
+  navigateMock.mockReset();
+  sessionExpiredMock.mockReset();
 });
 
 describe("WithdrawForm", () => {
@@ -83,24 +98,23 @@ describe("WithdrawForm", () => {
     await userEvent.click(withdrawButton());
 
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(pushMock).not.toHaveBeenCalled();
+    expect(navigateMock).not.toHaveBeenCalled();
   });
 
-  it("US1-AC4 확인 칸을 채우고 탈퇴하면 캐시를 비우고 로그인 화면으로 간다", async () => {
+  it("US1-AC4 확인 칸을 채우고 탈퇴하면 로그인 화면을 새로 받는다", async () => {
     const fetchMock = stubFetch(new Response(null, { status: 204 }));
     const onWithdrawn = vi.fn();
-    const queryClient = renderForm(onWithdrawn);
+    renderForm(onWithdrawn);
 
     await userEvent.click(confirmBox());
     expect(withdrawButton()).toHaveAttribute("aria-disabled", "false");
     await userEvent.click(withdrawButton());
 
     await waitFor(() =>
-      expect(pushMock).toHaveBeenCalledWith("/login?withdrawn=1"),
+      expect(navigateMock).toHaveBeenCalledWith("/login?withdrawn=1"),
     );
-    expect(refreshMock).toHaveBeenCalledTimes(1);
+    expect(navigateMock).toHaveBeenCalledTimes(1);
     expect(onWithdrawn).toHaveBeenCalledTimes(1);
-    expect(queryClient.getQueryData(["me"])).toBeUndefined();
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe("/api/auth/withdraw");
     expect(init.method).toBe("POST");
@@ -121,7 +135,7 @@ describe("WithdrawForm", () => {
     await userEvent.keyboard("{Enter}");
 
     await waitFor(() =>
-      expect(pushMock).toHaveBeenCalledWith("/login?withdrawn=1"),
+      expect(navigateMock).toHaveBeenCalledWith("/login?withdrawn=1"),
     );
   });
 
@@ -146,14 +160,14 @@ describe("WithdrawForm", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "탈퇴하지 못했어요. 잠시 후 다시 시도해 주세요.",
     );
-    expect(pushMock).not.toHaveBeenCalled();
+    expect(navigateMock).not.toHaveBeenCalled();
     expect(queryClient.getQueryData(["me"])).toEqual({ id: 1 });
     expect(confirmBox()).toBeChecked();
 
     stubFetch(new Response(null, { status: 204 }));
     await userEvent.click(withdrawButton());
     await waitFor(() =>
-      expect(pushMock).toHaveBeenCalledWith("/login?withdrawn=1"),
+      expect(navigateMock).toHaveBeenCalledWith("/login?withdrawn=1"),
     );
   });
 
@@ -167,7 +181,7 @@ describe("WithdrawForm", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "운영자 지정을 먼저 푼 뒤에 탈퇴할 수 있어요.",
     );
-    expect(pushMock).not.toHaveBeenCalled();
+    expect(navigateMock).not.toHaveBeenCalled();
   });
 
   it("세션이 이미 끝나 401이면 로그인 화면으로 보낸다", async () => {
@@ -177,7 +191,34 @@ describe("WithdrawForm", () => {
 
     await userEvent.click(withdrawButton());
 
-    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/login"));
+    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith("/login"));
+  });
+
+  it("US1-AC4 탈퇴한 뒤 떠 있던 조회가 401을 받아도 세션 만료로 튀지 않는다", async () => {
+    stubFetch(new Response(null, { status: 204 }));
+    const queryClient = renderForm();
+    await userEvent.click(confirmBox());
+    await userEvent.click(withdrawButton());
+    await waitFor(() =>
+      expect(navigateMock).toHaveBeenCalledWith("/login?withdrawn=1"),
+    );
+
+    await queryFailsWith401(queryClient);
+
+    // 그러지 않으면 `/login?next=/withdraw`로 먼저 가 탈퇴가 끝났다는 안내가 보이지 않는다
+    expect(sessionExpiredMock).not.toHaveBeenCalled();
+  });
+
+  it("US1-AC8 탈퇴에 실패한 뒤에는 조회의 401을 다시 세션 만료로 본다", async () => {
+    stubFetch(errorResponse(500, "INTERNAL_ERROR"));
+    const queryClient = renderForm();
+    await userEvent.click(confirmBox());
+    await userEvent.click(withdrawButton());
+    await screen.findByRole("alert");
+
+    await queryFailsWith401(queryClient);
+
+    expect(sessionExpiredMock).toHaveBeenCalledTimes(1);
   });
 
   it("FR-020 취소와 탈퇴가 같은 줄에 같은 크기로 놓인다", () => {
