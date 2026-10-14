@@ -8,6 +8,7 @@ import com.ogu.shared.error.ErrorCode
 import com.ogu.support.CoreLoopFixture
 import com.ogu.support.MemberFixture
 import com.ogu.support.TestMember
+import com.ogu.support.WithdrawalFixture
 import com.ogu.support.bearer
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -32,6 +33,9 @@ import org.springframework.test.web.servlet.setup.DefaultMockMvcBuilder
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.context.WebApplicationContext
 import tools.jackson.databind.json.JsonMapper
+import java.sql.Timestamp
+import java.time.Duration
+import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.Callable
 import java.util.concurrent.CountDownLatch
@@ -297,6 +301,145 @@ class ProfileUpdateApiTests {
             .andExpect(status().isUnauthorized)
     }
 
+    @Test
+    fun `014 US1-AC1 처음 바꾸는 닉네임은 저장되고 프로필에 다시 바꿀 수 있는 때가 실린다`() {
+        val member = members.onboarded()
+        // 온보딩에서 정한 닉네임은 세지 않는다. 제한이 걸려 있지 않다
+        me(member).andExpect(jsonPath("$.data.nicknameChangeAvailableAt").value(null as Any?))
+        val renamed = uniqueNickname()
+        val before = Instant.now()
+
+        update(member, mapOf("nickname" to renamed))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.nickname").value(renamed))
+            .andExpect(jsonPath("$.data.nicknameChangeAvailableAt").isString)
+
+        val lockedUntil = lockedUntil(member)!!
+        assertThat(lockedUntil).isBetween(before.plus(LOCK).minusSeconds(5), Instant.now().plus(LOCK).plusSeconds(5))
+        me(member).andExpect(jsonPath("$.data.nicknameChangeAvailableAt").isString)
+    }
+
+    @Test
+    fun `014 US1-AC2 제한 중의 닉네임 변경은 409이고 함께 보낸 직군도 그대로다`() {
+        val member = members.onboarded(jobRole = "DEVELOPMENT")
+        val renamed = uniqueNickname()
+        update(member, mapOf("nickname" to renamed)).andExpect(status().isOk)
+        val lockedUntil = lockedUntil(member)
+
+        update(member, mapOf("nickname" to uniqueNickname(), "jobRole" to "DESIGN"))
+            .andExpect(status().isConflict)
+            .andExpect(jsonPath("$.error.code").value("NICKNAME_CHANGE_LIMITED"))
+
+        assertThat(nicknameOf(member)).isEqualTo(renamed)
+        me(member).andExpect(jsonPath("$.data.jobRole").value("DEVELOPMENT"))
+        assertThat(lockedUntil(member)).isEqualTo(lockedUntil)
+    }
+
+    @Test
+    fun `014 US1-AC3 US1-AC4 제한 중에도 직군과 경력, 지금과 같은 닉네임은 저장된다`() {
+        val member = members.onboarded()
+        val renamed = uniqueNickname()
+        update(member, mapOf("nickname" to renamed)).andExpect(status().isOk)
+        val lockedUntil = lockedUntil(member)
+
+        update(member, mapOf("jobRole" to "DESIGN", "careerYear" to "YEAR_5")).andExpect(status().isOk)
+        update(member, mapOf("nickname" to renamed, "jobRole" to "PLANNING"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.jobRole").value("PLANNING"))
+
+        // 닉네임을 바꾼 것이 아니라 끝나는 때가 밀리지 않는다
+        assertThat(lockedUntil(member)).isEqualTo(lockedUntil)
+    }
+
+    @Test
+    fun `014 US1-AC5 30일이 지나면 다시 바꾸고 그때부터 다시 잰다`() {
+        val member = members.onboarded()
+        update(member, mapOf("nickname" to uniqueNickname())).andExpect(status().isOk)
+        jdbcTemplate.update(
+            "update member set nickname_locked_until = now() - interval '1 second' where id = ?",
+            member.id,
+        )
+        val renamed = uniqueNickname()
+
+        update(member, mapOf("nickname" to renamed)).andExpect(status().isOk)
+
+        assertThat(nicknameOf(member)).isEqualTo(renamed)
+        assertThat(lockedUntil(member)).isAfter(Instant.now().plus(LOCK).minusSeconds(60))
+    }
+
+    @Test
+    fun `014 US1-AC6 대소문자만 바꾼 것도 한 번이다`() {
+        val member = members.onboarded()
+        val upper = nicknameOf(member).uppercase()
+        update(member, mapOf("nickname" to upper)).andExpect(status().isOk)
+
+        update(member, mapOf("nickname" to upper.lowercase()))
+            .andExpect(status().isConflict)
+            .andExpect(jsonPath("$.error.code").value("NICKNAME_CHANGE_LIMITED"))
+
+        assertThat(nicknameOf(member)).isEqualTo(upper)
+    }
+
+    @Test
+    fun `014 US1-AC7 다른 까닭으로 거절된 변경은 세지 않는다`() {
+        val member = members.onboarded()
+        val other = members.onboarded()
+
+        update(member, mapOf("nickname" to nicknameOf(other))).andExpect(status().isConflict)
+        update(member, mapOf("nickname" to "오구!")).andExpect(status().isBadRequest)
+
+        assertThat(lockedUntil(member)).isNull()
+        update(member, mapOf("nickname" to uniqueNickname())).andExpect(status().isOk)
+    }
+
+    @Test
+    fun `014 US1-AC8 겹친 닉네임 변경은 하나만 받아들인다`() {
+        val member = members.onboarded()
+        val candidates = List(RACERS) { uniqueNickname() }
+        val start = CountDownLatch(1)
+        val executor = Executors.newFixedThreadPool(RACERS)
+
+        val results =
+            candidates
+                .map { nickname ->
+                    executor.submit<Boolean> {
+                        start.await()
+                        try {
+                            profileService.update(member.id, nickname, null, null)
+                            true
+                        } catch (e: BusinessException) {
+                            assertThat(e.errorCode).isEqualTo(ErrorCode.NICKNAME_CHANGE_LIMITED)
+                            false
+                        }
+                    }
+                }.also { start.countDown() }
+                .map { it.get(WAIT_SECONDS, TimeUnit.SECONDS) }
+        executor.shutdown()
+
+        assertThat(results.count { it }).isEqualTo(1)
+        assertThat(nicknameOf(member)).isEqualTo(candidates[results.indexOf(true)])
+    }
+
+    @Test
+    fun `014 US1-AC9 탈퇴하면 제한이 지워지고 다시 가입한 회원은 바로 바꾼다`() {
+        val withdrawal = WithdrawalFixture(mockMvc, jdbcTemplate)
+        val before = withdrawal.onboarded()
+        update(before.member, mapOf("nickname" to uniqueNickname())).andExpect(status().isOk)
+        assertThat(lockedUntil(before.member)).isNotNull()
+
+        withdrawal.withdrawAndClean(before.member)
+
+        assertThat(lockedUntil(before.member)).isNull()
+        val after = withdrawal.onboarded(before.email).member
+        update(after, mapOf("nickname" to uniqueNickname())).andExpect(status().isOk)
+    }
+
+    private fun lockedUntil(member: TestMember): Instant? =
+        jdbcTemplate
+            .queryForList("select nickname_locked_until from member where id = ?", Timestamp::class.java, member.id)
+            .firstOrNull()
+            ?.toInstant()
+
     private fun update(
         member: TestMember,
         body: Map<String, Any?>,
@@ -338,5 +481,8 @@ class ProfileUpdateApiTests {
 
     private companion object {
         const val ME = "/api/v1/members/me"
+        const val RACERS = 4
+        const val WAIT_SECONDS = 10L
+        val LOCK: Duration = Duration.ofDays(30)
     }
 }

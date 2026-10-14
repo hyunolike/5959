@@ -13,6 +13,7 @@ import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import java.time.Duration
 import java.time.Instant
 import java.util.Locale
 
@@ -79,6 +80,14 @@ class Member private constructor(
     var kind: MemberKind = MemberKind.HUMAN
         protected set
 
+    /**
+     * 닉네임을 다시 바꿀 수 있게 되는 때(014 research R1). null이거나 지났으면 바꿀 수 있다. 닉네임을 바꿀 때만 적는다.
+     * 온보딩에서 처음 정한 닉네임은 적지 않는다.
+     */
+    @Column(name = "nickname_locked_until")
+    var nicknameLockedUntil: Instant? = null
+        protected set
+
     /** 탈퇴한 때(013 research R1). 탈퇴한 행에는 번호와 이 값만 남는다. */
     @Column(name = "withdrawn_at")
     var withdrawnAt: Instant? = null
@@ -109,20 +118,33 @@ class Member private constructor(
     /**
      * 온보딩을 마친 회원의 프로필을 고친다(004 US5). null인 항목은 그대로 둔다. 온보딩 전이면 `ONBOARDING_REQUIRED`다
      * (프로필 수정이 온보딩을 건너뛰는 길이 되지 않게 한다, 004 research R13).
+     *
+     * 닉네임의 글자가 달라지면 [nicknameLock] 동안 다시 바꿀 수 없다(014 FR-001). 제한 중에 바꾸려 하면
+     * `NICKNAME_CHANGE_LIMITED`이고 아무것도 바뀌지 않는다. 지금과 같은 닉네임은 변경이 아니다(FR-003).
      */
     fun updateProfile(
         nickname: Nickname?,
         jobRole: JobRole?,
         careerYear: CareerYear?,
+        now: Instant,
+        nicknameLock: Duration,
     ) {
         if (!isOnboarded) throw BusinessException(ErrorCode.ONBOARDING_REQUIRED)
-        if (nickname != null) {
+        if (nickname != null && changesNickname(nickname)) {
+            if (isNicknameLocked(now)) throw BusinessException(ErrorCode.NICKNAME_CHANGE_LIMITED)
             this.nickname = nickname.value
             this.nicknameKey = nickname.key
+            this.nicknameLockedUntil = now.plus(nicknameLock)
         }
         if (jobRole != null) this.jobRole = jobRole
         if (careerYear != null) this.careerYear = careerYear
     }
+
+    /** 보이는 글자가 지금 닉네임과 다른가. 대소문자만 달라도 다르다(014 research R2). */
+    fun changesNickname(candidate: Nickname): Boolean = candidate.value != nickname
+
+    /** 닉네임을 바꾼 지 얼마 되지 않아 아직 다시 바꿀 수 없는가(014). */
+    fun isNicknameLocked(now: Instant): Boolean = nicknameLockedUntil?.isAfter(now) == true
 
     /**
      * 탈퇴한다(013 FR-008). 이메일, 비밀번호, 닉네임, 직군, 경력을 비우고 탈퇴한 때를 적는다. 닉네임 키와 이메일이 비어
@@ -139,6 +161,7 @@ class Member private constructor(
         jobRole = null
         careerYear = null
         onboardedAt = null
+        nicknameLockedUntil = null
         withdrawnAt = now
     }
 

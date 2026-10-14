@@ -68,17 +68,25 @@ const availabilityCalls = (fetchMock: ReturnType<typeof stubApi>) =>
     String(url).includes("nickname-availability"),
   );
 
-function renderForm() {
+function renderForm(member: MemberProfile = MEMBER) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   render(
     <QueryClientProvider client={queryClient}>
-      <ProfileForm member={MEMBER} />
+      <ProfileForm member={member} />
     </QueryClientProvider>,
   );
   return queryClient;
 }
+
+/** 닉네임을 바꾼 지 얼마 되지 않은 회원. 30일 뒤까지 제한 중이다. */
+const LOCKED_MEMBER: MemberProfile = {
+  ...MEMBER,
+  nicknameChangeAvailableAt: new Date(
+    Date.now() + 30 * 24 * 60 * 60 * 1000,
+  ).toISOString(),
+};
 
 const saveButton = () => screen.getByRole("button", { name: "저장" });
 
@@ -248,9 +256,9 @@ describe("ProfileForm", () => {
     renderForm();
 
     const nickname = screen.getByLabelText("닉네임");
-    // 빈 알림 자리도 함께 이어져 있어 끝에 공백이 붙는다.
+    // 규칙 뒤에 변경 제한 안내(014)가 이어진다. 빈 알림 자리도 함께 이어져 있어 끝에 공백이 붙는다.
     expect(nickname).toHaveAccessibleDescription(
-      /^한글, 영문, 숫자 1~10자\s*$/,
+      /^한글, 영문, 숫자 1~10자 닉네임을 바꾸면 30일 동안 다시 바꿀 수 없어요\.\s*$/,
     );
     const status = screen.getByRole("status");
     expect(status).toBeEmptyDOMElement();
@@ -262,5 +270,99 @@ describe("ProfileForm", () => {
       status,
     );
     expect(screen.getByText("한글, 영문, 숫자 1~10자")).toBeVisible();
+  });
+
+  describe("014 닉네임 변경 제한", () => {
+    it("US2-AC1 바꿀 수 있는 회원에게는 바꾸기 전에 30일 제한을 알린다", () => {
+      stubApi();
+
+      renderForm();
+
+      const nickname = screen.getByLabelText("닉네임");
+      expect(nickname).not.toHaveAttribute("readonly");
+      expect(nickname).toHaveAccessibleDescription(
+        expect.stringContaining(
+          "닉네임을 바꾸면 30일 동안 다시 바꿀 수 없어요.",
+        ),
+      );
+    });
+
+    it("제한이 이미 끝난 회원은 바꿀 수 있는 회원과 같다", () => {
+      stubApi();
+
+      renderForm({
+        ...MEMBER,
+        nicknameChangeAvailableAt: "2020-01-01T00:00:00Z",
+      });
+
+      expect(screen.getByLabelText("닉네임")).not.toHaveAttribute("readonly");
+      expect(
+        screen.getByText("닉네임을 바꾸면 30일 동안 다시 바꿀 수 없어요."),
+      ).toBeInTheDocument();
+    });
+
+    it("US2-AC2 US2-AC5 제한 중이면 닉네임 칸이 잠기고 언제부터 바꿀 수 있는지 함께 읽힌다", async () => {
+      const user = userEvent.setup();
+      const fetchMock = stubApi();
+
+      renderForm(LOCKED_MEMBER);
+
+      const nickname = screen.getByLabelText("닉네임");
+      expect(nickname).toHaveAttribute("readonly");
+      expect(nickname).toHaveValue("Ogu");
+      // 초점을 받을 수 있어야 값과 까닭이 읽힌다. 고칠 수는 없다.
+      await user.click(nickname);
+      expect(nickname).toHaveFocus();
+      await user.keyboard("x");
+      expect(nickname).toHaveValue("Ogu");
+      expect(nickname).toHaveAccessibleDescription(
+        expect.stringMatching(
+          /닉네임은 \d+월 \d+일 \d{2}:\d{2}부터 다시 바꿀 수 있어요\./,
+        ),
+      );
+      expect(
+        screen.queryByText("닉네임을 바꾸면 30일 동안 다시 바꿀 수 없어요."),
+      ).not.toBeInTheDocument();
+      expect(availabilityCalls(fetchMock)).toHaveLength(0);
+      expect(saveButton()).toBeDisabled();
+    });
+
+    it("US2-AC3 제한 중에도 직군과 경력은 저장되고 닉네임은 보내지 않는다", async () => {
+      const user = userEvent.setup();
+      const fetchMock = stubApi(() =>
+        ok({ ...LOCKED_MEMBER, jobRole: "DESIGN" }),
+      );
+      renderForm(LOCKED_MEMBER);
+
+      await user.selectOptions(screen.getByLabelText("직군"), "DESIGN");
+      await user.click(saveButton());
+
+      await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/my"));
+      const [, init] = patchCalls(fetchMock)[0];
+      expect(JSON.parse(String(init?.body))).toEqual({ jobRole: "DESIGN" });
+    });
+
+    it("US2-AC4 다른 기기에서 먼저 바꿔 409를 받으면 닉네임 칸에 안내가 보이고 내 정보를 다시 받는다", async () => {
+      const user = userEvent.setup();
+      stubApi(() =>
+        fail(409, "NICKNAME_CHANGE_LIMITED", "아직 다시 바꿀 수 없습니다."),
+      );
+      const queryClient = renderForm();
+      queryClient.setQueryData(QUERY_KEYS.me, MEMBER);
+
+      const nickname = screen.getByLabelText("닉네임");
+      await user.clear(nickname);
+      await user.type(nickname, "Fresh");
+      await screen.findByText("사용할 수 있는 닉네임입니다.");
+      await user.click(saveButton());
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "닉네임을 바꾼 지 얼마 되지 않아 아직 다시 바꿀 수 없어요.",
+      );
+      expect(pushMock).not.toHaveBeenCalled();
+      expect(queryClient.getQueryState(QUERY_KEYS.me)?.isInvalidated).toBe(
+        true,
+      );
+    });
   });
 });

@@ -5,12 +5,15 @@ import com.ogu.member.JobRole
 import com.ogu.member.domain.Member
 import com.ogu.member.domain.MemberRepository
 import com.ogu.member.domain.Nickname
+import com.ogu.member.infrastructure.config.NicknameChangeProperties
 import com.ogu.member.infrastructure.persistence.UniqueConstraints
 import com.ogu.shared.error.BusinessException
 import com.ogu.shared.error.ErrorCode
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
+import java.time.temporal.ChronoUnit
 
 /**
  * 프로필 수정(004 US5, research R13). 보낸 항목만 바꾼다. 닉네임 규칙과 중복 판단은 온보딩과 같다.
@@ -21,6 +24,8 @@ import org.springframework.transaction.annotation.Transactional
 class ProfileService(
     private val memberRepository: MemberRepository,
     private val nicknamePolicy: NicknamePolicy,
+    private val nicknameChange: NicknameChangeProperties,
+    private val clock: Clock,
 ) {
     @Transactional
     fun update(
@@ -34,13 +39,19 @@ class ProfileService(
         }
         val member = lockOnboardedMember(memberId)
         val validated = nickname?.let(Nickname::of)
+        val now = clock.instant().truncatedTo(ChronoUnit.MICROS)
+        // 제한을 중복 확인보다 먼저 본다. 제한 중인 회원에게 "이미 쓰는 닉네임"을 답하면 다른 닉네임으로 다시 해 보게
+        // 된다(014 research R2). 회원 행을 잠근 뒤라 겹친 요청도 앞의 것이 적은 값을 본다(research R4)
+        if (validated != null && member.changesNickname(validated) && member.isNicknameLocked(now)) {
+            throw BusinessException(ErrorCode.NICKNAME_CHANGE_LIMITED)
+        }
         // 내 닉네임의 대소문자만 바꾸는 것은 중복이 아니다. 예약 규칙도 새 닉네임에만 건다(이미 가진 닉네임은 둔다)
         if (validated != null && validated.key != member.nicknameKey) {
             nicknamePolicy.rejectIfReserved(validated)
             rejectIfNicknameTaken(validated)
         }
 
-        member.updateProfile(validated, jobRole, careerYear)
+        member.updateProfile(validated, jobRole, careerYear, now, nicknameChange.interval)
         return save(member)
     }
 

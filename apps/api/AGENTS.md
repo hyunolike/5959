@@ -98,6 +98,13 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   (`OnboardingGuard`)와 서비스가 모두 `403 ONBOARDING_REQUIRED`로 막는다. 글의 직군과 경력은 작성 시점 스냅숏이라
   건드리지 않고, 닉네임은 어디서나 `MemberApi.getMembers`로 지금 값을 읽으므로 이벤트를 내지 않는다. access 토큰에
   닉네임이 없어 토큰도 새로 주지 않는다.
+- 닉네임 변경 제한(014, research R1~R4): 닉네임의 글자가 달라지면(대소문자만 달라도) `member.nickname_locked_until`에
+  `지금 + ogu.member.nickname-change.interval`(기본 30일)을 적고, 그 전의 닉네임 변경은 `409 NICKNAME_CHANGE_LIMITED`다.
+  바꾼 때가 아니라 끝나는 때를 적는다. 기간 설정을 바꿔도 이미 걸린 제한은 그대로다. 온보딩은 적지 않는다. 직군과
+  경력, 지금과 같은 닉네임은 제한에 걸리지 않는다. 제한은 회원 행을 잠근 뒤에, 중복 확인보다 먼저 본다(겹친 요청과
+  "이미 쓰는 닉네임" 응답을 함께 막는다). 본인에게만 `MemberProfile.nicknameChangeAvailableAt`으로 나가고(지난 값을
+  null로 바꾸지 않는다. 읽는 쪽이 지금과 견준다) `MemberInfo`에는 없다. 웹의 안내 문구에도 "30일"이 있으니 기간을
+  바꾸면 `features/edit-profile/model/nickname-lock.ts`도 바꾼다. 탈퇴하면 값도 지운다(`member_withdrawn_erased_check`).
 - 운영(`prod` 프로필) 기동 조건은 `ProdAuthSettingsCheck`가 강제한다: JWT
   비밀키가 로컬 개발용 고정 값이면 안 되고, `OGU_BFF_KEY`가 비어 있으면 안 되고,
   구글 client id/secret이 있어야 하고, 카카오가 활성화된 경우 카카오 값도 필수다.

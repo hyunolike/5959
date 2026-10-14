@@ -951,6 +951,12 @@ export interface components {
       jobRole?: components["schemas"]["JobRole"] | null;
       careerYear?: components["schemas"]["CareerYear"] | null;
       onboarded: boolean;
+      /**
+       * Format: date-time
+       * @description 닉네임을 다시 바꿀 수 있게 되는 때(014). null이거나 지난 때면 지금 바꿀 수 있다. 닉네임을 바꾸면 30일 뒤로 잡힌다.
+       *     온보딩에서 처음 정한 닉네임은 세지 않는다.
+       */
+      nicknameChangeAvailableAt?: string | null;
     };
     AuthTokens: {
       accessToken: string;
@@ -2037,7 +2043,10 @@ export interface operations {
       400: components["responses"]["BadRequest"];
       401: components["responses"]["Unauthorized"];
       403: components["responses"]["Forbidden"];
-      /** @description 닉네임 중복, 대소문자만 다른 경우 포함 (NICKNAME_TAKEN) */
+      /**
+       * @description 닉네임 중복, 대소문자만 다른 경우 포함 (NICKNAME_TAKEN). 또는 닉네임을 바꾼 지 30일이 지나지 않았다
+       *     (NICKNAME_CHANGE_LIMITED, 014). 제한 중에도 직군과 경력, 지금과 같은 닉네임은 받는다.
+       */
       409: {
         headers: {
           [name: string]: unknown;
