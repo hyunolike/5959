@@ -140,6 +140,14 @@ class Member private constructor(
         if (careerYear != null) this.careerYear = careerYear
     }
 
+    /**
+     * 비밀번호를 바꾼다(015 FR-005). [passwordHash]는 `{bcrypt}...` 형식의 해시다. 이메일로 가입한 회원만 비밀번호가 있다.
+     */
+    fun changePassword(passwordHash: String) {
+        check(authMethod == AuthMethod.EMAIL && !isWithdrawn) { "이메일로 가입한 회원만 비밀번호를 바꾼다" }
+        this.passwordHash = passwordHash
+    }
+
     /** 보이는 글자가 지금 닉네임과 다른가. 대소문자만 달라도 다르다(014 research R2). */
     fun changesNickname(candidate: Nickname): Boolean = candidate.value != nickname
 

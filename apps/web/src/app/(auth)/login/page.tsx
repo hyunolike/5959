@@ -12,6 +12,7 @@ import {
   OAuthButtons,
   OAuthLoginErrorNotice,
 } from "@/features/auth/oauth-buttons";
+import { fetchPasswordResetAvailable } from "../password-reset-availability";
 import { env } from "@/shared/config";
 import { withNextPath } from "@/shared/lib";
 import { AuthWelcome } from "@/widgets/auth-welcome";
@@ -34,8 +35,10 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const { error, next: nextParam, withdrawn } = await searchParams;
+  const { error, next: nextParam, withdrawn, reset } = await searchParams;
   const next = firstValue(nextParam);
+  const passwordReset = firstValue(reset) === "1";
+  const passwordResetAvailable = await fetchPasswordResetAvailable();
 
   return (
     <AuthWelcome>
@@ -84,12 +87,21 @@ export default async function LoginPage({
               탈퇴가 끝났어요. 그동안 함께해 주셔서 고마워요.
             </p>
           ) : null}
+          {/* 비밀번호를 재설정하고 돌아온 화면(015 US2-AC1). */}
+          {passwordReset ? (
+            <p role="status" className="text-body-sm text-fg-subtle break-keep">
+              비밀번호를 바꿨어요. 새 비밀번호로 로그인해 주세요.
+            </p>
+          ) : null}
           <OAuthLoginErrorNotice error={error} />
           <OAuthButtons next={next} kakaoEnabled={env.KAKAO_LOGIN_ENABLED} />
           {/* "이메일과 비밀번호로 로그인해주세요"라고 알린 화면에서는 입력란을 펼쳐 둔다. */}
           <EmailLoginDisclosure
             next={next}
-            defaultOpen={firstValue(error) === "email_registered"}
+            defaultOpen={
+              firstValue(error) === "email_registered" || passwordReset
+            }
+            passwordResetAvailable={passwordResetAvailable}
           />
           <p className="text-body-sm text-fg-subtle flex items-center justify-center gap-1 pt-1">
             <Link

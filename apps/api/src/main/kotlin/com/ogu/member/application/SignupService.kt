@@ -29,8 +29,8 @@ class SignupService(
         password: String,
     ): SignupResult {
         val email = Member.normalizeEmail(rawEmail)
-        validateEmail(email)
-        validatePassword(password)
+        EmailFormat.validate(email)
+        PasswordPolicy.validate(password)
         emailLock.lock(email)
         rejectIfEmailInUse(email)
 
@@ -56,34 +56,6 @@ class SignupService(
             existing.isNotEmpty() ->
                 throw BusinessException(ErrorCode.EMAIL_REGISTERED_WITH_OTHER_METHOD)
         }
-    }
-
-    private fun validateEmail(email: String) {
-        if (email.length > MAX_EMAIL_LENGTH || !EMAIL_PATTERN.matches(email)) {
-            throw BusinessException(ErrorCode.INVALID_REQUEST, "이메일 형식이 올바르지 않습니다.")
-        }
-    }
-
-    private fun validatePassword(password: String) {
-        val valid =
-            password.length in MIN_PASSWORD_LENGTH..MAX_PASSWORD_LENGTH &&
-                password.any { it in 'A'..'Z' || it in 'a'..'z' } &&
-                password.any { it in '0'..'9' } &&
-                // bcrypt는 72바이트까지만 받는다. 20자라도 여러 바이트 문자로 채우면 넘을 수 있다.
-                password.toByteArray(Charsets.UTF_8).size <= BCRYPT_MAX_BYTES
-        if (!valid) {
-            throw BusinessException(ErrorCode.INVALID_REQUEST, "비밀번호는 영문과 숫자를 포함해 8~20자로 입력해 주세요.")
-        }
-    }
-
-    companion object {
-        private const val MAX_EMAIL_LENGTH = 254
-        private const val MIN_PASSWORD_LENGTH = 8
-        private const val MAX_PASSWORD_LENGTH = 20
-        private const val BCRYPT_MAX_BYTES = 72
-
-        /** RFC 5322 간이 형식: 공백과 `@`가 없는 로컬 부분, `@`, 점이 하나 이상 있는 도메인. */
-        private val EMAIL_PATTERN = Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
     }
 }
 

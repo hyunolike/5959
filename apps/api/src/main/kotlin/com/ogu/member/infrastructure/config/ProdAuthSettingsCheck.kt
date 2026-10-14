@@ -38,6 +38,19 @@ class ProdAuthSettingsCheck(
         }
         checkOAuth(properties.oauth)
         checkRealtime(environment)
+        checkPasswordReset(environment)
+    }
+
+    /**
+     * 015: 메일 발송을 켰으면 메일의 링크가 가리키는 웹 주소(`OGU_WEB_ORIGIN`)가 https여야 한다. 기본값(localhost)인 채로
+     * 켜지면 회원이 받은 링크가 열리지 않는다. 꺼져 있으면 보지 않는다. SMTP 쪽 값은 `ProdMailSettingsCheck`가 본다.
+     */
+    private fun checkPasswordReset(environment: Environment) {
+        if (!environment.getProperty("ogu.mail.enabled", Boolean::class.java, false)) return
+        val linkBase = environment.getProperty("ogu.password-reset.link-base").orEmpty()
+        check(linkBase.startsWith("https://")) {
+            "prod 프로필에서 메일 발송을 켜려면 ogu.password-reset.link-base(OGU_WEB_ORIGIN)를 https 주소로 설정해야 합니다."
+        }
     }
 
     private fun checkRealtime(environment: Environment) {

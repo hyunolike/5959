@@ -21,6 +21,8 @@ export async function requestApi<T>(
     throw new ApiError(response.status, {
       message: body.error.message,
       code: body.error.code,
+      // 429면 남은 시간도 넘긴다(015 재설정 요청). 로그인 폼은 자기 요청 함수에서 같은 일을 한다
+      retryAfterSeconds: body.error.retryAfterSeconds,
     });
   }
 

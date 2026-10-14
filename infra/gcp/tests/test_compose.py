@@ -45,4 +45,7 @@ class ComposeTests(unittest.TestCase):
         self.assertEqual(api["AI_COMPANION_POSTING_ENABLED"], "false")
         self.assertEqual(api["AI_COMPANION_POSTING_QUIET"], "6h")
         self.assertEqual(api["AI_COMPANION_POSTING_DAILY_POSTS"], "3")
+        # 015: the password-reset mail ships switched off.
+        self.assertEqual(api["MAIL_ENABLED"], "false")
+        self.assertEqual(api["MAIL_SMTP_PORT"], "587")
         self.assertEqual(services["redis"]["command"][2], credential)

@@ -12,6 +12,8 @@ export interface ApiClientOptions extends Omit<RequestInit, "headers"> {
    * 헤더를 통째로 넘기지 않는다).
    */
   forwardResponseHeaders?: string[];
+  /** 이만큼 기다려도 응답이 없으면 504로 본다. 기본은 15초다. 화면을 그리며 기다리는 호출은 짧게 준다. */
+  timeoutMs?: number;
 }
 
 export interface ApiClientResult<T> {
@@ -92,7 +94,12 @@ export async function callApi<T>(
   clientIp: string,
   options: ApiClientOptions = {},
 ): Promise<ApiClientResult<T>> {
-  const { headers, forwardResponseHeaders, ...rest } = options;
+  const {
+    headers,
+    forwardResponseHeaders,
+    timeoutMs = UPSTREAM_TIMEOUT_MS,
+    ...rest
+  } = options;
   const requestHeaders = new Headers(headers);
   requestHeaders.set("X-Ogu-Bff-Key", env.BFF_API_KEY);
   requestHeaders.set("X-Ogu-Client-Ip", clientIp);
@@ -103,7 +110,7 @@ export async function callApi<T>(
       ...rest,
       headers: requestHeaders,
       redirect: "manual",
-      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (error) {
     const isTimeout = error instanceof Error && error.name === "TimeoutError";

@@ -18,6 +18,9 @@ object SecurityPaths {
             "/api/v1/auth/login",
             "/api/v1/auth/oauth/**",
             "/api/v1/auth/refresh",
+            // 015: 비밀번호를 잊은 회원은 로그인할 수 없다. 켜져 있는지, 요청, 재설정 모두 토큰 없이 부른다
+            "/api/v1/auth/password-reset",
+            "/api/v1/auth/password-reset/confirm",
             "/actuator/health",
             // 004: Redis 상태만 따로 보는 헬스 그룹(research R5). 상세는 보이지 않고 상태만 준다
             "/actuator/health/realtime",

@@ -19,6 +19,9 @@ springdoc:
     enabled: false
 
 ogu:
+  # 015 비밀번호 재설정: e2e는 메일을 보내지 않는 가짜 발송을 쓰고, 링크의 값이 이메일에서 정해진다(E2eResetTokenGenerator)
+  mail:
+    enabled: true
   auth:
     oauth:
       allowed-redirect-uris: http://localhost:3000/api/auth/oauth/kakao/callback,http://localhost:3000/api/auth/oauth/google/callback
