@@ -161,7 +161,7 @@ service change is rejected rather than overwritten. Independent IAM changes
 are detected with fingerprints; this workflow never writes IAM. Cloud Build timeout bounds the build to 30 minutes;
 the workflow's 45-minute limit leaves recovery time within the 1-hour token.
 
-Public verification uses GETs and no login/signup submission. The initial manual
+Public verification uses GETs and no login/signup submission. It reads `/login` directly, because `/` is the public landing page and has no login form. The initial manual
 release was also visually checked at desktop and mobile widths; automation checks
 health/assets and CI remains responsible for browser regression tests.
 

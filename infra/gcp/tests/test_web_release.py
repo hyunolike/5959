@@ -209,6 +209,27 @@ class WebReleaseTests(unittest.TestCase):
                     html.replace('/brand-icon.png', 'https://remote.invalid/icon.png')]:
             with self.assertRaises(ValueError): m.login_icon(bad, "https://candidate.invalid")
 
+    def test_DEPLOY_AC4_public_smoke_reads_login_page_not_landing(self):
+        m = load()
+        html = '<html><input type="email"><input type="password"><link rel="icon" href="/brand-icon.png"></html>'
+        calls = []
+
+        def fake(args, binary=False):
+            calls.append(args)
+            if args[-1].endswith("/api/health"):
+                return '{"status": "UP"}'
+            if args[-1].endswith("/login"):
+                return html
+            if "--write-out" in args:
+                return "200 image/png"
+            raise AssertionError(f"unexpected request: {args[-1]}")
+
+        with mock.patch.object(m, "command", fake):
+            m.GCloud(99, SHA).health("https://candidate.invalid", assets=True)
+        urls = [args[-1] for args in calls]
+        self.assertIn("https://candidate.invalid/login", urls)
+        self.assertNotIn("https://candidate.invalid/", urls)
+
     def test_DEPLOY_AC3_build_digest_belongs_to_exact_successful_build(self):
         m = load()
         build = {"status": "SUCCESS", "substitutions": {"_SOURCE_SHA": SHA},
