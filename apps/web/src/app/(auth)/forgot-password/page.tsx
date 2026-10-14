@@ -5,7 +5,10 @@ import { RequestResetForm } from "@/features/auth/password-reset";
 import { fetchPasswordResetAvailable } from "../password-reset-availability";
 import { AuthWelcome } from "@/widgets/auth-welcome";
 
-export const metadata: Metadata = { title: "비밀번호 찾기" };
+export const metadata: Metadata = {
+  title: "비밀번호 찾기",
+  robots: { index: false },
+};
 
 /**
  * 비밀번호 재설정 메일 요청(015 US1). 로그인하지 않고 연다. 메일 발송이 꺼져 있으면 폼 대신 지금은 쓸 수 없다는

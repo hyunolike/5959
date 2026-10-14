@@ -10,7 +10,7 @@ import { sanitizeNextPath } from "@/shared/lib";
  * | 경로 | 조건 | 동작 |
  * |---|---|---|
  * | `/` | `ogu_rt` 있음 | `/home` |
- * | `/` | `ogu_rt` 없음 | `/login` |
+ * | `/` | `ogu_rt` 없음 | 서비스 소개(랜딩, 회원 데이터 없음) |
  * | 정확한 `/home` | `ogu_rt` 없음 | 익명 서비스 안내(회원 데이터 없음) |
  * | 그 밖의 보호 경로(`/home` 하위, `/write`, `/post`, `/my`, `/settings`, `/notifications`, `/raid`, `/report`, `/cards` 이하) | `ogu_rt` 없음 | `/login?next=<원래 경로>` |
  * | 보호 경로 | `ogu_rt` 있고 `ogu_ob` 없음 | `/onboarding` |
@@ -70,8 +70,9 @@ export function resolveRouteGuardAction(
   cookies: RouteGuardCookies,
   search = "",
 ): RouteGuardAction {
+  // 첫 화면은 누구나 보는 서비스 소개다(002 FR-014). 로그인했으면 홈으로 보낸다.
   if (pathname === "/") {
-    return redirect(cookies.hasRefreshToken ? "/home" : "/login");
+    return cookies.hasRefreshToken ? redirect("/home") : null;
   }
 
   // 정확한 홈만 익명 안내 화면으로 연다. 피드/상세 API와 나머지 회원 경로는 보호한다.

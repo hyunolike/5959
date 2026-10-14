@@ -80,7 +80,7 @@ apps/api가 JSON이 아닌 본문을 돌려주면(예상 밖의 5xx 오류 페�
 | 경로 | 조건 | 동작 |
 |---|---|---|
 | `/` | `ogu_rt` 있음 | `307 /home` |
-| `/` | `ogu_rt` 없음 | `307 /login` |
+| `/` | `ogu_rt` 없음 | 서비스 소개(랜딩). 회원 데이터와 API 요청이 없고, 검색 엔진이 색인하는 유일한 화면이다(FR-014) |
 | 정확한 `/home` | `ogu_rt` 없음 | 익명 서비스 안내와 메뉴(회원 데이터/API 요청 없음) |
 | 그 밖의 보호 경로(`/home` 하위, `/write`, `/post`, `/my`, `/settings`, `/notifications` 이하) | `ogu_rt` 없음 | `302 /login?next=<원래 경로>` |
 | 같은 경로 | `ogu_rt` 있고 `ogu_ob` 없음 | `302 /onboarding` |

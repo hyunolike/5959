@@ -12,6 +12,7 @@ import { AuthWelcome } from "@/widgets/auth-welcome";
 export const metadata: Metadata = {
   title: "새 비밀번호",
   referrer: "no-referrer",
+  robots: { index: false },
 };
 
 function firstValue(value: string | string[] | undefined): string | undefined {

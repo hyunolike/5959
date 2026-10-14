@@ -96,10 +96,7 @@ function ShellContents({
       <header className="border-line sticky top-0 isolate z-30 border-b">
         <div aria-hidden className="bg-surface/95 absolute inset-0 -z-10" />
         <div className="mx-auto flex h-14 max-w-[1120px] items-center justify-between px-5 sm:h-18 sm:px-8">
-          <Link
-            href={showNavigation ? "/home" : "/login"}
-            aria-label="오구오구 홈"
-          >
+          <Link href={showNavigation ? "/home" : "/"} aria-label="오구오구 홈">
             <BrandMark />
           </Link>
           <div className="flex items-center gap-3">

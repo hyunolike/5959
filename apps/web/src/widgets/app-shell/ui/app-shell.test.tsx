@@ -119,9 +119,10 @@ describe("AppShell", () => {
     expect(
       screen.queryByRole("link", { name: "알림" }),
     ).not.toBeInTheDocument();
+    // 로그인 전의 로고는 서비스 소개(랜딩)로 간다.
     expect(screen.getByRole("link", { name: /오구오구 홈$/ })).toHaveAttribute(
       "href",
-      "/login",
+      "/",
     );
     expect(
       screen.getByRole("link", { name: "본문으로 건너뛰기" }),
