@@ -69,8 +69,8 @@ description: "Task list for 013-member-withdrawal (회원 탈퇴)"
 ## Phase 9: 마무리
 
 - [X] T024 [P] 문서: `apps/api/AGENTS.md`(탈퇴 절), `docs/architecture/overview.md`, `docs/features.md`, `README.md`의 기능 표, `infra/RESTORE.md`(research R11), 002/004/005/008 스펙의 "탈퇴는 범위 밖" 문장에 013을 가리키는 말
-- [ ] T025 `cd apps/api && ./gradlew clean build`, 웹의 `typecheck`, `lint`, `lint:fsd`, `format:check`, `test`. 320px와 390px 화면을 눈으로 본다
-- [ ] T026 별도 검토자가 브랜치 전체를 본다. 지적을 고친 뒤 `main`으로 PR을 연다. PR에 API 배포와 마이그레이션이 따로 필요하다고 적는다
+- [X] T025 `cd apps/api && ./gradlew clean build`, 웹의 `typecheck`, `lint`, `lint:fsd`, `format:check`, `test`. 320px와 390px 화면을 눈으로 본다. API의 전체 테스트는 로컬에서 한 번에 끝까지 돌지 못했다(Docker 디스크가 차 뒤쪽의 DB 컨테이너가 뜨지 못했다). 실패한 묶음은 따로 돌려 통과를 봤고, 한 번에 도는 것은 CI가 본다
+- [X] T026 별도 검토자가 브랜치 전체를 본다. 지적을 고친 뒤 `main`으로 PR을 연다. PR에 API 배포와 마이그레이션이 따로 필요하다고 적는다. 검토에서 고친 것: 감정 분석의 근거가 남던 것, 탈퇴와 겹친 로그인, 함께 탈퇴할 때의 교착
 
 ## Dependencies
 
