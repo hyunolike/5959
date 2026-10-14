@@ -501,10 +501,11 @@ test("US1-AC8 로그인하지 않으면 알림 종이 없고 스트림 요청이
     page.getByRole("button", { name: "이메일로 로그인" }),
   ).toBeVisible();
   await expect(bell(page)).toHaveCount(0);
+  // 첫 화면(서비스 소개)에도 알림 종이 없다.
   await page.goto("/");
-  await expect(page).toHaveURL(/\/login$/);
+  await expect(page).toHaveURL(/\/$/);
   await expect(
-    page.getByRole("heading", { name: "로그인", level: 1 }),
+    page.getByRole("heading", { level: 1, name: /오구오구/ }),
   ).toBeVisible();
   await expect(bell(page)).toHaveCount(0);
   expect(requests).toEqual([]);
