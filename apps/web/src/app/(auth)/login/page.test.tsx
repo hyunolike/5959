@@ -97,3 +97,13 @@ it("US3-AC4 외부 계정 로그인이 실패해 돌아오면 버튼 위에서 �
     ) & Node.DOCUMENT_POSITION_FOLLOWING,
   ).toBeTruthy();
 });
+
+it("013 US1-AC4 탈퇴를 마치고 오면 끝났다는 안내가 보인다", async () => {
+  await renderPage({ withdrawn: "1" });
+  expect(screen.getByRole("status")).toHaveTextContent("탈퇴가 끝났어요.");
+});
+
+it("013 탈퇴하고 온 것이 아니면 탈퇴 안내가 없다", async () => {
+  await renderPage();
+  expect(screen.queryByText(/탈퇴가 끝났어요/)).not.toBeInTheDocument();
+});

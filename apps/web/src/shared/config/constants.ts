@@ -48,6 +48,8 @@ export const QUERY_KEYS = {
   raid: ["raid"] as const,
   /** 도움 리소스(005). 바뀌는 일이 드물어 오래 둔다. */
   supportResources: ["safety", "support-resources"] as const,
+  /** 탈퇴 화면에 도움받을 곳을 보일지(013). 화면을 열 때마다 새로 받는다. */
+  withdrawalNotice: ["safety", "withdrawal-notice"] as const,
   /** 주간 리포트(008). 목록은 마이페이지 탭이, 한 주의 리포트는 리포트 화면이 쓴다. */
   weeklyReports: ["my", "weekly-reports"] as const,
   weeklyReport: (weekStart: string) =>

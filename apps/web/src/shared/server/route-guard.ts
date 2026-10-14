@@ -17,6 +17,8 @@ import { sanitizeNextPath } from "@/shared/lib";
  * | `/onboarding` | `ogu_rt` 없음 | `/login` |
  * | `/onboarding` | `ogu_ob` 있음 | `/home`(검증한 `next`가 있으면 그곳) |
  * | `/login`, `/signup` | `ogu_rt`, `ogu_ob` 모두 있음 | `/home`(검증한 `next`가 있으면 그곳) |
+ * | `/withdraw` | `ogu_rt` 없음 | `/login` |
+ * | `/withdraw` | `ogu_rt` 있음 | 그대로(온보딩 전에도 탈퇴할 수 있다, 013 US1-AC9) |
  *
  * `next`는 `sanitizeNextPath`를 통과할 때만 따르고, 아니면 `/home`이다.
  */
@@ -88,6 +90,11 @@ export function resolveRouteGuardAction(
       return redirect("/login");
     }
     return cookies.onboarded ? redirect(nextFrom(search)) : null;
+  }
+
+  // 탈퇴 화면은 로그인만 본다. 보호 경로에 넣으면 온보딩 전 회원이 온보딩으로 되돌려진다.
+  if (pathname === "/withdraw") {
+    return cookies.hasRefreshToken ? null : redirect("/login");
   }
 
   if (pathname === "/login" || pathname === "/signup") {

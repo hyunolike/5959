@@ -170,6 +170,20 @@ describe("resolveRouteGuardAction", () => {
     );
   });
 
+  describe("표 7, 8행: /withdraw는 로그인만 본다(013)", () => {
+    it("US1-AC12 로그아웃 상태면 /login으로 보낸다", () => {
+      expect(resolveRouteGuardAction("/withdraw", SIGNED_OUT)).toEqual({
+        type: "redirect",
+        to: "/login",
+      });
+    });
+
+    it("US1-AC9 온보딩 전이어도 온보딩으로 되돌리지 않는다", () => {
+      expect(resolveRouteGuardAction("/withdraw", NOT_ONBOARDED)).toBeNull();
+      expect(resolveRouteGuardAction("/withdraw", ONBOARDED)).toBeNull();
+    });
+  });
+
   describe("표에 없는 경로", () => {
     it.each(["/terms", "/login/help"])("%s는 그대로 통과한다", (pathname) => {
       expect(resolveRouteGuardAction(pathname, SIGNED_OUT)).toBeNull();

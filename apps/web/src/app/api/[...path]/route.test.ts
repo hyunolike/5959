@@ -255,6 +255,23 @@ describe("전용 라우트만 다뤄야 하는 경로는 404로 막는다(FR-012
     },
   );
 
+  it("POST /api/members/me/withdrawal은 404로 막는다(탈퇴는 쿠키를 지우는 전용 라우트만 한다)", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const request = new NextRequest(
+      "http://localhost:3000/api/members/me/withdrawal",
+      { method: "POST", headers: { origin: "http://localhost:3000" } },
+    );
+    const response = await POST(
+      request,
+      params(["members", "me", "withdrawal"]),
+    );
+
+    expect(response.status).toBe(404);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("PUT /api/members/me/onboarding은 404로 막는다(accessToken 노출 방지)", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
