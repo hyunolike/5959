@@ -44,7 +44,10 @@ class WithdrawalMigrationTests {
         assertRejected {
             jdbcTemplate.update("update member set withdrawn_at = now(), email = null where id = ?", id)
         }
-        jdbcTemplate.update("update member set withdrawn_at = now(), email = null, password_hash = null where id = ?", id)
+        jdbcTemplate.update(
+            "update member set withdrawn_at = now(), email = null, password_hash = null where id = ?",
+            id,
+        )
     }
 
     @Test
@@ -62,7 +65,8 @@ class WithdrawalMigrationTests {
 
         assertRejected {
             jdbcTemplate.update(
-                "update member set withdrawn_at = now(), nickname = null, nickname_key = null, onboarded_at = null where id = ?",
+                "update member set withdrawn_at = now(), nickname = null, nickname_key = null, onboarded_at = null " +
+                    "where id = ?",
                 aiId,
             )
         }

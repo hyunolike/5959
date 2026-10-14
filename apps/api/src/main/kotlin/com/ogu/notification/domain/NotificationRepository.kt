@@ -276,16 +276,6 @@ class NotificationRepository(
             .param("limit", limit)
             .update()
 
-    /**
-     * 회원이 받은 알림을 모두 지운다(013 FR-008). 공감 묶음의 참여자 행은 FK `ON DELETE CASCADE`로 함께 지워진다.
-     * 다른 회원이 받은 알림에서 이 회원이 행동한 회원으로 남은 것은 건드리지 않는다.
-     */
-    fun deleteAllOfReceiver(receiverId: Long): Int =
-        jdbcClient
-            .sql("delete from notification where receiver_id = :receiverId")
-            .param("receiverId", receiverId)
-            .update()
-
     private companion object {
         val ROW_MAPPER =
             RowMapper { rs: ResultSet, _: Int ->

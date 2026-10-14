@@ -2,6 +2,7 @@ package com.ogu.member.application
 
 import com.ogu.member.MemberWithdrawn
 import com.ogu.member.domain.AuthSessionRepository
+import com.ogu.member.domain.Member
 import com.ogu.member.domain.MemberKind
 import com.ogu.member.domain.MemberRepository
 import com.ogu.member.domain.MemberRole
@@ -42,9 +43,7 @@ class WithdrawalService(
      */
     @Transactional
     fun withdraw(memberId: Long) {
-        memberRepository.lockForWithdrawal(memberId) ?: throw BusinessException(ErrorCode.SESSION_EXPIRED)
-        val member = memberRepository.findByIdOrNull(memberId) ?: throw BusinessException(ErrorCode.SESSION_EXPIRED)
-        if (member.isWithdrawn) throw BusinessException(ErrorCode.SESSION_EXPIRED)
+        val member = lockActive(memberId)
         if (member.role == MemberRole.OPERATOR) throw BusinessException(ErrorCode.OPERATOR_CANNOT_WITHDRAW)
         if (member.kind != MemberKind.HUMAN) throw BusinessException(ErrorCode.FORBIDDEN)
 
@@ -57,5 +56,12 @@ class WithdrawalService(
         tickets.deleteAllByMember(memberId)
         events.publishEvent(MemberWithdrawn(memberId, now))
         log.info("회원이 탈퇴했습니다: memberId={}", memberId)
+    }
+
+    /** 회원 행을 잠그고 읽는다. 없거나, 잠금을 기다리는 사이 다른 요청이 먼저 탈퇴시켰으면 `401 SESSION_EXPIRED`다. */
+    private fun lockActive(memberId: Long): Member {
+        val member = memberRepository.lockForWithdrawal(memberId)?.let { memberRepository.findByIdOrNull(it) }
+        if (member == null || member.isWithdrawn) throw BusinessException(ErrorCode.SESSION_EXPIRED)
+        return member
     }
 }

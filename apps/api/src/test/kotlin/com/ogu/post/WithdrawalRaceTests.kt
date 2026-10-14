@@ -1,6 +1,7 @@
 package com.ogu.post
 
 import com.ogu.TestcontainersConfiguration
+import com.ogu.member.application.SessionService
 import com.ogu.member.application.WithdrawalService
 import com.ogu.monster.MonsterApi
 import com.ogu.post.application.CommentService
@@ -60,6 +61,9 @@ class WithdrawalRaceTests {
     lateinit var commentService: CommentService
 
     @Autowired
+    lateinit var sessionService: SessionService
+
+    @Autowired
     lateinit var transactionManager: PlatformTransactionManager
 
     private lateinit var mockMvc: MockMvc
@@ -109,13 +113,62 @@ class WithdrawalRaceTests {
     }
 
     @Test
+    fun `탈퇴가 커밋되는 사이의 로그인은 세션을 얻지 못한다`() {
+        val leaver = members.onboarded()
+        val locked = CountDownLatch(1)
+        val release = CountDownLatch(1)
+
+        val withdrawing =
+            CompletableFuture.runAsync {
+                TransactionTemplate(transactionManager).executeWithoutResult {
+                    withdrawalService.withdraw(leaver.id)
+                    locked.countDown()
+                    release.await(WAIT_SECONDS, TimeUnit.SECONDS)
+                }
+            }
+        assertThat(locked.await(WAIT_SECONDS, TimeUnit.SECONDS)).isTrue()
+        // 비밀번호를 견준 뒤 세션을 만드는 자리다. 세션의 INSERT가 회원 행을 기다린다
+        val issuing = attempt { sessionService.issue(leaver.id, onboarded = true) }
+        Thread.sleep(BLOCK_MILLIS)
+        assertThat(issuing.isDone).isFalse()
+
+        release.countDown()
+        withdrawing.get(WAIT_SECONDS, TimeUnit.SECONDS)
+
+        assertThat(issuing.get(WAIT_SECONDS, TimeUnit.SECONDS)).isEqualTo(ErrorCode.SESSION_EXPIRED)
+        assertThat(withdrawal.count("select count(*) from auth_session where member_id = ?", leaver.id)).isZero()
+    }
+
+    @Test
+    fun `서로의 글에 댓글을 단 두 회원이 함께 탈퇴해도 둘 다 끝난다`() {
+        val first = members.onboarded()
+        val second = members.onboarded()
+        val firstPost = loop.postWithoutMonster(first)
+        val secondPost = loop.postWithoutMonster(second)
+        repeat(CROSS_COMMENTS) {
+            val onFirst = loop.comment(second, firstPost, "서로의 글에 단 댓글")
+            loop.comment(first, firstPost, "그 댓글의 답글", parentId = onFirst)
+            val onSecond = loop.comment(first, secondPost, "서로의 글에 단 댓글")
+            loop.comment(second, secondPost, "그 댓글의 답글", parentId = onSecond)
+        }
+
+        val both = listOf(first, second).map { CompletableFuture.runAsync { withdrawalService.withdraw(it.id) } }
+        both.forEach { it.get(WAIT_SECONDS, TimeUnit.SECONDS) }
+
+        withdrawal.awaitCleaned(first.id)
+        withdrawal.awaitCleaned(second.id)
+        assertThat(withdrawal.contentsLeft(first.id) + withdrawal.contentsLeft(second.id)).isZero()
+    }
+
+    @Test
     fun `글쓰기가 먼저 커밋되면 탈퇴가 그 글까지 지운다`() {
         val leaver = members.onboarded()
         val postId = postService.create(leaver.id, "탈퇴 직전에 올린 글", CommentTone.COMFORT_ME)
 
         withdrawal.withdrawAndClean(leaver)
 
-        assertThat(withdrawal.count("select count(*) from posts where id = ? and deleted_at is not null", postId)).isOne()
+        val removed = "select count(*) from posts where id = ? and deleted_at is not null"
+        assertThat(withdrawal.count(removed, postId)).isOne()
         assertThat(withdrawal.contentsLeft(leaver.id)).isZero()
     }
 
@@ -137,7 +190,8 @@ class WithdrawalRaceTests {
         // 글과 댓글이 몇 개든 같은 트랜잭션에서 도는 문장 수는 같다(research R2)
         assertThat(largeQueries).isEqualTo(smallQueries)
         assertThat(elapsed).isLessThan(RESPONSE_LIMIT)
-        assertThat(withdrawal.count("select count(*) from posts where author_id = ? and deleted_at is null", large.id)).isZero()
+        val live = "select count(*) from posts where author_id = ? and deleted_at is null"
+        assertThat(withdrawal.count(live, large.id)).isZero()
         assertThat(withdrawal.count("select comment_count from posts where id = ?", otherPost)).isZero()
         // 본문은 뒤에서 나눠 비운다
         await().atMost(CLEANUP_LIMIT).pollInterval(Duration.ofMillis(200)).until {
@@ -147,7 +201,7 @@ class WithdrawalRaceTests {
     }
 
     /** 다른 스레드에서 돌려 받은 오류 코드를 준다. 성공하면 null이다. */
-    private fun attempt(write: () -> Unit): CompletableFuture<ErrorCode?> =
+    private fun attempt(write: () -> Any?): CompletableFuture<ErrorCode?> =
         CompletableFuture.supplyAsync {
             try {
                 write()
@@ -181,6 +235,7 @@ class WithdrawalRaceTests {
     }
 
     private companion object {
+        const val CROSS_COMMENTS = 5
         const val POSTS = 1000
         const val COMMENTS = 5000
         const val WAIT_SECONDS = 10L

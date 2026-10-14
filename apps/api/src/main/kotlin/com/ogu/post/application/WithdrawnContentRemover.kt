@@ -1,6 +1,7 @@
 package com.ogu.post.application
 
 import com.ogu.shared.lock.PostLock
+import org.springframework.jdbc.core.RowCallbackHandler
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Component
 import org.springframework.transaction.support.TransactionSynchronizationManager
@@ -18,6 +19,8 @@ import java.time.Instant
  * - 다시 불러도 결과가 같다. `deleted_at is null`인 행만 잡으므로 댓글 수가 두 번 줄지 않는다(US5-AC4). 커밋 뒤 정리가
  *   탈퇴와 겹쳐 들어온 것을 잡으려고 한 번 더 부른다(research R5).
  * - 잠금은 다른 쓰기와 같은 순서다. `comments`, `posts` 행을 먼저 잠그고 글 잠금([PostLock])을 나중에 잡는다.
+ * - 탈퇴끼리는 맨 먼저 잠금 하나로 줄을 선다. 한 문장이 여러 글과 댓글의 행을 잡는 순서는 정해져 있지 않아, 서로의 글에
+ *   댓글을 단 두 회원이 함께 탈퇴하면 교착이 날 수 있다. 탈퇴는 드문 일이라 줄을 세워도 느려지지 않는다.
  *
  * `PostRemoved`, `CommentRemoved`는 여기서 내지 않는다. [WithdrawnContentCleaner]가 커밋 뒤에 나눠서 낸다.
  */
@@ -35,6 +38,10 @@ class WithdrawnContentRemover(
             "탈퇴한 회원의 글과 댓글은 트랜잭션 안에서만 지울 수 있습니다(authorId=$authorId)."
         }
         val at = Timestamp.from(now)
+        jdbcClient
+            .sql("select pg_advisory_xact_lock(:namespace, 0)")
+            .param("namespace", LOCK_NAMESPACE)
+            .query(RowCallbackHandler { })
         val comments = removeComments(authorId, at)
         val postIds = removePosts(authorId, at)
         // 몬스터를 만드는 쪽이 같은 잠금 안에서 글이 살아 있는지 본다. 지운 글에 몬스터가 새로 생기지 않는다
@@ -97,6 +104,11 @@ class WithdrawnContentRemover(
             .query(Long::class.java)
             .list()
             .filterNotNull()
+
+    private companion object {
+        /** advisory lock 두 정수 키 중 첫째("wdrw"). 글 잠금("plck"), 작성 제한("post")과 키 공간이 겹치지 않는다. */
+        const val LOCK_NAMESPACE = 0x77647277
+    }
 }
 
 data class RemovedContent(

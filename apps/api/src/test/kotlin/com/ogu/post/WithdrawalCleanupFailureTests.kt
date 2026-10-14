@@ -21,6 +21,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity
+import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
@@ -42,6 +43,8 @@ import tools.jackson.databind.json.JsonMapper
     ],
 )
 @Import(TestcontainersConfiguration::class)
+// 스파이와 설정이 이 클래스만의 것이라 컨텍스트를 나눠 쓰지 않는다. 끝나면 닫아 컨테이너와 메모리를 돌려준다
+@DirtiesContext
 class WithdrawalCleanupFailureTests {
     @Autowired
     lateinit var context: WebApplicationContext

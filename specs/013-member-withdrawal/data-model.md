@@ -45,6 +45,8 @@
 | 6 | `post` (동기) | 그 회원의 살아 있는 댓글과, 그 회원의 원 댓글 아래 살아 있는 답글에 `deleted_at`. 살아 있는 글마다 댓글 수를 지운 만큼 줄인다 |
 | 7 | `post` (동기) | 5에서 지운 글들의 글 잠금(`PostLock`)을 한 문장으로 잡는다 |
 
+5에 앞서 `post`는 탈퇴 전용 잠금 하나(`pg_advisory_xact_lock`)를 잡는다. 탈퇴끼리 줄을 세워, 서로의 글에 댓글을 단 두 회원이 함께 탈퇴해도 교착이 없다.
+
 커밋 뒤에는 모듈마다 따로, 실패하면 다시 돈다.
 
 | 어디 | 무엇 | 다시 해도 같은 까닭 |
@@ -54,6 +56,7 @@
 | `report` | `weekly_report`의 `member_id` 행을 지운다 | 위와 같다 |
 | `safety` (이벤트를 따라) | `PostRemoved`, `CommentRemoved`를 받아 열린 신고와 재검토 요청을 닫는다 | 지금의 `RemovalListener` 그대로다 |
 | `recommend` (이벤트를 따라) | `PostRemoved`를 받아 `post_embedding`의 행을 지운다 | 지금의 리스너 그대로다 |
+| `emotion` (이벤트를 따라) | `PostRemoved`를 받아 `emotion_analysis.reason`을 NULL로 바꾼다(새 리스너). 회원이 스스로 지운 글에도 똑같이 돈다 | 이미 NULL이면 0행이다 |
 
 ## 건드리지 않는 것
 
@@ -62,8 +65,8 @@
 | `post_likes`, `comment_likes` | 다른 회원의 글의 공감 수를 지킨다(FR-009). 행은 번호만 가리킨다 |
 | `monsters`, `monster_hp_log` | 줄어든 HP와 처치 기록을 지킨다. 탈퇴한 회원의 글의 몬스터도 행은 남고, 글이 지워져 어디에도 보이지 않는다 |
 | `raid_boss`, `raid_contribution`, Redis의 레이드 키 | 줄어든 HP와 참여자 수를 지킨다(006) |
-| `emotion_analysis` | 본문이 없다. 감정과 강도뿐이고 글이 지워져 읽히지 않는다 |
-| `risk_assessment`, `report`, `review_request`, `moderation_action` | 본문과 닉네임이 없다. 1년 보관을 그대로 따른다(FR-016). 열린 것은 `RemovalListener`가 닫는다 |
+| `emotion_analysis`의 감정과 강도 | 몬스터와 통계가 쓴다. 글의 내용이 들어 있지 않다. 근거 한 줄(`reason`)은 글에서 나온 문장이라 지운다(아래) |
+| `risk_assessment`, `report`, `review_request`, `moderation_action` | 판정한 본문과 닉네임이 없다. 1년 보관을 그대로 따른다(FR-016). 열린 것은 `RemovalListener`가 닫는다. 신고자가 적은 설명(`report.detail`, 200자)은 남는다. 운영자가 그 신고를 처리하려면 필요하고 운영자만 본다(spec Assumptions) |
 | `like_notification_participant` | 공감 알림을 한 번만 보내려는 표지다. 번호만 있다 |
 | `companion_reaction`, `companion_reaction_entry` | 글이 지워지면 차례에 `GONE`으로 닫힌다 |
 | `login_attempt` | 이메일과 IP의 SHA-256만 있다. 지금의 정리 주기에 사라진다 |

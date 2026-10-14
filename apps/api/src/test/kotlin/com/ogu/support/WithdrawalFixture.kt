@@ -108,7 +108,10 @@ class WithdrawalFixture(
         )
 
     /** 같은 계정으로 한 번 더 로그인한 세션(다른 기기). */
-    fun loginAgain(account: TestAccount): TestAccount = account(data(login(account.email).andExpect(status().isOk)), account.email)
+    fun loginAgain(account: TestAccount): TestAccount {
+        val loggedIn = login(account.email).andExpect(status().isOk)
+        return account(data(loggedIn), account.email)
+    }
 
     fun onboard(
         account: TestAccount,
@@ -144,7 +147,10 @@ class WithdrawalFixture(
             .take(8)
             .joinToString("")
 
-    fun data(result: ResultActions): JsonNode = jsonMapper.readTree(result.andReturn().response.contentAsString).get("data")
+    fun data(result: ResultActions): JsonNode {
+        val body = result.andReturn().response.contentAsString
+        return jsonMapper.readTree(body).get("data")
+    }
 
     private fun account(
         data: JsonNode,

@@ -184,6 +184,22 @@ class WithdrawnContentApiTests {
     }
 
     @Test
+    fun `US2-AC8 감정 분석이 글을 읽고 남긴 근거도 지워지고 감정은 남는다`() {
+        val leaver = members.onboarded()
+        val live = loop.postWithMonster(leaver)
+        val removedEarlier = loop.postWithMonster(leaver)
+        assertThat(analysisReason(live)).isNotBlank()
+        // 회원이 스스로 지운 글의 근거도 같은 이벤트로 지워진다
+        loop.removePost(leaver, removedEarlier).andExpect(status().isNoContent)
+        await().atMost(WithdrawalFixture.AWAIT_LIMIT).until { analysisReason(removedEarlier) == null }
+
+        withdrawal.withdrawAndClean(leaver)
+
+        await().atMost(WithdrawalFixture.AWAIT_LIMIT).until { analysisReason(live) == null }
+        assertThat(analysisStatus(live)).isEqualTo("ANALYZED")
+    }
+
+    @Test
     fun `US2-AC8 받은 알림과 주간 리포트가 지워진다`() {
         val leaver = members.onboarded()
         val fan = members.onboarded()
@@ -200,7 +216,8 @@ class WithdrawnContentApiTests {
         withdrawal.withdrawAndClean(leaver)
 
         assertThat(notifications(leaver.id)).isZero()
-        assertThat(withdrawal.count("select count(*) from notification_sequence where member_id = ?", leaver.id)).isZero()
+        val sequences = "select count(*) from notification_sequence where member_id = ?"
+        assertThat(withdrawal.count(sequences, leaver.id)).isZero()
         assertThat(withdrawal.count("select count(*) from weekly_report where member_id = ?", leaver.id)).isZero()
     }
 
@@ -213,7 +230,10 @@ class WithdrawnContentApiTests {
         assertThat(analysisStatus(postId)).isEqualTo("PENDING")
 
         withdrawal.withdrawAndClean(leaver)
-        jdbcTemplate.update("update emotion_analysis set next_attempt_at = now() - interval '1 minute' where post_id = ?", postId)
+        jdbcTemplate.update(
+            "update emotion_analysis set next_attempt_at = now() - interval '1 minute' where post_id = ?",
+            postId,
+        )
         analysisRunner.attempt(postId)
 
         assertThat(analysisStatus(postId)).isEqualTo("DEFAULTED")
@@ -232,7 +252,8 @@ class WithdrawnContentApiTests {
 
         assertThat(postReportApi.authorIdsBetween(from, until, leaver.id - 1, 1)).doesNotContain(leaver.id)
         TransactionTemplate(transactionManager).executeWithoutResult {
-            notificationWriter.writeAll(listOf(NotificationDraft.weeklyReport(leaver.id, LocalDate.parse("2026-10-05"))))
+            val draft = NotificationDraft.weeklyReport(leaver.id, LocalDate.parse("2026-10-05"))
+            notificationWriter.writeAll(listOf(draft))
         }
         assertThat(notifications(leaver.id)).isZero()
     }
@@ -397,6 +418,11 @@ class WithdrawnContentApiTests {
             .queryForList("select status from emotion_analysis where post_id = ?", String::class.java, postId)
             .firstOrNull()
 
+    private fun analysisReason(postId: Long): String? =
+        jdbcTemplate
+            .queryForList("select reason from emotion_analysis where post_id = ?", String::class.java, postId)
+            .firstOrNull()
+
     private fun analysisAttempts(postId: Long): Int =
         jdbcTemplate
             .queryForList("select attempts from emotion_analysis where post_id = ?", Int::class.java, postId)
@@ -405,7 +431,10 @@ class WithdrawnContentApiTests {
     private fun notifications(receiverId: Long): Int =
         withdrawal.count("select count(*) from notification where receiver_id = ?", receiverId)
 
-    private fun commentCount(postId: Long): Int = withdrawal.count("select comment_count from posts where id = ?", postId)
+    private fun commentCount(postId: Long): Int {
+        val sql = "select comment_count from posts where id = ?"
+        return withdrawal.count(sql, postId)
+    }
 
     private fun likeCount(postId: Long): Int = withdrawal.count("select like_count from posts where id = ?", postId)
 
@@ -417,5 +446,8 @@ class WithdrawnContentApiTests {
     private fun deleted(
         table: String,
         vararg ids: Long,
-    ): Int = ids.count { withdrawal.count("select count(*) from $table where id = ? and deleted_at is not null", it) == 1 }
+    ): Int {
+        val sql = "select count(*) from $table where id = ? and deleted_at is not null"
+        return ids.count { withdrawal.count(sql, it) == 1 }
+    }
 }

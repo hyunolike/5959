@@ -1,8 +1,7 @@
 package com.ogu.notification.application
 
 import com.ogu.member.MemberWithdrawn
-import com.ogu.notification.domain.NotificationRepository
-import com.ogu.notification.domain.NotificationSequenceRepository
+import com.ogu.notification.domain.WithdrawnReceiverRepository
 import com.ogu.notification.stream.NotificationSignal
 import com.ogu.notification.stream.RedisSignalPublisher
 import org.slf4j.LoggerFactory
@@ -19,16 +18,14 @@ import org.springframework.stereotype.Component
  */
 @Component
 class WithdrawalNotificationListener(
-    private val notifications: NotificationRepository,
-    private val sequences: NotificationSequenceRepository,
+    private val received: WithdrawnReceiverRepository,
     private val signals: RedisSignalPublisher,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
     @ApplicationModuleListener
     fun on(event: MemberWithdrawn) {
-        val deleted = notifications.deleteAllOfReceiver(event.memberId)
-        sequences.delete(event.memberId)
+        val deleted = received.deleteAllOf(event.memberId)
         signals.publish(NotificationSignal.Closed(event.memberId))
         log.info("탈퇴한 회원이 받은 알림을 지웠습니다: memberId={}, notifications={}", event.memberId, deleted)
     }

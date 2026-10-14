@@ -15,6 +15,7 @@ import org.springframework.http.MediaType
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.ResultActions
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
@@ -176,7 +177,10 @@ class WithdrawalApiTests {
 
     private fun me(member: TestMember) = mockMvc.perform(get("/api/v1/members/me").bearer(member.accessToken))
 
-    private fun cleanupStatus(member: TestMember) = mockMvc.perform(get("/api/v1/operator/withdrawals/cleanup").bearer(member.accessToken))
+    private fun cleanupStatus(member: TestMember): ResultActions {
+        val request = get("/api/v1/operator/withdrawals/cleanup").bearer(member.accessToken)
+        return mockMvc.perform(request)
+    }
 
     private fun refresh(refreshToken: String) =
         mockMvc.perform(
@@ -185,5 +189,8 @@ class WithdrawalApiTests {
                 .content("""{"refreshToken":"$refreshToken"}"""),
         )
 
-    private fun sessionCount(memberId: Long): Int = withdrawal.count("select count(*) from auth_session where member_id = ?", memberId)
+    private fun sessionCount(memberId: Long): Int {
+        val sql = "select count(*) from auth_session where member_id = ?"
+        return withdrawal.count(sql, memberId)
+    }
 }

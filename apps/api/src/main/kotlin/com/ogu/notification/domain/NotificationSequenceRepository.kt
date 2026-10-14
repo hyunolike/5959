@@ -53,11 +53,4 @@ class NotificationSequenceRepository(
             .query(Long::class.java)
             .optional()
             .orElse(0L)
-
-    /** 회원의 번호 행을 지운다(013 FR-008). 탈퇴한 회원에게는 알림을 더 쓰지 않으므로 번호가 다시 쓰일 일이 없다. */
-    fun delete(memberId: Long): Int =
-        jdbcClient
-            .sql("delete from notification_sequence where member_id = :memberId")
-            .param("memberId", memberId)
-            .update()
 }

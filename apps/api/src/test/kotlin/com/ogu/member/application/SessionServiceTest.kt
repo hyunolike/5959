@@ -41,7 +41,7 @@ class SessionServiceTest {
     private val service = SessionService(repository, memberRepository, JwtIssuer(properties, clock), properties, clock)
 
     init {
-        given(repository.save(any(AuthSession::class.java))).willAnswer { it.arguments[0] }
+        given(repository.saveAndFlush(any(AuthSession::class.java))).willAnswer { it.arguments[0] }
     }
 
     @Test
@@ -145,7 +145,7 @@ class SessionServiceTest {
 
     private fun savedSession(): AuthSession {
         val captor = ArgumentCaptor.forClass(AuthSession::class.java)
-        verify(repository).save(captor.capture())
+        verify(repository).saveAndFlush(captor.capture())
         return captor.value
     }
 

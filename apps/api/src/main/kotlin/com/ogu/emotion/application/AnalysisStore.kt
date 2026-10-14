@@ -71,11 +71,14 @@ class AnalysisStore(
         classification: EmotionClassification,
     ) {
         val analysis = lockUnchanged(claim) ?: return
+        // 분석하는 사이에 글이 지워졌으면 근거를 남기지 않는다. 근거는 글의 내용에서 나온 문장이다(013 FR-008).
+        // 분석 행을 잠근 뒤에 보므로 [PostRemovedListener]와 차례가 엇갈려도 지운 글의 근거가 남지 않는다
+        val reason = classification.reason.takeIf { postApi.find(claim.postId) != null }
         val event =
             analysis.succeed(
                 classification.emotion.toEmotionType(),
                 classification.intensity.toIntensity(),
-                classification.reason,
+                reason,
                 now(),
             )
         events.publishEvent(event)

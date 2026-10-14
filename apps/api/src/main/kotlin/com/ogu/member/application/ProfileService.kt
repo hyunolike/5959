@@ -46,7 +46,10 @@ class ProfileService(
 
     /** 같은 회원의 수정이 겹쳐도 차례로 반영되게 행을 잠근다. 온보딩 전이면 `ONBOARDING_REQUIRED`다. */
     private fun lockOnboardedMember(memberId: Long): Member {
-        val member = memberRepository.findByIdForUpdate(memberId) ?: throw BusinessException(ErrorCode.NOT_FOUND)
+        // 잠금을 기다리는 사이 탈퇴한 회원은 없는 회원으로 본다(013)
+        val member =
+            memberRepository.findByIdForUpdate(memberId)?.takeUnless { it.isWithdrawn }
+                ?: throw BusinessException(ErrorCode.NOT_FOUND)
         if (!member.isOnboarded) throw BusinessException(ErrorCode.ONBOARDING_REQUIRED)
         return member
     }

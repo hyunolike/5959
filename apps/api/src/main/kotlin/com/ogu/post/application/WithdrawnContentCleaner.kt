@@ -18,7 +18,7 @@ import java.time.temporal.ChronoUnit
  * 묶음 하나가 하는 일은 둘이다. 회원이 스스로 지울 때와 같은 이벤트([PostRemoved], [CommentRemoved])를 내고, 본문을 빈
  * 글자열로 바꾼다. 이벤트를 받는 쪽은 지금 그대로다. `safety`가 열린 신고와 재검토 요청을 닫고 `recommend`가 임베딩을 지운다.
  *
- * - 아직 비우지 않았다는 표지는 `content <> ''`다. 본문은 한 글자 이상이라 빈 본문은 비운 것뿐이다. 다시 불리면 남은 것만
+ * - 맡는 것은 지운 행뿐이다. 살아 있는 글의 본문을 비우는 일은 없다. 아직 비우지 않았다는 표지는 `content <> ''`다. 본문은 한 글자 이상이라 빈 본문은 비운 것뿐이다. 다시 불리면 남은 것만
  *   맡는다(US5-AC2). 이벤트가 다시 나가도 받는 쪽의 결과는 같다.
  * - 회원이 탈퇴 전에 스스로 지운 글과 댓글도 본문이 저장돼 있었으므로 함께 비운다.
  * - 내 원 댓글 아래 다른 회원의 답글은 함께 지워졌지만 본문은 그 회원의 것이라 비우지 않는다. 그 답글에 걸린 신고는
@@ -78,8 +78,13 @@ class WithdrawnContentCleaner(
         authorId: Long,
     ): List<Long> =
         jdbcClient
-            .sql("select id from $table where author_id = :authorId and content <> '' order by id limit :limit for update")
-            .param("authorId", authorId)
+            .sql(
+                """
+                select id from $table
+                where author_id = :authorId and deleted_at is not null and content <> ''
+                order by id limit :limit for update
+                """.trimIndent(),
+            ).param("authorId", authorId)
             .param("limit", BATCH_SIZE)
             .query(Long::class.java)
             .list()
@@ -115,8 +120,13 @@ class WithdrawnContentCleaner(
         authorId: Long,
     ): Boolean =
         jdbcClient
-            .sql("select exists(select 1 from $table where author_id = :authorId and content <> '')")
-            .param("authorId", authorId)
+            .sql(
+                """
+                select exists(
+                  select 1 from $table where author_id = :authorId and deleted_at is not null and content <> ''
+                )
+                """.trimIndent(),
+            ).param("authorId", authorId)
             .query(Boolean::class.java)
             .single()
 

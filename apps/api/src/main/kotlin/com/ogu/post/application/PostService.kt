@@ -47,8 +47,7 @@ class PostService(
 
         val author = PostAuthor(authorId, jobRole, careerYear)
         val post = postRepository.save(Post.write(author, normalized, commentTone, now))
-        // 탈퇴와 겹쳤으면 INSERT가 탈퇴의 커밋을 기다렸다 통과한다. 그때는 올리지 않는다(013 research R5)
-        if (memberApi.isWithdrawn(authorId)) throw BusinessException(ErrorCode.SESSION_EXPIRED)
+        rejectIfWithdrawn(authorId)
         events.publishEvent(PostCreated(post.id, authorId, post.createdAt))
         // 같은 트랜잭션에서 safety가 키워드 규칙으로 판정한다. 위기면 저장과 숨김이 함께 커밋된다(005 research R2)
         events.publishEvent(PostWritten(post.id, authorId, edited = false))
@@ -114,6 +113,11 @@ class PostService(
         if (postRepository.softDelete(postId, now()) == 0) throw BusinessException(ErrorCode.POST_NOT_FOUND)
         postLock.lock(postId)
         events.publishEvent(PostRemoved(postId))
+    }
+
+    /** 탈퇴와 겹쳤으면 INSERT가 탈퇴의 커밋을 기다렸다 통과한다. 그때는 올리지 않고 되돌린다(013 research R5). */
+    private fun rejectIfWithdrawn(authorId: Long) {
+        if (memberApi.isWithdrawn(authorId)) throw BusinessException(ErrorCode.SESSION_EXPIRED)
     }
 
     private fun ownPost(

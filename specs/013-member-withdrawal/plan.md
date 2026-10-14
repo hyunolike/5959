@@ -63,28 +63,29 @@ apps/api/src/main/kotlin/com/ogu/
 ├── post/
 │   ├── application/WithdrawnContentRemover.kt                        # 동기: 지운 것으로 바꾸기
 │   ├── application/WithdrawnContentCleaner.kt                        # 커밋 뒤: 이벤트 내고 본문 비우기
-│   ├── application/WithdrawalListener.kt
+│   ├── application/WithdrawnContentListener.kt
 │   └── application/PostService.kt, CommentService.kt                 # 저장 뒤 isWithdrawn 확인
 ├── notification/
 │   ├── application/NotificationWriter.kt                             # 탈퇴한 회원에게 쓰지 않는다
-│   ├── application/WithdrawalListener.kt, domain/ 리포지토리
-│   └── stream/NotificationSignal.kt(Closed), SseHub.kt(closeMember)
-├── report/application/WithdrawalListener.kt, domain/ 리포지토리
+│   ├── application/WithdrawalNotificationListener.kt, domain/WithdrawnReceiverRepository.kt
+│   └── stream/NotificationSignal.kt(Closed), SseHub.kt
+├── report/application/WithdrawalReportListener.kt, domain/WeeklyReportRepository.kt
 ├── safety/presentation/SafetyController.kt, application/              # withdrawal-notice
 └── shared/lock/PostLock.kt(lockAll), shared/error/ErrorCode.kt
 
 apps/api/src/test/kotlin/com/ogu/
-├── member/…/WithdrawalApiTests.kt, WithdrawalRejoinTests.kt
-├── post/…/WithdrawnContentTests.kt, WithdrawalCleanupTests.kt, WithdrawalRaceTests.kt
-├── notification/…/WithdrawalNotificationTests.kt, report/…/WithdrawalReportTests.kt
-├── feed/…/WithdrawalVisibilityTests.kt                                # 화면에 닿는 조회마다 탈퇴한 회원의 글이 없는지
+├── member/presentation/WithdrawalApiTests.kt, WithdrawalRejoinTests.kt
+├── feed/presentation/WithdrawnContentApiTests.kt                      # 화면에 닿는 조회마다 탈퇴한 회원의 글이 없는지, 남는 숫자
+├── post/WithdrawalCleanupFailureTests.kt, WithdrawalRaceTests.kt      # 실패한 정리, 겹친 쓰기, 글 1,000개
+├── safety/WithdrawalNoticeApiTests.kt, notification/NotificationStreamTests.kt
+├── support/WithdrawalFixture.kt
 └── WithdrawalMigrationTests.kt
 
 apps/web/src/
 ├── app/withdraw/page.tsx
 ├── app/api/auth/withdraw/route.ts(+ test)
 ├── features/withdraw/                 # useWithdrawMutation, WithdrawForm
-├── entities/member/                   # useWithdrawalNoticeQuery
+├── entities/support-resource/         # useWithdrawalNoticeQuery
 ├── shared/server/route-guard.ts       # /withdraw는 로그인만 본다
 ├── app/my/edit/page.tsx, app/onboarding/page.tsx                      # 들어가는 길
 └── app/(auth)/login/page.tsx                                          # 탈퇴했다는 안내

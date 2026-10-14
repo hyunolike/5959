@@ -104,12 +104,12 @@ class EmotionAnalysis private constructor(
     fun succeed(
         emotion: EmotionType,
         intensity: Intensity,
-        reason: String,
+        reason: String?,
         now: Instant,
     ): EmotionAnalyzed {
         checkPending()
         attempts += 1
-        this.reason = reason.take(REASON_MAX_LENGTH)
+        this.reason = reason?.take(REASON_MAX_LENGTH)
         return complete(AnalysisStatus.ANALYZED, emotion, intensity, now)
     }
 

@@ -49,6 +49,16 @@ interface EmotionAnalysisRepository : JpaRepository<EmotionAnalysis, Long> {
         @Param("postId") postId: Long,
     ): EmotionAnalysis?
 
+    /**
+     * 분석의 근거 한 줄을 지운다(013 FR-008). 근거는 글의 내용에서 나온 문장이라, 글이 지워지면 함께 지운다.
+     * 감정과 강도는 남는다. 몬스터와 통계가 그것을 쓰고, 글의 내용을 담고 있지 않다.
+     */
+    @Modifying
+    @Query("update EmotionAnalysis e set e.reason = null where e.postId = :postId and e.reason is not null")
+    fun clearReason(
+        @Param("postId") postId: Long,
+    ): Int
+
     /** 같은 `PostCreated`가 다시 전달돼도(Event Publication Registry 재발행) 행은 하나다. */
     @Modifying
     @Query(
