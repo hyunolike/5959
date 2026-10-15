@@ -52,3 +52,37 @@ test("US1-AC2 로그인한 사용자는 첫 접속에서 홈으로 이동한다"
     "/home",
   );
 });
+
+test("016 US5-AC2 움직임 줄이기를 켜면 사용법 장면이 멈춘 그림이 된다", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  const scene = page.getByRole("img", {
+    name: /고민을 쓰면 몬스터가 나타나고/,
+  });
+  await expect(scene).toBeVisible();
+  const animations = await scene
+    .locator(".ogu-loop-panel, .ogu-loop-sprite, .ogu-loop-hp-fill")
+    .evaluateAll((nodes) =>
+      nodes.map((node) => getComputedStyle(node).animationName),
+    );
+  expect(animations.length).toBeGreaterThan(0);
+  expect(new Set(animations)).toEqual(new Set(["none"]));
+});
+
+test("016 US5-AC6 몬스터 그림을 받지 못해도 글로 쓴 사용법은 보인다", async ({
+  page,
+}) => {
+  await page.route("**/monsters/**", (route) => route.abort());
+  await page.route("**/_next/image**", (route) =>
+    route.request().url().includes("monsters")
+      ? route.abort()
+      : route.continue(),
+  );
+  await page.goto("/");
+  await expect(
+    page.getByRole("heading", { name: "오구오구는 이렇게 써요" }),
+  ).toBeVisible();
+  await expect(page.getByText("익명으로 고민을 적어요")).toBeVisible();
+});

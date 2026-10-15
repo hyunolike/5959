@@ -14,6 +14,7 @@ export {
   STAGE_LABELS,
 } from "./model/sprite";
 export type { MonsterMotion } from "./model/sprite";
+export { MonsterLifecycleLoop } from "./ui/monster-lifecycle-loop";
 export { MonsterDisplay } from "./ui/monster-view";
 export { MonsterSprite } from "./ui/monster-sprite";
 export { EmotionTag } from "./ui/emotion-tag";

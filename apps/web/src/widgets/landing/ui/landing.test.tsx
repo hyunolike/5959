@@ -44,4 +44,14 @@ describe("Landing", () => {
     expect(steps.getAllByRole("listitem")).toHaveLength(4);
     expect(steps.getByText("익명으로 고민을 적어요")).toBeInTheDocument();
   });
+
+  it("016 US5-AC1 쓰는 순서 옆에 사용법 장면이 있다", () => {
+    render(<Landing />);
+    const steps = within(
+      screen.getByRole("region", { name: "오구오구는 이렇게 써요" }),
+    );
+    expect(
+      steps.getByRole("img", { name: /고민을 쓰면 몬스터가 나타나고/ }),
+    ).toBeInTheDocument();
+  });
 });

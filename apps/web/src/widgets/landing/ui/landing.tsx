@@ -9,6 +9,7 @@ import Link from "next/link";
 
 import {
   EMOTION_LABELS,
+  MonsterLifecycleLoop,
   MonsterSprite,
   type EmotionType,
 } from "@/entities/monster";
@@ -126,6 +127,8 @@ export function Landing() {
         <h2 id="landing-steps" className="text-heading text-fg font-bold">
           오구오구는 이렇게 써요
         </h2>
+        {/* 글로 쓴 단계 옆에서 한 바퀴를 눈으로 본다(016 US5). 첫 화면 위쪽에는 두지 않는다(SC-006). */}
+        <MonsterLifecycleLoop className="mx-auto w-full max-w-md" />
         <ol className="grid gap-4 sm:grid-cols-2">
           {STEPS.map((step, index) => (
             <li
