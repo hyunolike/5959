@@ -41,6 +41,11 @@ export const QUERY_KEYS = {
   myActivity: ["my"] as const,
   myPosts: ["my", "posts"] as const,
   myComments: ["my", "comments"] as const,
+  /**
+   * 내 글이 하나라도 있는지(016). 첫 고민 카드와 첫 글 안내가 쓴다. 글을 쓰거나 지우면 무효화한다.
+   * 마이페이지의 무한 목록(`myPosts`)과 키를 나눠 한 쪽짜리 응답이 목록 캐시에 섞이지 않게 한다.
+   */
+  hasMyPost: ["my", "has-post"] as const,
   likedPosts: ["my", "liked-posts"] as const,
   /** 마이페이지 감정 통계(004 US4). 세 목록과 같이 마이페이지를 열 때마다 다시 받는다. */
   emotionStats: ["my", "emotion-stats"] as const,

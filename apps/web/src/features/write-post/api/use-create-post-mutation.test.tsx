@@ -29,6 +29,7 @@ describe("useCreatePostMutation", () => {
       ["feed", { order: "LATEST" }],
       ["feed", { order: "POPULAR" }],
       ["posts", 8],
+      ["my", "has-post"],
     ];
     keys.forEach((key) => queryClient.setQueryData(key, {}));
     const wrapper = ({ children }: { children: ReactNode }) => (
@@ -52,5 +53,7 @@ describe("useCreatePostMutation", () => {
     expect(invalidated(["feed", { order: "LATEST" }])).toBe(true);
     expect(invalidated(["feed", { order: "POPULAR" }])).toBe(true);
     expect(invalidated(["posts", 8])).toBe(false);
+    // 016 FR-013: 글을 쓰면 첫 고민 카드가 사라지도록 "내 글이 있는가"도 다시 받는다.
+    expect(invalidated(["my", "has-post"])).toBe(true);
   });
 });
