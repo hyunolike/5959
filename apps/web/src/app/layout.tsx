@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 
 import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 import "@/core/styles/globals.css";
+import { UmamiAnalytics } from "@/core/analytics";
 import { AppProviders } from "@/core/providers/app-providers";
 import { env } from "@/shared/config";
 import { ONBOARDED_COOKIE, REFRESH_TOKEN_COOKIE } from "@/shared/server";
@@ -46,6 +47,7 @@ export default async function RootLayout({
             {children}
           </AppShell>
         </AppProviders>
+        <UmamiAnalytics />
       </body>
     </html>
   );
