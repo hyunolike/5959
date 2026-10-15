@@ -441,8 +441,9 @@ class GCloud:
                 if data.get("status") != "UP":
                     raise RuntimeError("web health is not UP")
                 if assets:
-                    # Public GETs only. Follow / -> /login; never submit auth forms.
-                    html = command(["curl", "--fail", "--silent", "--show-error", "--location", "--max-time", "20", url + "/"])
+                    # Public GETs only; never submit auth forms. `/` is the public landing page
+                    # (no login form), so read the login page directly.
+                    html = command(["curl", "--fail", "--silent", "--show-error", "--location", "--max-time", "20", url + "/login"])
                     icon_url = login_icon(html, url)
                     icon = command(["curl", "--fail", "--silent", "--show-error", "--max-time", "20",
                                     "--output", os.devnull, "--write-out", "%{http_code} %{content_type}", icon_url])
