@@ -143,6 +143,32 @@ describe("FeedList", () => {
     }
   });
 
+  it("017 US1-AC1 번호가 이어지는 불안 글 넷은 서로 다른 모습의 몬스터다", async () => {
+    const anxious = (postId: number) => ({
+      ...feedItem(postId),
+      analysisStatus: "ANALYZED",
+      monster: { emotion: "ANXIETY", hp: 10, maxHp: 10, status: "ALIVE" },
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        ok({
+          items: [anxious(103), anxious(102), anxious(101), anxious(100)],
+          nextCursor: null,
+        }),
+      ),
+    );
+
+    renderFeed();
+
+    await screen.findByText("고민 103");
+    const sources = screen
+      .getAllByRole("img", { name: "불안 몬스터, 멀쩡함" })
+      .map((img) => decodeURIComponent(img.getAttribute("src") ?? ""));
+    expect(sources).toHaveLength(4);
+    expect(new Set(sources).size).toBe(4);
+  });
+
   it("012 US4-AC1 AI 친구의 글은 직군과 경력 자리에 AI 친구라고 보인다", async () => {
     const aiItem = {
       ...feedItem(4),

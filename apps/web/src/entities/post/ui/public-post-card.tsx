@@ -22,7 +22,8 @@ export function PublicPostCard({
   item: PublicFeedItem;
   authorMeta: string;
   renderEmotion: (monster: MonsterView) => ReactNode;
-  renderMonster: (monster: MonsterView) => ReactNode;
+  /** 두 번째 인자는 글 번호다. 불안 몬스터의 모습을 고르는 데 쓴다(017). */
+  renderMonster: (monster: MonsterView, postId: number) => ReactNode;
   onSelect: (postId: number) => void;
 }) {
   const previewId = useId();
@@ -54,7 +55,7 @@ export function PublicPostCard({
       <div className="mt-3.5 flex flex-wrap items-center gap-x-3 gap-y-2">
         <div className="min-w-0 flex-auto">
           {item.monster ? (
-            renderMonster(item.monster)
+            renderMonster(item.monster, item.postId)
           ) : (
             <p className="text-label text-fg-subtle">분석 중</p>
           )}

@@ -10,7 +10,7 @@ import {
   cardDateShort,
   type MonsterCard as MonsterCardData,
 } from "../model/card";
-import { spritePath } from "../model/sprite";
+import { monsterLook, spritePath } from "../model/sprite";
 import { emotionLabel } from "../model/types";
 
 /**
@@ -69,7 +69,12 @@ export function MonsterCard({
         </div>
         <div className="bg-emotion-tint rounded-inline flex min-h-0 flex-1 items-center justify-center p-2">
           <Image
-            src={spritePath(card.emotion, "defeated")}
+            src={spritePath(
+              card.emotion,
+              "defeated",
+              false,
+              monsterLook(card.emotion, card.postId),
+            )}
             alt=""
             width={512}
             height={512}

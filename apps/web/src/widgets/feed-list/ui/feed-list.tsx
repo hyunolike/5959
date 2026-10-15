@@ -124,7 +124,9 @@ function FeedItems({ filter }: { filter: FeedFilter }) {
               renderEmotion={(monster) => (
                 <EmotionTag emotion={monster.emotion} />
               )}
-              renderMonster={(monster) => <MonsterSummary monster={monster} />}
+              renderMonster={(monster, postId) => (
+                <MonsterSummary monster={monster} postId={postId} />
+              )}
             />
           </li>
         ))}

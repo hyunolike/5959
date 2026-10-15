@@ -128,7 +128,9 @@ function renderPost(item: FeedItem) {
       showCreatedAt
       authorMeta={authorMetaLabel(item.author)}
       renderEmotion={(monster) => <EmotionTag emotion={monster.emotion} />}
-      renderMonster={(monster) => <MonsterSummary monster={monster} />}
+      renderMonster={(monster, postId) => (
+        <MonsterSummary monster={monster} postId={postId} />
+      )}
     />
   );
 }

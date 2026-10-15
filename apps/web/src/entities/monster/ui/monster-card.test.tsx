@@ -29,7 +29,8 @@ describe("MonsterCard", () => {
     expect(screen.getByText("내 몬스터")).toBeInTheDocument();
     const image = container.querySelector("img");
     expect(decodeURIComponent(image?.getAttribute("src") ?? "")).toContain(
-      "/monsters/anxiety-defeated.webp",
+      // 글 번호 10의 불안 몬스터는 셋째 모습(구름)이다(017).
+      "/monsters/anxiety-v3-defeated.webp",
     );
     // 감정 이름이 글자로 있으므로 그림은 낭독하지 않는다.
     expect(image).toHaveAttribute("alt", "");

@@ -801,3 +801,25 @@ describe("PostDetail 나도 털어놓기(016 US4)", () => {
     expect(writeOwn()).toHaveAttribute("href", "/write");
   });
 });
+
+describe("PostDetail 불안 몬스터의 모습(017)", () => {
+  it("US1-AC2 상세는 그 글 번호의 모습으로 그린다", async () => {
+    renderDetail(
+      jsonResponse({
+        success: true,
+        data: detail({
+          postId: 7,
+          analysisStatus: "ANALYZED",
+          monster: { emotion: "ANXIETY", hp: 20, maxHp: 20, status: "ALIVE" },
+        }),
+        error: null,
+      }),
+    );
+
+    const img = await screen.findByRole("img", { name: "불안 몬스터, 멀쩡함" });
+    // 7을 4로 나눈 나머지는 3, 넷째 모습(시계 토끼)이다.
+    expect(decodeURIComponent(img.getAttribute("src") ?? "")).toContain(
+      "anxiety-v4-full",
+    );
+  });
+});

@@ -30,6 +30,7 @@ const BOSS_SIZES = "(min-width: 640px) 288px, 248px";
 export function MonsterDisplay({
   monster,
   variant,
+  postId,
   className,
 }: {
   /** 글의 몬스터이거나 레이드 보스다. 보스는 최대 HP가 훨씬 크다(006). */
@@ -38,6 +39,8 @@ export function MonsterDisplay({
     maxHp: number;
   };
   variant: "detail" | "boss";
+  /** 글의 몬스터면 그 글의 번호. 불안 몬스터의 모습을 고른다(017). 보스는 쓰지 않는다. */
+  postId?: number;
   className?: string;
 }) {
   const defeated = monster.status === "DEFEATED";
@@ -66,6 +69,7 @@ export function MonsterDisplay({
           emotion={monster.emotion}
           stage={stage}
           boss={boss}
+          postId={boss ? undefined : postId}
           sizes={boss ? BOSS_SIZES : DETAIL_SIZES}
           className={
             defeated

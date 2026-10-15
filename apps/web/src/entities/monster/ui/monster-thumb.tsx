@@ -8,10 +8,13 @@ import { MonsterSprite } from "./monster-sprite";
 export function MonsterThumb({
   emotion,
   stage,
+  postId,
   className,
 }: {
   emotion: EmotionType;
   stage: HpStage;
+  /** 글의 몬스터면 그 글의 번호(017). */
+  postId?: number;
   className?: string;
 }) {
   return (
@@ -22,7 +25,12 @@ export function MonsterThumb({
         className,
       )}
     >
-      <MonsterSprite emotion={emotion} stage={stage} sizes="48px" />
+      <MonsterSprite
+        emotion={emotion}
+        stage={stage}
+        postId={postId}
+        sizes="48px"
+      />
     </span>
   );
 }
