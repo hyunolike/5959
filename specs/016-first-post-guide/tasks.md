@@ -132,7 +132,7 @@ US1(실마리 없이도), US2, US3이 함께 쓰는 "내 글이 있는가" 쿼�
 - [x] T040 [P] `docs/features.md`와 `README.md`의 기능 표에 "첫 글 안내" 한 줄과 스펙 링크(`specs/016-first-post-guide/spec.md`)를 더한다
 - [ ] T041 quickstart.md의 "출시 전에 기준값 적기" 표를 채울 수 있게 출시 전 4주 값을 DB와 Umami에서 뽑아 적는다(운영 접근이 필요하면 사람에게 맡기고 PR 본문에 남긴다)
 - [ ] T042 전체 검증: `pnpm --filter web typecheck && pnpm --filter web lint && pnpm --filter web lint:fsd && pnpm --filter web test && pnpm --filter web build`, `pnpm --filter web test:e2e`, `pnpm --filter web test:e2e:full`. 그 뒤 quickstart의 수동 절차 1~17과, 로컬 프로덕션 빌드에서 변경 전후 `/`의 Lighthouse 모바일 LCP를 비교해 늦어지지 않았는지 본다(SC-006)
-- [ ] T043 PR(`main`으로, 제목 `feat(web): 가입한 사람이 첫 글까지 가도록 안내를 잇는다 (016)`): 본문에 스펙 링크, 인수 조건 31개 체크리스트, plan 단계에서 바꾼 결정(환영 안내를 홈에 둔 것), 기준값 표. 필수 체크 `ci-ok`
+- [x] T043 PR(`main`으로, 제목 `feat(web): 가입한 사람이 첫 글까지 가도록 안내를 잇는다 (016)`): 본문에 스펙 링크, 인수 조건 31개 체크리스트, plan 단계에서 바꾼 결정(환영 안내를 홈에 둔 것), 기준값 표. 필수 체크 `ci-ok`
 
 ## Dependencies & Execution Order
 
