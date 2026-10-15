@@ -6,7 +6,8 @@ import { BEFORE_SEND_NAME, BEFORE_SEND_SCRIPT } from "./before-send";
  * Umami Cloud에서 사이트를 만들면 받는 웹사이트 ID. 페이지 HTML에 그대로 보이는 공개 값이라
  * 비밀이 아니다. 비어 있으면 스크립트를 그리지 않는다.
  */
-export const UMAMI_WEBSITE_ID: string | null = null;
+export const UMAMI_WEBSITE_ID: string | null =
+  "b08a7474-17e7-424c-a1ef-b70bd2361aad";
 
 /** 운영 주소에서만 센다. 로컬, e2e, 미리보기 배포의 방문은 보내지 않는다. */
 export const UMAMI_DOMAINS = "new.5959.site";
