@@ -136,4 +136,15 @@ describe("PostEditor", () => {
     ).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it("016 FR-007 고치기 화면에는 공개 범위 묶음이 있고 쓰기 실마리는 없다", async () => {
+    renderEditor(detail());
+
+    expect(
+      await screen.findByRole("region", { name: "이 글은 이렇게 보여요" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("group", { name: "쓰기 실마리" }),
+    ).not.toBeInTheDocument();
+  });
 });

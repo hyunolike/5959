@@ -17,6 +17,17 @@ import { Button, Input, Label, Select } from "@/shared/ui";
 import { useOnboardingMutation } from "../api/use-onboarding-mutation";
 import { onboardingSchema, type OnboardingFormValues } from "../model/schema";
 
+/** 홈이 온보딩 직후 한 번 환영 안내를 보이게 하는 표시(016 research R2). 홈이 읽자마자 지운다. */
+const WELCOME_PENDING_KEY = "ogu.welcome.pending";
+
+function markWelcomePending() {
+  try {
+    sessionStorage.setItem(WELCOME_PENDING_KEY, "1");
+  } catch {
+    // 저장소가 막힌 브라우저에서는 환영 안내 없이 홈으로 간다.
+  }
+}
+
 const GENERIC_ERROR_MESSAGE =
   "온보딩을 완료하지 못했습니다. 잠시 후 다시 시도해주세요.";
 
@@ -71,6 +82,8 @@ export function OnboardingForm({ next }: OnboardingFormProps) {
     try {
       const member = await onboardingMutation.mutateAsync(values);
       if (member) {
+        // 가려던 곳이 있으면 그곳이 먼저다. 환영 안내는 홈으로 올 때만 남긴다(016 US2-AC4).
+        if (destination === "/home") markWelcomePending();
         router.push(destination);
         // 온보딩 쿠키가 생겼다. 루트 레이아웃을 새로 받아 알림 종을 그린다.
         router.refresh();
@@ -148,6 +161,15 @@ export function OnboardingForm({ next }: OnboardingFormProps) {
         </p>
       </div>
 
+      {/* 고민 서비스에서 직군과 경력을 물으면 "나를 알아볼 수 있나"로 읽힌다. 까닭을 먼저 말한다(016 US2-AC1). */}
+      <p
+        id="profile-purpose"
+        className="text-body-sm text-fg-subtle -mb-1 leading-6 break-keep"
+      >
+        비슷한 일을 하는 사람의 고민을 찾고 내 글 옆에 함께 보여요. 이름과
+        회사는 묻지 않아요.
+      </p>
+
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="jobRole">직군</Label>
         <Select
@@ -155,7 +177,9 @@ export function OnboardingForm({ next }: OnboardingFormProps) {
           aria-required
           defaultValue=""
           aria-invalid={errors.jobRole ? true : undefined}
-          aria-describedby={errors.jobRole ? "jobRole-error" : undefined}
+          aria-describedby={
+            errors.jobRole ? "jobRole-error" : "profile-purpose"
+          }
           {...register("jobRole")}
         >
           <option value="" disabled>
@@ -181,7 +205,9 @@ export function OnboardingForm({ next }: OnboardingFormProps) {
           aria-required
           defaultValue=""
           aria-invalid={errors.careerYear ? true : undefined}
-          aria-describedby={errors.careerYear ? "careerYear-error" : undefined}
+          aria-describedby={
+            errors.careerYear ? "careerYear-error" : "profile-purpose"
+          }
           {...register("careerYear")}
         >
           <option value="" disabled>

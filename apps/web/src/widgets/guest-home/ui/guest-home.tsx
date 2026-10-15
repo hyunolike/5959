@@ -7,6 +7,7 @@ import { authorMetaLabel } from "@/entities/member";
 import {
   EMOTION_LABELS,
   EmotionTag,
+  MonsterLifecycleLoop,
   MonsterSummary,
   MonsterThumb,
   type EmotionType,
@@ -31,7 +32,7 @@ const STEPS = [
   },
   {
     title: "함께 이겨내요",
-    body: "공감과 댓글이 모일수록 몬스터가 약해져요.",
+    body: "공감과 댓글이 모일수록 몬스터가 약해지고, 물리친 몬스터는 도감 카드로 남아요.",
   },
 ];
 
@@ -51,6 +52,35 @@ export function GuestHome() {
           고민을 나누고 감정 몬스터를 함께 이겨내는 곳이에요.
         </p>
       </header>
+
+      {/* 무엇을 하는 곳인지보다 어떻게 쓰는지를 먼저 보인다(016 US5-AC4). */}
+      <section
+        aria-labelledby="guest-home-steps"
+        className="flex flex-col gap-4"
+      >
+        <h2 id="guest-home-steps" className="text-body text-fg font-bold">
+          오구오구는 이렇게 써요
+        </h2>
+        <MonsterLifecycleLoop />
+        <ol className="grid gap-x-6 gap-y-4 sm:grid-cols-3">
+          {STEPS.map((step, index) => (
+            <li key={step.title} className="flex gap-3 sm:flex-col sm:gap-2">
+              <span
+                aria-hidden
+                className="bg-surface-sunken text-caption text-fg-muted flex size-7 shrink-0 items-center justify-center rounded-full font-bold tabular-nums"
+              >
+                {index + 1}
+              </span>
+              <div>
+                <p className="text-body-sm text-fg font-bold">{step.title}</p>
+                <p className="text-body-sm text-fg-subtle mt-1 break-keep">
+                  {step.body}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
 
       <section
         aria-labelledby="guest-home-monsters"
@@ -123,30 +153,6 @@ export function GuestHome() {
             회원가입
           </Link>
         </p>
-      </section>
-
-      <section aria-labelledby="guest-home-steps">
-        <h2 id="guest-home-steps" className="text-body text-fg font-bold">
-          오구오구는 이렇게 써요
-        </h2>
-        <ol className="mt-3 grid gap-x-6 gap-y-4 sm:grid-cols-3">
-          {STEPS.map((step, index) => (
-            <li key={step.title} className="flex gap-3 sm:flex-col sm:gap-2">
-              <span
-                aria-hidden
-                className="bg-surface-sunken text-caption text-fg-muted flex size-7 shrink-0 items-center justify-center rounded-full font-bold tabular-nums"
-              >
-                {index + 1}
-              </span>
-              <div>
-                <p className="text-body-sm text-fg font-bold">{step.title}</p>
-                <p className="text-body-sm text-fg-subtle mt-1 break-keep">
-                  {step.body}
-                </p>
-              </div>
-            </li>
-          ))}
-        </ol>
       </section>
     </div>
   );

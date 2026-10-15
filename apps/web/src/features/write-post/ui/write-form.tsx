@@ -2,9 +2,11 @@
 
 import { useRouter } from "next/navigation";
 
+import { useHasMyPostQuery } from "@/entities/post";
 import { ApiError } from "@/shared/api";
 
 import { useCreatePostMutation } from "../api/use-create-post-mutation";
+import { WRITE_STARTERS } from "../model/starters";
 import type { WritePostFormValues } from "../model/schema";
 import { PostForm, type PostFormError } from "./post-form";
 
@@ -20,13 +22,19 @@ const GENERIC_ERROR_MESSAGE =
 export function WriteForm() {
   const router = useRouter();
   const createPostMutation = useCreatePostMutation();
+  // 올리기 전에 내 글이 없었으면 첫 글이다. 모르면(받는 중, 실패) 첫 글로 보지 않는다(016 research R3).
+  const hasMyPost = useHasMyPostQuery();
 
   const onSubmit = async (
     values: WritePostFormValues,
   ): Promise<PostFormError | void> => {
     try {
       const created = await createPostMutation.mutateAsync(values);
-      router.push(`/post/${created.postId}`);
+      router.push(
+        hasMyPost === false
+          ? `/post/${created.postId}?first=1`
+          : `/post/${created.postId}`,
+      );
     } catch (error) {
       if (error instanceof ApiError) {
         if (error.code === "POST_RATE_LIMITED") {
@@ -48,6 +56,8 @@ export function WriteForm() {
     <PostForm
       submitLabel="올리기"
       locked={createPostMutation.isSuccess}
+      starters={WRITE_STARTERS}
+      submitEvent="write-submit"
       onSubmit={onSubmit}
     />
   );

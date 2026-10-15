@@ -42,6 +42,9 @@ vi.mock("@/features/auth/logout", () => ({
 vi.mock("@/widgets/raid-arena", () => ({
   BossBanner: () => <a href="/raid">레이드</a>,
 }));
+vi.mock("@/widgets/first-post-prompt", () => ({
+  FirstPostPrompt: () => <aside aria-label="첫 고민 안내" />,
+}));
 vi.mock("@/widgets/feed-list", () => ({
   FeedList: () => <section aria-label="피드" />,
 }));
@@ -131,5 +134,35 @@ describe("HomePage", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "프로필을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.",
     );
+  });
+
+  it("016 US2-AC6 회원 홈의 첫 고민 안내는 레이드 안내와 피드보다 위에 있다", () => {
+    me.state = { data: { nickname: "오구" }, isError: false };
+    render(
+      <AppShell authenticated>
+        <HomePage />
+      </AppShell>,
+    );
+
+    const prompt = screen.getByRole("complementary", { name: "첫 고민 안내" });
+    const raid = screen.getByRole("link", { name: "레이드" });
+    const feed = screen.getByRole("region", { name: "피드" });
+    expect(
+      prompt.compareDocumentPosition(raid) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      prompt.compareDocumentPosition(feed) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("016 익명 홈에는 첫 고민 안내가 없다", () => {
+    render(
+      <AppShell authenticated={false}>
+        <HomePage />
+      </AppShell>,
+    );
+    expect(
+      screen.queryByRole("complementary", { name: "첫 고민 안내" }),
+    ).not.toBeInTheDocument();
   });
 });

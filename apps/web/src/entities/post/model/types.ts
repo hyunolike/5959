@@ -33,6 +33,17 @@ export const COMMENT_TONE_LABELS: Record<CommentTone, string> = {
 };
 
 /**
+ * 말투를 고르면 쓰기 화면에 보이는 댓글 예시(016 US1-AC6). 고른 말투로 어떤 댓글을 받게 되는지
+ * 쓰기 전에 짐작하게 한다.
+ */
+export const COMMENT_TONE_EXAMPLES: Record<CommentTone, string> = {
+  VENT_WITH_ME: "그건 진짜 너무했다. 듣는 내가 다 화나네요.",
+  COMFORT_ME: "그동안 혼자 버티느라 정말 애썼어요.",
+  WARM_ADVICE: "오늘은 푹 쉬고, 내일 하나씩 정리해 봐요.",
+  MAKE_ME_LAUGH: "그 정도면 몬스터가 아니라 보스급인데요?",
+};
+
+/**
  * 없거나 지운 글을 열려 할 때의 안내. 글 상세(404 `POST_NOT_FOUND`)와 알림 목록(지운 글의 알림을
  * 누름, 004 US2-AC5)이 같은 말을 쓴다.
  */

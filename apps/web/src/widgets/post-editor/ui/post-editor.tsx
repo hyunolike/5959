@@ -4,7 +4,11 @@ import { useRouter } from "next/navigation";
 
 import { usePostDetailQuery } from "@/entities/post";
 import { updateErrorOf, useUpdatePostMutation } from "@/features/manage-post";
-import { PostForm, type WritePostFormValues } from "@/features/write-post";
+import {
+  PostForm,
+  PrivacyScope,
+  type WritePostFormValues,
+} from "@/features/write-post";
 import { ApiError } from "@/shared/api";
 import { Spinner } from "@/shared/ui";
 
@@ -57,13 +61,17 @@ export function PostEditor({ postId }: { postId: number }) {
     }
   };
 
+  // 고칠 때도 공개 범위는 같다. 실마리는 비어 있는 입력란에만 의미가 있어 넘기지 않는다(016 FR-007).
   return (
-    <PostForm
-      defaultValues={{ content: data.content, commentTone: data.commentTone }}
-      submitLabel="고치기"
-      locked={mutation.isSuccess}
-      onSubmit={onSubmit}
-    />
+    <div className="flex flex-col gap-6">
+      <PrivacyScope />
+      <PostForm
+        defaultValues={{ content: data.content, commentTone: data.commentTone }}
+        submitLabel="고치기"
+        locked={mutation.isSuccess}
+        onSubmit={onSubmit}
+      />
+    </div>
   );
 }
 

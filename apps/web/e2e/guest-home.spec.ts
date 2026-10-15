@@ -258,3 +258,21 @@ test("GUEST-US1-AC3 상세·개인 메뉴 직접 URL은 로그인과 원래 내�
     expect(target.searchParams.get("next")).toBe(path);
   }
 });
+
+test("016 US5-AC2 둘러보기의 사용법 장면도 움직임 줄이기에서 멈춘다", async ({
+  page,
+}) => {
+  await mockPublicFeed(page, [story]);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/home");
+  const scene = page.getByRole("img", {
+    name: /고민을 쓰면 몬스터가 나타나고/,
+  });
+  await expect(scene).toBeVisible();
+  const animations = await scene
+    .locator(".ogu-loop-panel, .ogu-loop-sprite, .ogu-loop-hp-fill")
+    .evaluateAll((nodes) =>
+      nodes.map((node) => getComputedStyle(node).animationName),
+    );
+  expect(new Set(animations)).toEqual(new Set(["none"]));
+});

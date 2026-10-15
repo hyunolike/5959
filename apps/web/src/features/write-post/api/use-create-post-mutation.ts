@@ -35,13 +35,19 @@ export async function createPost(
   return body.data;
 }
 
-/** 성공하면 새 글이 피드 맨 위에 보이도록 모든 피드(`["feed"]`)를 낡은 것으로 표시한다. */
+/**
+ * 성공하면 새 글이 피드 맨 위에 보이도록 모든 피드(`["feed"]`)를 낡은 것으로 표시한다.
+ * 첫 고민 카드가 사라지도록 내 글이 있는지(016 FR-013)도 함께 낡은 것으로 표시한다.
+ */
 export function useCreatePostMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (values: WritePostFormValues) => createPost(values),
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.allFeeds }),
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.allFeeds }),
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.hasMyPost }),
+      ]),
   });
 }

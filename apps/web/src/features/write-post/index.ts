@@ -10,5 +10,6 @@ export {
 } from "./model/schema";
 export type { WritePostFormInput, WritePostFormValues } from "./model/schema";
 export { PostForm } from "./ui/post-form";
+export { PrivacyScope } from "./ui/privacy-scope";
 export type { PostFormError } from "./ui/post-form";
 export { WriteForm } from "./ui/write-form";

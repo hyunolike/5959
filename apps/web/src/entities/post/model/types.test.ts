@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { COMMENT_TONE_LABELS, type CommentTone } from "./types";
+import {
+  COMMENT_TONE_EXAMPLES,
+  COMMENT_TONE_LABELS,
+  type CommentTone,
+} from "./types";
 
 const ALL_COMMENT_TONES: CommentTone[] = [
   "VENT_WITH_ME",
@@ -23,4 +27,14 @@ describe("COMMENT_TONE_LABELS", () => {
       MAKE_ME_LAUGH: "웃겨주기",
     });
   });
+});
+
+describe("COMMENT_TONE_EXAMPLES", () => {
+  it.each(ALL_COMMENT_TONES)(
+    "016 US1-AC6 %s에 댓글 예시가 한 줄 있다",
+    (tone) => {
+      expect(COMMENT_TONE_EXAMPLES[tone].length).toBeGreaterThan(0);
+      expect(COMMENT_TONE_EXAMPLES[tone]).not.toContain("\n");
+    },
+  );
 });

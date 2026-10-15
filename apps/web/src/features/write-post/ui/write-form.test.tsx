@@ -1,11 +1,18 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const pushMock = vi.fn();
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
+}));
+
+// 내 글이 있는지는 따로 받는 쿼리다. fetch를 세는 테스트에 섞이지 않게 값으로 고정한다.
+let hasMyPost: boolean | undefined = true;
+vi.mock("@/entities/post", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/entities/post")>()),
+  useHasMyPostQuery: () => hasMyPost,
 }));
 
 import { WriteForm } from "./write-form";
@@ -45,6 +52,7 @@ async function fillAndSubmit(
 afterEach(() => {
   vi.unstubAllGlobals();
   pushMock.mockReset();
+  hasMyPost = true;
 });
 
 describe("WriteForm", () => {
@@ -233,5 +241,132 @@ describe("WriteForm", () => {
     await fillAndSubmit(user, "고민");
 
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/onboarding"));
+  });
+
+  it("US1-AC3 입력란이 비어 있으면 쓰기 실마리가 3~5개 보인다", () => {
+    renderForm();
+
+    const starters = within(
+      screen.getByRole("group", { name: "쓰기 실마리" }),
+    ).getAllByRole("button");
+    expect(starters.length).toBeGreaterThanOrEqual(3);
+    expect(starters.length).toBeLessThanOrEqual(5);
+  });
+
+  it("US1-AC4 실마리를 누르면 그 문장이 입력란에 들어가고 초점이 가서 이어 쓸 수 있다", async () => {
+    const user = userEvent.setup({ delay: null });
+    renderForm();
+
+    const [first] = within(
+      screen.getByRole("group", { name: "쓰기 실마리" }),
+    ).getAllByRole("button");
+    const starter = first.textContent ?? "";
+    await user.click(first);
+
+    const textarea = screen.getByLabelText("고민");
+    expect(textarea).toHaveFocus();
+    await user.keyboard("이어 쓴 말");
+    expect(textarea).toHaveValue(`${starter} 이어 쓴 말`);
+  });
+
+  it("US1-AC5 글자가 있으면 실마리가 없고 다 지우면 다시 보인다", async () => {
+    const user = userEvent.setup({ delay: null });
+    renderForm();
+    const textarea = screen.getByLabelText("고민");
+
+    await user.type(textarea, "고민");
+    expect(
+      screen.queryByRole("group", { name: "쓰기 실마리" }),
+    ).not.toBeInTheDocument();
+
+    await user.clear(textarea);
+    await user.type(textarea, "   ");
+    expect(
+      screen.getByRole("group", { name: "쓰기 실마리" }),
+    ).toBeInTheDocument();
+  });
+
+  it("US1-AC6 말투를 고르면 그 말투의 댓글 예시가 보이고 다른 말투를 고르면 바뀐다", async () => {
+    const user = userEvent.setup({ delay: null });
+    renderForm();
+
+    expect(screen.queryByText(/이런 댓글이 달려요/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "무조건 위로해주기" }));
+    const comfort = screen.getByText(/이런 댓글이 달려요/).textContent;
+    await user.click(screen.getByRole("button", { name: "웃겨주기" }));
+    const laugh = screen.getByText(/이런 댓글이 달려요/).textContent;
+
+    expect(comfort).not.toEqual(laugh);
+  });
+
+  it("016 US3-AC1 내 글이 없던 회원은 올린 뒤 첫 글 표시와 함께 상세로 간다", async () => {
+    hasMyPost = false;
+    const user = userEvent.setup({ delay: null });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse(
+          {
+            success: true,
+            data: { postId: 42, analysisStatus: "PENDING" },
+            error: null,
+          },
+          201,
+        ),
+      ),
+    );
+
+    renderForm();
+    await fillAndSubmit(user, "고민");
+
+    await waitFor(() =>
+      expect(pushMock).toHaveBeenCalledWith("/post/42?first=1"),
+    );
+  });
+
+  it("016 US3-AC3 내 글이 있던 회원은 표시 없이 상세로 간다", async () => {
+    hasMyPost = true;
+    const user = userEvent.setup({ delay: null });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse(
+          {
+            success: true,
+            data: { postId: 42, analysisStatus: "PENDING" },
+            error: null,
+          },
+          201,
+        ),
+      ),
+    );
+
+    renderForm();
+    await fillAndSubmit(user, "고민");
+
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/post/42"));
+  });
+
+  it("016 내 글이 있는지 모르면 표시 없이 상세로 간다", async () => {
+    hasMyPost = undefined;
+    const user = userEvent.setup({ delay: null });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse(
+          {
+            success: true,
+            data: { postId: 42, analysisStatus: "PENDING" },
+            error: null,
+          },
+          201,
+        ),
+      ),
+    );
+
+    renderForm();
+    await fillAndSubmit(user, "고민");
+
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/post/42"));
   });
 });

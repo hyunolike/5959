@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { WriteForm } from "@/features/write-post";
+import { PrivacyScope, WriteForm } from "@/features/write-post";
 import { AI_FRIENDS_PATH } from "@/shared/ui";
 
 /** 고민 글쓰기(US1). 로그인과 온보딩은 proxy.ts의 라우트 가드가 먼저 확인한다(US1-AC7). */
@@ -26,11 +26,9 @@ export default function WritePage() {
           </Link>
           가 한 명에서 세 명까지 먼저 답할 수 있어요.
         </p>
-        {/* 글이 어디까지 보이는지 쓰기 전에 알린다(011 US3-AC1). 50자가 안 되는 글은 전체가 보인다. */}
-        <p className="text-body-sm text-fg-subtle leading-6">
-          올린 글의 앞 50자는 로그인하지 않은 방문자에게도 닉네임 없이 보여요.
-        </p>
       </header>
+      {/* 글이 누구에게 어디까지 보이는지 쓰기 전에 한곳에서 알린다(016 US1-AC1, 011 US3-AC1). */}
+      <PrivacyScope />
       <WriteForm />
     </div>
   );

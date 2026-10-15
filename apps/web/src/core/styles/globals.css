@@ -401,3 +401,198 @@ body {
     transform: translate(-2px, 0) rotate(-1deg);
   }
 }
+
+/*
+ * 사용법 장면(016 US5, entities/monster의 MonsterLifecycleLoop). 8초에 한 바퀴:
+ * 0~30% 쓰기, 30~55% 몬스터 등장, 55~95% 공감과 댓글에 HP가 줄어 쓰러짐, 남은 시간은 처음으로.
+ * 기본값은 멈춘 그림이다(쓰러진 그림, 빈 막대, 세 칸 모두 보임). 움직임을 허락할 때만 움직인다.
+ * opacity와 transform만 바꿔 레이아웃을 흔들지 않는다.
+ */
+.ogu-loop-hp-fill {
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+.ogu-loop-sprite:not(.ogu-loop-sprite-defeated),
+.ogu-loop-icon {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ogu-loop-panel-1 {
+    animation: ogu-loop-panel-1 8s ease-in-out infinite;
+  }
+  .ogu-loop-panel-2 {
+    animation: ogu-loop-panel-2 8s ease-in-out infinite;
+  }
+  .ogu-loop-panel-3 {
+    animation: ogu-loop-panel-3 8s ease-in-out infinite;
+  }
+  .ogu-loop-typing {
+    animation: ogu-loop-typing 8s ease-out infinite;
+    transform-origin: left center;
+  }
+  .ogu-loop-appear {
+    animation: ogu-loop-appear 8s ease-out infinite;
+  }
+  .ogu-loop-hp-fill {
+    animation: ogu-loop-hp 8s linear infinite;
+  }
+  .ogu-loop-sprite-full {
+    animation: ogu-loop-sprite-full 8s steps(1, end) infinite;
+  }
+  .ogu-loop-sprite-hurt {
+    animation: ogu-loop-sprite-hurt 8s steps(1, end) infinite;
+  }
+  .ogu-loop-sprite-weak {
+    animation: ogu-loop-sprite-weak 8s steps(1, end) infinite;
+  }
+  .ogu-loop-sprite-defeated {
+    animation: ogu-loop-sprite-defeated 8s steps(1, end) infinite;
+  }
+  .ogu-loop-like {
+    animation: ogu-loop-like 8s ease-out infinite;
+  }
+  .ogu-loop-comment {
+    animation: ogu-loop-comment 8s ease-out infinite;
+  }
+}
+
+@keyframes ogu-loop-panel-1 {
+  0%,
+  28%,
+  100% {
+    opacity: 1;
+  }
+  32%,
+  96% {
+    opacity: 0.35;
+  }
+}
+@keyframes ogu-loop-panel-2 {
+  0%,
+  28%,
+  57%,
+  100% {
+    opacity: 0.35;
+  }
+  32%,
+  53% {
+    opacity: 1;
+  }
+}
+@keyframes ogu-loop-panel-3 {
+  0%,
+  53%,
+  100% {
+    opacity: 0.35;
+  }
+  57%,
+  96% {
+    opacity: 1;
+  }
+}
+@keyframes ogu-loop-typing {
+  0%,
+  4% {
+    transform: scaleX(0);
+  }
+  26%,
+  100% {
+    transform: scaleX(1);
+  }
+}
+@keyframes ogu-loop-appear {
+  0%,
+  30% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  36% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+  40%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes ogu-loop-hp {
+  0%,
+  57% {
+    transform: scaleX(1);
+  }
+  90%,
+  100% {
+    transform: scaleX(0);
+  }
+}
+@keyframes ogu-loop-sprite-full {
+  0% {
+    opacity: 1;
+  }
+  64% {
+    opacity: 0;
+  }
+}
+@keyframes ogu-loop-sprite-hurt {
+  0% {
+    opacity: 0;
+  }
+  64% {
+    opacity: 1;
+  }
+  74% {
+    opacity: 0;
+  }
+}
+@keyframes ogu-loop-sprite-weak {
+  0% {
+    opacity: 0;
+  }
+  74% {
+    opacity: 1;
+  }
+  84% {
+    opacity: 0;
+  }
+}
+@keyframes ogu-loop-sprite-defeated {
+  0% {
+    opacity: 0;
+  }
+  84% {
+    opacity: 1;
+  }
+}
+@keyframes ogu-loop-like {
+  0%,
+  58% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  61% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  68%,
+  100% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+@keyframes ogu-loop-comment {
+  0%,
+  70% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  73% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  80%,
+  100% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}

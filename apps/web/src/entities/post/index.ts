@@ -15,6 +15,7 @@ export {
   fetchLikedPostsPage,
   useLikedPostsQuery,
 } from "./api/use-liked-posts-query";
+export { fetchHasMyPost, useHasMyPostQuery } from "./api/use-has-my-post-query";
 export { fetchMyPostsPage, useMyPostsQuery } from "./api/use-my-posts-query";
 export {
   fetchPublicFeed,
@@ -29,7 +30,11 @@ export {
 } from "./api/use-similar-posts-query";
 export { HIDDEN_FROM_OTHERS_LABEL, PostCard } from "./ui/post-card";
 export { PublicPostCard } from "./ui/public-post-card";
-export { COMMENT_TONE_LABELS, DELETED_POST_NOTICE } from "./model/types";
+export {
+  COMMENT_TONE_EXAMPLES,
+  COMMENT_TONE_LABELS,
+  DELETED_POST_NOTICE,
+} from "./model/types";
 export type {
   CommentTone,
   FeedFilter,

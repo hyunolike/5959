@@ -25,7 +25,11 @@ export function useDeletePostMutation(postId: number) {
       await queryClient.cancelQueries({
         queryKey: QUERY_KEYS.postDetail(postId),
       });
-      await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.allFeeds });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.allFeeds }),
+        // 지운 글이 유일한 글이었으면 다음 글이 다시 첫 글이 된다(016 FR-014).
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.hasMyPost }),
+      ]);
     },
   });
 

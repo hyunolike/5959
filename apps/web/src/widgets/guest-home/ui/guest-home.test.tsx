@@ -228,3 +228,33 @@ describe("GuestHome", () => {
     expect(screen.queryByText("메뉴 안내")).not.toBeInTheDocument();
   });
 });
+
+describe("GuestHome 사용법(016 US5)", () => {
+  beforeEach(() => {
+    loaded([item()]);
+  });
+
+  it("US5-AC4 사용법이 최근 이야기보다 앞에 있고 사용법 장면이 함께 있다", () => {
+    render(<GuestHome />);
+    const steps = screen.getByRole("region", {
+      name: "오구오구는 이렇게 써요",
+    });
+    const stories = screen.getByRole("region", { name: "최근 이야기" });
+
+    expect(
+      steps.compareDocumentPosition(stories) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      within(steps).getByRole("img", { name: /고민을 쓰면 몬스터가 나타나고/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("US5-AC5 마지막 단계에 물리친 몬스터가 도감 카드로 남는다는 말이 있다", () => {
+    render(<GuestHome />);
+    const items = within(
+      screen.getByRole("region", { name: "오구오구는 이렇게 써요" }),
+    ).getAllByRole("listitem");
+
+    expect(items.at(-1)).toHaveTextContent("도감 카드");
+  });
+});
