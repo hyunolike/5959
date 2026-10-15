@@ -10,17 +10,37 @@ export const STAGE_LABELS: Record<HpStage, string> = {
 };
 
 /**
+ * 불안 몬스터의 모습 수(017). 불안 글이 많아 같은 그림이 줄지어 보이지 않게, 지금의 털뭉치(0)에
+ * 젤리(1), 구름(2), 시계 토끼(3)를 더했다. 다른 감정은 한 모습이다.
+ */
+export const ANXIETY_LOOKS = 4;
+
+/**
+ * 글의 몬스터가 어떤 모습인지(017 R1). 글 번호의 나머지라 저장하지 않아도 모든 화면이 같은 답을 내고,
+ * 번호가 이어지는 글끼리 모습이 겹치지 않는다. 글 번호가 없는 자리(감정 소개, 보스)는 0이다.
+ */
+export function monsterLook(emotion: EmotionType, postId?: number): number {
+  if (emotion !== "ANXIETY" || postId === undefined) return 0;
+  return ((postId % ANXIETY_LOOKS) + ANXIETY_LOOKS) % ANXIETY_LOOKS;
+}
+
+/**
  * 몬스터 그림의 경로(ADR-0006). 감정 5 × 단계 4 = 20장이 `public/monsters/`에 있다.
+ * 불안의 다른 모습은 `anxiety-v{모습+1}-{단계}.webp` 12장이다(017).
  * 보스는 감정마다 살아 있는 모습과 쓰러진 모습 두 장이다. 살아 있는 동안의 단계는 같은 그림을 쓴다.
  */
 export function spritePath(
   emotion: EmotionType,
   stage: HpStage,
   boss = false,
+  look = 0,
 ): string {
   const name = emotion.toLowerCase();
   if (boss) {
     return `/monsters/boss-${name}${stage === "defeated" ? "-defeated" : ""}.webp`;
+  }
+  if (emotion === "ANXIETY" && look > 0) {
+    return `/monsters/${name}-v${look + 1}-${stage}.webp`;
   }
   return `/monsters/${name}-${stage}.webp`;
 }

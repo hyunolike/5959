@@ -211,7 +211,9 @@ function RecentStories({ onSelect }: { onSelect: (postId: number) => void }) {
               renderEmotion={(monster) => (
                 <EmotionTag emotion={monster.emotion} />
               )}
-              renderMonster={(monster) => <MonsterSummary monster={monster} />}
+              renderMonster={(monster, postId) => (
+                <MonsterSummary monster={monster} postId={postId} />
+              )}
               onSelect={onSelect}
             />
           </li>

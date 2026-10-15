@@ -8,8 +8,10 @@ export type { EmotionType, MonsterView } from "./model/types";
 export { hpStage, hpStageOfRatio } from "./model/hp-stage";
 export type { HpStage } from "./model/hp-stage";
 export {
+  ANXIETY_LOOKS,
   EMOTION_MOTION,
   monsterLabel,
+  monsterLook,
   spritePath,
   STAGE_LABELS,
 } from "./model/sprite";

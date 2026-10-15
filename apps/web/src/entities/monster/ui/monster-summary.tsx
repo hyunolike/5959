@@ -8,12 +8,15 @@ import { MonsterThumb } from "./monster-thumb";
 /** 목록에 쓰는 몬스터 요약: 48px 그림, HP 숫자, 작은 HP 막대. 처치됐으면 "처치됨"을 붙인다. */
 export function MonsterSummary({
   monster,
+  postId,
   className,
 }: {
   monster: Pick<MonsterView, "emotion" | "status"> & {
     hp: number;
     maxHp: number;
   };
+  /** 이 몬스터의 글 번호. 불안 몬스터의 모습을 고른다(017). */
+  postId?: number;
   className?: string;
 }) {
   const defeated = monster.status === "DEFEATED";
@@ -23,7 +26,7 @@ export function MonsterSummary({
 
   return (
     <div className={cn("flex items-center gap-3", className)}>
-      <MonsterThumb emotion={monster.emotion} stage={stage} />
+      <MonsterThumb emotion={monster.emotion} stage={stage} postId={postId} />
       <div
         data-emotion={monster.emotion}
         className="flex w-28 shrink-0 flex-col gap-1.5"

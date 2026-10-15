@@ -185,7 +185,11 @@ function PostDetailContent({
         >
           <div role="group" aria-label="몬스터">
             {monster ? (
-              <MonsterDisplay monster={monster} variant="detail" />
+              <MonsterDisplay
+                monster={monster}
+                variant="detail"
+                postId={detail.postId}
+              />
             ) : (
               <p className="text-body-sm text-fg-subtle py-6 text-center">
                 분석 중
