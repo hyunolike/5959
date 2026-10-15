@@ -9,6 +9,7 @@ import { useGuestAccess } from "@/features/auth/guest-access";
 import { HomeInstall } from "@/features/install-app";
 import { Button, ListSkeleton } from "@/shared/ui";
 import { FeedList } from "@/widgets/feed-list";
+import { FirstPostPrompt } from "@/widgets/first-post-prompt";
 import { BossBanner } from "@/widgets/raid-arena";
 import { GuestHome } from "@/widgets/guest-home";
 
@@ -48,6 +49,8 @@ function MemberHome() {
           </Link>
         </Button>
       </header>
+      {/* 온보딩 직후의 환영 안내나, 글이 없는 회원의 첫 고민 카드(016 US2). */}
+      <FirstPostPrompt />
       {/* 살아 있는 보스가 있으면 레이드로 가는 안내를 보인다(006 US5-AC7). */}
       <BossBanner />
       {/* 정렬과 필터를 주소 검색어에서 읽는다(useSearchParams). */}

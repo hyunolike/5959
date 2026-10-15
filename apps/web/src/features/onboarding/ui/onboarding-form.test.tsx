@@ -338,3 +338,83 @@ describe("OnboardingForm 완료 뒤 이동", () => {
     );
   });
 });
+
+function stubOnboardingSuccess() {
+  const fetchMock = vi.fn((input: RequestInfo | URL) => {
+    const url = input.toString();
+    if (url.includes("nickname-availability")) {
+      return Promise.resolve(nicknameAvailability("free"));
+    }
+    return Promise.resolve(
+      jsonResponse({
+        success: true,
+        data: {
+          member: {
+            id: 1,
+            authMethod: "EMAIL",
+            email: "a@a.com",
+            nickname: "free1",
+            jobRole: "DEVELOPMENT",
+            careerYear: "YEAR_1",
+            onboarded: true,
+          },
+        },
+        error: null,
+      }),
+    );
+  });
+  vi.stubGlobal("fetch", fetchMock);
+}
+
+async function completeOnboarding(next?: string) {
+  const user = userEvent.setup({ delay: null });
+  stubOnboardingSuccess();
+  renderForm(next);
+  await user.type(screen.getByLabelText("닉네임"), "free1");
+  await fillJobAndCareer(user);
+  await user.click(screen.getByRole("button", { name: "완료" }));
+}
+
+describe("OnboardingForm 첫 글로 이어 주기(016)", () => {
+  afterEach(() => {
+    sessionStorage.clear();
+    vi.restoreAllMocks();
+  });
+
+  it("US2-AC1 직군과 경력을 묻는 까닭과 이름과 회사는 묻지 않는다는 문장이 두 칸의 설명으로 읽힌다", () => {
+    renderForm();
+
+    for (const label of ["직군", "경력"]) {
+      expect(screen.getByLabelText(label)).toHaveAccessibleDescription(
+        expect.stringContaining("이름과 회사는 묻지 않아요"),
+      );
+    }
+    expect(
+      screen.getByText(/비슷한 일을 하는 사람의 고민을 찾고/),
+    ).toBeInTheDocument();
+  });
+
+  it("US2-AC2 가려던 곳 없이 마치면 홈에서 환영 안내를 보이도록 표시를 남긴다", async () => {
+    await completeOnboarding();
+
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/home"));
+    expect(sessionStorage.getItem("ogu.welcome.pending")).toBe("1");
+  });
+
+  it("US2-AC4 가려던 곳이 있으면 표시 없이 그곳으로 간다", async () => {
+    await completeOnboarding("/post/3");
+
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/post/3"));
+    expect(sessionStorage.getItem("ogu.welcome.pending")).toBeNull();
+  });
+
+  it("저장소가 막혀도 마치면 홈으로 간다", async () => {
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("blocked", "SecurityError");
+    });
+
+    await completeOnboarding();
+
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/home"));
+  });
+});
