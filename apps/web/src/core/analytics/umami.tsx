@@ -1,5 +1,3 @@
-import Script from "next/script";
-
 import { BEFORE_SEND_NAME, BEFORE_SEND_SCRIPT } from "./before-send";
 
 /**
@@ -9,36 +7,40 @@ import { BEFORE_SEND_NAME, BEFORE_SEND_SCRIPT } from "./before-send";
 export const UMAMI_WEBSITE_ID: string | null =
   "b08a7474-17e7-424c-a1ef-b70bd2361aad";
 
-/** 운영 주소에서만 센다. 로컬, e2e, 미리보기 배포의 방문은 보내지 않는다. */
+/** 운영 주소에서만 센다. 로컬, e2e, 미리보기 배포에는 트래커를 싣지 않는다. */
 export const UMAMI_DOMAINS = "new.5959.site";
 
 const UMAMI_SRC = "https://cloud.umami.is/script.js";
 
 /**
+ * 트래커를 붙이는 스크립트. Umami 트래커는 시작할 때 `localStorage.getItem`을 예외 처리 없이
+ * 부르므로, 저장소가 막힌 브라우저에서는 붙이지 않는다(페이지 오류를 남기지 않게).
+ */
+export function loaderScript(websiteId: string): string {
+  const attrs = {
+    websiteId,
+    domains: UMAMI_DOMAINS,
+    beforeSend: BEFORE_SEND_NAME,
+  };
+  return `${BEFORE_SEND_SCRIPT}(function(){try{window.localStorage.getItem("umami.disabled")}catch(e){return}var s=document.createElement("script");s.defer=true;s.src=${JSON.stringify(UMAMI_SRC)};var a=${JSON.stringify(attrs)};for(var k in a)s.dataset[k]=a[k];document.head.appendChild(s)})();`;
+}
+
+/**
  * 방문 분석(Umami). 쿠키를 쓰지 않고 개인을 식별하지 않는다. 보내기 전에 주소의 검색어를 지운다
- * (`before-send.ts`).
+ * (`before-send.ts`). 서비스 주소가 운영 주소일 때만 그린다.
  */
 export function UmamiAnalytics({
+  appOrigin,
   websiteId = UMAMI_WEBSITE_ID,
 }: {
+  appOrigin: string;
   websiteId?: string | null;
 }) {
-  if (!websiteId) return null;
+  if (!websiteId || new URL(appOrigin).hostname !== UMAMI_DOMAINS) return null;
   return (
-    <>
-      {/* HTML에 그대로 실려 먼저 실행된다. 트래커는 화면이 뜬 뒤(afterInteractive)에 불러온다. */}
-      <script
-        id="umami-before-send"
-        dangerouslySetInnerHTML={{ __html: BEFORE_SEND_SCRIPT }}
-      />
-      <Script
-        id="umami"
-        src={UMAMI_SRC}
-        strategy="afterInteractive"
-        data-website-id={websiteId}
-        data-domains={UMAMI_DOMAINS}
-        data-before-send={BEFORE_SEND_NAME}
-      />
-    </>
+    <script
+      id="umami-loader"
+      dangerouslySetInnerHTML={{ __html: loaderScript(websiteId) }}
+    />
   );
 }

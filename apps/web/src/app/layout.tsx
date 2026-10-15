@@ -47,7 +47,7 @@ export default async function RootLayout({
             {children}
           </AppShell>
         </AppProviders>
-        <UmamiAnalytics />
+        <UmamiAnalytics appOrigin={env.APP_ORIGIN} />
       </body>
     </html>
   );
