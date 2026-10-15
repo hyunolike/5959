@@ -4,7 +4,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { CircleNotch } from "@phosphor-icons/react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 
-import { COMMENT_TONE_LABELS, type CommentTone } from "@/entities/post";
+import {
+  COMMENT_TONE_EXAMPLES,
+  COMMENT_TONE_LABELS,
+  type CommentTone,
+} from "@/entities/post";
 import { cn, countGraphemes } from "@/shared/lib";
 import { Button, Chip, Label, Textarea } from "@/shared/ui";
 
@@ -31,22 +35,30 @@ export interface PostFormError {
  * 본문 글자 수는 사람이 보는 글자(grapheme)로 세고(research R8), 말투는 버튼 4개 중
  * 하나를 고른다. 검증 규칙은 둘 다 `writePostSchema`다(API도 작성과 수정에 같은 규칙).
  * `onSubmit`이 실패를 돌려주면 그 자리에 보여 주고, `locked`면 버튼을 잠근다(성공 뒤 이동 중).
+ * `starters`를 넘기면 입력란이 비어 있는 동안 첫 문장 실마리를 보인다(016 FR-004). 쓰기만 넘긴다.
+ * `submitEvent`는 방문 분석이 세는 올리기 버튼의 이름이다(016 research R9).
  */
 export function PostForm({
   defaultValues,
   submitLabel,
   locked = false,
+  starters,
+  submitEvent,
   onSubmit,
 }: {
   defaultValues?: WritePostFormValues;
   submitLabel: string;
   locked?: boolean;
+  starters?: readonly string[];
+  submitEvent?: string;
   onSubmit: (values: WritePostFormValues) => Promise<PostFormError | void>;
 }) {
   const {
     register,
     handleSubmit,
     setError,
+    setValue,
+    setFocus,
     control,
     formState: { errors, isSubmitting },
   } = useForm<WritePostFormInput, unknown, WritePostFormValues>({
@@ -56,6 +68,8 @@ export function PostForm({
 
   const content = useWatch({ control, name: "content" }) ?? "";
   const length = countGraphemes(content.trim());
+  const commentTone = useWatch({ control, name: "commentTone" });
+  const showStarters = !!starters?.length && content.trim() === "";
   const overLimit = length > POST_CONTENT_MAX_LENGTH;
 
   const submit = handleSubmit(async (values) => {
@@ -72,8 +86,7 @@ export function PostForm({
           고민
         </Label>
         <p id="content-hint" className="text-body-sm text-fg-subtle leading-6">
-          형식 없이 편하게 적어 주세요. 닉네임, 직군, 경력과 함께 회원에게만
-          보여요.
+          형식 없이 편하게 적어 주세요.
         </p>
         <Textarea
           id="content"
@@ -108,6 +121,31 @@ export function PostForm({
             {length}/{POST_CONTENT_MAX_LENGTH}
           </p>
         </div>
+        {showStarters ? (
+          // 누르면 그 문장으로 시작하고 바로 이어 쓰게 초점을 입력란으로 옮긴다(016 US1-AC4).
+          <div
+            role="group"
+            aria-label="쓰기 실마리"
+            className="flex flex-wrap gap-2 pt-1"
+          >
+            {starters.map((starter) => (
+              <Button
+                key={starter}
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="rounded-full font-medium"
+                data-umami-event="write-starter"
+                onClick={() => {
+                  setValue("content", starter, { shouldDirty: true });
+                  setFocus("content");
+                }}
+              >
+                {starter.trim()}
+              </Button>
+            ))}
+          </div>
+        ) : null}
         {/* 카운터는 입력마다 읽히지 않게 두고, 넘었을 때만 한 번 알린다. */}
         <div role="status" className="sr-only">
           {overLimit ? `${POST_CONTENT_MAX_LENGTH}자를 넘었어요.` : null}
@@ -146,6 +184,12 @@ export function PostForm({
             </div>
           )}
         />
+        {/* 고른 말투로 어떤 댓글을 받는지 쓰기 전에 짐작하게 한다(016 US1-AC6). */}
+        <p aria-live="polite" className="text-body-sm text-fg-muted break-keep">
+          {commentTone
+            ? `이런 댓글이 달려요: “${COMMENT_TONE_EXAMPLES[commentTone]}”`
+            : null}
+        </p>
         {errors.commentTone && (
           <p role="alert" className="text-body-sm text-danger">
             {errors.commentTone.message}
@@ -165,6 +209,7 @@ export function PostForm({
         size="lg"
         disabled={isSubmitting || locked}
         aria-busy={isSubmitting || locked}
+        data-umami-event={submitEvent}
       >
         {isSubmitting || locked ? (
           <CircleNotch
