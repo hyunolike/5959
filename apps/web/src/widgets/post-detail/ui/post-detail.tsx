@@ -2,7 +2,8 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { authorMetaLabel } from "@/entities/member";
 import { emotionLabel, MonsterDisplay, MonsterStage } from "@/entities/monster";
@@ -28,9 +29,11 @@ import {
   Spinner,
 } from "@/shared/ui";
 
+import { FirstPostGuide } from "./first-post-guide";
 import { PostComments } from "./post-comments";
-import { SafetyNotice } from "./safety-notice";
+import { needsSafetyNotice, SafetyNotice } from "./safety-notice";
 import { SimilarPosts } from "./similar-posts";
+import { WriteYourOwn } from "./write-your-own";
 
 /** 글을 보여 주지 못할 때의 안내. 오구와 함께 돌아갈 곳을 준다. */
 function Unavailable({ message }: { message: string }) {
@@ -69,8 +72,23 @@ function isNotFound(error: unknown): boolean {
  * 생길 때까지 다시 불러와 새로고침 없이 바꿔 그린다(FR-015, US1-AC3).
  * 공감과 댓글은 응답 전에 HP를 줄여 보여 주고 몬스터 자리가 맞는 반응을 한다(US3-AC10).
  * 내 글이면 고치기 화면으로 가는 링크와 삭제 버튼을 둔다(US4-AC1, AC2).
+ * `firstPost`는 쓰기 화면이 넘긴 첫 글 표시다(016 US3). 받는 즉시 주소에서 지운다.
  */
-export function PostDetail({ postId }: { postId: number }) {
+export function PostDetail({
+  postId,
+  firstPost = false,
+}: {
+  postId: number;
+  firstPost?: boolean;
+}) {
+  const router = useRouter();
+  // 처음 받은 값을 붙잡는다. 주소에서 지우면 페이지가 firstPost 없이 다시 그려지기 때문이다.
+  const [openedAsFirstPost] = useState(firstPost);
+  // 새로 고치면 다시 보이지 않게 첫 글 표시를 주소에서 바로 지운다(016 US3-AC4).
+  useEffect(() => {
+    if (firstPost) router.replace(`/post/${postId}`, { scroll: false });
+  }, [firstPost, postId, router]);
+
   const { data, error, isPending } = usePostDetailQuery(postId);
 
   if (isPending) {
@@ -101,14 +119,27 @@ export function PostDetail({ postId }: { postId: number }) {
     );
   }
 
-  return <PostDetailContent detail={data} />;
+  return <PostDetailContent detail={data} firstPost={openedAsFirstPost} />;
 }
 
-function PostDetailContent({ detail }: { detail: PostDetailData }) {
+function PostDetailContent({
+  detail,
+  firstPost,
+}: {
+  detail: PostDetailData;
+  firstPost: boolean;
+}) {
   const { author, monster } = detail;
   const queryClient = useQueryClient();
   // 몬스터 없이 열린 화면에서만, 몬스터가 생겼을 때 화면 낭독기에 알린다.
   const [openedWithoutMonster] = useState(!monster);
+  const [guideClosed, setGuideClosed] = useState(false);
+  // 도움 안내가 보이는 글에는 첫 글 안내를 두지 않는다(016 FR-017, 헌법 IV). 판정은 나중에 생길 수도 있다.
+  const showFirstPostGuide =
+    firstPost &&
+    detail.mine &&
+    !needsSafetyNotice(detail.safety) &&
+    !guideClosed;
 
   return (
     <div className="flex w-full max-w-xl flex-col gap-4">
@@ -161,7 +192,15 @@ function PostDetailContent({ detail }: { detail: PostDetailData }) {
               </p>
             )}
             {/* "분석 중"은 몬스터가 오면 통째로 사라져 읽히지 않는다. 늘 있는 자리에 글자를 채운다. */}
-            <p role="status" className="sr-only">
+            {/* 내 글이면 눈으로도 보이게 한다(016 FR-016). 남의 글은 지금처럼 화면 낭독기에만 알린다. */}
+            <p
+              role="status"
+              className={
+                detail.mine
+                  ? "text-body-sm text-fg mt-2 text-center font-bold empty:hidden"
+                  : "sr-only"
+              }
+            >
               {openedWithoutMonster && monster
                 ? `${emotionLabel(monster.emotion)} 몬스터가 나타났어요.`
                 : null}
@@ -180,6 +219,10 @@ function PostDetailContent({ detail }: { detail: PostDetailData }) {
             <span className="shrink-0">댓글 {detail.commentCount}</span>
           </div>
         </MonsterStage>
+
+        {showFirstPostGuide ? (
+          <FirstPostGuide onClose={() => setGuideClosed(true)} />
+        ) : null}
 
         <div className="flex flex-col gap-3">
           <header className="flex items-start justify-between gap-2">
@@ -242,6 +285,9 @@ function PostDetailContent({ detail }: { detail: PostDetailData }) {
           <PostComments postId={detail.postId} />
         </div>
       </article>
+
+      {/* 읽다가 나도 털어놓고 싶어지는 순간을 쓰기로 잇는다(016 US4). AI 친구의 글에도 둔다. */}
+      {detail.mine ? null : <WriteYourOwn />}
 
       {/* 추천은 이 글의 일부가 아니라 article 밖에 둔다(007). */}
       <SimilarPosts postId={detail.postId} />

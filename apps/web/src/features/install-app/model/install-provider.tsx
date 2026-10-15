@@ -227,6 +227,11 @@ export function InstallAppProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/** 공급자 밖에서도 부를 수 있다. 없으면 `null`이라 설치를 권하지 않는다(016 FR-018). */
+export function useOptionalInstallApp(): InstallState | null {
+  return useContext(InstallContext);
+}
+
 export function useInstallApp() {
   const value = useContext(InstallContext);
   if (!value) throw new Error("InstallAppProvider is required");

@@ -3,8 +3,22 @@ import { act, cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+const { replaceMock } = vi.hoisted(() => ({ replaceMock: vi.fn() }));
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), replace: replaceMock }),
+}));
+
+// 설치를 권할 수 있는지는 앱 전체의 공급자가 정한다. 테스트에서는 값으로 고정한다.
+const install = vi.hoisted(() => ({
+  state: null as null | {
+    environment: object | null;
+    installed: boolean;
+    canPrompt: boolean;
+    requestInstall: () => Promise<void>;
+  },
+}));
+vi.mock("@/features/install-app", () => ({
+  useOptionalInstallApp: () => install.state,
 }));
 
 import { QUERY_KEYS } from "@/shared/config";
@@ -41,20 +55,23 @@ function detail(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function renderDetail(response: Response) {
+function renderDetail(response: Response, { firstPost = false } = {}) {
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response));
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   render(
     <QueryClientProvider client={queryClient}>
-      <PostDetail postId={7} />
+      <PostDetail postId={7} firstPost={firstPost} />
     </QueryClientProvider>,
   );
+  return queryClient;
 }
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  replaceMock.mockReset();
+  install.state = null;
 });
 
 describe("PostDetail", () => {
@@ -607,5 +624,180 @@ describe("PostDetail 공감과 댓글", () => {
     const stage = await findStage();
     expect(stage).not.toHaveAttribute("data-emotion");
     expect(within(stage).getByText("분석 중")).toBeInTheDocument();
+  });
+});
+
+describe("PostDetail 첫 글 안내(016 US3)", () => {
+  const ok = (overrides: Record<string, unknown> = {}) =>
+    jsonResponse({ success: true, data: detail(overrides), error: null });
+  const guide = () =>
+    screen.queryByRole("region", { name: "첫 고민을 남겼어요" });
+
+  it("US3-AC1 첫 글이고 내 글이면 HP, AI 친구, 알림을 말하는 안내가 보인다", async () => {
+    renderDetail(ok(), { firstPost: true });
+
+    const region = await screen.findByRole("region", {
+      name: "첫 고민을 남겼어요",
+    });
+    expect(region).toHaveTextContent("HP 1");
+    expect(region).toHaveTextContent("HP 3");
+    expect(
+      within(region).getByRole("link", { name: "AI 친구" }),
+    ).toHaveAttribute("href", "/ai-friends");
+    expect(region).toHaveTextContent("알림");
+  });
+
+  it("US3-AC4 처음 그릴 때 주소의 첫 글 표시를 지우고, 닫으면 안내가 사라진다", async () => {
+    const user = userEvent.setup({ delay: null });
+    renderDetail(ok(), { firstPost: true });
+
+    await screen.findByRole("region", { name: "첫 고민을 남겼어요" });
+    expect(replaceMock).toHaveBeenCalledWith("/post/7", { scroll: false });
+
+    await user.click(screen.getByRole("button", { name: "첫 글 안내 닫기" }));
+    expect(guide()).not.toBeInTheDocument();
+  });
+
+  it("US3-AC4 주소에서 표시를 지워 다시 그려져도(firstPost=false) 안내가 남는다", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(ok()));
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const view = (firstPost: boolean) => (
+      <QueryClientProvider client={queryClient}>
+        <PostDetail postId={7} firstPost={firstPost} />
+      </QueryClientProvider>
+    );
+    const { rerender } = render(view(true));
+    await screen.findByRole("region", { name: "첫 고민을 남겼어요" });
+
+    // router.replace로 쿼리를 지우면 서버 컴포넌트가 firstPost 없이 다시 그린다.
+    rerender(view(false));
+
+    expect(
+      screen.getByRole("region", { name: "첫 고민을 남겼어요" }),
+    ).toBeInTheDocument();
+  });
+
+  it("US3-AC3 첫 글 표시가 없으면 안내가 없다", async () => {
+    renderDetail(ok());
+    await screen.findByText("오구");
+    expect(guide()).not.toBeInTheDocument();
+    expect(replaceMock).not.toHaveBeenCalled();
+  });
+
+  it("US3-AC5 도움 안내가 보이는 글에는 첫 글 안내가 없다", async () => {
+    renderDetail(
+      ok({
+        safety: { level: "CONCERN", hidden: false, reviewRequested: false },
+      }),
+      { firstPost: true },
+    );
+    await screen.findByRole("region", { name: "도움 안내" });
+    expect(guide()).not.toBeInTheDocument();
+  });
+
+  it("016 남의 글에 첫 글 표시가 붙어도 안내가 없다", async () => {
+    renderDetail(ok({ mine: false }), { firstPost: true });
+    await screen.findByText("오구");
+    expect(guide()).not.toBeInTheDocument();
+  });
+
+  it("US3-AC2 몬스터 없이 연 내 글에 몬스터가 오면 나타났다는 글자가 눈에 보인다", async () => {
+    const queryClient = renderDetail(ok(), { firstPost: true });
+    await screen.findByText("분석 중");
+
+    act(() => {
+      queryClient.setQueryData(QUERY_KEYS.postDetail(7), {
+        ...detail(),
+        analysisStatus: "ANALYZED",
+        monster: { emotion: "ANXIETY", hp: 20, maxHp: 20, status: "ALIVE" },
+      });
+    });
+
+    const status = await screen.findByText("불안 몬스터가 나타났어요.");
+    expect(status).not.toHaveClass("sr-only");
+  });
+
+  it("FR-016 남의 글은 몬스터 등장 문장이 화면 낭독기에만 있다", async () => {
+    const queryClient = renderDetail(ok({ mine: false }));
+    await screen.findByText("분석 중");
+
+    act(() => {
+      queryClient.setQueryData(QUERY_KEYS.postDetail(7), {
+        ...detail({ mine: false }),
+        analysisStatus: "ANALYZED",
+        monster: { emotion: "ANXIETY", hp: 20, maxHp: 20, status: "ALIVE" },
+      });
+    });
+
+    const status = await screen.findByText("불안 몬스터가 나타났어요.");
+    expect(status).toHaveClass("sr-only");
+  });
+
+  it("US3-AC6 설치를 권할 수 있으면 첫 글 안내에 설치 길이 있고, 이미 설치했으면 없다", async () => {
+    install.state = {
+      environment: {},
+      installed: false,
+      canPrompt: true,
+      requestInstall: vi.fn().mockResolvedValue(undefined),
+    };
+    renderDetail(ok(), { firstPost: true });
+    const region = await screen.findByRole("region", {
+      name: "첫 고민을 남겼어요",
+    });
+    expect(
+      within(region).getByRole("button", { name: "홈 화면에 추가" }),
+    ).toBeInTheDocument();
+
+    cleanup();
+    install.state = { ...install.state, installed: true };
+    renderDetail(ok(), { firstPost: true });
+    const again = await screen.findByRole("region", {
+      name: "첫 고민을 남겼어요",
+    });
+    expect(again).not.toHaveTextContent("설치");
+  });
+});
+
+describe("PostDetail 나도 털어놓기(016 US4)", () => {
+  const ok = (overrides: Record<string, unknown> = {}) =>
+    jsonResponse({ success: true, data: detail(overrides), error: null });
+  const writeOwn = () => screen.queryByRole("link", { name: "나도 털어놓기" });
+
+  it("US4-AC1 남의 글에는 글 다음, 비슷한 고민 앞에 쓰기로 가는 길이 있다", async () => {
+    renderDetail(ok({ mine: false }));
+    await screen.findByText("오구");
+
+    const link = writeOwn();
+    expect(link).toHaveAttribute("href", "/write");
+    const article = screen.getByRole("article", { name: "고민 글" });
+    expect(
+      article.compareDocumentPosition(link!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(article).not.toContainElement(link);
+  });
+
+  it("US4-AC2 내 글에는 없다", async () => {
+    renderDetail(ok({ mine: true }));
+    await screen.findByText("오구");
+    expect(writeOwn()).not.toBeInTheDocument();
+  });
+
+  it("US4-AC3 AI 친구가 쓴 글에도 있다", async () => {
+    renderDetail(
+      ok({
+        mine: false,
+        author: {
+          id: 3,
+          nickname: "다정한 오구",
+          jobRole: null,
+          careerYear: null,
+          ai: true,
+        },
+      }),
+    );
+    await screen.findByText("다정한 오구");
+    expect(writeOwn()).toHaveAttribute("href", "/write");
   });
 });
