@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="robots" content="noindex" />
+    <meta name="theme-color" content="#ffffff" />
+    <title>오구오구</title>
+    <!--
+      웹이 꺼져 있다가 켜지는 동안 서비스 워커(sw.js)가 대신 보여 주는 화면이다.
+      서버 없이 떠야 하므로 글꼴, 스타일, 스크립트를 모두 이 파일 안에 둔다.
+    -->
+    <style>
+      :root {
+        --ink-900: #17171c;
+        --ink-600: #6b6b76;
+        --ink-200: #ececf0;
+        --game-yellow: #ffd60a;
+        color-scheme: light;
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; margin: 0; }
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 16px;
+        background: #ffffff;
+        color: var(--ink-900);
+        font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+          "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+        text-align: center;
+      }
+      main { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+      .logo { width: 96px; height: 96px; animation: hop 900ms ease-in-out infinite; }
+      .shadow {
+        width: 56px; height: 8px; margin-top: -8px; border-radius: 50%;
+        background: var(--ink-200);
+        animation: squash 900ms ease-in-out infinite;
+      }
+      h1 { margin: 8px 0 0; font-size: 18px; font-weight: 700; }
+      p { margin: 0; font-size: 14px; color: var(--ink-600); }
+      button {
+        margin-top: 8px; padding: 12px 20px; border: 0; border-radius: 12px;
+        background: var(--game-yellow); color: var(--ink-900);
+        font: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
+      }
+      [hidden] { display: none !important; }
+      @keyframes hop { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+      @keyframes squash { 0%, 100% { transform: scaleX(1); } 50% { transform: scaleX(0.7); opacity: 0.6; } }
+      @media (prefers-reduced-motion: reduce) {
+        .logo, .shadow { animation: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img class="logo" src="/pwa/ogu-logo-v2-192.png" alt="" width="96" height="96" />
+      <div class="shadow" aria-hidden="true"></div>
+      <div role="status" aria-live="polite">
+        <div id="waiting">
+          <h1>오구가 일어나는 중이에요</h1>
+          <p>잠깐 쉬고 있던 오구를 깨우고 있어요. 몇 초면 돼요.</p>
+        </div>
+        <div id="failed" hidden>
+          <h1>연결이 잘 안 돼요</h1>
+          <p>인터넷 연결을 확인하고 다시 시도해 주세요.</p>
+        </div>
+      </div>
+      <button id="retry" type="button" hidden>다시 시도</button>
+    </main>
+    <script>
+      (function () {
+        var retry = document.getElementById("retry");
+        retry.addEventListener("click", function () { location.reload(); });
+
+        function fail() {
+          document.getElementById("waiting").hidden = true;
+          document.getElementById("failed").hidden = false;
+          retry.hidden = false;
+        }
+
+        // 주소로 이 파일을 직접 연 경우에는 기다릴 응답이 없다.
+        if (location.pathname === "/cold-start.html") return;
+
+        // 서비스 워커가 보는 요청 주소에는 # 뒷부분이 없다.
+        var key = location.href.split("#")[0];
+        fetch("/__ogu/cold-start-wait?u=" + encodeURIComponent(key), { cache: "no-store" })
+          .then(function (res) { return res.json(); })
+          .then(function (body) {
+            if (body.state === "failed") return fail();
+            // ready면 서비스 워커가 맡아 둔 응답을 내주고, missing이면 새로 요청한다.
+            // replace(같은 주소)는 # 이 있으면 스크롤만 하고 다시 불러오지 않아서 reload를 쓴다.
+            location.reload();
+          })
+          .catch(fail);
+      })();
+    </script>
+  </body>
+</html>
