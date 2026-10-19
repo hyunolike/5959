@@ -1,8 +1,9 @@
 name: Release
 
+# 예전 Oracle VM 배포 경로다. 운영은 GCP로 옮겨 수동 배포하므로(infra/gcp/README.md)
+# main에 push될 때 자동으로 돌지 않고, 필요할 때만 손으로 실행한다.
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
