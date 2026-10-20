@@ -5,6 +5,7 @@ import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 import "@/core/styles/globals.css";
 import { UmamiAnalytics } from "@/core/analytics";
 import { AppProviders } from "@/core/providers/app-providers";
+import { ServiceWorkerRegistration } from "@/core/pwa";
 import { env } from "@/shared/config";
 import { ONBOARDED_COOKIE, REFRESH_TOKEN_COOKIE } from "@/shared/server";
 import { AppShell } from "@/widgets/app-shell";
@@ -48,6 +49,7 @@ export default async function RootLayout({
           </AppShell>
         </AppProviders>
         <UmamiAnalytics appOrigin={env.APP_ORIGIN} />
+        <ServiceWorkerRegistration appOrigin={env.APP_ORIGIN} />
       </body>
     </html>
   );
