@@ -14,6 +14,8 @@ const SOURCE = readFileSync(
 );
 const ORIGIN = "https://new.5959.site";
 const LOADING_HTML = "<html>loading</html>";
+const LOGO_PATH = "/pwa/ogu-logo-v2-192.png";
+const LOGO_BYTES = "logo-png";
 
 type Listener = (event: FakeEvent) => void;
 
@@ -35,7 +37,10 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 
-function loadWorker({ oldCaches = [] as string[] } = {}) {
+function loadWorker({
+  oldCaches = [] as string[],
+  cached = ["/cold-start.html", LOGO_PATH],
+} = {}) {
   const listeners: Record<string, Listener> = {};
   const precached: string[] = [];
   const deleted: string[] = [];
@@ -53,8 +58,10 @@ function loadWorker({ oldCaches = [] as string[] } = {}) {
         precached.push(...urls);
       },
     }),
-    match: async (url: string) =>
-      url === "/cold-start.html" ? new Response(LOADING_HTML) : undefined,
+    match: async (url: string) => {
+      if (!cached.includes(url)) return undefined;
+      return new Response(url === LOGO_PATH ? LOGO_BYTES : LOADING_HTML);
+    },
     keys: async () => ["ogu-cold-start-v1", ...oldCaches],
     delete: async (key: string) => {
       deleted.push(key);
@@ -188,6 +195,33 @@ describe("public/sw.js", () => {
       expect(worker.dispatch("fetch", request).responded).toBeUndefined();
     }
     expect(worker.fetch).not.toHaveBeenCalled();
+  });
+
+  it("COLDSTART-AC5 로딩 화면의 로고는 서버가 꺼져 있어도 캐시에서 내준다", async () => {
+    const worker = loadWorker();
+
+    const event = worker.dispatch("fetch", {
+      method: "GET",
+      url: ORIGIN + LOGO_PATH,
+      mode: "no-cors",
+    });
+
+    expect(await (await event.responded!).text()).toBe(LOGO_BYTES);
+    expect(worker.fetch).not.toHaveBeenCalled();
+  });
+
+  it("COLDSTART-AC5 캐시에 로고가 없으면 서버에 요청한다", async () => {
+    const worker = loadWorker({ cached: ["/cold-start.html"] });
+    worker.fetch.mockResolvedValue(new Response("from server"));
+
+    const event = worker.dispatch("fetch", {
+      method: "GET",
+      url: ORIGIN + LOGO_PATH,
+      mode: "no-cors",
+    });
+
+    expect(await (await event.responded!).text()).toBe("from server");
+    expect(worker.fetch).toHaveBeenCalledTimes(1);
   });
 
   it("COLDSTART-AC5 설치할 때 로딩 화면과 로고만 캐시하고, 켜질 때 예전 캐시를 지운다", async () => {

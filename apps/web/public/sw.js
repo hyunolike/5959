@@ -9,7 +9,8 @@
  *    내준다. 서버에는 요청이 한 번만 간다.
  *
  * 페이지 이동(navigate)만 맡는다. `/api/**`, 화면 안의 데이터 요청, 알림 스트림, 정적 파일은
- * 손대지 않고 브라우저가 평소처럼 처리한다. 캐시하는 것은 로딩 화면과 로고뿐이다.
+ * 손대지 않고 브라우저가 평소처럼 처리한다. 캐시하는 것은 로딩 화면과 로고뿐이고, 로고 요청은
+ * 서버가 꺼져 있어도 보이도록 캐시에서 내준다.
  */
 
 const CACHE = "ogu-cold-start-v1";
@@ -56,6 +57,14 @@ self.addEventListener("fetch", (event) => {
 
   if (url.pathname === WAIT_PATH) {
     event.respondWith(waitFor(url.searchParams.get("u")));
+    return;
+  }
+
+  // 로딩 화면이 뜰 때는 서버가 꺼져 있으니 로고도 캐시에서 내준다.
+  if (url.pathname !== LOADING_PAGE && PRECACHE.includes(url.pathname)) {
+    event.respondWith(
+      caches.match(url.pathname).then((hit) => hit || fetch(request)),
+    );
     return;
   }
 
