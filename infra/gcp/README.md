@@ -36,6 +36,8 @@ us-central1, 월 730시간 기준 e2-small 약 $12.23, 외부 IPv4 약 $3.65이�
 
 이 구성은 소규모 포트폴리오용이다. 단일 VM이므로 VM 장애 동안 API와 DB는 함께 중단된다.
 API 1GB(heap 512MB), DB 384MB, Redis 128MB, Caddy 96MB와 swap 2GB로 시작한다.
+swap은 마지막 안전망으로만 쓰도록 `vm.swappiness=10`을 둔다. 기본값 60에서는 쉬고 있는 JVM 힙이
+swap으로 내려가, 오랜만의 첫 요청이 디스크에서 메모리를 다시 읽느라 수십 초 멈추고 웹의 15초 타임아웃에 걸렸다.
 실제 핵심 흐름과 배치에서 OOM/지연을 확인하고 부족하면 machine_type을 e2-medium으로 바꾼다.
 사양 변경 시 Terraform이 VM을 정지 후 재시작하므로 잠시 서비스가 중단된다.
 VM에는 빌드 도구나 Gradle/Node 빌드를 올리지 않는다.
