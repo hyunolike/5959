@@ -71,19 +71,10 @@ class RaidQueryService(
         RaidState(
             boss = boss?.toView(),
             myDamage = myDamage,
-            nextBossAt = boss?.endedAt?.let(::nextBossAt),
+            nextBossAt = boss?.endedAt?.let(properties::nextBossAt),
             available = available,
             epoch = boss?.epoch ?: 0,
         )
-
-    /** 보스가 끝난 다음 날 0시(설정한 시간대). 23시 59분에 끝나도 다음 날 0시다(US5-AC3). */
-    private fun nextBossAt(endedAt: Instant): Instant =
-        endedAt
-            .atZone(properties.zone)
-            .toLocalDate()
-            .plusDays(1)
-            .atStartOfDay(properties.zone)
-            .toInstant()
 }
 
 fun RaidBoss.toView() =

@@ -30,9 +30,9 @@ class RaidLoader(
 
     /**
      * Redis의 보스가 기록의 가장 최근 보스와 다르면 올린다. 새 보스가 나왔는데 Redis에 지난 보스가 남아 있을 때를 맞춘다.
+     * [latestId]는 부르는 쪽이 이미 읽은 기록의 가장 최근 보스다(기록을 다시 읽지 않는다).
      */
-    fun syncWithRecord() {
-        val latestId = bosses.findLatest()?.id ?: return
+    fun syncWithRecord(latestId: Long) {
         if (redis.read()?.id != latestId) ensureLoaded()
     }
 

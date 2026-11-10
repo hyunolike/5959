@@ -10,6 +10,7 @@ import com.ogu.raid.domain.RaidContributionRepository
 import com.ogu.raid.domain.RaidRedis
 import com.ogu.shared.error.BusinessException
 import com.ogu.shared.error.ErrorCode
+import com.ogu.support.QueryCounter
 import com.ogu.support.RaidFixture
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -166,6 +167,20 @@ class RaidDurabilityTests {
         assertThat(raid.boss(bossId)).containsEntry("hp", 0).containsEntry("participant_count", 2)
         assertThat(raid.recordedDamageSum(bossId)).isEqualTo(2)
         assertThat(raid.boss(bossId)["ended_at"]).isNotNull()
+    }
+
+    @Test
+    fun `바뀐 회원이 없으면 옮기기는 DB에 쿼리를 내지 않는다`() {
+        val bossId = raid.freshBoss(maxHp = 30)
+        val (member) = raid.memberIds(1)
+        attackService.attack(member, bossId)
+        flusher.flush()
+        assertThat(raid.recordedDamage(bossId, member)).isEqualTo(1)
+
+        // 018 T024: 살아 있는 보스라도 바뀐 회원이 없으면 매초 UPDATE를 내지 않는다
+        val (_, queries) = QueryCounter.count { flusher.flush() }
+
+        assertThat(queries).isZero()
     }
 
     private fun wipeRedis(bossId: Long) {
