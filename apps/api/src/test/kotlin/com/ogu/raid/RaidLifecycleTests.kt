@@ -6,10 +6,14 @@ import com.ogu.post.PostApi
 import com.ogu.post.PostModerationApi
 import com.ogu.raid.application.RaidAttackService
 import com.ogu.raid.application.RaidBossLifecycle
+import com.ogu.raid.application.RaidLifecycleScheduler
+import com.ogu.raid.application.RaidProperties
 import com.ogu.raid.application.RaidQueryService
 import com.ogu.raid.domain.RaidBossStatus
 import com.ogu.shared.error.BusinessException
 import com.ogu.shared.error.ErrorCode
+import com.ogu.shared.schedule.DueTimers
+import com.ogu.shared.schedule.ManualScheduler
 import com.ogu.support.MemberFixture
 import com.ogu.support.MutableClock
 import com.ogu.support.RaidFixture
@@ -76,6 +80,9 @@ class RaidLifecycleTests {
 
     @Autowired
     lateinit var clock: MutableClock
+
+    @Autowired
+    lateinit var properties: RaidProperties
 
     private lateinit var raid: RaidFixture
 
@@ -176,6 +183,30 @@ class RaidLifecycleTests {
         lifecycle.tick()
         // 참여자가 있었어도 물러난 보스 다음은 가장 작은 HP다
         assertThat(aliveBoss()).containsEntry("max_hp", 300)
+    }
+
+    @Test
+    fun `US4-AC8 보스가 물러날 시각에 다음 보스로 바뀐다`() {
+        val bossId = placeBoss("ALIVE", participants = 0)
+        // 이 컨텍스트는 주기 작업을 꺼 두었으므로 시계를 따라 깨우는 타이머를 직접 놓는다
+        val scheduler = ManualScheduler(clock)
+        val timers = DueTimers(clock, scheduler) {}
+        RaidLifecycleScheduler(lifecycle, properties, clock, timers)
+        timers.rearmAll()
+        // 018 research R3: 기다리는 동안은 걸린 시각 하나만 있고 DB를 읽지 않는다
+        assertThat(scheduler.pending).isEqualTo(1)
+
+        scheduler.advance(Duration.ofDays(7).minusSeconds(1))
+        assertThat(raid.boss(bossId)).containsEntry("status", "ALIVE")
+
+        scheduler.advance(Duration.ofSeconds(1))
+        assertThat(raid.boss(bossId)).containsEntry("status", "RETREATED")
+        assertThat(aliveCount()).isZero()
+
+        scheduler.advance(Duration.between(clock.instant(), nextMidnight()))
+        assertThat(aliveBoss()["id"]).isNotEqualTo(bossId)
+        // 다음 보스가 물러날 시각이 다시 걸린다
+        assertThat(scheduler.pending).isEqualTo(1)
     }
 
     @Test

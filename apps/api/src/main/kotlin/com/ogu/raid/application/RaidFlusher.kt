@@ -50,8 +50,12 @@ class RaidFlusher(
         }
     }
 
+    /**
+     * 바뀐 회원이 없으면 DB를 열지 않는다(018 research R5). HP와 참여자 수는 공격으로만 바뀌고 공격한 회원은 바뀐 회원에
+     * 들어가므로 적을 것이 없다. 끝난 보스는 마무리([settle])를 확인하기 전까지 한 번 더 적는다.
+     */
     private fun store(batch: RaidFlush) {
-        if (batch.damages.isEmpty() && batch.bossId == settledBossId) return
+        if (batch.damages.isEmpty() && (batch.status == RaidBossStatus.ALIVE || batch.bossId == settledBossId)) return
         try {
             transaction.executeWithoutResult {
                 contributions.upsertAll(batch.bossId, batch.damages, clock.instant().truncatedTo(ChronoUnit.MICROS))

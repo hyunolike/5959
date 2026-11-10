@@ -319,6 +319,8 @@ ogu:
     retreat-after: 7d
     flush-interval: 1s
     broadcast-interval: 250ms
+    # 018부터 보스 교체는 정해진 시각(물러날 때, 다음 날 0시)에만 깬다(research R3). 이 값은 Redis를 쓸 수 없어
+    # 건너뛴 뒤 다시 볼 간격으로만 쓴다.
     lifecycle-interval: 1m
     zone: Asia/Seoul
   # 004 실시간 알림(research R2~R5, R10)
