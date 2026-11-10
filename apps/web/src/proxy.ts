@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-import { readSessionCookies, resolveRouteGuardAction } from "@/shared/server";
+import { env } from "@/shared/config";
+import {
+  readSessionCookies,
+  resolveMaintenanceAction,
+  resolveRouteGuardAction,
+} from "@/shared/server";
 
 /**
  * 페이지 라우트 가드. 판단 로직은 순수 함수 `shared/server/route-guard.ts`에
@@ -12,6 +17,15 @@ import { readSessionCookies, resolveRouteGuardAction } from "@/shared/server";
  * 자기만의 origin-guard가 있고, 정적 자산에 가드를 걸면 CSS/JS가 막힐 수 있다.
  */
 export function proxy(request: NextRequest): NextResponse {
+  // 점검 중에는 로그인 여부와 상관없이 첫 화면의 이사 안내로 보낸다. 로그인한 회원을 `/home`으로
+  // 보내는 가드보다 먼저 판단해야 회원도 안내를 본다.
+  if (env.OGU_MAINTENANCE_MODE) {
+    const maintenance = resolveMaintenanceAction(request.nextUrl.pathname);
+    return maintenance === null
+      ? NextResponse.next()
+      : NextResponse.redirect(new URL(maintenance.to, request.url));
+  }
+
   const { refreshToken, onboarded } = readSessionCookies(request);
 
   const action = resolveRouteGuardAction(

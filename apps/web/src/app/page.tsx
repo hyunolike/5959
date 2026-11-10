@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { env } from "@/shared/config";
 import { Landing } from "@/widgets/landing";
 
 import { SERVICE_DESCRIPTION } from "./root-metadata";
@@ -17,6 +18,17 @@ export const metadata: Metadata = {
   openGraph: { url: "/" },
 };
 
-export default function LandingPage() {
-  return <Landing />;
+/**
+ * 점검 중이면 첫 화면에 이사 안내를 띄운다. 다른 화면은 `proxy.ts`가 이리로 보내고, 공유받은 글에서
+ * 왔으면 `?from=post`를 붙인다.
+ */
+export default async function LandingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const maintenance = env.OGU_MAINTENANCE_MODE
+    ? { fromPost: (await searchParams).from === "post" }
+    : undefined;
+  return <Landing maintenance={maintenance} />;
 }

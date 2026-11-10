@@ -54,4 +54,36 @@ describe("Landing", () => {
       steps.getByRole("img", { name: /고민을 쓰면 몬스터가 나타나고/ }),
     ).toBeInTheDocument();
   });
+
+  describe("점검 중", () => {
+    it("이사 안내를 띄우고 로그인, 가입, 둘러보기로 가는 길을 숨긴다", () => {
+      render(<Landing maintenance={{ fromPost: false }} />);
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "오구가 새 집으로 이사하고 있어요",
+      );
+      for (const name of [
+        "시작하기",
+        "먼저 둘러보기",
+        "로그인하고 시작하기",
+        "회원가입",
+      ]) {
+        expect(screen.queryByRole("link", { name })).not.toBeInTheDocument();
+      }
+      expect(
+        screen.getByRole("heading", { level: 1, name: /오구오구/ }),
+      ).toBeInTheDocument();
+    });
+
+    it("공유받은 글 링크로 왔으면 같은 링크로 다시 볼 수 있다고 알린다", () => {
+      render(<Landing maintenance={{ fromPost: true }} />);
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "지금 링크 그대로 그 이야기를 다시 볼 수 있어요",
+      );
+    });
+
+    it("점검이 아니면 안내를 띄우지 않는다", () => {
+      render(<Landing />);
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+  });
 });
