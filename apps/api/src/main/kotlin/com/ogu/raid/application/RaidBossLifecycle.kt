@@ -61,7 +61,7 @@ class RaidBossPlanner(
  * - 살아 있는 보스가 나타난 지 [RaidProperties.retreatAfter](7일)가 지났으면 물러나게 한다.
  * - 살아 있는 보스가 없고, 보스가 한 번도 없었거나 마지막 보스가 끝난 날(한국 시간)이 오늘보다 앞이면 새 보스를 만든다.
  *
- * 인스턴스 여럿이 함께 돌아도 살아 있는 보스는 하나다. 부분 유일 인덱스가 둘째 삽입을 막는다. Redis를 쓸 수 없으면
+ * 인스턴스 여럿이 함께 돌아도 살아 있는 보스는 하나다. 부분 유일 인덱스가 둘째 삽입을 막는다. 종료 중이면
  * 이번 차례는 건너뛰고 false를 돌려준다.
  */
 @Component
@@ -75,7 +75,7 @@ class RaidBossLifecycle(
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    /** 차례가 된 일을 한다. 기록은 한 번만 읽는다(018 T019). Redis를 쓸 수 없어 건너뛰었으면 false다. */
+    /** 차례가 된 일을 한다. 기록은 한 번만 읽는다(018 T019). 종료 중이라 건너뛰었으면 false다. */
     fun tick(): Boolean =
         try {
             val now = clock.instant().truncatedTo(ChronoUnit.MICROS)
@@ -90,7 +90,7 @@ class RaidBossLifecycle(
             currentId?.let(loader::syncWithRecord)
             true
         } catch (e: RaidUnavailableException) {
-            log.debug("Redis를 쓸 수 없어 보스의 생애 확인을 건너뜁니다", e)
+            log.debug("종료 중이라 보스의 생애 확인을 건너뜁니다", e)
             false
         }
 
@@ -137,7 +137,7 @@ class RaidBossLifecycle(
  *   안에서만 만들어지므로 이것으로 물러날 시각이 걸린다.
  * - 처치나 물러남([RaidFinisher.finish])은 커밋 뒤에 [bossEnded]로 다시 건다. 처치되면 물러날 시각보다 이른 다음 날
  *   0시가 걸린다.
- * - Redis를 쓸 수 없어 건너뛰었으면 `lifecycle-interval`(1분) 뒤에 다시 본다. 그 사이 매초 DB를 두드리지 않는다.
+ * - 종료 중이라 건너뛰었으면 `lifecycle-interval`(1분) 뒤에 다시 본다. 그 사이 매초 DB를 두드리지 않는다.
  *
  * `ogu.raid.lifecycle-scheduler-enabled=false`면 타이머가 없다. 시계를 움직이는 테스트가 [RaidBossLifecycle.tick]을 직접 부를 때 쓴다.
  */
@@ -151,7 +151,7 @@ class RaidLifecycleScheduler(
 ) : DueJob {
     private val timer = timers.register(this)
 
-    /** Redis를 쓸 수 없어 건너뛴 뒤 다시 볼 시각. 그 전에는 깨지 않는다. */
+    /** 종료 중이라 건너뛴 뒤 다시 볼 시각. 그 전에는 깨지 않는다. */
     @Volatile
     private var retryAt: Instant? = null
 

@@ -10,6 +10,7 @@ import com.ogu.raid.application.RaidLifecycleScheduler
 import com.ogu.raid.application.RaidProperties
 import com.ogu.raid.application.RaidQueryService
 import com.ogu.raid.domain.RaidBossStatus
+import com.ogu.raid.domain.RaidLiveStore
 import com.ogu.shared.error.BusinessException
 import com.ogu.shared.error.ErrorCode
 import com.ogu.shared.schedule.DueTimers
@@ -28,7 +29,6 @@ import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
 import org.springframework.context.annotation.Primary
-import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity
 import org.springframework.test.web.servlet.setup.DefaultMockMvcBuilder
@@ -61,7 +61,7 @@ class RaidLifecycleTests {
     lateinit var jdbcTemplate: JdbcTemplate
 
     @Autowired
-    lateinit var redisTemplate: StringRedisTemplate
+    lateinit var store: RaidLiveStore
 
     @Autowired
     lateinit var lifecycle: RaidBossLifecycle
@@ -88,7 +88,7 @@ class RaidLifecycleTests {
 
     @BeforeEach
     fun setUp() {
-        raid = RaidFixture(jdbcTemplate, redisTemplate)
+        raid = RaidFixture(jdbcTemplate, store)
         // 날짜 경계에 걸리지 않게 한국 시간 낮 12시로 맞춘다
         clock.advance(Duration.between(clock.instant(), nextNoon()))
     }
@@ -97,7 +97,7 @@ class RaidLifecycleTests {
     fun `US5-AC1 보스가 한 번도 없으면 HP 300의 첫 보스가 나타난다`() {
         jdbcTemplate.update("delete from raid_contribution")
         jdbcTemplate.update("delete from raid_boss")
-        redisTemplate.delete("raid:boss")
+        store.clear()
 
         lifecycle.tick()
 
@@ -281,7 +281,7 @@ class RaidLifecycleTests {
                 Timestamp.from(now.truncatedTo(ChronoUnit.MICROS)),
                 endedAt?.let { Timestamp.from(it.truncatedTo(ChronoUnit.MICROS)) },
             )!!
-        redisTemplate.delete("raid:boss")
+        store.clear()
         return bossId
     }
 

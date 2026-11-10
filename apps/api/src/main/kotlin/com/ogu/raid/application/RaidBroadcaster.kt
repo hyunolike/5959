@@ -26,10 +26,10 @@ data class RaidLive(
 
 /**
  * 레이드 상태를 실시간 스트림으로 내보낸다(006 US2, research R6, R7). 주기(250ms)마다 `raid` 주제를 듣는 연결이 있으면
- * Redis에서 보스를 한 번 읽고, 지난번에 보낸 것과 다르거나 새 연결이 붙었을 때만 보낸다. 공격이 아무리 몰려도 한 화면이
+ * 메모리에서 보스를 한 번 읽고, 지난번에 보낸 것과 다르거나 새 연결이 붙었을 때만 보낸다. 공격이 아무리 몰려도 한 화면이
  * 받는 것은 초당 네 번이고, 마지막에는 정확한 값이 간다. 듣는 연결이 없으면 읽지 않는다.
  *
- * Redis를 읽지 못하면 마지막 값(없으면 기록)에 `available = false`를 실어 보낸다.
+ * 종료 중이라 읽지 못하면 마지막 값(없으면 기록)에 `available = false`를 실어 보낸다.
  */
 @Component
 class RaidBroadcaster(
@@ -95,7 +95,7 @@ class RaidBroadcaster(
         try {
             queryService.current()?.toLive(available = true)
         } catch (e: RaidUnavailableException) {
-            log.debug("Redis를 쓸 수 없어 마지막 값으로 내보냅니다", e)
+            log.debug("종료 중이라 마지막 값으로 내보냅니다", e)
             lastSent?.copy(available = false) ?: bosses.findLatest()?.toLive(available = false)
         }
 

@@ -1,6 +1,7 @@
 package com.ogu.raid
 
 import com.ogu.TestcontainersConfiguration
+import com.ogu.raid.domain.RaidLiveStore
 import com.ogu.support.MemberFixture
 import com.ogu.support.RaidFixture
 import com.ogu.support.SafetyFixture
@@ -12,7 +13,6 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
-import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.http.HttpMethod
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity
@@ -41,7 +41,7 @@ class RaidApiTests {
     lateinit var jdbcTemplate: JdbcTemplate
 
     @Autowired
-    lateinit var redisTemplate: StringRedisTemplate
+    lateinit var store: RaidLiveStore
 
     private lateinit var mockMvc: MockMvc
     private lateinit var members: MemberFixture
@@ -53,7 +53,7 @@ class RaidApiTests {
         mockMvc = MockMvcBuilders.webAppContextSetup(context).apply<DefaultMockMvcBuilder>(springSecurity()).build()
         members = MemberFixture(mockMvc)
         http = SafetyFixture(mockMvc, jdbcTemplate)
-        raid = RaidFixture(jdbcTemplate, redisTemplate)
+        raid = RaidFixture(jdbcTemplate, store)
     }
 
     @Test
@@ -151,7 +151,7 @@ class RaidApiTests {
 
         assertThat(statuses.count { it == 200 }).isEqualTo(1)
         assertThat(statuses.count { it == 429 }).isEqualTo(TABS - 1)
-        assertThat(raid.redisHp()).isEqualTo(29)
+        assertThat(raid.liveHp()).isEqualTo(29)
     }
 
     @Test

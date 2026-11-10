@@ -17,6 +17,9 @@ data class RaidProperties(
     val flushInterval: Duration = Duration.ofSeconds(1),
     val broadcastInterval: Duration = Duration.ofMillis(250),
     val lifecycleInterval: Duration = Duration.ofMinutes(1),
+    /** 기동 뒤 기록과 맞추는 기간과 간격(018 research R6). 배포가 겹친 옛 인스턴스의 마지막 기록을 받아들인다. */
+    val reconcileWindow: Duration = Duration.ofMinutes(3),
+    val reconcileInterval: Duration = Duration.ofSeconds(30),
     val zone: ZoneId = ZoneId.of("Asia/Seoul"),
 ) {
     /** 보스가 끝난 다음 날 0시([zone]). 23시 59분에 끝나도 다음 날 0시다(US5-AC3). */
