@@ -41,6 +41,17 @@ class WeeklyLetterRepository(
         return spec.query(reports.mapper()).optional().orElse(null)
     }
 
+    /**
+     * 기다리는 편지 가운데 가장 이른 다음 차례. 없으면 null이다(018 research R3). 타이머가 이 시각에만 깨어 DB를 연다.
+     * 부분 인덱스 `weekly_report_letter_pending_idx`의 조건과 같아 기다리는 행만 본다.
+     */
+    fun findEarliestPendingAttemptAt(): Instant? =
+        jdbcClient
+            .sql("select min(letter_next_attempt_at) from weekly_report where letter_status = 'PENDING'")
+            .query { rs, _ -> rs.getTimestamp(1)?.toInstant() }
+            .list()
+            .firstOrNull()
+
     /** 시도를 맡았다고 적는다. 다음 차례를 미뤄 두어, 호출이 끝나기 전에 다른 실행기가 같은 리포트를 잡지 않는다. */
     fun markAttempt(
         reportId: Long,
