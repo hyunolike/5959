@@ -35,6 +35,10 @@ class RetryScheduler(
         if (handled > 0) log.info("감정 분석 재시도: {}건", handled)
     }
 
+    /** 지금 걸린 다음 시각. 테스트와 로그용이다. */
+    val nextAt: Instant?
+        get() = timer.nextAt
+
     /** 다음 시각을 DB에서 다시 읽어 건다. 행을 만들거나 시각을 바꾼 쪽이 커밋 뒤에 부른다. */
     fun rearm() = timer.rearm()
 }
