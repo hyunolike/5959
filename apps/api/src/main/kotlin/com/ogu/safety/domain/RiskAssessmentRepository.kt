@@ -13,6 +13,7 @@ import java.time.Instant
  * 본문은 저장하지 않는다(research R13).
  */
 @Repository
+@Suppress("TooManyFunctions") // risk_assessment의 쿼리를 한곳에 둔다. 018에서 다음 시각 쿼리 하나가 더해졌다
 class RiskAssessmentRepository(
     private val jdbcClient: JdbcClient,
 ) {
@@ -184,6 +185,17 @@ class RiskAssessmentRepository(
             .update()
         return due
     }
+
+    /**
+     * 가장 이른 다음 시도 시각. 시도할 판정이 없으면 null이다(018 research R3). 타이머가 이 시각에만 깨어 DB를 연다.
+     * 부분 인덱스 `risk_assessment_pending_idx`를 탄다.
+     */
+    fun findEarliestPendingAttemptAt(): Instant? =
+        jdbcClient
+            .sql("select min(next_attempt_at) from risk_assessment where status = 'PENDING'")
+            .query { rs, _ -> rs.getTimestamp(1)?.toInstant() }
+            .list()
+            .firstOrNull()
 
     /**
      * 맡은 시도의 결과로 판정을 닫는다. 맡은 뒤 다른 실행기가 먼저 닫았거나 시도 횟수가 달라졌으면 0행이라 false다.

@@ -5,7 +5,10 @@ import org.springframework.stereotype.Repository
 import java.sql.Timestamp
 import java.time.Instant
 
-/** 이미 있는 글을 임베딩 대상에 올리는 데 쓰는 `post_embedding` 쿼리(007 research R7). */
+/**
+ * 이미 있는 글을 임베딩 대상에 올리는 데 쓰는 `post_embedding` 쿼리(007 research R7)와, 모델별로 그 일을 마쳤다는
+ * 표지 `embedding_backfill`(018 data-model 1).
+ */
 @Repository
 class EmbeddingBackfillRepository(
     private val jdbcClient: JdbcClient,
@@ -62,5 +65,29 @@ class EmbeddingBackfillRepository(
             .query { rs, _ -> rs.getLong("post_id") }
             .list()
             .toSet()
+    }
+
+    /** [model]로 훑기를 마친 적이 있는가. */
+    fun isCompleted(model: String): Boolean =
+        jdbcClient
+            .sql("select exists (select 1 from embedding_backfill where model = :model)")
+            .param("model", model)
+            .query(Boolean::class.java)
+            .single()
+
+    /** [model]로 훑기를 마쳤다고 남긴다. 이미 있으면 처음 시각을 그대로 둔다. */
+    fun markCompleted(
+        model: String,
+        now: Instant,
+    ) {
+        jdbcClient
+            .sql(
+                """
+                insert into embedding_backfill (model, completed_at) values (:model, :now)
+                on conflict (model) do nothing
+                """.trimIndent(),
+            ).param("model", model)
+            .param("now", Timestamp.from(now))
+            .update()
     }
 }
