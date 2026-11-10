@@ -282,6 +282,7 @@ ogu:
     # 하루(한국 시간)에 AI에 댓글을 청하는 횟수. 실패한 시도도 든다(research R8)
     daily-limit: ${AI_COMPANION_DAILY_LIMIT:45}
     max-attempts: 3
+    # 018부터 쓰지 않는다. 반응은 가장 이른 차례에만 깬다(research R3).
     poll-interval: 30s
     batch-size: 3
     retry:
@@ -308,6 +309,7 @@ ogu:
       active-from: "08:00"
       active-until: "23:00"
       recent-topics: 10
+      # 018부터 쓰지 않는다. 글쓰기는 계산한 시각(쓰는 중인 기록의 차례, 조용한 시간이 끝나는 때)에만 깬다(research R3).
       poll-interval: 1m
   # 006 레이드(data-model.md "설정"). 바꾸면 다음에 나오는 보스부터 적용된다
   raid:

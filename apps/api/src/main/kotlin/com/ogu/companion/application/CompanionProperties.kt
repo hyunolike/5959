@@ -4,7 +4,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Configuration
 import java.time.Duration
+import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.util.random.RandomGenerator
 
 /** `ogu.companion` 설정(009 data-model.md "설정"). */
@@ -20,7 +23,7 @@ data class CompanionProperties(
     val dailyLimit: Int = 45,
     /** 한 글에 댓글을 청하는 횟수. 한 글이 하루의 몫을 다 쓰지 못하게 한다. */
     val maxAttempts: Int = 3,
-    /** 한 차례에 맡는 글 수. `@Scheduled` 스레드가 둘뿐이라 작게 둔다. */
+    /** 한 차례에 맡는 글 수. 타이머 스레드(`DueTimers`)가 둘뿐이라 작게 둔다. */
     val batchSize: Int = 3,
     val retry: Retry = Retry(),
     /** 글의 위험 판정이 끝나지 않았을 때 다시 보는 간격. */
@@ -53,6 +56,20 @@ data class CompanionProperties(
     ) {
         /** [time](한국 시간)이 글 쓰는 시간대 안인가. 시작과 끝이 같거나 뒤집혀 있으면 쓰지 않는다. */
         fun activeAt(time: LocalTime): Boolean = !time.isBefore(activeFrom) && time.isBefore(activeUntil)
+
+        /** [day]의 글 쓰는 시간대가 시작하는 때. */
+        fun startOf(
+            day: LocalDate,
+            zone: ZoneId,
+        ): ZonedDateTime = day.atTime(activeFrom).atZone(zone)
+
+        /** [at]이 시간대 안이면 그대로, 시작 전이면 그날의 시작, 끝났으면 다음 날의 시작. */
+        fun activeFromOrAfter(at: ZonedDateTime): ZonedDateTime =
+            when {
+                at.toLocalTime().isBefore(activeFrom) -> startOf(at.toLocalDate(), at.zone)
+                !at.toLocalTime().isBefore(activeUntil) -> startOf(at.toLocalDate().plusDays(1), at.zone)
+                else -> at
+            }
     }
 
     /** 앞 친구의 댓글이 올라간 뒤 다음 친구가 반응하기까지의 간격(012 research R3). */
