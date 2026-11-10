@@ -948,10 +948,12 @@ export interface components {
       /**
        * @description ErrorCode 이름
        * @example INVALID_CREDENTIALS
+       * @example SERVICE_MAINTENANCE
+       * @example DATABASE_UNAVAILABLE
        */
       code: string;
       message: string;
-      /** @description LOGIN_THROTTLED일 때만 있다 */
+      /** @description LOGIN_THROTTLED, SERVICE_MAINTENANCE일 때 있다 */
       retryAfterSeconds?: number;
     };
     ErrorEnvelope: {
@@ -1771,6 +1773,17 @@ export interface components {
     };
   };
   responses: {
+    /** @description 점검 중이라 쓰기를 받지 않는다 (SERVICE_MAINTENANCE). 요청은 반영되지 않았다. 점검이 끝나면 다시 보낸다(018 FR-002) */
+    Maintenance: {
+      headers: {
+        /** @description 다시 보낼 때까지 기다릴 초 */
+        "Retry-After"?: number;
+        [name: string]: unknown;
+      };
+      content: {
+        "application/json": components["schemas"]["ErrorEnvelope"];
+      };
+    };
     /**
      * @description 입력 검증 실패 (INVALID_REQUEST). 댓글 작성에서는 INVALID_PARENT_COMMENT도 쓴다.
      *     온보딩과 프로필 수정에서는 닉네임이 AI 친구의 닉네임이나 AI 표시와 헷갈리면 NICKNAME_RESERVED다(009 US2-AC5).
@@ -1878,6 +1891,7 @@ export interface operations {
           "application/json": components["schemas"]["ErrorEnvelope"];
         };
       };
+      503: components["responses"]["Maintenance"];
     };
   };
   login: {
@@ -2082,7 +2096,7 @@ export interface operations {
           "application/json": components["schemas"]["ErrorEnvelope"];
         };
       };
-      /** @description 메일 발송이 꺼져 있다 (PASSWORD_RESET_UNAVAILABLE) */
+      /** @description 메일 발송이 꺼져 있다 (PASSWORD_RESET_UNAVAILABLE). 점검 중이면 SERVICE_MAINTENANCE와 Retry-After 헤더다 */
       503: {
         headers: {
           [name: string]: unknown;
@@ -2122,6 +2136,7 @@ export interface operations {
           "application/json": components["schemas"]["ErrorEnvelope"];
         };
       };
+      503: components["responses"]["Maintenance"];
     };
   };
   logout: {
@@ -2206,6 +2221,7 @@ export interface operations {
           "application/json": components["schemas"]["ErrorEnvelope"];
         };
       };
+      503: components["responses"]["Maintenance"];
     };
   };
   checkNickname: {
@@ -2278,6 +2294,7 @@ export interface operations {
           "application/json": components["schemas"]["ErrorEnvelope"];
         };
       };
+      503: components["responses"]["Maintenance"];
     };
   };
   withdraw: {
@@ -2319,6 +2336,7 @@ export interface operations {
           "application/json": components["schemas"]["ErrorEnvelope"];
         };
       };
+      503: components["responses"]["Maintenance"];
     };
   };
   createPost: {
@@ -2360,6 +2378,7 @@ export interface operations {
           "application/json": components["schemas"]["ErrorEnvelope"];
         };
       };
+      503: components["responses"]["Maintenance"];
     };
   };
   getPostDetail: {
@@ -2415,6 +2434,7 @@ export interface operations {
       401: components["responses"]["Unauthorized"];
       403: components["responses"]["Forbidden"];
       404: components["responses"]["NotFound"];
+      503: components["responses"]["Maintenance"];
     };
   };
   updatePost: {
@@ -2443,6 +2463,7 @@ export interface operations {
       401: components["responses"]["Unauthorized"];
       403: components["responses"]["Forbidden"];
       404: components["responses"]["NotFound"];
+      503: components["responses"]["Maintenance"];
     };
   };
   getPublicFeed: {
@@ -2543,6 +2564,7 @@ export interface operations {
           "application/json": components["schemas"]["ErrorEnvelope"];
         };
       };
+      503: components["responses"]["Maintenance"];
     };
   };
   unlikePost: {
@@ -2574,6 +2596,7 @@ export interface operations {
       401: components["responses"]["Unauthorized"];
       403: components["responses"]["Forbidden"];
       404: components["responses"]["NotFound"];
+      503: components["responses"]["Maintenance"];
     };
   };
   getComments: {
@@ -2642,6 +2665,7 @@ export interface operations {
       401: components["responses"]["Unauthorized"];
       403: components["responses"]["Forbidden"];
       404: components["responses"]["NotFound"];
+      503: components["responses"]["Maintenance"];
     };
   };
   deleteComment: {
@@ -2666,6 +2690,7 @@ export interface operations {
       401: components["responses"]["Unauthorized"];
       403: components["responses"]["Forbidden"];
       404: components["responses"]["NotFound"];
+      503: components["responses"]["Maintenance"];
     };
   };
   updateComment: {
@@ -2696,6 +2721,7 @@ export interface operations {
       401: components["responses"]["Unauthorized"];
       403: components["responses"]["Forbidden"];
       404: components["responses"]["NotFound"];
+      503: components["responses"]["Maintenance"];
     };
   };
   likeComment: {
@@ -2736,6 +2762,7 @@ export interface operations {
           "application/json": components["schemas"]["ErrorEnvelope"];
         };
       };
+      503: components["responses"]["Maintenance"];
     };
   };
   unlikeComment: {
@@ -2767,6 +2794,7 @@ export interface operations {
       401: components["responses"]["Unauthorized"];
       403: components["responses"]["Forbidden"];
       404: components["responses"]["NotFound"];
+      503: components["responses"]["Maintenance"];
     };
   };
   getNotifications: {
@@ -2831,6 +2859,7 @@ export interface operations {
           "application/json": components["schemas"]["ErrorEnvelope"];
         };
       };
+      503: components["responses"]["Maintenance"];
     };
   };
   markAllNotificationsRead: {
@@ -2863,6 +2892,7 @@ export interface operations {
       400: components["responses"]["BadRequest"];
       401: components["responses"]["Unauthorized"];
       403: components["responses"]["Forbidden"];
+      503: components["responses"]["Maintenance"];
     };
   };
   getUnreadNotificationCount: {
@@ -3293,6 +3323,7 @@ export interface operations {
           "application/json": components["schemas"]["ErrorEnvelope"];
         };
       };
+      503: components["responses"]["Maintenance"];
     };
   };
   requestReview: {
@@ -3336,6 +3367,7 @@ export interface operations {
           "application/json": components["schemas"]["ErrorEnvelope"];
         };
       };
+      503: components["responses"]["Maintenance"];
     };
   };
   listAssessments: {
@@ -3394,6 +3426,7 @@ export interface operations {
       401: components["responses"]["Unauthorized"];
       403: components["responses"]["Forbidden"];
       404: components["responses"]["OperatorOnly"];
+      503: components["responses"]["Maintenance"];
     };
   };
   listReports: {
@@ -3456,6 +3489,7 @@ export interface operations {
       401: components["responses"]["Unauthorized"];
       403: components["responses"]["Forbidden"];
       404: components["responses"]["OperatorOnly"];
+      503: components["responses"]["Maintenance"];
     };
   };
   listReviewRequests: {
@@ -3518,6 +3552,7 @@ export interface operations {
       401: components["responses"]["Unauthorized"];
       403: components["responses"]["Forbidden"];
       404: components["responses"]["OperatorOnly"];
+      503: components["responses"]["Maintenance"];
     };
   };
   hideContent: {
@@ -3547,6 +3582,7 @@ export interface operations {
       401: components["responses"]["Unauthorized"];
       403: components["responses"]["Forbidden"];
       404: components["responses"]["OperatorOnly"];
+      503: components["responses"]["Maintenance"];
     };
   };
   unhideContent: {
@@ -3571,6 +3607,7 @@ export interface operations {
       401: components["responses"]["Unauthorized"];
       403: components["responses"]["Forbidden"];
       404: components["responses"]["OperatorOnly"];
+      503: components["responses"]["Maintenance"];
     };
   };
   listTerms: {
@@ -3635,6 +3672,7 @@ export interface operations {
       401: components["responses"]["Unauthorized"];
       403: components["responses"]["Forbidden"];
       404: components["responses"]["OperatorOnly"];
+      503: components["responses"]["Maintenance"];
     };
   };
   removeTerm: {
@@ -3658,6 +3696,7 @@ export interface operations {
       401: components["responses"]["Unauthorized"];
       403: components["responses"]["Forbidden"];
       404: components["responses"]["OperatorOnly"];
+      503: components["responses"]["Maintenance"];
     };
   };
   getWithdrawalCleanupStatus: {
@@ -3697,7 +3736,7 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description 레이드 상태. HP를 들고 있는 장치가 내려가 있으면 available이 false이고 값은 마지막 기록이다 */
+      /** @description 레이드 상태. 서버가 종료 중이면 available이 false이고 값은 마지막 기록이다 */
       200: {
         headers: {
           [name: string]: unknown;
@@ -3773,7 +3812,7 @@ export interface operations {
           "application/json": components["schemas"]["ErrorEnvelope"];
         };
       };
-      /** @description HP를 들고 있는 장치가 내려가 있어 공격을 받을 수 없음 (RAID_UNAVAILABLE). 공격은 반영되지 않았다 */
+      /** @description 서버가 종료 중이거나 기록을 쓸 수 없어 공격을 받을 수 없음 (RAID_UNAVAILABLE). 점검 중이면 SERVICE_MAINTENANCE와 Retry-After 헤더다. 공격은 반영되지 않았다 */
       503: {
         headers: {
           [name: string]: unknown;

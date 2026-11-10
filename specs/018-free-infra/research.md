@@ -1,0 +1,142 @@
+# Research: 무료 인프라로 이전 (018-free-infra)
+
+조사 기준일은 2026-11-09다. 공급자의 조건은 공식 문서에서 확인했고, 확인하지 못한 것은 "확인 못 함"으로 적고 quickstart에서 실제로 잰다.
+
+## R1. 서버는 JVM으로 돌리고, 네이티브 이미지는 쓰지 않는다
+
+**결정**: JDK 25 위의 JVM으로 돌린다. 메모리는 플래그로 512MB 안에 묶고, 기동은 Spring Boot의 AOT 캐시(JDK 25)로 줄인다. GraalVM 네이티브 이미지는 쓰지 않는다.
+
+- 네이티브 이미지는 닫힌 세계를 가정해서 "빈이 만들어지느냐에 따라 바뀌는 속성(`@ConditionalOnProperty`, `.enabled` 속성)"을 지원하지 않는다(Spring Boot 문서). 이 코드는 켜고 끄는 설정이 많다. `ogu.mail.enabled`, `ogu.companion.enabled`, 스케줄러 스위치 열 개 남짓, `e2e` 프로필의 가짜 구현들이 모두 여기에 걸린다. 이것을 다 바꾸는 것은 이전과 상관없는 큰 공사다.
+- Spring AI, Resilience4j, Modulith JDBC 이벤트가 네이티브에서 도는지 공식으로 확인하지 못했다.
+- 메모리 예산(시작값, 실측으로 고친다): 힙 `-Xmx224m`, `-XX:MaxMetaspaceSize=150m`, `-XX:ReservedCodeCacheSize=48m`, `-Xss512k`, `-XX:+UseSerialGC`, `-XX:TieredStopAtLevel=1`. Tomcat 스레드는 최대 40개로 줄인다(`server.tomcat.threads.max`). 0.1 CPU에서는 C2 컴파일과 병렬 GC가 CPU를 먹으므로 끈다.
+- 기동: 학습 실행(`-XX:AOTCacheOutput`, `-Dspring.context.exit=onRefresh`)으로 이미지 빌드 때 캐시를 만들고 `-XX:AOTCache`로 띄운다. 캐시는 같은 jar와 같은 JDK에서만 유효하므로 Dockerfile 안에서 만든다. 줄어드는 정도는 공식 수치가 없어 quickstart Q1에서 잰다.
+- 실행 JRE를 21에서 25로 올린다. Spring Boot 4.1은 25를 지원한다. 운영 이미지는 `eclipse-temurin:25-jre`로 바꾼다. 컴파일은 toolchain 21 그대로다(Kotlin 2.2.21의 JVM 대상, 21 바이트코드는 25에서 돈다). 모듈이 빠진 JRE에서 터지는 것(AGENTS.md의 `jdk.random` 사례)은 CI의 기동 스모크 테스트가 잡는다.
+
+**합격 기준**(quickstart Q1): `docker run --cpus=0.1 --memory=512m`로 운영 설정을 띄웠을 때, 3분 안에 헬스가 UP이 되고, 30분 부하 뒤 컨테이너 메모리가 480MB 아래이며, OOM으로 죽지 않는다. 못 맞추면 힙과 스레드를 더 줄인다. 그래도 안 되면 이 계획을 멈추고 다시 정한다(Oracle VM으로 돌아가는 안).
+
+**버린 것**: 네이티브 이미지(위의 까닭). 런타임을 Go나 Node로 다시 쓰는 것(범위 밖).
+
+## R2. DB 연결 풀은 쉬는 연결을 두지 않고, 연결 확인 쿼리를 보내지 않는다
+
+**결정**: HikariCP를 `minimum-idle: 0`, `idle-timeout: 60s`, `keepalive-time: 0`, `max-lifetime: 30m`, `maximum-pool-size: 5`, `connection-timeout: 15s`로 둔다.
+
+- Neon은 "5분 동안 활성 쿼리가 없으면" 잠든다(compute lifecycle 문서). 열려 있기만 한 연결은 막지 않지만, Hikari 기본값은 2분마다 연결 확인을 하고(`keepaliveTime` 120000) 최소 연결 수를 채우려고 연결을 다시 만든다. 둘 다 DB를 깨운다.
+- `connection-timeout`을 15초로 늘리는 것은 잠든 DB가 깨는 시간(보통 수백 ms, 7일 넘게 잤으면 더) 동안 첫 요청이 실패하지 않게 하려는 것이다.
+- **직접 연결 주소를 쓴다.** Neon의 연결 풀 주소(`-pooler`, PgBouncer 트랜잭션 모드)는 세션 단위 기능에서 예측하기 어렵다. 이 코드는 `pg_advisory_xact_lock`(`PostLock`)을 쓴다. Neon도 `pg_dump`와 스키마 마이그레이션에는 직접 연결을 쓰라고 한다.
+
+## R3. 주기 작업은 "할 일이 있을 때만 DB를 연다"
+
+**결정**: `@Scheduled` 17개를 다섯 갈래로 나눈다. 하나의 틀(`shared/schedule`의 `DueTimer`, `ActivityGate`)을 쓴다.
+
+| 갈래 | 작업 | 바뀐 뒤 |
+|---|---|---|
+| ① 다음 시각이 DB 열에 있다 | 감정 분석, 위험 분류, 임베딩, 주간 편지 재시도(10초마다), AI 친구 반응(30초), AI 친구 글쓰기의 쓰는 중인 행(1분) | `DueTimer`: 가장 이른 `next_attempt_at` 하나만 메모리에 들고 그때 깬다 |
+| ② 시계로 정해진다 | 주간 리포트(1분), 레이드 보스 교체(1분), 글쓰기 시작(조용한 6시간, 8~23시) | 계산한 시각에 한 번 깬다 |
+| ③ 하루 한 번 | 정리 6개(04:00, 04:30 둘, 04:40 둘, 04:50) | 04:00에 한 번 깨워 차례로 돈다 |
+| ④ 시각을 알 수 없다 | 이벤트 재전송(1분) | 회원 요청이 최근 4분 안에 있었을 때만 1분 주기(`ActivityGate`), 그리고 기동 때와 04:00 |
+| ⑤ 쓸 것이 있을 때만 | 레이드 기록(1초) | 메모리의 바뀐 회원이 있을 때만 쓴다(R5) |
+
+- **`DueTimer`의 약속**: 행을 만들거나 다음 시각을 바꾸는 코드는 커밋 뒤에 `timer.arm(at)`을 부른다. 지금 걸린 시각보다 이를 때만 다시 건다. 타이머가 울리면 그 작업의 `runDue()`를 지금처럼 돌리고(맡기는 `FOR UPDATE SKIP LOCKED` 그대로), 같은 연결에서 `select min(next_attempt_at)` 하나로 다음 시각을 정한다. 기동 때와 04:00에는 모든 타이머를 DB에서 다시 계산한다. 서버가 한 대라 다른 인스턴스가 만든 행을 놓칠 일이 없다.
+- 맡기(claim)가 `next_attempt_at`을 임대 시간만큼 미루는 것도 다시 걸기의 대상이다. 맡은 채 죽으면 임대가 끝나는 시각이 다음 시각이 된다. 기동 때 계산이 이것을 잡는다.
+- **`ActivityGate`**: "회원의 요청"은 `/api/v1/**` 요청과 커밋 뒤 이벤트 리스너다. 헬스 체크와 주기 작업 자신은 세지 않는다. 그래서 회원이 떠나고 4분이 지나면 재전송 주기가 멈추고, 5분 뒤 DB가 잔다. 재전송이 필요한 실패는 회원 요청에서 생기므로 그때는 DB가 깨어 있다. 끝나지 않은 발행은 기동 때(`republish-outstanding-events-on-restart`)와 04:00에도 한 번 다시 나간다.
+- 하루 정리는 서로 다른 시각에 깨면 하루에 네 번 깬다(사이가 5분보다 길다). 한 번에 묶으면 한 번이다. 순서와 기준(90일, 7일, 1년, 하루)은 바꾸지 않는다. 각 단계가 따로 실패하는 지금의 동작도 그대로다.
+- 레이드 보스 교체는 "살아 있는 보스의 `spawned_at` + 7일"과 "끝난 보스의 다음 날 0시(한국 시간)" 가운데 이른 쪽이다. 처치(`RaidFinisher.finish`)와 생성(`insertAlive`) 뒤에 다시 건다.
+- 주간 리포트는 "이번 주 월요일 `publish-at`(05:00 한국 시간)"에 깨고, `weekly_report_run`이 없으면 다 훑을 때까지 지금처럼 1분마다 이어 간다(그동안은 DB가 깨어 있어야 하는 일이다). 끝나면 다음 주 월요일로 건다.
+- 기존 테스트 스위치(`ogu.*.scheduler-enabled=false`)는 그대로 둔다. 꺼져 있으면 타이머를 걸지 않는다. 테스트가 `runDue()`, `tick()`을 직접 부르는 방식은 바뀌지 않는다.
+- `EmbeddingBackfill`은 기동할 때마다 모든 글을 다시 훑는다(진행 표지가 없다). Render는 아무 때나 재시작하므로, 모델별 완료 표지를 남겨 끝난 모델은 다시 훑지 않는다(data-model). `SafetyBackfill`은 이미 표지가 있다.
+- `TermCache`는 글을 쓸 때만 30초가 지났으면 확인하므로 고치지 않는다.
+
+**계산**(SC-002): 0.25 CU에서 한도 80 CU-시간은 한 달 320시간이다. 회원이 쓰는 시간에 깨어 있고, 그밖에 깨는 것은 하루 정리 1번(약 10분), 백업 1번(약 7분), 사용량 점검 1번(약 6분), 재시도가 있을 때 몇 번이다. 회원이 하루 10시간 쓴다고 해도 약 310시간이다. 회원 사용 시간이 그보다 길면 한도에 닿을 수 있으므로 70% 알림(R10)을 둔다.
+
+**버린 것**: 모든 주기 작업에 `ActivityGate`만 씌우는 것. 회원이 떠난 뒤의 재시도(최대 24시간 이어지는 일정)를 지키지 못한다. 작업마다 따로 스케줄러를 두는 것. 스레드가 늘어 512MB에 부담이다.
+
+## R4. 실시간 알림은 서버 안에서 바로 전한다
+
+**결정**: `RedisSignalPublisher`를 `LocalSignalPublisher`로 바꾼다. 커밋 뒤에 신호를 전용 스레드 하나로 `NotificationSignalHandler`들(`SseHub`)에게 바로 넘긴다. Redis 구독, 연결 상태(`RealtimeConnectionState`, `RealtimeConnectionProbe`), 장애 때의 5초 안전망, `/actuator/health/realtime`을 지운다.
+
+- 보낼 것은 지금처럼 DB의 번호(`seq > 마지막 번호`)로 정한다. 신호는 여전히 힌트다. 그래서 신호를 잃어도 다음 안전망이나 재연결에서 온다.
+- 커밋 뒤에만 보내는 것, 롤백되면 보내지 않는 것은 그대로다(`RedisSignalPublisherTests`의 두 경우를 새 발행기 테스트로 옮긴다).
+- **안전망(60초)은 남기되 `ActivityGate`를 탄다.** 연결이 열려 있어도 회원 요청이 4분 넘게 없으면 돌지 않는다. 열어 둔 탭 하나가 DB를 계속 깨우지 않게 하려는 것이다. 안전망이 필요한 때는 배포가 겹치는 1~2분(R6)뿐이고, 그때는 회원 요청이 있다.
+- 열려 있는 연결은 15분마다 다시 붙고, 붙을 때 표 확인과 재전송 쿼리가 돈다. 보이는 채로 둔 탭은 15분마다 DB를 깨운다(가려진 탭은 다시 보일 때 붙는다. 웹의 `notification-stream/model/store.ts`). 한 시간에 네 번이고, 깰 때마다 5분이므로 그 탭이 24시간 열려 있으면 하루 약 8시간이다. **연결 수명을 50분으로 늘린다.** 그러면 하루 약 2.4시간이다. Render의 요청 시간 상한은 공식 문서에 없고 포럼 답변은 100분이다(확인 못 함, quickstart Q4에서 잰다). 하트비트(25초)는 DB를 쓰지 않는다.
+- `TopicBroadcaster`(레이드 주제)는 이미 메모리 안이라 고치지 않는다.
+- 운영 기동 조건에서 "`REDIS_URL`이 있고 localhost가 아니어야 한다"를 뺀다. `OGU_SSE_ALLOWED_ORIGINS` 검사는 남긴다.
+
+**버린 것**: Postgres `LISTEN/NOTIFY`. 구독 연결 하나가 계속 열려 있어야 하고, Neon은 잠들 때 `LISTEN`을 잃는다. Upstash Redis 무료. 월 50만 명령인데 레이드 방송(250ms)만으로 넘는다.
+
+## R5. 레이드 판정은 서버 메모리의 잠금 하나 안에서 한다
+
+**결정**: `RaidRedis`와 Lua 스크립트 다섯 개를 `RaidLiveStore`(메모리) 하나로 바꾼다. 살아 있는 보스 하나의 상태(`id, emotion, maxHp, hp, status, spawnedAt, endedAt, epoch`), 회원별 기여, 바뀐 회원 집합, 회원별 쿨다운 만료 시각을 들고, 모든 판정은 `ReentrantLock` 하나 안에서 한다.
+
+- 공격 스크립트의 순서(없음/옛 보스 → 다시 올리기, 끝남, 쿨다운, 그다음 쿨다운 걸기 → HP −1 → 기여 +1 → 바뀐 회원에 넣기 → 0이면 처치)를 그대로 옮긴다. 이 규칙을 잠금 밖에서 나누지 않는다(AGENTS.md의 약속과 같다).
+- 0.1 CPU에서 잠금 하나의 처리량: 공격 한 번의 임계 구역은 해시맵 몇 번이라 마이크로초 단위다. 병목은 요청 처리 쪽이다. 정확성은 500명, 속도는 50명으로 잰다(Clarifications).
+- **기록**: `RaidFlusher`는 1초마다 깨지만 바뀐 회원이 없으면 DB를 열지 않는다(지금은 살아 있는 보스면 매초 UPDATE를 했다). 바뀐 회원이 있으면 지금처럼 절댓값으로 쓴다(기여는 `greatest`, HP는 `least`). DB가 실패하면 바뀐 회원을 되돌려 넣는다.
+- **정상 종료**: `SmartLifecycle`의 종료 단계에서 공격을 더 받지 않고(503) 남은 것을 모두 쓴 뒤 끝낸다. Render는 SIGTERM 뒤 기본 30초를 기다린다(`maxShutdownDelaySeconds`로 늘릴 수 있다). Spring의 우아한 종료 시간(`spring.lifecycle.timeout-per-shutdown-phase`)을 20초로 둔다. US3-AC5.
+- **갑자기 죽을 때**: 직전 1초 안의 공격을 잃는다. 기록에 남은 기여의 합으로 HP를 다시 계산하므로 공격 수와 HP와 기여의 합은 서로 맞는다(지금의 `RaidLoader` 규칙). US3-AC8.
+- `withLoadLock`은 메모리 잠금이 된다. `epoch`는 올릴 때마다 커지는 값으로 남긴다(기동 시각의 밀리초). 웹은 그것으로 "값이 돌아갔다"를 알아본다. 계약은 바꾸지 않는다.
+- `RaidUnavailableException`과 `available = false`는 계약에 남긴다. 메모리 저장소는 실패하지 않지만, 종료 중과 DB가 멈춘 달(엣지 케이스)에 `available = false`, 공격 503으로 쓴다. 웹은 고치지 않는다.
+
+**버린 것**: 공격마다 DB에 바로 쓰기(Clarifications에서 B안을 버렸다). `AtomicInteger`와 CAS로 HP만 따로 줄이기. HP, 기여, 처치가 한 번에 바뀌지 않는다.
+
+## R6. 배포가 겹치는 동안 두 인스턴스가 잠깐 함께 돈다
+
+**사실**: Render는 새 인스턴스가 헬스를 통과하면 트래픽을 넘기고, 약 60초 뒤 옛 인스턴스에 SIGTERM을 보낸다(배포 문서). 무료에서도 무중단 배포인지는 공식 문서에 예외가 없다는 것까지만 확인했다(확인 못 함, quickstart Q5).
+
+**결정**:
+- **레이드**: 새 인스턴스는 첫 레이드 요청 때 기록에서 올리고, 기동 뒤 3분 동안 30초마다 기록과 다시 맞춘다. 맞출 때는 회원별 기여를 `max(메모리, 기록)`으로 합치고 HP를 `maxHp − 기여의 합`으로 다시 계산한다. 옛 인스턴스가 종료하며 쓴 마지막 공격까지 들어오고, 공격 수와 HP와 기여의 합이 계속 맞는다. 겹치는 동안 화면의 HP가 잠깐 덜 줄어 보일 수 있다.
+- **알림**: 옛 인스턴스에 붙은 연결은 새 인스턴스의 신호를 받지 못한다. 옛 인스턴스의 안전망(60초, 회원 요청이 있는 동안)이 그 사이의 알림을 보낸다. SIGTERM을 받으면 연결을 먼저 닫아 웹이 새 인스턴스로 다시 붙게 한다(지금의 동작).
+
+## R7. 메일은 SMTP 그대로, 포트만 바꾼다
+
+**결정**: 015의 SMTP 구현을 그대로 쓰고 포트만 바꾼다. Resend의 SMTP는 465와 587 말고도 2465(암묵 TLS)와 2587(STARTTLS)을 받는다. STARTTLS를 강제하는 지금 구현에는 `MAIL_SMTP_PORT=2587`이 맞다. 코드는 고치지 않는다.
+
+- Render 무료는 25, 465, 587로 나가는 연결만 막는다(무료 문서). 그 밖의 포트는 막는다는 말이 없다.
+- 015의 R1(HTTP API를 버림)이 그대로 맞는다. 발송 서비스를 바꿔도 코드가 바뀌지 않는다.
+- Resend 무료는 하루 100통, 한 달 3,000통이고 보내는 도메인 인증이 필요하다. 재설정 메일만 보내므로 충분하다.
+- 확인 못 함: Resend의 2587 포트를 이 조사에서 공식 문서로 다시 확인하지 못했다. quickstart Q6에서 Render에서 실제로 한 통을 보내 본다. 안 되면 그때 HTTP API 발송 구현(`MailSender`의 두 번째 구현)을 더한다. 메일은 꺼진 채로 나가므로 이전을 막지 않는다.
+
+**버린 것**: 처음부터 HTTP API로 바꾸기. 쓸 일이 있을지 모르는 코드를 먼저 쓴다.
+
+## R8. 헬스 체크를 둘로 나눈다
+
+**결정**:
+- `/actuator/health/liveness`(DB를 보지 않는다): Render의 헬스 체크 경로이고, cron-job.org가 10분마다 부르는 주소다. Spring Boot의 liveness 그룹을 켠다(`management.endpoint.health.probes.enabled`). 공개 경로에 더한다.
+- `/actuator/health`(DB를 본다): 배포 확인과 웹의 `/api/health`가 쓴다. 웹 배포 때 한 번 DB를 깨우는 것은 괜찮다.
+- `/actuator/health/realtime`과 `RedisHealthGroupConfig`는 지운다.
+- Render 헬스 체크는 5초 안에 답해야 하고, 실패가 이어지면 15초 뒤 트래픽에서 빼고 60초 뒤 재시작한다(헬스 체크 문서). liveness는 DB를 기다리지 않으므로 잠든 DB 때문에 재시작되지 않는다.
+
+## R9. 배포와 저장소
+
+**결정**:
+- **이미지는 GitHub Actions에서 만든다.** CI가 이미 `bootJar`와 Docker 이미지를 만든다. `release.yml`을 고쳐 `linux/amd64` 이미지(AOT 캐시 포함)를 GHCR에 올리고, Render의 배포 훅을 이미지 주소(`imgURL`)와 함께 부른다. Render 무료의 빌드 시간(월 500분)과 메모리를 쓰지 않는다. arm64 빌드는 뺀다(Oracle VM용이었다).
+- **Render 설정은 `render.yaml`(Blueprint)로 남긴다.** `runtime: image`, `plan: free`, `region: singapore`, `healthCheckPath: /actuator/health/liveness`, `maxShutdownDelaySeconds: 30`, 환경 변수 이름(값은 `sync: false`). 리전은 만든 뒤 바꿀 수 없다.
+- **API 주소는 Render의 `*.onrender.com`을 쓴다.** 지금의 `api.<ip>.sslip.io`는 VM의 고정 IP에서 나온 이름이라 함께 없어진다. 브라우저가 알림 스트림에 붙는 주소(`SSE_PUBLIC_ORIGIN`)와 BFF의 주소(`API_ORIGIN`)를 웹의 Cloud Run 환경 변수에서 바꾼다. 웹은 이 값을 빌드에 넣지 않으므로 다시 빌드하지 않는다. 카카오와 구글의 돌아올 주소는 웹 주소라 바뀌지 않는다.
+- **웹 리전**: Cloud Run 무료 한도는 어느 리전에서든 쓰지만 "1등급 가격으로 매긴 할인"이다. 싱가포르와 서울은 2등급이라 같은 한도로 쓸 수 있는 초가 줄고, 도쿄는 1등급이다(가격 문서). 지금 웹의 사용량은 한도의 일부라 어느 쪽도 0원일 가능성이 높다. BFF는 화면 하나에 API를 여러 번 부르므로 API와 같은 싱가포르가 유리하다. **리허설에서 싱가포르와 지금(아이오와) 두 곳의 피드 응답 시간을 재고 정한다**(quickstart Q3). 옮기면 Cloud Run 서비스와 도메인 매핑을 새로 만든다(Terraform). 도메인 매핑이 싱가포르를 지원하는지는 그때 확인한다(확인 못 함).
+- **Artifact Registry 정리 정책**: 웹 이미지를 최근 3개만 남긴다(Terraform `cleanup_policies`). API 이미지는 GHCR로 옮겨 여기서 빠진다.
+
+## R10. 백업과 사용량 점검은 GitHub Actions 하나에서 한다
+
+**결정**: `ops-daily.yml` 워크플로 하나를 매일 03:30(한국 시간, 18:30 UTC)에 돌린다.
+
+1. Neon 직접 연결로 `pg_dump -Fc`, R2의 `ogu-backup/postgres/<날짜>.dump`에 올린다. 14일보다 오래된 것은 R2 수명 주기 규칙이 지운다(지금의 RESTORE.md와 같은 버킷 이름).
+2. Neon API `GET /projects/{id}`의 `compute_time_seconds`(÷3600 = CU-시간)와 `synthetic_storage_size`를 읽어 한도(100 CU-시간, 1GB)의 70%를 넘으면 실패로 끝낸다.
+3. 어느 단계든 실패하면 워크플로가 실패하고 GitHub이 저장소 소유자에게 메일을 보낸다(Clarifications).
+
+- 무료 플랜의 사용량 이력 API는 403이다. `GET /projects/{id}`에는 플랜 제한이 적혀 있지 않다(확인 못 함, quickstart Q7).
+- 깨우기: 백업과 점검은 같은 시각에 돌아 한 번만 깨운다. DB가 지금 크기면 덤프는 1분이 안 걸리고 잠들기까지 5분이다(SC 기준 하루 10분 안).
+- 복구 연습도 같은 워크플로의 수동 실행으로 한다: R2의 최신 덤프를 받아 서비스 컨테이너(`pgvector/pgvector:pg17`)에 `pg_restore --no-owner`로 되살리고 테이블마다 행 수를 출력한다.
+
+## R11. 이전은 읽기 전용 점검으로 한다
+
+**결정**: API에 읽기 전용 점검 모드(`ogu.maintenance.read-only`, env `OGU_MAINTENANCE_READ_ONLY`)를 더한다. 켜면 `GET`과 헬스가 아닌 요청이 `503 SERVICE_MAINTENANCE`가 된다. 웹은 이 응답을 받으면 "점검 중이라 지금은 저장되지 않는다"는 안내를 띄운다. 회원은 점검 중에도 읽을 수 있다(FR-002, US1-AC6).
+
+- 지금 점검 모드가 없다(웹의 로딩 화면은 웹의 콜드 스타트용이다).
+- 점검 순서는 quickstart의 "전환"에 적는다. 옛 VM에서 켜고 → 마지막 덤프 → Neon에 되살림 → 행 수 대조 → 웹의 API 주소를 Render로 → 확인 → Render에서는 처음부터 꺼진 채로 뜬다.
+- 로그인, 소셜 로그인, 토큰 갱신, 로그아웃, 알림 연결 표 발급은 쓰기지만 점검 중에도 받는다. 그래야 점검 중에 회원이 쫓겨나지 않는다. 마지막 덤프 뒤에 옛 DB에 쓴 세션은 새 DB로 가지 않으므로, 그 회원은 전환 뒤 토큰 갱신이 401이 되어 한 번 다시 로그인한다. 덤프에서 웹 주소를 바꾸기까지 약 25분이라 영향을 받는 회원은 그 사이 갱신한 사람뿐이다. 점검 중에 처음 가입한 소셜 계정도 같은 까닭으로 다시 가입한다.
+- 계약에 `SERVICE_MAINTENANCE`를 더한다(contracts/maintenance.openapi.yaml). 원칙 II.
+
+## R12. 되돌리기
+
+**결정**: 7일 동안 옛 VM을 끄지 않고(쓰기만 막은 채) 둔다. 되돌릴 때는 Render를 읽기 전용으로 바꾸고, Neon에서 덤프를 받아 VM에 되살리고(`pg_restore --clean --if-exists --no-owner`), VM의 점검을 끈 뒤 웹의 API 주소를 VM으로 돌린다. VM도 전환 전에 이 기능의 코드(Redis 없음, 묶음 1~4)로 돌고 있으므로(T040) 같은 이미지로 그대로 뜬다. 이미지와 스키마(V16)가 Render와 같아 덤프를 그대로 받는다.
+
+- VM이 켜져 있는 7일 동안은 지금처럼 비용이 나간다(약 $4). 첫 달 청구액이 0원이 되는 것은 정리를 마친 다음 달부터다. SC-001의 "첫 달"은 정리 다음 달로 읽는다.
+- 되돌릴 때 Neon에서 생긴 탈퇴는 VM에서 이어진다(덤프가 가져간다). 반대로 VM 덤프 뒤에 Neon에 쓴 것은 덤프가 가져가므로 잃지 않는다.

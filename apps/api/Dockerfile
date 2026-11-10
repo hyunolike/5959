@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # 빌드는 CI의 Gradle이 한다(bootJar). 이미지는 JAR만 담아서 arm64 빌드에 QEMU 컴파일이 필요 없게 한다.
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:25-jre
 
 ARG OTEL_AGENT_VERSION=2.31.1
 WORKDIR /app
