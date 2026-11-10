@@ -33,7 +33,9 @@ export default async function RootLayout({
   // 알림 종은 온보딩을 마친 회원에게만 그린다(US1-AC8, research R14). 로그인하지 않았거나
   // 온보딩 전이면 위젯이 없으므로 티켓 요청도 스트림 연결도 나가지 않는다.
   const cookieStore = await cookies();
+  // 점검 중에는 회원도 비회원처럼 그린다. API가 꺼져 있으니 알림 연결을 열지 않는다.
   const authenticated =
+    !env.OGU_MAINTENANCE_MODE &&
     cookieStore.has(REFRESH_TOKEN_COOKIE) &&
     cookieStore.get(ONBOARDED_COOKIE)?.value === "1";
 

@@ -30,6 +30,9 @@ export const env = createEnv({
     ENABLE_ERROR_PROBE: z.stringbool().optional(),
     // 디자인 카탈로그(/debug/design)를 켤지 여부. 운영에서는 켜지 않는다.
     ENABLE_DESIGN_CATALOG: z.stringbool().optional(),
+    // 점검 모드. 켜면 첫 화면 말고는 모두 첫 화면으로 보내고, 첫 화면에 이사 안내를 띄우며
+    // 로그인과 둘러보기로 가는 길을 숨긴다. API가 꺼져 있는 동안 웹만 따로 띄울 때 쓴다.
+    OGU_MAINTENANCE_MODE: z.stringbool().default(false),
     // e2e면 OAuth 시작 라우트가 제공자 대신 자기 콜백으로 바로 보낸다(가짜 제공자).
     APP_ENV: z
       .enum(["development", "e2e", "production"])
