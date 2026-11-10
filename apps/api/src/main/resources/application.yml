@@ -337,7 +337,6 @@ ogu:
     max-connections-per-member: 5
     retention: 90d
     safety-drain-interval: 60s
-    outage-drain-interval: 5s
     purge-batch-size: 1000
     writer-threads: 4
   stream-ticket:

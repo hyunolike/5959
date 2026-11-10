@@ -6,8 +6,8 @@ import com.ogu.notification.application.NotificationDraft
 import com.ogu.notification.application.NotificationWriter
 import com.ogu.notification.domain.NotificationRepository
 import com.ogu.notification.domain.NotificationType
+import com.ogu.notification.stream.LocalSignalPublisher
 import com.ogu.notification.stream.NotificationSignal
-import com.ogu.notification.stream.RedisSignalPublisher
 import com.ogu.notification.stream.SseHub
 import com.ogu.post.application.LikeService
 import com.ogu.support.CoreLoopFixture
@@ -55,7 +55,7 @@ import kotlin.random.Random
  * - 번호 순서와 교착은 [NotificationWriter]를 여러 트랜잭션에서 직접 부른다. 커밋 순서가 번호 순서와 같은지는 커밋된
  *   번호를 계속 읽어 언제나 1부터 빈칸 없이 이어지는지로 본다(번호를 받고 커밋하기까지 일부러 조금씩 쉰다).
  * - 연결하는 순간의 경합(재전송 쿼리와 실시간 구독 사이)은 재전송 쿼리가 끝난 바로 그때 알림을 커밋하고 그 신호를 허브에
- *   보낸다. Redis 신호가 늦게 와서 구해 주는 일이 없게 발행기는 가짜로 바꾼다. 이 테스트들은 `pg_stat_activity`를 읽지
+ *   보낸다. 발행기의 신호가 늦게 와서 구해 주는 일이 없게 발행기는 가짜로 바꾼다. 이 테스트들은 `pg_stat_activity`를 읽지
  *   않으므로 `pg_stat_clear_snapshot()`이 필요 없다.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -88,7 +88,7 @@ class NotificationConcurrencyTest {
     lateinit var hub: SseHub
 
     @MockitoBean
-    lateinit var signals: RedisSignalPublisher
+    lateinit var signals: LocalSignalPublisher
 
     @MockitoSpyBean
     lateinit var notificationRepository: NotificationRepository

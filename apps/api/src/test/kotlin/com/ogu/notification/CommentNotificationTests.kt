@@ -2,6 +2,7 @@ package com.ogu.notification
 
 import com.ogu.TestcontainersConfiguration
 import com.ogu.monster.MonsterApi
+import com.ogu.notification.stream.NotificationSignal
 import com.ogu.post.CommentCreated
 import com.ogu.support.CoreLoopFixture
 import com.ogu.support.MemberFixture
@@ -12,8 +13,6 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
-import org.springframework.data.redis.core.StringRedisTemplate
-import org.springframework.data.redis.listener.RedisMessageListenerContainer
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.modulith.test.EnableScenarios
 import org.springframework.modulith.test.Scenario
@@ -41,10 +40,7 @@ class CommentNotificationTests {
     lateinit var monsterApi: MonsterApi
 
     @Autowired
-    lateinit var redis: StringRedisTemplate
-
-    @Autowired
-    lateinit var container: RedisMessageListenerContainer
+    lateinit var signals: NotificationSignalRecorder
 
     private lateinit var members: MemberFixture
     private lateinit var loop: CoreLoopFixture
@@ -56,7 +52,7 @@ class CommentNotificationTests {
             MockMvcBuilders.webAppContextSetup(context).apply<DefaultMockMvcBuilder>(springSecurity()).build()
         members = MemberFixture(mockMvc)
         loop = CoreLoopFixture(mockMvc, jdbcTemplate, monsterApi)
-        support = NotificationTestSupport(jdbcTemplate, redis, container)
+        support = NotificationTestSupport(jdbcTemplate)
     }
 
     @Test
@@ -201,26 +197,21 @@ class CommentNotificationTests {
         val author = members.onboarded()
         val commenter = members.onboarded()
         val postId = loop.postWithoutMonster(author)
-        support.subscribeSignals()
-        try {
-            val commentId = loop.comment(commenter, postId)
-            val first = awaitCommentNotifications(author.id, 1).single()
-            await().atMost(NotificationTestSupport.AWAIT_LIMIT).until { support.newSignalsFor(author.id).isNotEmpty() }
+        val commentId = loop.comment(commenter, postId)
+        val first = awaitCommentNotifications(author.id, 1).single()
+        await().atMost(NotificationTestSupport.AWAIT_LIMIT).until { signals.newFor(author.id).isNotEmpty() }
 
-            scenario
-                .publish(CommentCreated(postId, commentId, commenter.id))
-                .andWaitForStateChange { support.incompletePublications(postId) == 0 }
+        scenario
+            .publish(CommentCreated(postId, commentId, commenter.id))
+            .andWaitForStateChange { support.incompletePublications(postId) == 0 }
 
-            support.awaitListenersIdle(postId)
-            assertThat(support.notificationsOf(author.id)).containsExactly(first)
-            assertThat(support.lastSeq(author.id)).isEqualTo(first.seq)
-            await()
-                .during(Duration.ofMillis(800))
-                .atMost(Duration.ofSeconds(3))
-                .until { support.newSignalsFor(author.id) == listOf("${author.id}:n:${first.seq}") }
-        } finally {
-            support.unsubscribeSignals()
-        }
+        support.awaitListenersIdle(postId)
+        assertThat(support.notificationsOf(author.id)).containsExactly(first)
+        assertThat(support.lastSeq(author.id)).isEqualTo(first.seq)
+        await()
+            .during(Duration.ofMillis(800))
+            .atMost(Duration.ofSeconds(3))
+            .until { signals.newFor(author.id) == listOf(NotificationSignal.New(author.id, first.seq)) }
     }
 
     private fun awaitCommentNotifications(

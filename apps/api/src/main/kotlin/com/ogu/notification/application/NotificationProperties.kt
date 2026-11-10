@@ -16,7 +16,6 @@ data class NotificationProperties(
     val maxConnectionsPerMember: Int = 5,
     val retention: Duration = Duration.ofDays(90),
     val safetyDrainInterval: Duration = Duration.ofSeconds(60),
-    val outageDrainInterval: Duration = Duration.ofSeconds(5),
     val purgeCron: String = "0 0 4 * * *",
     val purgeBatchSize: Int = 1000,
     val writerThreads: Int = 4,

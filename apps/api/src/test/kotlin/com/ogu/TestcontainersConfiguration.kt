@@ -1,5 +1,6 @@
 package com.ogu
 
+import com.ogu.notification.NotificationSignalRecorder
 import com.ogu.support.MonsterDefeatedRecorder
 import com.ogu.support.QueryCountConfiguration
 import com.ogu.support.TestAiConfiguration
@@ -16,7 +17,12 @@ import org.testcontainers.utility.DockerImageName
  * JDBC 문장 수는 [QueryCountConfiguration]이 세고, 몬스터 처치 이벤트는 [MonsterDefeatedRecorder]가 모은다.
  */
 @TestConfiguration(proxyBeanMethods = false)
-@Import(TestAiConfiguration::class, QueryCountConfiguration::class, MonsterDefeatedRecorder::class)
+@Import(
+    TestAiConfiguration::class,
+    QueryCountConfiguration::class,
+    MonsterDefeatedRecorder::class,
+    NotificationSignalRecorder::class,
+)
 class TestcontainersConfiguration {
     @Bean
     @ServiceConnection

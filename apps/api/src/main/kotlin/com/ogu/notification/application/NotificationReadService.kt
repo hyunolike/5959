@@ -3,8 +3,8 @@ package com.ogu.notification.application
 import com.ogu.notification.domain.NotificationRepository
 import com.ogu.notification.domain.NotificationSequenceRepository
 import com.ogu.notification.domain.ReadOutcome
+import com.ogu.notification.stream.LocalSignalPublisher
 import com.ogu.notification.stream.NotificationSignal
-import com.ogu.notification.stream.RedisSignalPublisher
 import com.ogu.shared.error.BusinessException
 import com.ogu.shared.error.ErrorCode
 import org.springframework.stereotype.Service
@@ -14,8 +14,8 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 /**
- * 읽음 처리(FR-008, research R11). 읽음이 실제로 바뀌었을 때만 커밋 뒤 `{memberId}:r` 신호를 예약한다
- * ([RedisSignalPublisher]). 신호를 받은 인스턴스마다 그 회원의 모든 연결에 `unread-count` 이벤트를 보내 다른 탭의 배지도
+ * 읽음 처리(FR-008, research R11). 읽음이 실제로 바뀌었을 때만 커밋 뒤 읽음 신호를 예약한다
+ * ([LocalSignalPublisher]). 신호를 받은 허브가 그 회원의 모든 연결에 `unread-count` 이벤트를 보내 다른 탭의 배지도
  * 바뀐다. 이 이벤트는 재전송하지 않는다. 신호를 놓친 연결은 다시 붙을 때 안 읽은 수를 새로 받는다.
  *
  * 공감 묶음과 겹칠 때(research R7): 읽음의 `UPDATE`와 묶음 갱신은 같은 행 잠금을 두고 줄을 선다. 읽음이 먼저 커밋되면
@@ -30,7 +30,7 @@ import java.time.temporal.ChronoUnit
 class NotificationReadService(
     private val notifications: NotificationRepository,
     private val sequences: NotificationSequenceRepository,
-    private val signals: RedisSignalPublisher,
+    private val signals: LocalSignalPublisher,
     private val clock: Clock,
 ) {
     /**

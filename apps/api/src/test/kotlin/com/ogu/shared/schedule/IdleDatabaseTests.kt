@@ -71,7 +71,6 @@ class IdleDatabaseTests {
         //  - Housekeeping: 하루 한 번 04:00
         //  - EventPublicationResubmitter: 회원이 최근에 쓴 동안만(ActivityGate)
         //  - RaidFlusher: 1초마다 돌지만 바뀐 회원이 없으면 DB를 열지 않는다(RaidDurabilityTests)
-        //  - RealtimeConnectionProbe: Redis만 본다. Redis를 지울 때 함께 지운다(018 US3)
         val scheduled =
             context.beanDefinitionNames
                 .mapNotNull { name -> context.getType(name) }
@@ -85,7 +84,6 @@ class IdleDatabaseTests {
             "Housekeeping",
             "EventPublicationResubmitter",
             "RaidFlusher",
-            "RealtimeConnectionProbe",
         )
     }
 

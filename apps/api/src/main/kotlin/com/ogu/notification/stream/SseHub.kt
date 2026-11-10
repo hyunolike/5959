@@ -13,15 +13,15 @@ import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicLong
 
 /**
- * 이 인스턴스의 SSE 연결(research R2, R4, R5).
+ * 이 서버의 SSE 연결(research R2, R4, 018 research R4).
  *
  * - 회원별 연결 목록을 들고, 회원 한 명의 연결은 [NotificationProperties.maxConnectionsPerMember]개까지 둔다. 넘으면 가장
  *   오래된 연결을 닫는다.
- * - 보내는 것은 언제나 DB에서 번호로 읽은 것이다([StreamWriter]). Redis 신호는 "이 회원에게 새 것이 있다"는 힌트일 뿐이라,
+ * - 보내는 것은 언제나 DB에서 번호로 읽은 것이다([StreamWriter]). 신호는 "이 회원에게 새 것이 있다"는 힌트일 뿐이라,
  *   신호를 잃거나 두 번 받아도 빠지거나 겹치지 않는다. 신호의 번호까지 이미 보낸 연결은 쿼리 없이 건너뛴다.
  * - 새 연결은 허브에 먼저 등록한 뒤 첫 따라잡기(재전송)를 한다. 재전송 쿼리와 실시간 구독 사이에 커밋된 알림의 신호가
  *   등록된 연결에 닿아 다시 따라잡게 하기 위해서다. 순서를 바꾸면 그 사이 알림은 안전망 주기까지 빠진다.
- * - 쓰기는 전용 실행기에서 한다(요청 스레드와 구독 스레드를 붙잡지 않는다). 연결이 끝나거나(완료, 수명, 오류 콜백) 쓰기에
+ * - 쓰기는 전용 실행기에서 한다(요청 스레드와 신호 스레드를 붙잡지 않는다). 연결이 끝나거나(완료, 수명, 오류 콜백) 쓰기에
  *   실패하면 목록에서 지운다.
  */
 @Component
@@ -54,7 +54,7 @@ class SseHub(
         lastEventId: Long?,
         topics: Set<String> = emptySet(),
     ): SseEmitter {
-        // 멈추는 중이면 받지 않고 바로 끝낸다. 웹은 끊김으로 보고 다른 인스턴스에 다시 붙는다
+        // 멈추는 중이면 받지 않고 바로 끝낸다. 웹은 끊김으로 보고 새 서버에 다시 붙는다
         if (!running) return SseEmitter().apply { complete() }
         // 지금 번호보다 큰 값으로 붙으면 그 번호에 이를 때까지 아무것도 받지 못하므로 지금 번호로 낮춘다
         val current = sequences.current(memberId)
@@ -87,19 +87,8 @@ class SseHub(
         }
     }
 
-    /** 모든 연결을 한 번씩 따라잡는다. Redis 구독이 돌아왔을 때 끊긴 동안 놓친 신호를 메운다. */
-    fun drainAll() {
-        connections.all().forEach { writer.request(it, StreamTask.DRAIN) }
-    }
-
-    /**
-     * 안전망(research R5): 회원마다 마지막으로 준 번호를 한 번에 읽어 뒤처진 연결만 따라잡는다.
-     *
-     * [withUnreadCounts]는 Redis 장애 동안에만 켠다. 읽음 신호(`{memberId}:r`)가 닿지 않으므로, 회원마다 안 읽은 수를 한 번에
-     * 읽어 마지막으로 보낸 수와 다른 연결에만 `unread-count`를 보낸다. 수가 그대로면 아무것도 보내지 않는다. 아직 수를 보낸
-     * 적 없는 연결은 한 번 받는다.
-     */
-    fun drainLagging(withUnreadCounts: Boolean = false) {
+    /** 안전망([SafetyDrain]): 회원마다 마지막으로 준 번호를 한 번에 읽어 뒤처진 연결만 따라잡는다. 연결이 없으면 쿼리도 없다. */
+    fun drainLagging() {
         val memberIds = connections.memberIds()
         if (memberIds.isEmpty()) return
         val latest = sequences.currentOf(memberIds)
@@ -107,12 +96,6 @@ class SseHub(
             .all()
             .filter { (latest[it.memberId] ?: 0L) > it.lastSentSeq }
             .forEach { writer.request(it, StreamTask.DRAIN) }
-        if (!withUnreadCounts) return
-        val unread = notifications.countUnreadOf(memberIds)
-        connections
-            .all()
-            .filter { it.lastUnreadCount != (unread[it.memberId] ?: 0L) }
-            .forEach { writer.request(it, StreamTask.UNREAD_COUNT) }
     }
 
     /** 모든 연결에 하트비트(주석 줄과 ping 이벤트)를 보낸다. 쓰기에 실패한 연결은 지운다. */
