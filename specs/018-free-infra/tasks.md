@@ -42,7 +42,7 @@ description: "Task list for 018-free-infra (무료 인프라로 이전)"
 
 ### Implementation
 
-- [ ] T013 [P] [US4] 감정 분석: `M/emotion/application/RetryScheduler.kt`의 `@Scheduled`를 `DueTimer`로. `nextDue = select min(next_attempt_at) from emotion_analysis where status = 'PENDING'`(`EmotionAnalysisRepository`에 쿼리 추가). `PostCreatedListener`의 행 생성, `AnalysisRunner`의 맡기(임대)와 실패(백오프)가 커밋 뒤 `armAfterCommit`. `ogu.emotion.retry.scheduler-enabled`, `poll-interval` 키는 남기고 `poll-interval`은 쓰지 않는다고 적거나 지운다
+- [X] T013 [P] [US4] 감정 분석: `M/emotion/application/RetryScheduler.kt`의 `@Scheduled`를 `DueTimer`로. `nextDue = select min(next_attempt_at) from emotion_analysis where status = 'PENDING'`(`EmotionAnalysisRepository`에 쿼리 추가). `PostCreatedListener`의 행 생성, `AnalysisRunner`의 맡기(임대)와 실패(백오프)가 커밋 뒤 `armAfterCommit`. `ogu.emotion.retry.scheduler-enabled`, `poll-interval` 키는 남기고 `poll-interval`은 쓰지 않는다고 적거나 지운다
 - [ ] T014 [P] [US4] 위험 분류: `M/safety/application/RiskClassificationRunner.kt`의 `RiskRetryScheduler`를 같은 방식으로(`risk_assessment`). `ScreeningListener`의 `insertPending`이 건다
 - [ ] T015 [P] [US4] 임베딩: `M/recommend/application/EmbeddingPipeline.kt`의 `EmbeddingRetryScheduler`(`post_embedding`). `EmbeddingListener.request`, `markAttempt`, 백필의 다시 요청이 건다
 - [ ] T016 [P] [US4] 주간 편지: `M/report/application/WeeklyLetterPipeline.kt`의 `WeeklyLetterRetryScheduler`(`weekly_report.letter_next_attempt_at`, `letter_status = 'PENDING'`)
@@ -55,7 +55,7 @@ description: "Task list for 018-free-infra (무료 인프라로 이전)"
 - [ ] T023 [US4] `M/recommend/application/EmbeddingBackfill.kt`: 기동 때 `embedding_backfill`에 지금 모델 행이 있으면 훑지 않는다. 끝나면 `INSERT ... ON CONFLICT DO NOTHING`. 테스트 `T/recommend/EmbeddingBackfillTests.kt`에 `다시 떠도 끝난 모델은 훑지 않는다`, `모델을 바꾸면 한 번 훑는다`
 - [ ] T024 [US4] `M/raid/application/RaidFlusher.kt`: 바뀐 회원이 없으면 DB를 열지 않는다(`store()`의 조건을 고친다. 지금은 살아 있는 보스면 매초 UPDATE). 이 태스크는 Redis를 지우기 전에도 들어간다
 
-**Checkpoint**: 주기 작업이 DB를 계속 깨우지 않는다(PR 2). 지금의 GCP에 내보내 두 주 동안 동작을 본다.
+**Checkpoint**: 주기 작업이 DB를 계속 깨우지 않는다(PR 2). GCP 결제 계정이 닫혀(2026-11-10) GCP에서 두 주 지켜보는 단계는 하지 않는다. 테스트로 확인하고 Render와 Neon으로 바로 간다.
 
 ## Phase 4: US3 실시간 알림과 레이드는 서버 한 대에서 그대로 동작한다 (P1)
 

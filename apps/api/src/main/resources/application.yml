@@ -211,6 +211,7 @@ ogu:
       initial: 30s
       max-interval: 5m
       deadline: 24h
+      # 018부터 쓰지 않는다. 재시도는 가장 이른 next_attempt_at에만 깬다(research R3).
       poll-interval: 10s
       batch-size: 20
   post:

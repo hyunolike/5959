@@ -42,6 +42,16 @@ interface EmotionAnalysisRepository : JpaRepository<EmotionAnalysis, Long> {
         @Param("now") now: Instant,
     ): EmotionAnalysis?
 
+    /**
+     * 가장 이른 다음 시도 시각. 시도할 분석이 없으면 null이다(018 research R3). 타이머가 이 시각에만 깨어 DB를 연다.
+     * 부분 인덱스 `emotion_analysis_pending_idx`를 탄다.
+     */
+    @Query(
+        value = "select min(next_attempt_at) from emotion_analysis where status = 'PENDING'",
+        nativeQuery = true,
+    )
+    fun findEarliestPendingAttemptAt(): Instant?
+
     /** 시도 결과를 기록할 때 행을 잠근다. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select e from EmotionAnalysis e where e.postId = :postId")
