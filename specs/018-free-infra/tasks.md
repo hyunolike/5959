@@ -35,25 +35,25 @@ description: "Task list for 018-free-infra (무료 인프라로 이전)"
 
 ### Tests
 
-- [ ] T009 [US4] `T/shared/schedule/IdleDatabaseTests.kt`(모든 주기 작업을 켠 컨텍스트, 쿼리를 세는 `DataSource`, 앞으로 가는 시계): `US4-AC3 할 일이 없으면 마지막 요청 뒤 10분 동안 쿼리가 하나도 없다`(레이드 보스가 살아 있는 상태 포함), `US4-AC4 기다리는 재시도가 있는 채 다시 뜨면 그 시각에 돈다`
-- [ ] T010 [P] [US4] 기존 재시도 테스트에 타이머 경로를 더한다(스케줄러 스위치를 켠 컨텍스트 하나): `US4-AC1 새 글의 감정 분석과 몬스터가 1분 안에 생긴다`, `US4-AC2 실패한 분석은 30초 뒤, 그다음 60초 뒤 다시 시도한다` — 감정(`T/emotion/`), 위험(`T/safety/`), 임베딩(`T/recommend/`), 편지(`T/report/`) 각각
-- [ ] T011 [P] [US4] `T/report/WeeklyReportScheduleTests.kt`: `US4-AC5 월요일 05:00에 리포트와 알림이 나간다`, `기동이 늦어도 밀린 주를 채운다`. `T/shared/schedule/HousekeepingTests.kt`: `US4-AC6 04:00 한 번에 다섯 정리가 지금 기준으로 지운다`, `한 단계가 실패해도 다른 단계는 돈다`
-- [ ] T012 [P] [US4] `T/companion/`에 `US4-AC7 조용한 6시간이 지나면 글쓰기 타이머가 울린다`, `새 글이 오면 타이머가 미뤄진다`. `T/raid/RaidLifecycleTests.kt`에 `US4-AC8 보스가 물러날 시각에 다음 보스로 바뀐다`
+- [X] T009 [US4] `T/shared/schedule/IdleDatabaseTests.kt`(모든 주기 작업을 켠 컨텍스트, 쿼리를 세는 `DataSource`, 앞으로 가는 시계): `US4-AC3 할 일이 없으면 마지막 요청 뒤 10분 동안 쿼리가 하나도 없다`(레이드 보스가 살아 있는 상태 포함), `US4-AC4 기다리는 재시도가 있는 채 다시 뜨면 그 시각에 돈다`
+- [X] T010 [P] [US4] 기존 재시도 테스트에 타이머 경로를 더한다(스케줄러 스위치를 켠 컨텍스트 하나): `US4-AC1 새 글의 감정 분석과 몬스터가 1분 안에 생긴다`, `US4-AC2 실패한 분석은 30초 뒤, 그다음 60초 뒤 다시 시도한다` — 감정(`T/emotion/`), 위험(`T/safety/`), 임베딩(`T/recommend/`), 편지(`T/report/`) 각각
+- [X] T011 [P] [US4] `T/report/WeeklyReportScheduleTests.kt`: `US4-AC5 월요일 05:00에 리포트와 알림이 나간다`, `기동이 늦어도 밀린 주를 채운다`. `T/shared/schedule/HousekeepingTests.kt`: `US4-AC6 04:00 한 번에 다섯 정리가 지금 기준으로 지운다`, `한 단계가 실패해도 다른 단계는 돈다`
+- [X] T012 [P] [US4] `T/companion/`에 `US4-AC7 조용한 6시간이 지나면 글쓰기 타이머가 울린다`, `새 글이 오면 타이머가 미뤄진다`. `T/raid/RaidLifecycleTests.kt`에 `US4-AC8 보스가 물러날 시각에 다음 보스로 바뀐다`
 
 ### Implementation
 
 - [X] T013 [P] [US4] 감정 분석: `M/emotion/application/RetryScheduler.kt`의 `@Scheduled`를 `DueTimer`로. `nextDue = select min(next_attempt_at) from emotion_analysis where status = 'PENDING'`(`EmotionAnalysisRepository`에 쿼리 추가). `PostCreatedListener`의 행 생성, `AnalysisRunner`의 맡기(임대)와 실패(백오프)가 커밋 뒤 `armAfterCommit`. `ogu.emotion.retry.scheduler-enabled`, `poll-interval` 키는 남기고 `poll-interval`은 쓰지 않는다고 적거나 지운다
-- [ ] T014 [P] [US4] 위험 분류: `M/safety/application/RiskClassificationRunner.kt`의 `RiskRetryScheduler`를 같은 방식으로(`risk_assessment`). `ScreeningListener`의 `insertPending`이 건다
-- [ ] T015 [P] [US4] 임베딩: `M/recommend/application/EmbeddingPipeline.kt`의 `EmbeddingRetryScheduler`(`post_embedding`). `EmbeddingListener.request`, `markAttempt`, 백필의 다시 요청이 건다
-- [ ] T016 [P] [US4] 주간 편지: `M/report/application/WeeklyLetterPipeline.kt`의 `WeeklyLetterRetryScheduler`(`weekly_report.letter_next_attempt_at`, `letter_status = 'PENDING'`)
-- [ ] T017 [P] [US4] AI 친구 반응: `M/companion/application/ReactionRunner.kt`의 `ReactionScheduler`. `nextDue = min(greatest(post_created_at + wait, next_attempt_at))`과 가장 이른 만료(`post_created_at + 24h`) 가운데 이른 것(`CompanionReactionRepository`). `ReactionEnrollListener`, 뒤따르는 친구 예약, 미루기가 건다. `ogu.companion.enabled=false`면 걸지 않는다
-- [ ] T018 [P] [US4] AI 친구 글쓰기: `M/companion/application/PostingRunner.kt`의 `PostingScheduler`. 쓰는 중인 행의 `next_attempt_at`, 없으면 `max(latestVisiblePostAt + quiet, 오늘 또는 내일 active-from)`이고 `active-until`을 넘으면 다음 날. `CompanionPostApi`가 아닌 `PostCreated`를 받아(이미 `companion`이 받는 이벤트) 다시 건다. `posting.enabled=false`면 걸지 않는다
-- [ ] T019 [P] [US4] 레이드 보스 교체: `M/raid/application/RaidBossLifecycle.kt`의 `RaidLifecycleScheduler`. 살아 있는 보스면 `spawned_at + retreat-after`, 끝났으면 `ended_at` 다음 날 00:00(`ogu.raid.zone`). `insertAlive`, `RaidFinisher.finish`가 건다. `tick`의 `findLatest()` 두 번을 한 번으로
-- [ ] T020 [P] [US4] 주간 리포트: `M/report/application/WeeklyReportJob.kt`의 `WeeklyReportScheduler`. 이번 주 `publish-at`(월요일 05:00 한국 시간), 훑는 중이면 1분 뒤, `weekly_report_run`이 있으면 다음 주
+- [X] T014 [P] [US4] 위험 분류: `M/safety/application/RiskClassificationRunner.kt`의 `RiskRetryScheduler`를 같은 방식으로(`risk_assessment`). `ScreeningListener`의 `insertPending`이 건다
+- [X] T015 [P] [US4] 임베딩: `M/recommend/application/EmbeddingPipeline.kt`의 `EmbeddingRetryScheduler`(`post_embedding`). `EmbeddingListener.request`, `markAttempt`, 백필의 다시 요청이 건다
+- [X] T016 [P] [US4] 주간 편지: `M/report/application/WeeklyLetterPipeline.kt`의 `WeeklyLetterRetryScheduler`(`weekly_report.letter_next_attempt_at`, `letter_status = 'PENDING'`)
+- [X] T017 [P] [US4] AI 친구 반응: `M/companion/application/ReactionRunner.kt`의 `ReactionScheduler`. `nextDue = min(greatest(post_created_at + wait, next_attempt_at))`과 가장 이른 만료(`post_created_at + 24h`) 가운데 이른 것(`CompanionReactionRepository`). `ReactionEnrollListener`, 뒤따르는 친구 예약, 미루기가 건다. `ogu.companion.enabled=false`면 걸지 않는다
+- [X] T018 [P] [US4] AI 친구 글쓰기: `M/companion/application/PostingRunner.kt`의 `PostingScheduler`. 쓰는 중인 행의 `next_attempt_at`, 없으면 `max(latestVisiblePostAt + quiet, 오늘 또는 내일 active-from)`이고 `active-until`을 넘으면 다음 날. `CompanionPostApi`가 아닌 `PostCreated`를 받아(이미 `companion`이 받는 이벤트) 다시 건다. `posting.enabled=false`면 걸지 않는다
+- [X] T019 [P] [US4] 레이드 보스 교체: `M/raid/application/RaidBossLifecycle.kt`의 `RaidLifecycleScheduler`. 살아 있는 보스면 `spawned_at + retreat-after`, 끝났으면 `ended_at` 다음 날 00:00(`ogu.raid.zone`). `insertAlive`, `RaidFinisher.finish`가 건다. `tick`의 `findLatest()` 두 번을 한 번으로
+- [X] T020 [P] [US4] 주간 리포트: `M/report/application/WeeklyReportJob.kt`의 `WeeklyReportScheduler`. 이번 주 `publish-at`(월요일 05:00 한국 시간), 훑는 중이면 1분 뒤, `weekly_report_run`이 있으면 다음 주
 - [X] T021 [US4] `M/shared/schedule/Housekeeping.kt`: `ogu.housekeeping.cron`(`0 0 4 * * *`, Asia/Seoul) 하나에서 `NotificationPurgeJob`, `LoginAttemptCleanupJob`, `SafetyPurgeJob`, `SseTicketCleanupJob`, `WeeklyReportPurgeJob`, `PasswordResetTokenCleanupJob`을 차례로 부른다. 각 잡의 `@Scheduled`를 지우고 메서드는 남긴다. 단계마다 따로 실패하고 ERROR를 남긴다. 끝에 모든 `DueTimer`를 `rearm()`하고 이벤트 재전송을 한 번 돌린다. `shared`가 다른 모듈을 직접 부르면 경계 위반이므로, 각 모듈이 `shared`의 `HousekeepingStep` 빈을 내놓고 `Housekeeping`이 목록으로 받는다. 옛 cron 키 다섯 개는 `application.yml`에서 지운다
 - [X] T022 [US4] `M/shared/config/EventPublicationResubmitter.kt`: `scheduledResubmit`이 `ActivityGate.isActive`일 때만 돈다. 기동 때는 Modulith의 `republish-outstanding-events-on-restart`가 맡는다
-- [ ] T023 [US4] `M/recommend/application/EmbeddingBackfill.kt`: 기동 때 `embedding_backfill`에 지금 모델 행이 있으면 훑지 않는다. 끝나면 `INSERT ... ON CONFLICT DO NOTHING`. 테스트 `T/recommend/EmbeddingBackfillTests.kt`에 `다시 떠도 끝난 모델은 훑지 않는다`, `모델을 바꾸면 한 번 훑는다`
-- [ ] T024 [US4] `M/raid/application/RaidFlusher.kt`: 바뀐 회원이 없으면 DB를 열지 않는다(`store()`의 조건을 고친다. 지금은 살아 있는 보스면 매초 UPDATE). 이 태스크는 Redis를 지우기 전에도 들어간다
+- [X] T023 [US4] `M/recommend/application/EmbeddingBackfill.kt`: 기동 때 `embedding_backfill`에 지금 모델 행이 있으면 훑지 않는다. 끝나면 `INSERT ... ON CONFLICT DO NOTHING`. 테스트 `T/recommend/EmbeddingBackfillTests.kt`에 `다시 떠도 끝난 모델은 훑지 않는다`, `모델을 바꾸면 한 번 훑는다`
+- [X] T024 [US4] `M/raid/application/RaidFlusher.kt`: 바뀐 회원이 없으면 DB를 열지 않는다(`store()`의 조건을 고친다. 지금은 살아 있는 보스면 매초 UPDATE). 이 태스크는 Redis를 지우기 전에도 들어간다
 
 **Checkpoint**: 주기 작업이 DB를 계속 깨우지 않는다(PR 2). GCP 결제 계정이 닫혀(2026-11-10) GCP에서 두 주 지켜보는 단계는 하지 않는다. 테스트로 확인하고 Render와 Neon으로 바로 간다.
 

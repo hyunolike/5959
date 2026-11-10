@@ -42,6 +42,22 @@ class DueTimerTest {
     }
 
     @Test
+    fun `작업이 정한 최소 간격이 있으면 밀린 일을 그 간격마다 처리한다`() {
+        val job = RecordingJob(next = start, minGap = Duration.ofSeconds(10))
+        val timer = timerFor(job)
+        timer.rearm()
+
+        scheduler.advance(Duration.ZERO)
+        assertThat(job.runs).isEqualTo(1)
+        assertThat(timer.nextAt).isEqualTo(start.plusSeconds(10))
+
+        scheduler.advance(Duration.ofSeconds(9))
+        assertThat(job.runs).isEqualTo(1)
+        scheduler.advance(Duration.ofSeconds(1))
+        assertThat(job.runs).isEqualTo(2)
+    }
+
+    @Test
     fun `더 이른 시각으로만 다시 건다`() {
         val timer = timerFor(RecordingJob(next = null))
         timer.arm(start.plusSeconds(60))
@@ -151,6 +167,7 @@ class DueTimerTest {
         var next: Instant?,
         val failNext: Boolean = false,
         val failRun: Boolean = false,
+        override val minGap: Duration? = null,
         val onRun: () -> Unit = {},
     ) : DueJob {
         var runs = 0

@@ -28,6 +28,9 @@ class DueTimers internal constructor(
     @Autowired
     constructor(clock: Clock) : this(clock, threadScheduler())
 
+    /** 스레드 이름을 따로 붙인다. 한 JVM에 컨텍스트가 여럿인 테스트에서 이 컨텍스트의 타이머 스레드를 가려내려고 둔다. */
+    internal constructor(clock: Clock, threadNamePrefix: String) : this(clock, threadScheduler(threadNamePrefix))
+
     private constructor(clock: Clock, pool: ThreadPoolTaskScheduler) : this(
         clock,
         DelayScheduler { delay, task ->
@@ -38,7 +41,11 @@ class DueTimers internal constructor(
     )
 
     /** [job]의 타이머를 만든다. 걸리는 것은 기동이 끝난 뒤([ApplicationReadyEvent])부터다. */
-    fun register(job: DueJob): DueTimer = DueTimer(job, clock, scheduler, RETRY_ON_ERROR, MIN_GAP).also(timers::add)
+    fun register(job: DueJob): DueTimer {
+        val timer = DueTimer(job, clock, scheduler, RETRY_ON_ERROR, job.minGap ?: MIN_GAP)
+        timers.add(timer)
+        return timer
+    }
 
     /** 작업 이름별로 지금 걸린 다음 시각. 테스트와 로그용이다. */
     fun nextTimes(): Map<String, java.time.Instant?> = timers.associate { it.name to it.nextAt }
@@ -58,10 +65,10 @@ class DueTimers internal constructor(
         private val RETRY_ON_ERROR: Duration = Duration.ofMinutes(5)
         private val MIN_GAP: Duration = Duration.ofSeconds(1)
 
-        private fun threadScheduler() =
+        private fun threadScheduler(threadNamePrefix: String = "due-timer-") =
             ThreadPoolTaskScheduler().apply {
                 poolSize = 2
-                setThreadNamePrefix("due-timer-")
+                setThreadNamePrefix(threadNamePrefix)
                 setWaitForTasksToCompleteOnShutdown(false)
                 initialize()
             }

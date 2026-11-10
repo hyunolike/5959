@@ -13,6 +13,7 @@ import com.ogu.shared.schedule.DueJob
 import com.ogu.shared.schedule.DueTimers
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.ObjectProvider
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.modulith.events.ApplicationModuleListener
 import org.springframework.stereotype.Component
@@ -223,6 +224,8 @@ class EmbeddingListener(
 class EmbeddingRetryScheduler(
     private val runner: EmbeddingRunner,
     private val embeddings: PostEmbeddingRepository,
+    // 밀린 재시도는 예전 폴링 간격마다 한 묶음씩 보낸다. AI 제공자의 요청 한도에 몰리지 않게 한다.
+    @Value("\${ogu.recommend.retry.poll-interval:10s}") override val minGap: Duration,
     timers: DueTimers,
 ) : DueJob {
     private val log = LoggerFactory.getLogger(javaClass)
