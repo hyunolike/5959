@@ -175,25 +175,6 @@ class NotificationRepository(
             .query(Long::class.java)
             .single()
 
-    /**
-     * 회원마다 안 읽은 수를 한 번에 읽는다(Redis 장애 동안의 안전망). 안 읽은 알림이 없는 회원은 결과에서 빠진다.
-     */
-    fun countUnreadOf(receiverIds: Collection<Long>): Map<Long, Long> {
-        if (receiverIds.isEmpty()) return emptyMap()
-        return jdbcClient
-            .sql(
-                """
-                select n.receiver_id, count(*) as unread from notification n
-                where n.receiver_id in (:receiverIds) and n.read_at is null and ${NotificationRetention.condition("n")}
-                group by n.receiver_id
-                """.trimIndent(),
-            ).param("receiverIds", receiverIds.toSet())
-            .params(retention.params())
-            .query { rs, _ -> rs.getLong("receiver_id") to rs.getLong("unread") }
-            .list()
-            .toMap()
-    }
-
     /** 하나 읽음(research R11). 남의 알림이나 보관 기간이 지난 알림은 존재 여부를 알리지 않고 [ReadOutcome.NOT_FOUND]다. */
     fun markRead(
         id: Long,

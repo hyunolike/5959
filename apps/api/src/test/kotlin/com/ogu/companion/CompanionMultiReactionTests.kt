@@ -13,8 +13,6 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
-import org.springframework.data.redis.core.StringRedisTemplate
-import org.springframework.data.redis.listener.RedisMessageListenerContainer
 import java.time.Duration
 
 /** 한 글에 AI 친구가 한 명에서 세 명까지 답한다(012 US1). */
@@ -38,12 +36,6 @@ import java.time.Duration
 class CompanionMultiReactionTests : CompanionTestBase() {
     @Autowired
     lateinit var enroller: ReactionEnroller
-
-    @Autowired
-    lateinit var redis: StringRedisTemplate
-
-    @Autowired
-    lateinit var container: RedisMessageListenerContainer
 
     @Test
     fun `US1-AC1 반응 기록이 생길 때 반응할 친구의 수가 정해져 남는다`() {
@@ -152,7 +144,7 @@ class CompanionMultiReactionTests : CompanionTestBase() {
 
     @Test
     fun `US1-AC8 친구마다 몬스터 HP가 4 줄고 글쓴이에게 알림이 간다`() {
-        val support = NotificationTestSupport(jdbcTemplate, redis, container)
+        val support = NotificationTestSupport(jdbcTemplate)
         val author = members.onboarded()
         val postId = postOf(author, "[불안:낮음] 내일 발표가 걱정이에요", count = 2)
         val monster = loop.awaitMonster(postId)
