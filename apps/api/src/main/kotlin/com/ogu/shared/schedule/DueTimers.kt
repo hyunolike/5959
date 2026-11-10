@@ -40,6 +40,9 @@ class DueTimers internal constructor(
     /** [job]의 타이머를 만든다. 걸리는 것은 기동이 끝난 뒤([ApplicationReadyEvent])부터다. */
     fun register(job: DueJob): DueTimer = DueTimer(job, clock, scheduler, RETRY_ON_ERROR, MIN_GAP).also(timers::add)
 
+    /** 작업 이름별로 지금 걸린 다음 시각. 테스트와 로그용이다. */
+    fun nextTimes(): Map<String, java.time.Instant?> = timers.associate { it.name to it.nextAt }
+
     /** 모든 타이머의 다음 시각을 DB에서 다시 읽는다. */
     fun rearmAll() = timers.forEach(DueTimer::rearm)
 

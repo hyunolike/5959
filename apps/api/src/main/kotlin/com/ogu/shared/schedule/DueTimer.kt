@@ -34,6 +34,10 @@ class DueTimer internal constructor(
     private var pendingAt: Instant? = null
     private var notBefore: Instant? = null
 
+    /** 작업 이름. 테스트와 로그용이다. */
+    val name: String
+        get() = job.name
+
     /** 지금 걸린 다음 시각. 테스트와 로그용이다. */
     val nextAt: Instant?
         get() = lock.withLock { armedAt }

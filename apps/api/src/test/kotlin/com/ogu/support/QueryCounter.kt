@@ -31,6 +31,31 @@ object QueryCounter {
     }
 }
 
+/**
+ * 모든 스레드에서 실행한 JDBC 문장을 "스레드 이름: SQL"로 모은다(018 T009). [record]하는 동안만 모은다.
+ * 주기 작업처럼 테스트 스레드가 아닌 곳의 쿼리를 잡으려는 것이다.
+ */
+object AllThreadQueries {
+    @Volatile
+    private var sink: MutableList<String>? = null
+
+    fun <T> record(block: () -> T): Pair<T, List<String>> {
+        val collected = java.util.Collections.synchronizedList(mutableListOf<String>())
+        sink = collected
+        try {
+            return block() to collected.toList()
+        } finally {
+            sink = null
+        }
+    }
+
+    internal fun add(queries: List<QueryInfo>) {
+        val target = sink ?: return
+        val thread = Thread.currentThread().name
+        queries.forEach { target += "$thread: ${it.query}" }
+    }
+}
+
 /** 앱의 DataSource를 datasource-proxy로 감싸 [QueryCounter]가 문장을 세게 한다. [TestcontainersConfiguration]이 가져온다. */
 @TestConfiguration(proxyBeanMethods = false)
 class QueryCountConfiguration {
@@ -64,6 +89,9 @@ class QueryCountConfiguration {
         override fun afterQuery(
             execInfo: ExecutionInfo,
             queryInfoList: List<QueryInfo>,
-        ) = QueryCounter.record(queryInfoList.size)
+        ) {
+            QueryCounter.record(queryInfoList.size)
+            AllThreadQueries.add(queryInfoList)
+        }
     }
 }
