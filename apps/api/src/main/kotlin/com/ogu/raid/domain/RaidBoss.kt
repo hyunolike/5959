@@ -10,8 +10,8 @@ enum class RaidBossStatus {
 }
 
 /**
- * 보스 하나의 상태. Redis에서 읽었으면 지금 값이고, Postgres에서 읽었으면 마지막으로 옮겨 적은 값이다.
- * [epoch]는 Redis의 값이 기록에서 다시 채워질 때마다 커진다. Postgres에서 읽은 것은 0이다.
+ * 보스 하나의 상태. 메모리([RaidLiveStore])에서 읽었으면 지금 값이고, Postgres에서 읽었으면 마지막으로 옮겨 적은 값이다.
+ * [epoch]는 메모리에 기록에서 다시 올린 시각(ms)이라 올릴 때마다 커진다. Postgres에서 읽은 것은 0이다.
  */
 data class RaidBoss(
     val id: Long,

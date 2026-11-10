@@ -2,6 +2,7 @@ package com.ogu.raid
 
 import com.ogu.TestcontainersConfiguration
 import com.ogu.raid.application.RaidAttackService
+import com.ogu.raid.domain.RaidLiveStore
 import com.ogu.support.MemberFixture
 import com.ogu.support.RaidFixture
 import com.ogu.support.SafetyFixture
@@ -17,7 +18,6 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.context.annotation.Import
-import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.http.HttpMethod
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity
@@ -39,7 +39,7 @@ class RaidStreamTests {
     lateinit var jdbcTemplate: JdbcTemplate
 
     @Autowired
-    lateinit var redisTemplate: StringRedisTemplate
+    lateinit var store: RaidLiveStore
 
     @LocalServerPort
     var port: Int = 0
@@ -57,7 +57,7 @@ class RaidStreamTests {
         members = MemberFixture(mockMvc)
         http = SafetyFixture(mockMvc, jdbcTemplate)
         tickets = StreamTickets(mockMvc)
-        raid = RaidFixture(jdbcTemplate, redisTemplate)
+        raid = RaidFixture(jdbcTemplate, store)
     }
 
     @AfterEach
@@ -66,7 +66,7 @@ class RaidStreamTests {
     }
 
     @Test
-    fun `US2-AC1 다른 회원의 공격이 1초 안에 raid 이벤트로 오고 US2-AC4 참여자 수가 실린다`() {
+    fun `US3-AC4 다른 회원의 공격이 1초 안에 화면에 보이고 참여자 수가 실린다`() {
         val bossId = raid.freshBoss(maxHp = 30)
         val watcher = members.onboarded()
         val attacker = members.onboarded()

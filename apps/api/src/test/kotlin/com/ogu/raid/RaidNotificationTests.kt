@@ -3,6 +3,7 @@ package com.ogu.raid
 import com.ogu.TestcontainersConfiguration
 import com.ogu.raid.application.RaidFinisher
 import com.ogu.raid.domain.RaidBossStatus
+import com.ogu.raid.domain.RaidLiveStore
 import com.ogu.support.MemberFixture
 import com.ogu.support.RaidFixture
 import com.ogu.support.SafetyFixture
@@ -14,7 +15,6 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.annotation.Import
-import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.http.HttpMethod
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity
@@ -41,7 +41,7 @@ class RaidNotificationTests {
     lateinit var jdbcTemplate: JdbcTemplate
 
     @Autowired
-    lateinit var redisTemplate: StringRedisTemplate
+    lateinit var store: RaidLiveStore
 
     @Autowired
     lateinit var finisher: RaidFinisher
@@ -62,7 +62,7 @@ class RaidNotificationTests {
         mockMvc = MockMvcBuilders.webAppContextSetup(context).apply<DefaultMockMvcBuilder>(springSecurity()).build()
         members = MemberFixture(mockMvc)
         http = SafetyFixture(mockMvc, jdbcTemplate)
-        raid = RaidFixture(jdbcTemplate, redisTemplate)
+        raid = RaidFixture(jdbcTemplate, store)
     }
 
     @Test

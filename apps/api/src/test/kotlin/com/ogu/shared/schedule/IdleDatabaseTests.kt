@@ -70,7 +70,8 @@ class IdleDatabaseTests {
         // 타이머 밖에 남은 @Scheduled. 하나라도 늘면 그 작업이 DB를 깨우는지 따져 보고 이 목록을 고친다.
         //  - Housekeeping: 하루 한 번 04:00
         //  - EventPublicationResubmitter: 회원이 최근에 쓴 동안만(ActivityGate)
-        //  - RaidFlusher: 1초마다 돌지만 바뀐 회원이 없으면 DB를 열지 않는다(RaidDurabilityTests)
+        //  - RaidFlusher: 1초마다 돌지만 바뀐 회원이 없으면 DB를 열지 않는다(RaidDurabilityTests). 레이드를 기록과 맞추는
+        //    일(RaidLoader)은 @Scheduled가 아니고 기동 뒤 3분 동안만 제 스레드에서 돈다
         //  - RealtimeConnectionProbe: Redis만 본다. Redis를 지울 때 함께 지운다(018 US3)
         val scheduled =
             context.beanDefinitionNames

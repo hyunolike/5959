@@ -1,42 +1,42 @@
 package com.ogu.support
 
-import com.ogu.raid.domain.RaidRedis
+import com.ogu.raid.domain.RaidLiveStore
 import org.awaitility.Awaitility.await
 import org.springframework.dao.DuplicateKeyException
-import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.jdbc.core.JdbcTemplate
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicLong
 
 /**
- * 레이드 테스트 도우미(006). 테스트 컨텍스트들이 Postgres와 Redis를 함께 쓰고 다른 컨텍스트의 주기 작업(옮기기, 보스의
+ * 레이드 테스트 도우미(006, 018). 테스트 컨텍스트들이 Postgres를 함께 쓰고 다른 컨텍스트의 주기 작업(옮기기, 보스의
  * 생애)도 계속 돈다. 그래서 보스를 지우지 않고, 테스트마다 살아 있는 보스를 물러나게 한 뒤 새 보스를 만든다.
+ * 살아 있는 값은 컨텍스트마다 따로인 메모리 저장소([RaidLiveStore])에 있다. [store]는 테스트하는 컨텍스트의 것이다.
  */
 class RaidFixture(
     private val jdbcTemplate: JdbcTemplate,
-    private val redis: StringRedisTemplate,
+    private val store: RaidLiveStore,
 ) {
-    /** 살아 있는 보스를 물러나게 하고 HP가 [maxHp]인 새 보스를 만든다. Redis는 비워 첫 요청이 기록에서 채우게 한다. */
+    /** 살아 있는 보스를 물러나게 하고 HP가 [maxHp]인 새 보스를 만든다. 저장소는 비워 첫 요청이 기록에서 올리게 한다. */
     fun freshBoss(
         maxHp: Int,
         emotion: String = "LETHARGY",
     ): Long {
         val bossId = replaceBoss(maxHp, emotion)
-        redis.delete(RaidRedis.BOSS_KEY)
+        store.clear()
         dropStaleBoss(bossId)
         return bossId
     }
 
     /**
-     * 방금 물러나게 한 보스가 뒤늦게 Redis에 올라오면 지운다. 컨텍스트가 막 떴을 때 보스의 생애 주기 작업이 첫 실행에서
-     * 보스를 만들고, 우리가 그 보스를 물러나게 한 뒤에야 Redis에 올리는 수가 있다. 올리기는 ID가 더 큰 보스만 받아
-     * 주므로 그 뒤로는 우리 보스가 올라온다. 지우지 않으면 물러난 보스가 Redis에 남아 실시간 소식이 그 보스만 싣는다
+     * 방금 물러나게 한 보스가 뒤늦게 저장소에 올라오면 지운다. 컨텍스트가 막 떴을 때 보스의 생애 주기 작업이 첫 실행에서
+     * 보스를 만들고, 우리가 그 보스를 물러나게 한 뒤에야 올리는 수가 있다. 올리기는 ID가 더 큰 보스만 받아 주므로 그
+     * 뒤로는 우리 보스가 올라온다. 지우지 않으면 물러난 보스가 남아 실시간 소식이 그 보스만 싣는다
      * (CI에서 RaidStreamTests가 이 때문에 실패했다).
      */
     private fun dropStaleBoss(bossId: Long) {
         repeat(SETTLE_CHECKS) {
-            val loaded = redis.opsForHash<String, String>().get(RaidRedis.BOSS_KEY, "id")?.toLongOrNull()
-            if (loaded != null && loaded < bossId) redis.delete(RaidRedis.BOSS_KEY)
+            val loaded = store.read()?.id
+            if (loaded != null && loaded < bossId) store.clear()
             Thread.sleep(SETTLE_GAP_MILLIS)
         }
     }
@@ -65,7 +65,7 @@ class RaidFixture(
 
     /** 같은 회원이 기다리지 않고 다시 공격하게 한다. */
     fun clearCooldown(memberId: Long) {
-        redis.delete("raid:cd:$memberId")
+        store.clearCooldown(memberId)
     }
 
     fun boss(bossId: Long): Map<String, Any?> = jdbcTemplate.queryForMap("select * from raid_boss where id = ?", bossId)
@@ -88,13 +88,9 @@ class RaidFixture(
             memberId,
         )!!
 
-    fun redisHp(): Int = redis.opsForHash<String, String>().get(RaidRedis.BOSS_KEY, "hp")!!.toInt()
+    fun liveHp(): Int = store.read()!!.hp
 
-    fun redisDamageSum(bossId: Long): Int =
-        redis
-            .opsForHash<String, String>()
-            .values(RaidRedis.contributionsKey(bossId))
-            .sumOf { it.toInt() }
+    fun liveDamageSum(bossId: Long): Int = store.contributions(bossId).values.sum()
 
     /** 옮기기는 어느 컨텍스트의 주기 작업이 먼저 할 수도 있다. 기록이 기대한 값이 될 때까지 기다린다. */
     fun awaitRecorded(
