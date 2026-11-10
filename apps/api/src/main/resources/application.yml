@@ -260,6 +260,7 @@ ogu:
   report:
     # 월요일 이 시각(한국 시간)부터 지난주 리포트를 만든다
     publish-at: "05:00"
+    # 018부터는 주기가 아니다. 월요일 publish-at에 깨고, 지난주를 훑는 중일 때만 이 간격으로 이어 간다(research R3)
     poll-interval: 1m
     batch-size: 200
     max-per-tick: 500
@@ -267,6 +268,7 @@ ogu:
       initial-interval: 30s
       max-interval: 5m
       deadline: 24h
+      # 018부터 쓰지 않는다. 재시도는 가장 이른 letter_next_attempt_at에만 깬다(research R3).
       poll-interval: 10s
       batch-size: 20
       max-length: 300
