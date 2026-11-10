@@ -217,6 +217,9 @@ ogu:
   post:
     rate-limit:
       max-per-hour: 10
+  # 018 research R3: 정리 여섯 개를 04:00(한국 시간) 한 번에 묶어 돈다(Housekeeping). DB가 하루에 한 번만 깬다.
+  housekeeping:
+    cron: "0 0 4 * * *"
   events:
     # 끝나지 않은 이벤트 발행(리스너 실패)을 재기동 없이 다시 보낸다(EventPublicationResubmitter)
     resubmit:
@@ -236,7 +239,6 @@ ogu:
     report:
       max-per-hour: 20
     retention: 365d
-    purge-cron: "0 30 4 * * *" # 매일 04:30 한국 시간
     purge-batch-size: 1000
     backfill:
       enabled: true
@@ -271,7 +273,6 @@ ogu:
       batch-size: 20
       max-length: 300
     retention: 365d
-    purge-cron: "0 40 4 * * *" # 매일 04:40 한국 시간
   # 009 AI 친구(data-model.md "설정"). 꺼진 채로 나간다. 켜는 것은 서버의 AI_COMPANION_ENABLED다(research R12)
   companion:
     enabled: ${AI_COMPANION_ENABLED:false}
@@ -329,7 +330,6 @@ ogu:
     retention: 90d
     safety-drain-interval: 60s
     outage-drain-interval: 5s
-    purge-cron: "0 0 4 * * *" # Asia/Seoul 기준 매일 새벽 4시
     purge-batch-size: 1000
     writer-threads: 4
   stream-ticket:
