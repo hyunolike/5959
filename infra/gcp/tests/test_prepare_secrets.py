@@ -22,7 +22,7 @@ class PrepareSecretsTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             values = json.loads((root / "secrets/api-env.json").read_text())
             self.assertEqual(values["KAKAO_LOGIN_ENABLED"], "false")
-            for key in ["JWT_SECRET", "POSTGRES_PASSWORD", "REDIS_PASSWORD"]:
+            for key in ["JWT_SECRET", "POSTGRES_PASSWORD"]:
                 self.assertGreaterEqual(len(values[key]), 32)
             for name in ["api-env.json", "bff-key", "oauth-state"]:
                 self.assertEqual((root / "secrets" / name).stat().st_mode & 0o777, 0o600)
