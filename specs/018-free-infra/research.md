@@ -16,6 +16,20 @@
 
 **버린 것**: 네이티브 이미지(위의 까닭). 런타임을 Go나 Node로 다시 쓰는 것(범위 밖).
 
+**측정 결과**(2026-11-11, T041~T042, 맥 Docker Desktop, `--cpus=0.1 --memory=512m`, 운영 프로필, 빈 DB에 마이그레이션 16개):
+
+| 구성 | liveness UP까지 | 기동 직후 메모리 |
+|---|---|---|
+| 위 메모리 플래그, AOT 캐시 없음 | 998초(16분 38초) | 479MB |
+| 위 메모리 플래그 + AOT 캐시(181MB) | 809초(13분 29초) | 493MB |
+| OTel 에이전트 켬 | 6분 안에 Spring 배너까지만 | 잼 안 함 |
+
+- 합격 기준(3분, 480MB)에 못 미친다. AOT 캐시는 19%만 줄인다. 시간은 빈 생성(약 260초), Hibernate 초기화(약 120초), Modulith 모듈 경계 검사(약 70초, 다른 스레드에서 같은 CPU를 나눠 쓴다) 등에 고르게 퍼져 있어 설정 하나로 줄일 곳이 없다.
+- AOT 학습은 DB 없이 되지 않는다. Modulith JDBC 이벤트 저장소가 컨텍스트를 올리는 중에 DB 종류를 물으며, 그 타입(`DatabaseType`)이 패키지 내부라 바꿔 끼울 수 없다. 캐시를 쓰려면 이미지 빌드 때 Postgres를 띄워야 한다.
+- AOT 캐시는 학습과 실행의 `-Xms`가 같아야 한다. 메모리 한도를 걸면 초기 힙이 작아져 "archived heap objects cannot be loaded"로 JVM이 뜨지 않는다.
+- Docker의 `--cpus`는 CFS 할당량이라 남는 CPU가 있어도 넘지 못한다. Render의 0.1 CPU가 같은 방식인지는 확인하지 못했다. 그래서 이 값은 가장 나쁜 경우다.
+- 위 기준의 "그래도 안 되면 멈춘다"에 따라 T041 이후를 멈추고 저장소 소유자에게 물었다.
+
 ## R2. DB 연결 풀은 쉬는 연결을 두지 않고, 연결 확인 쿼리를 보내지 않는다
 
 **결정**: HikariCP를 `minimum-idle: 0`, `idle-timeout: 60s`, `keepalive-time: 0`, `max-lifetime: 30m`, `maximum-pool-size: 5`, `connection-timeout: 15s`로 둔다.
