@@ -279,13 +279,12 @@ class RaidDurabilityTests {
         bossId: Long,
     ) = http.send(member, HttpMethod.POST, "/api/v1/raid/attacks", mapOf("bossId" to bossId))
 
-    /** 같은 DB에 붙는 옛 서버. 주기 옮기기를 늦춰 종료 단계만 기록에 적게 한다. Redis는 레이드와 상관없다. */
+    /** 같은 DB에 붙는 옛 서버. 주기 옮기기를 늦춰 종료 단계만 기록에 적게 한다. */
     private fun oldInstance(): Map<String, String> =
         mapOf(
             "spring.datasource.url" to postgres.jdbcUrl,
             "spring.datasource.username" to postgres.username,
             "spring.datasource.password" to postgres.password,
-            "spring.data.redis.url" to "redis://localhost:1",
             "ogu.raid.flush-interval" to "1h",
             "ogu.raid.lifecycle-scheduler-enabled" to "false",
         )

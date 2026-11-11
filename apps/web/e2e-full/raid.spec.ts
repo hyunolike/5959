@@ -10,7 +10,7 @@ import {
 import { waitForHomeLoaded } from "./support/home";
 import { freshBoss } from "./support/raid";
 
-// infra/compose.e2e.yaml로 띄운 실제 API, DB, Redis를 상대로 보스 레이드(006)를 확인한다.
+// infra/compose.e2e.yaml로 띄운 실제 API와 DB를 상대로 보스 레이드(006)를 확인한다.
 // 보스는 서비스 전체에 하나라 이 파일의 테스트는 차례로 돈다. 테스트마다 HP가 작은 보스를 새로 놓는다.
 test.describe.configure({ mode: "serial" });
 
@@ -72,7 +72,7 @@ async function closeAll(...members: Member[]) {
 test("US5-AC7, US1-AC1, US1-AC2 홈의 보스 안내로 레이드에 들어가 공격하면 HP가 줄고 내 기여가 오른다", async ({
   browser,
 }) => {
-  freshBoss(30);
+  await freshBoss(30);
   const member = await newMember(browser, "a");
   const started = Date.now();
 
@@ -111,7 +111,7 @@ test("US5-AC7, US1-AC1, US1-AC2 홈의 보스 안내로 레이드에 들어가 �
 test("US2-AC1, US2-AC4 다른 회원의 공격이 새로고침 없이 보인다", async ({
   browser,
 }) => {
-  freshBoss(30);
+  await freshBoss(30);
   const watcher = await newMember(browser, "w");
   const attacker = await newMember(browser, "x");
   await openRaid(watcher, "HP 30/30");
@@ -130,7 +130,7 @@ test("US2-AC1, US2-AC4 다른 회원의 공격이 새로고침 없이 보인다"
 test("US2-AC7, US4-AC1, US4-AC3 보스를 함께 물리치면 모두 결과를 보고 참여한 회원만 알림을 받는다", async ({
   browser,
 }) => {
-  freshBoss(2);
+  await freshBoss(2);
   const first = await newMember(browser, "f");
   const second = await newMember(browser, "s");
   const bystander = await newMember(browser, "b");

@@ -3,24 +3,28 @@
 #
 #   1. 살아 있는 보스를 물러나게 하고 HP가 정해진 새 보스를 놓는다
 #   2. k6로 가상 사용자들이 1초에 한 번씩 공격한다
-#   3. 받아들여진 공격 수를 줄어든 HP, Redis의 기여 합, Postgres의 기여 합과 견준다
+#   3. 받아들여진 공격 수를 줄어든 HP(API의 메모리 값), Postgres의 기여 합과 견준다
 #      처치 실행이면 처치 기록이 하나이고 알림이 참여자마다 하나인지도 본다
 #
 # 로컬에서만 돌린다. 운영 환경에 돌리지 않는다. 보스와 회원이 테스트 데이터로 바뀐다.
+# 새 보스를 API 메모리에 올리는 경로(`POST /api/v1/e2e/raid/reload`)가 e2e 프로필에만 있어서
+# infra/compose.e2e.yaml로 띄운 API를 상대한다(018).
+#
+#   docker compose -f infra/compose.e2e.yaml up -d
 #
 #   MODE=sustain infra/k6/run-raid-load.sh     # 보스가 버티는 실행: 유실이 없는지와 응답 시간
 #   MODE=defeat  infra/k6/run-raid-load.sh     # 보스가 중간에 처치되는 실행: 처치가 한 번인지
 #
-# 환경 변수: API(기본 http://localhost:8080), VUS(500), DURATION(60s), BOSS_HP(sustain 1000000, defeat 10000),
-# PSQL(psql까지의 명령), REDIS_CLI(redis-cli까지의 명령)
+# 환경 변수: API(기본 http://localhost:18080), VUS(500), DURATION(60s), BOSS_HP(sustain 1000000, defeat 10000),
+# PSQL(psql까지의 명령), BFF_KEY(compose.e2e.yaml의 OGU_BFF_KEY)
 set -euo pipefail
 
 MODE="${MODE:-sustain}"
-API="${API:-http://localhost:8080}"
+API="${API:-http://localhost:18080}"
 VUS="${VUS:-500}"
 DURATION="${DURATION:-60s}"
-PSQL="${PSQL:-docker compose -f apps/api/compose.yaml exec -T postgres psql -U ogu -d ogu}"
-REDIS_CLI="${REDIS_CLI:-docker compose -f apps/api/compose.yaml exec -T redis redis-cli}"
+PSQL="${PSQL:-docker compose -f infra/compose.e2e.yaml exec -T postgres psql -U ogu -d ogu}"
+BFF_KEY="${BFF_KEY:-e2e-bff-key}"
 SUMMARY_FILE="${SUMMARY_FILE:-$(mktemp -t raid-load-XXXXXX).json}"
 
 case "$MODE" in
@@ -38,14 +42,9 @@ fi
 
 # 명령은 공백으로 나눈 낱말들이다. 배열로 풀어 쓴다
 read -r -a psql_command <<<"$PSQL"
-read -r -a redis_command <<<"$REDIS_CLI"
 
 sql() {
   "${psql_command[@]}" -v ON_ERROR_STOP=1 -At -c "$1"
-}
-
-redis() {
-  "${redis_command[@]}" "$@"
 }
 
 json_field() {
@@ -55,7 +54,8 @@ json_field() {
 echo "== 보스 놓기 (HP $BOSS_HP)"
 sql "update raid_boss set status = 'RETREATED', ended_at = now() where status = 'ALIVE'" >/dev/null
 BOSS_ID="$(sql "insert into raid_boss (emotion, max_hp, hp, status, spawned_at) values ('LETHARGY', $BOSS_HP, $BOSS_HP, 'ALIVE', now()) returning id" | head -n 1)"
-redis DEL raid:boss >/dev/null
+# API 메모리의 보스를 비우고 기록에서 새 보스를 올린다
+curl -fsS -X POST -H "X-Ogu-Bff-Key: $BFF_KEY" "$API/api/v1/e2e/raid/reload" >/dev/null
 echo "보스 $BOSS_ID"
 
 echo "== k6 ($MODE, 가상 사용자 ${VUS}명, $DURATION)"
@@ -68,16 +68,14 @@ sleep 5
 
 accepted="$(json_field accepted)"
 hp_lost="$(json_field hpLost)"
-redis_sum="$(redis HVALS "raid:contrib:$BOSS_ID" | awk '{ sum += $1 } END { print sum + 0 }')"
-redis_participants="$(redis HLEN "raid:contrib:$BOSS_ID" | tr -d '[:space:]')"
+pg_participants="$(sql "select count(*) from raid_contribution where boss_id = $BOSS_ID")"
 pg_sum="$(sql "select coalesce(sum(damage), 0) from raid_contribution where boss_id = $BOSS_ID")"
 pg_boss="$(sql "select status || ' hp=' || hp || ' participants=' || participant_count from raid_boss where id = $BOSS_ID")"
 
 echo "== 검증"
 echo "받아들여진 공격 (k6)        : $accepted"
 echo "줄어든 HP (API)             : $hp_lost"
-echo "기여의 합 (Redis)           : $redis_sum (회원 ${redis_participants}명)"
-echo "기여의 합 (Postgres)        : $pg_sum"
+echo "기여의 합 (Postgres)        : $pg_sum (회원 ${pg_participants}명)"
 echo "보스 기록 (Postgres)        : $pg_boss"
 
 failures=0
@@ -91,7 +89,6 @@ check() {
 }
 
 check "줄어든 HP = 받아들여진 수" "$hp_lost" "$accepted"
-check "Redis의 기여 합 = 받아들여진 수" "$redis_sum" "$accepted"
 check "Postgres의 기여 합 = 받아들여진 수" "$pg_sum" "$accepted"
 
 if [ "$MODE" = "defeat" ]; then
@@ -101,7 +98,7 @@ if [ "$MODE" = "defeat" ]; then
   echo "처치 알림                   : ${notifications}건 (같은 회원에게 둘 이상: ${duplicated}명)"
   check "받아들여진 수 = 보스의 HP" "$accepted" "$BOSS_HP"
   check "보스 상태" "$status" "DEFEATED"
-  check "처치 알림 수 = 참여자 수" "$notifications" "$redis_participants"
+  check "처치 알림 수 = 참여자 수" "$notifications" "$pg_participants"
   check "같은 회원에게 알림이 둘 이상 간 일" "$duplicated" "0"
 fi
 

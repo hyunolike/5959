@@ -49,7 +49,7 @@ class RaidBossRepository(
             .optional()
             .orElse(null)
 
-    /** 살아 있는 동안 Redis의 값을 옮겨 적는다. HP는 줄어들기만, 참여자 수는 늘어나기만 한다(research R3). */
+    /** 살아 있는 동안 메모리 저장소(RaidLiveStore)의 값을 옮겨 적는다. HP는 줄어들기만, 참여자 수는 늘어나기만 한다(research R3). */
     fun snapshot(
         id: Long,
         hp: Int,

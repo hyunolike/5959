@@ -10,7 +10,7 @@ import {
 import { waitForHomeLoaded } from "./support/home";
 import { openEmailLogin } from "./support/login";
 
-// infra/compose.e2e.yaml로 띄운 실제 API, DB, Redis를 상대로 확인한다. 브라우저는 티켓을 같은 출처
+// infra/compose.e2e.yaml로 띄운 실제 API와 DB를 상대로 확인한다. 브라우저는 티켓을 같은 출처
 // BFF에서 받고, 스트림은 API 도메인(SSE_PUBLIC_ORIGIN)에 바로 붙는다(004 research R3).
 // 글쓴이 A와 행동하는 B, C는 서로 다른 브라우저 컨텍스트(쿠키)를 쓰는 다른 회원이다.
 

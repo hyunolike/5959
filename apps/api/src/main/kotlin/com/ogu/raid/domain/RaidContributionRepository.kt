@@ -13,7 +13,7 @@ class RaidContributionRepository(
     private val jdbcTemplate: JdbcTemplate,
 ) {
     /**
-     * Redis에서 읽은 기여를 절댓값으로 적는다. 같은 값을 두 번 적거나 더 작은 값이 늦게 와도 결과가 같다(research R3).
+     * 메모리 저장소에서 읽은 기여를 절댓값으로 적는다. 같은 값을 두 번 적거나 더 작은 값이 늦게 와도 결과가 같다(research R3).
      */
     fun upsertAll(
         bossId: Long,

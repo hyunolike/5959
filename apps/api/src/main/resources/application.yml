@@ -43,14 +43,6 @@ spring:
         # 기본값 1이면 감정 분석 재시도(RetryScheduler, 한 번에 LLM 호출 최대 20건)가 도는 동안
         # 이벤트 재전송(EventPublicationResubmitter)과 로그인 기록 정리가 그 뒤에서 기다린다.
         size: 2
-  data:
-    redis:
-      # 004 실시간 알림의 인스턴스 간 신호(research R5). prod에서 REDIS_URL이 없거나 localhost면 기동하지 않는다
-      # (ProdAuthSettingsCheck). 명령이 1초 안에 끝나지 않으면 발행은 WARN만 남기고 넘어간다.
-      url: ${REDIS_URL:redis://localhost:6379}
-      timeout: 1s
-      # 붙을 수 없을 때 발행 스레드(RedisSignalPublisher)가 Lettuce 기본값 10초를 기다리지 않게 한다
-      connect-timeout: 1s
   modulith:
     events:
       republish-outstanding-events-on-restart: true
@@ -149,12 +141,6 @@ management:
       # 018 research R2: /actuator/health/liveness는 DB를 보지 않는다. Render 헬스 체크와 깨우기 요청이 이 주소를 부른다.
       probes:
         enabled: true
-      group:
-        # Redis 지표는 이 그룹(/actuator/health/realtime)으로만 본다. 기본 그룹(/actuator/health, 배포 롤백 기준)에서는
-        # RedisHealthGroupConfig가 뺀다. Redis가 내려가도 알림은 DB에 저장되므로 API를 롤백하지 않는다(research R5).
-        # 그룹 이름은 지표 이름(redis)과 같을 수 없다(Spring Boot가 이름 충돌로 기동을 막는다).
-        realtime:
-          include: redis
 
 springdoc:
   swagger-ui:
@@ -336,7 +322,8 @@ ogu:
   # 004 실시간 알림(research R2~R5, R10)
   notification:
     heartbeat: 25s
-    connection-lifetime: 15m
+    # 018 research R4: 다시 붙을 때마다 DB를 깨운다. 열어 둔 탭이 Neon을 덜 깨우게 50분으로 늘렸다
+    connection-lifetime: 50m
     max-connections-per-member: 5
     retention: 90d
     safety-drain-interval: 60s

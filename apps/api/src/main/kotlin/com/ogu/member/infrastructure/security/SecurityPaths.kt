@@ -24,8 +24,8 @@ object SecurityPaths {
             "/actuator/health",
             // 018: DB를 보지 않는 생존 확인. Render 헬스 체크와 깨우기 요청이 토큰 없이 부른다(research R2)
             "/actuator/health/liveness",
-            // 004: Redis 상태만 따로 보는 헬스 그룹(research R5). 상세는 보이지 않고 상태만 준다
-            "/actuator/health/realtime",
+            // 018: e2e 프로필에서만 있는 경로(RaidE2eController). 토큰 대신 BFF 키를 본다. 다른 프로필에서는 404다
+            "/api/v1/e2e/**",
             // 004: 실시간 알림 스트림. 브라우저가 Bearer 없이 일회용 연결 표(ticket)로 바로 붙는다(research R3)
             "/api/v1/notifications/stream",
         )

@@ -24,8 +24,7 @@ class ProdAuthSettingsCheckTest {
                 "ogu.auth.oauth.kakao.client-secret=kakao-secret",
                 "ogu.auth.oauth.google.client-id=google-id",
                 "ogu.auth.oauth.google.client-secret=google-secret",
-                // 004: 운영에 맞는 Redis 주소와 실시간 연결 허용 출처
-                "spring.data.redis.url=$PROD_REDIS_URL",
+                // 004: 실시간 연결 허용 출처
                 "ogu.sse.allowed-origins=https://ogu.example.com",
             )
 
@@ -148,25 +147,12 @@ class ProdAuthSettingsCheckTest {
             }
     }
 
-    @ParameterizedTest
-    @ValueSource(
-        strings = [
-            "",
-            "redis://localhost:6379",
-            "redis://127.0.0.1:6379",
-        ],
-    )
-    fun `prod 프로필에서 Redis 주소가 없거나 localhost이면 기동하지 않는다`(redisUrl: String) {
+    @Test
+    fun `018 prod 프로필은 Redis 주소 없이 기동한다`() {
         runner
             .withInitializer { it.environment.setActiveProfiles("prod") }
-            .withPropertyValues(
-                "ogu.auth.jwt.secret=$PROD_SECRET",
-                "ogu.auth.bff-key=prod-bff-key",
-                "spring.data.redis.url=$redisUrl",
-            ).run { context ->
-                assertThat(context).hasFailed()
-                assertThat(context.startupFailure).rootCause().hasMessageContaining("REDIS_URL")
-            }
+            .withPropertyValues("ogu.auth.jwt.secret=$PROD_SECRET", "ogu.auth.bff-key=prod-bff-key")
+            .run { context -> assertThat(context).hasNotFailed() }
     }
 
     @Test
@@ -242,6 +228,5 @@ class ProdAuthSettingsCheckTest {
         private const val INSECURE_GOOGLE_CALLBACK = "http://ogu.example.com/api/auth/oauth/google/callback"
         private const val PROD_SECRET = "prod-like-jwt-secret-0123456789-0123456789-abcdef"
         private const val E2E_SECRET = "e2e-fixed-jwt-secret-for-playwright-full-tests-0123456789"
-        private const val PROD_REDIS_URL = "redis://:prod-redis-password@redis:6379"
     }
 }
