@@ -10,7 +10,7 @@
 # 새 보스를 API 메모리에 올리는 경로(`POST /api/v1/e2e/raid/reload`)가 e2e 프로필에만 있어서
 # infra/compose.e2e.yaml로 띄운 API를 상대한다(018).
 #
-#   docker compose -f infra/compose.e2e.yaml up -d
+#   docker compose -f infra/compose.e2e.yaml -f infra/k6/compose.load.yaml up -d
 #
 #   MODE=sustain infra/k6/run-raid-load.sh     # 보스가 버티는 실행: 유실이 없는지와 응답 시간
 #   MODE=defeat  infra/k6/run-raid-load.sh     # 보스가 중간에 처치되는 실행: 처치가 한 번인지
