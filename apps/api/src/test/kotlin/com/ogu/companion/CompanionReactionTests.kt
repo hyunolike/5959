@@ -13,8 +13,6 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
-import org.springframework.data.redis.core.StringRedisTemplate
-import org.springframework.data.redis.listener.RedisMessageListenerContainer
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.time.Duration
 
@@ -37,12 +35,6 @@ import java.time.Duration
 )
 @Import(TestcontainersConfiguration::class, CompanionTestConfiguration::class)
 class CompanionReactionTests : CompanionTestBase() {
-    @Autowired
-    lateinit var redis: StringRedisTemplate
-
-    @Autowired
-    lateinit var container: RedisMessageListenerContainer
-
     @Autowired
     lateinit var analysisRunner: AnalysisRunner
 
@@ -122,7 +114,7 @@ class CompanionReactionTests : CompanionTestBase() {
 
     @Test
     fun `US1-AC6 글쓴이에게 댓글 알림과 공감 알림이 온다`() {
-        val support = NotificationTestSupport(jdbcTemplate, redis, container)
+        val support = NotificationTestSupport(jdbcTemplate)
         val author = members.onboarded()
         val postId = postOf(author)
 

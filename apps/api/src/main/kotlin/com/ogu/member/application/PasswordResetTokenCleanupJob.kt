@@ -1,8 +1,8 @@
 package com.ogu.member.application
 
 import com.ogu.member.domain.PasswordResetTokenRepository
+import com.ogu.shared.schedule.HousekeepingStep
 import org.slf4j.LoggerFactory
-import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import java.time.Clock
 import java.time.Duration
@@ -15,10 +15,17 @@ import java.time.Duration
 class PasswordResetTokenCleanupJob(
     private val repository: PasswordResetTokenRepository,
     private val clock: Clock,
-) {
+) : HousekeepingStep {
+    override val stepName = "비밀번호 재설정 토큰 정리"
+    override val order = 60
+
+    /** 하루 정리([com.ogu.shared.schedule.Housekeeping])가 04:00(한국 시간)에 부른다. */
+    override fun runStep() {
+        deleteStaleTokens()
+    }
+
     private val log = LoggerFactory.getLogger(javaClass)
 
-    @Scheduled(cron = "\${ogu.password-reset.cleanup-cron:0 50 4 * * *}", zone = "Asia/Seoul")
     fun deleteStaleTokens(): Int {
         val deleted = repository.deleteExpiredBefore(clock.instant().minus(RETENTION))
         log.info("Deleted {} stale password_reset_token rows", deleted)

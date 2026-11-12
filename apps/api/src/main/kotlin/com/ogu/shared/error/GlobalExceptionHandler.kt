@@ -18,7 +18,12 @@ class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException::class)
     fun handleBusinessException(e: BusinessException): ResponseEntity<ApiResponse<Unit>> {
-        log.warn("BusinessException: code={}, message={}", e.errorCode.name, e.message)
+        // 429(쿨다운, 로그인 제한)는 정해진 흐름이고 자주 난다. 레이드 부하에서 거절마다 WARN 한 줄이 CPU를 먹어 DEBUG로 둔다.
+        if (e.errorCode.status == HttpStatus.TOO_MANY_REQUESTS) {
+            log.debug("BusinessException: code={}, message={}", e.errorCode.name, e.message)
+        } else {
+            log.warn("BusinessException: code={}, message={}", e.errorCode.name, e.message)
+        }
         val retryAfterSeconds = e.retryAfterSeconds
         val response = ResponseEntity.status(e.errorCode.status)
         if (retryAfterSeconds != null) {

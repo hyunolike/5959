@@ -111,20 +111,11 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   `KAKAO_LOGIN_ENABLED=false`로 카카오를 보류할 수 있다. 허용 redirect URI는 전부
   `https`여야 하고, `prod`와 `e2e` 프로필을 동시에 켤 수 없다(e2e의 비밀 값은
   `infra/compose.e2e.yaml`에 커밋된 고정 값이라 prod에 같이 켜면 토큰을 위조할 수 있다).
-  004부터는 `spring.data.redis.url`(`REDIS_URL`)이 없거나 localhost이면, `ogu.sse.allowed-origins`
-  (`OGU_SSE_ALLOWED_ORIGINS`)가 비면 뜨지 않는다.
-- Redis(004, research R5)는 실시간 알림의 인스턴스 간 신호만 나른다. API는 Redis 없이도 뜨고,
-  `/actuator/health`(배포 롤백 기준)에는 Redis 지표가 없다(`shared/config/RedisHealthGroupConfig`).
-  Redis 상태는 `/actuator/health/realtime`으로 따로 본다. 테스트는 `TestcontainersConfiguration`의
-  `redis:7.4-alpine`에 붙는다.
-  Lettuce는 연결이 끊긴 동안 명령을 바로 거절한다(`shared/config/RedisClientConfig`, `REJECT_COMMANDS`).
-  알림 신호(`notification/stream`)는 커밋 뒤에만 `ogu:notification` 채널로 나가고(`RedisSignalPublisher`, 전용
-  스레드 하나에서 보내 요청 스레드가 기다리지 않는다), 구독 컨테이너는 `NotificationSubscriptionStarter`가 시작한다.
-  첫 구독이 실패해도 기동을 막지 않고 5초마다 다시 시도한다(경고는 1분에 한 번).
-  Redis 장애 판정은 `RealtimeConnectionState`가 한다. `RealtimeConnectionProbe`가 5초마다 PING을 보내 연속 2번
-  실패하면 DOWN, 한 번 성공하면 UP으로 바꾸고, 바뀔 때만 애플리케이션 이벤트 `RealtimeConnectionChanged(state)`를
-  낸다. 구독 컨테이너의 오류 처리기는 리스너 예외만 받고 Lettuce는 끊긴 구독을 조용히 다시 붙이므로, 안전망 주기
-  전환(60초와 5초)과 복구 뒤 따라잡기는 이 이벤트를 듣고 한다.
+  004부터는 `ogu.sse.allowed-origins`(`OGU_SSE_ALLOWED_ORIGINS`)가 비면 뜨지 않는다.
+- 018부터 Redis가 없다(research R4). 서버는 한 대이고, 알림 신호는 같은 프로세스 안에서 전한다.
+  `notification/stream/LocalSignalPublisher`가 트랜잭션 안이면 커밋 뒤에, 아니면 바로, 전용 스레드 하나(큐 10,000, 넘치면
+  버리고 1분에 한 번 WARN)에서 모든 `NotificationSignalHandler`(`SseHub`)를 부른다. 처리기마다 예외를 따로 잡는다.
+  신호는 힌트일 뿐이라 잃어도 안전망이나 재연결에서 DB의 번호로 따라잡는다.
   알림 생성(004 US1)은 `notification/application/NotificationEventListener`가 `PostLiked`, `CommentCreated`,
   `MonsterSpawned`, `MonsterDefeated`를 `@ApplicationModuleListener`(커밋 뒤 비동기, 새 트랜잭션)로 받아 한다. 그래서
   알림 실패가 댓글, 공감, HP 반영을 되돌리지 않고(FR-003), 끝나지 않은 발행은 재전송된다. 글 노출은 `PostApi.find`
@@ -142,13 +133,13 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   `member`가 발급하고 소비한다(`MemberApi.issueStreamTicket`, `consumeStreamTicket`, 원문 32바이트 base64url,
   `sse_ticket`에는 SHA-256만, 30초, 조건부 `UPDATE ... RETURNING` 한 문장으로 한 번만, 소비 뒤 세션 유효 확인).
   `SseTicketCleanupJob`이 만료된 지 하루 지난 표를 지운다. `SseHub`는 회원별 연결(5개 상한, 넘으면 가장 오래된 것을 닫음)과
-  연결별 마지막 전송 번호를 들고, 보낼 것은 언제나 DB에서 `seq > 마지막 번호`로 읽는다(Redis 신호는 힌트). 새 연결은
+  연결별 마지막 전송 번호를 들고, 보낼 것은 언제나 DB에서 `seq > 마지막 번호`로 읽는다(신호는 힌트). 새 연결은
   허브에 먼저 등록한 뒤 재전송한다. 이 순서를 바꾸면 재전송 쿼리와 구독 사이에 커밋된 알림이 안전망 주기까지 빠진다.
   쓰기는 전용 실행기(`notificationStreamExecutor`, 4스레드)가 하고, 연결마다 한 번에 하나만 돈다. 하트비트(`: hb` 주석과 `ping` 이벤트, 25초)와
-  안전망(`SafetyDrain`, 60초, Redis DOWN이면 5초, UP으로 돌아오면 모든 연결을 한 번 따라잡음)은 `StreamTimer` 스레드 하나가
+  안전망(`SafetyDrain`, 60초, 회원 요청이 최근 4분 안에 있을 때만 `ActivityGate`)은 `StreamTimer` 스레드 하나가
   시각만 맞춘다. 이 타이머는 `TaskScheduler` 빈이 아니다(빈이면 Boot가 `@Scheduled`용 기본 스케줄러를 만들지 않는다).
   같은 이유로 `spring.task.execution.mode: force`를 두어 모듈의 실행기 빈이 있어도 `@Async`와 `@ApplicationModuleListener`가
-  Boot의 `applicationTaskExecutor`를 쓰게 한다. 연결은 수명(15분)이 지나면 서버가 닫고, 종료 때 허브가 먼저 닫아 우아한
+  Boot의 `applicationTaskExecutor`를 쓰게 한다. 연결은 수명(50분, 018 research R4)이 지나면 서버가 닫고, 종료 때 허브가 먼저 닫아 우아한
   종료가 열린 스트림을 기다리지 않는다. CORS는 스트림 경로에만 `ogu.sse.allowed-origins`를 허용하고 자격 증명은 쓰지 않는다
   (`StreamCorsConfig`). 쓰기 스레드 4개는 소켓에 블로킹으로 쓴다. 받는 쪽이 느리면 그 쓰기는 Tomcat 쓰기 타임아웃까지
   스레드 하나를 잡고 있을 수 있으므로, 느린 연결이 4개를 넘으면 그동안 다른 연결의 전달이 밀린다. 안전망의 DB 조회도
@@ -156,7 +147,7 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   성공한 뒤 구독이 다시 붙기 전에 나간 신호는 받지 못한다. 그 알림은 다음 안전망 주기(60초)나 재연결 때 온다.
   붙을 때 `lastEventId`는 지금 번호(`notification_sequence.last_seq`)를 넘지 않게 낮추고, 허브가 멈추는 중에 온 연결은
   바로 끝낸다. 스트림 컨트롤러의 오류는 모두 JSON 봉투로 쓴다(`Accept: text/event-stream`이어도). 테스트는 `support/SseTestClient`(JDK `HttpClient`, `ofLines()`)로 실제 스트림을 읽고,
-  서버 두 대와 Redis 장애는 `support/AppInstance`로 직접 띄운다.
+  같은 DB에 서버를 하나 더 붙여야 하는 테스트(레이드의 정상 종료, 배포 겹침)는 `support/AppInstance`로 직접 띄운다.
   알림 목록과 읽음(004 US2, research R10~R12)은 `NotificationController`에 있다. 목록(`GET /api/v1/notifications`)은
   `NotificationQueryService.page`가 `seq DESC` 키셋으로 읽고(커서는 `base64url("{seq}")`, size 1~50), 쿼리는 쪽 크기와
   상관없이 알림, `PostApi.previews`, `MemberApi.getMembers` 세 개다. 글 미리보기와 행동한 회원은 스트림과 같은
@@ -166,9 +157,7 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
   `seq <= upToSeq`만 바꾼다(`upToSeq`는 그 회원의 지금 `last_seq`를 넘지 않게 낮춘다). 하나 읽음은 알림 ID로 읽으므로
   기다리는 사이에 공감이 더해진 묶음은 그 공감까지 읽음이 된다(의도한 동작). 읽음이 실제로 바뀌었을 때만 커밋 뒤 `{memberId}:r` 신호를 보내고, `SseHub`가 그 회원의 모든
   연결에 `unread-count` 이벤트(ID 없음, 재전송 안 함)를 보낸다. 읽은 공감 묶음은 부분 유일 인덱스에서 빠지므로 다음
-  공감은 새 묶음을 만든다. Redis가 내려가 있으면 읽음 신호가 닿지 않으므로, 줄어든 안전망 주기(5초)에만
-  `SseHub.drainLagging(withUnreadCounts = true)`가 회원별 안 읽은 수를 쿼리 하나로 읽어 마지막으로 보낸 수와 다른 연결에 `unread-count`를
-  보낸다. `NotificationPurgeJob`이 매일 04:00(한국 시간)에 만든 지 90일이 지난 알림을 1,000행씩
+  공감은 새 묶음을 만든다. `NotificationPurgeJob`이 매일 04:00(한국 시간)에 만든 지 90일이 지난 알림을 1,000행씩
   (`MATERIALIZED` CTE와 `FOR UPDATE SKIP LOCKED`, 한 문장이 한 트랜잭션) 지우고, 끝난 지 7일이 지난 이벤트 발행도 지운다
   (`CompletedEventPublications.deletePublicationsOlderThan`). ShedLock 없이 두 인스턴스가 같이 돌아도 된다.
   두 단계는 따로 실패한다: 한쪽이 실패해도 다른 쪽은 돌고, 단계마다 ERROR를 남긴 뒤 처음 실패를 다시 던진다.
@@ -342,29 +331,33 @@ cd apps/api && ./gradlew koverHtmlReport                                    # co
 | `post`(더한 것) | `PostApi.visibleIdsSince` | - | - |
 | `shared`(더한 것) | `realtime/TopicBroadcaster`(구현은 `notification`의 `StreamTopicBroadcaster`) | - | - |
 
-- **판단은 Redis의 스크립트가 한다.** 공격, 옮길 것 꺼내기, 끝내기, 올리기, 읽기가 각각 Lua 스크립트 하나다
-  (`src/main/resources/redis/raid-*.lua`, `RaidRedis`가 감싼다). 공격 스크립트 안에서 쿨다운, HP, 기여, 처치가
-  함께 바뀐다. 이 규칙을 Kotlin 쪽에서 나눠서 다시 구현하지 않는다. 나누면 그 사이에 다른 공격이 끼어든다.
+- **판단은 메모리 저장소의 잠금 하나 안에서 한다(018).** `RaidLiveStore`가 살아 있는 보스, 기여, 바뀐 회원,
+  쿨다운을 들고 공격, 꺼내기, 끝내기, 올리기, 읽기, 맞추기를 모두 `ReentrantLock` 하나 안에서 한다. `attack` 안에서
+  쿨다운, HP, 기여, 처치가 함께 바뀐다. 이 규칙을 잠금 밖에서 나누지 않는다. 나누면 그 사이에 다른 공격이 끼어든다.
+  서버가 한 대라는 전제다(018 research R5).
 - **불변식.** 받아들인 공격 수 = 줄어든 HP = 기여의 합. `RaidConcurrencyTests`와 k6(`infra/k6/run-raid-load.sh`)가 본다.
 - **Postgres는 기록이고 뒤따라 적힌다.** `RaidFlusher`가 1초마다 절댓값을 적는다(기여는 `greatest`, HP는 `least`).
-  살아 있는 보스의 정확한 값은 Redis에 있다. 살아 있는 보스의 `raid_boss.hp`를 읽어 판단하지 않는다.
+  살아 있는 보스의 정확한 값은 메모리에 있다. 살아 있는 보스의 `raid_boss.hp`를 읽어 판단하지 않는다.
 - **처치는 기록에 남긴 뒤에 알린다.** `RaidFinisher.finish`가 모든 기여를 적고 `WHERE status = 'ALIVE'` 조건으로
   끝낸 뒤 같은 트랜잭션에서 `RaidBossDefeated`를 낸다. 겹쳐 불려도 이벤트는 하나다. 마무리가 실패하면 다음 옮기기가
   다시 한다.
-- **Redis가 비어 있는 모든 경우를 `RaidLoader`가 다룬다.** 처음, Redis가 다시 뜬 뒤, 새 보스가 나온 뒤가 같은 길이다.
-  살아 있는 보스의 HP는 기록된 기여의 합으로 다시 계산해 올린다. 올릴 때마다 `epoch`가 커지고 웹은 그것으로
-  "값이 돌아갔다"를 알아본다.
-- **Redis를 쓸 수 없으면 `RaidUnavailableException` 하나로 온다.** 공격은 503 `RAID_UNAVAILABLE`, 조회는 마지막
-  기록과 `available = false`다. 주기 작업은 조용히 건너뛴다. 다른 기능에 번지지 않게 한다(`RaidRedisOutageTest`).
+- **메모리가 비어 있는 모든 경우를 `RaidLoader`가 다룬다.** 처음, 서버가 다시 뜬 뒤, 새 보스가 나온 뒤가 같은 길이다.
+  살아 있는 보스의 HP는 기록된 기여의 합으로 다시 계산해 올린다. `epoch`는 올린 시각의 밀리초라 올릴 때마다 커지고
+  웹은 그것으로 "값이 돌아갔다"를 알아본다. 기동 뒤 `reconcile-window`(3분) 동안 `reconcile-interval`(30초)마다
+  기록과 맞춘다(회원별 큰 값, 018 research R6). 배포가 겹친 옛 인스턴스의 마지막 기록을 받아들이려는 것이다.
+- **정상 종료에서는 잃지 않는다.** `RaidFlusher`가 `SmartLifecycle.stop`에서 공격을 더 받지 않게 한 뒤 남은 것을 모두
+  적는다(US3-AC5). 갑자기 죽으면 마지막 옮기기 뒤의 공격(1초 안)만 잃고 숫자는 서로 맞는다(US3-AC8).
+- **종료 중이면 `RaidUnavailableException` 하나로 온다.** 공격은 503 `RAID_UNAVAILABLE`, 조회는 마지막
+  기록과 `available = false`다. 주기 작업은 조용히 건너뛴다. 다른 기능에 번지지 않게 한다(`RaidDurabilityTests`).
 - **살아 있는 보스는 하나다.** 부분 유일 인덱스 `raid_boss_alive_key`가 지킨다. 스케줄러의 잠금에 기대지 않는다.
   `RaidBossLifecycle.tick`은 여러 인스턴스가 함께 돌아도 된다.
-- **실시간.** `RaidBroadcaster`가 전용 스레드에서 250ms마다 돈다. `raid` 주제를 듣는 연결이 있을 때만 Redis를 읽고,
+- **실시간.** `RaidBroadcaster`가 전용 스레드에서 250ms마다 돈다. `raid` 주제를 듣는 연결이 있을 때만 메모리를 읽고,
   지난번과 다르거나 새 연결이 붙었을 때만 `TopicBroadcaster`로 보낸다. 공용 스케줄러에 두면 부하 중에 주기가
   늘어진다. 스트림은 연결할 때 `topics`로 고른 주제만 보내고, 주제 소식에는 SSE `id`가 없다.
 - **다른 회원의 정보를 싣지 않는다.** 응답과 이벤트에 나가는 것은 보스의 상태, 참여자 수, 요청한 회원의 기여뿐이다.
   순위나 기여 목록을 주는 조회를 더하지 않는다(스펙 FR-013).
-- **테스트.** 컨텍스트들이 Postgres와 Redis를 함께 쓰고 다른 컨텍스트의 주기 작업도 계속 돈다. 보스를 지우지 말고
-  `RaidFixture.freshBoss`로 바꿔 놓는다. 시계를 움직이는 테스트는 `ogu.raid.lifecycle-scheduler-enabled=false`로
+- **테스트.** 컨텍스트들이 Postgres를 함께 쓰고 다른 컨텍스트의 주기 작업도 계속 돈다. 메모리 저장소는 컨텍스트마다
+  따로다. 보스를 지우지 말고 `RaidFixture.freshBoss`로 바꿔 놓는다(그 컨텍스트의 저장소를 비운다). 시계를 움직이는 테스트는 `ogu.raid.lifecycle-scheduler-enabled=false`로
   주기 작업을 끈다. 켜 두면 앞서간 시계가 다른 테스트의 보스를 물러나게 한다.
 
 ## Recommend (`recommend` module)
@@ -591,7 +584,7 @@ HTTP API도 이벤트도 없다. 글이 올라온 뒤 한동안 다른 회원의
   행동한 회원이 탈퇴했으면 닉네임이 없어 `NotificationViewAssembler`가 `actor`를 null로 주고 웹이 "누군가"로 보인다.
   응답에 탈퇴 여부를 싣지 않는다.
 - **열린 스트림은 신호로 닫는다.** `{memberId}:x`(`NotificationSignal.Closed`)를 받은 인스턴스가 그 회원의 연결을 닫는다.
-  Redis가 내려가 있으면 연결의 수명(15분)이 지나며 닫힌다.
+  신호 큐가 넘쳐 신호를 잃으면 연결의 수명(50분)이 지나며 닫힌다.
 - **정리가 끝났는지는 발행 기록으로 본다(research R8).** `WithdrawalCleanupQuery`가 `event_publication`에서 끝나지 않은
   `MemberWithdrawn`을 이벤트로 묶어 센다. 진행을 적는 테이블이 없다. 열 번 실패한 발행은 다시 나가지 않으므로 이 수가 줄지
   않으면 로그의 `이벤트 발행이 10번 실패해`를 찾고, 고친 뒤 재시작한다("이벤트 재전송"과 같은 절차).

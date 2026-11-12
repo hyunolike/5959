@@ -2,10 +2,28 @@ server:
   # X-Forwarded-For 등으로 request.remoteAddr가 바뀌지 않게 한다. 클라이언트 IP는 BffClientIpResolver가 BFF 키를 확인한
   # X-Ogu-Client-Ip로만 정한다.
   forward-headers-strategy: none
+  tomcat:
+    threads:
+      # 018: Render 무료(512MB, CPU 0.1개)에서 스레드 스택이 메모리를 잡아먹지 않게 기본 200에서 줄인다.
+      max: 40
 
 spring:
   application:
     name: ogu-api
+  lifecycle:
+    # 018 research R5: Render는 SIGTERM 뒤 30초를 기다린다. 그 안에 레이드 공격 기록을 마치고 끝낸다.
+    timeout-per-shutdown-phase: 20s
+  datasource:
+    hikari:
+      # 018 research R2: Neon 무료는 5분 동안 쿼리가 없어야 잔다. 쉬는 연결과 연결 확인 쿼리를 두지 않는다.
+      minimum-idle: 0
+      # Hikari는 기간 표기(60s)를 받지 않아 밀리초로 적는다.
+      idle-timeout: 60000
+      keepalive-time: 0
+      max-lifetime: 1800000
+      maximum-pool-size: 5
+      # 잠든 DB가 깨어나는 데 몇 초 걸린다.
+      connection-timeout: 15000
   profiles:
     default: local # SPRING_PROFILES_ACTIVE 미지정 시(로컬 실행, 테스트) local을 기본으로 쓴다
   jpa:
@@ -25,14 +43,6 @@ spring:
         # 기본값 1이면 감정 분석 재시도(RetryScheduler, 한 번에 LLM 호출 최대 20건)가 도는 동안
         # 이벤트 재전송(EventPublicationResubmitter)과 로그인 기록 정리가 그 뒤에서 기다린다.
         size: 2
-  data:
-    redis:
-      # 004 실시간 알림의 인스턴스 간 신호(research R5). prod에서 REDIS_URL이 없거나 localhost면 기동하지 않는다
-      # (ProdAuthSettingsCheck). 명령이 1초 안에 끝나지 않으면 발행은 WARN만 남기고 넘어간다.
-      url: ${REDIS_URL:redis://localhost:6379}
-      timeout: 1s
-      # 붙을 수 없을 때 발행 스레드(RedisSignalPublisher)가 Lettuce 기본값 10초를 기다리지 않게 한다
-      connect-timeout: 1s
   modulith:
     events:
       republish-outstanding-events-on-restart: true
@@ -128,12 +138,9 @@ resilience4j:
 management:
   endpoint:
     health:
-      group:
-        # Redis 지표는 이 그룹(/actuator/health/realtime)으로만 본다. 기본 그룹(/actuator/health, 배포 롤백 기준)에서는
-        # RedisHealthGroupConfig가 뺀다. Redis가 내려가도 알림은 DB에 저장되므로 API를 롤백하지 않는다(research R5).
-        # 그룹 이름은 지표 이름(redis)과 같을 수 없다(Spring Boot가 이름 충돌로 기동을 막는다).
-        realtime:
-          include: redis
+      # 018 research R2: /actuator/health/liveness는 DB를 보지 않는다. Render 헬스 체크와 깨우기 요청이 이 주소를 부른다.
+      probes:
+        enabled: true
 
 springdoc:
   swagger-ui:
@@ -190,11 +197,15 @@ ogu:
       initial: 30s
       max-interval: 5m
       deadline: 24h
+      # 018부터는 주기가 아니다. 재시도는 가장 이른 next_attempt_at에만 깨고, 밀린 일이 있을 때 묶음 사이의 최소 간격으로만 쓴다(research R3).
       poll-interval: 10s
       batch-size: 20
   post:
     rate-limit:
       max-per-hour: 10
+  # 018 research R3: 정리 여섯 개를 04:00(한국 시간) 한 번에 묶어 돈다(Housekeeping). DB가 하루에 한 번만 깬다.
+  housekeeping:
+    cron: "0 0 4 * * *"
   events:
     # 끝나지 않은 이벤트 발행(리스너 실패)을 재기동 없이 다시 보낸다(EventPublicationResubmitter)
     resubmit:
@@ -209,12 +220,12 @@ ogu:
       initial: 30s
       max-interval: 5m
       deadline: 24h
+      # 018부터는 주기가 아니다. 재시도는 가장 이른 next_attempt_at에만 깨고, 밀린 일이 있을 때 묶음 사이의 최소 간격으로만 쓴다(research R3).
       poll-interval: 10s
       batch-size: 20
     report:
       max-per-hour: 20
     retention: 365d
-    purge-cron: "0 30 4 * * *" # 매일 04:30 한국 시간
     purge-batch-size: 1000
     backfill:
       enabled: true
@@ -229,6 +240,7 @@ ogu:
       initial: 30s
       max-interval: 5m
       deadline: 24h
+      # 018부터는 주기가 아니다. 재시도는 가장 이른 next_attempt_at에만 깨고, 밀린 일이 있을 때 묶음 사이의 최소 간격으로만 쓴다(research R3).
       poll-interval: 10s
       batch-size: 20
     backfill:
@@ -238,6 +250,7 @@ ogu:
   report:
     # 월요일 이 시각(한국 시간)부터 지난주 리포트를 만든다
     publish-at: "05:00"
+    # 018부터는 주기가 아니다. 월요일 publish-at에 깨고, 지난주를 훑는 중일 때만 이 간격으로 이어 간다(research R3)
     poll-interval: 1m
     batch-size: 200
     max-per-tick: 500
@@ -245,11 +258,11 @@ ogu:
       initial-interval: 30s
       max-interval: 5m
       deadline: 24h
+      # 018부터는 주기가 아니다. 재시도는 가장 이른 letter_next_attempt_at에만 깨고, 밀린 일이 있을 때 묶음 사이의 최소 간격으로만 쓴다(research R3).
       poll-interval: 10s
       batch-size: 20
       max-length: 300
     retention: 365d
-    purge-cron: "0 40 4 * * *" # 매일 04:40 한국 시간
   # 009 AI 친구(data-model.md "설정"). 꺼진 채로 나간다. 켜는 것은 서버의 AI_COMPANION_ENABLED다(research R12)
   companion:
     enabled: ${AI_COMPANION_ENABLED:false}
@@ -259,6 +272,7 @@ ogu:
     # 하루(한국 시간)에 AI에 댓글을 청하는 횟수. 실패한 시도도 든다(research R8)
     daily-limit: ${AI_COMPANION_DAILY_LIMIT:45}
     max-attempts: 3
+    # 018부터 쓰지 않는다. 반응은 가장 이른 차례에만 깬다(research R3).
     poll-interval: 30s
     batch-size: 3
     retry:
@@ -285,6 +299,7 @@ ogu:
       active-from: "08:00"
       active-until: "23:00"
       recent-topics: 10
+      # 018부터 쓰지 않는다. 글쓰기는 계산한 시각(쓰는 중인 기록의 차례, 조용한 시간이 끝나는 때)에만 깬다(research R3).
       poll-interval: 1m
   # 006 레이드(data-model.md "설정"). 바꾸면 다음에 나오는 보스부터 적용된다
   raid:
@@ -297,17 +312,21 @@ ogu:
     retreat-after: 7d
     flush-interval: 1s
     broadcast-interval: 250ms
+    # 018부터 보스 교체는 정해진 시각(물러날 때, 다음 날 0시)에만 깬다(research R3). 이 값은 종료 중이라
+    # 건너뛴 뒤 다시 볼 간격으로만 쓴다.
     lifecycle-interval: 1m
+    # 018 research R6: 기동 뒤 이 기간 동안 이 간격으로 기록과 맞춘다. 배포가 겹친 옛 인스턴스가 끝나며 적은 공격을 받아들인다.
+    reconcile-window: 3m
+    reconcile-interval: 30s
     zone: Asia/Seoul
   # 004 실시간 알림(research R2~R5, R10)
   notification:
     heartbeat: 25s
-    connection-lifetime: 15m
+    # 018 research R4: 다시 붙을 때마다 DB를 깨운다. 열어 둔 탭이 Neon을 덜 깨우게 50분으로 늘렸다
+    connection-lifetime: 50m
     max-connections-per-member: 5
     retention: 90d
     safety-drain-interval: 60s
-    outage-drain-interval: 5s
-    purge-cron: "0 0 4 * * *" # Asia/Seoul 기준 매일 새벽 4시
     purge-batch-size: 1000
     writer-threads: 4
   stream-ticket:

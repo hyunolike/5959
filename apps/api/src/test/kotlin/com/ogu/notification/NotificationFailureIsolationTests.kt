@@ -21,8 +21,6 @@ import org.mockito.Mockito.verify
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
-import org.springframework.data.redis.core.StringRedisTemplate
-import org.springframework.data.redis.listener.RedisMessageListenerContainer
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean
@@ -55,12 +53,6 @@ class NotificationFailureIsolationTests {
     lateinit var monsterApi: MonsterApi
 
     @Autowired
-    lateinit var redis: StringRedisTemplate
-
-    @Autowired
-    lateinit var container: RedisMessageListenerContainer
-
-    @Autowired
     lateinit var resubmitter: EventPublicationResubmitter
 
     @MockitoSpyBean
@@ -76,7 +68,7 @@ class NotificationFailureIsolationTests {
             MockMvcBuilders.webAppContextSetup(context).apply<DefaultMockMvcBuilder>(springSecurity()).build()
         members = MemberFixture(mockMvc)
         loop = CoreLoopFixture(mockMvc, jdbcTemplate, monsterApi)
-        support = NotificationTestSupport(jdbcTemplate, redis, container)
+        support = NotificationTestSupport(jdbcTemplate)
     }
 
     @Test

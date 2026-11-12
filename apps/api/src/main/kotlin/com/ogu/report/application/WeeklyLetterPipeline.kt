@@ -10,11 +10,14 @@ import com.ogu.report.WeeklyReportPublished
 import com.ogu.report.domain.WeeklyLetterRepository
 import com.ogu.report.domain.WeeklyReport
 import com.ogu.shared.config.AiProperties
+import com.ogu.shared.schedule.DueJob
+import com.ogu.shared.schedule.DueTimers
 import com.ogu.shared.text.ContentMask
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.ObjectProvider
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.modulith.events.ApplicationModuleListener
-import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
@@ -180,38 +183,56 @@ class WeeklyLetterRunner(
 
 /**
  * 리포트가 발행되면 커밋 뒤에 편지를 한 번 써 본다. 리스너는 트랜잭션 없이 돈다. 공급자를 부르는 동안 DB 커넥션을 쥐지
- * 않는다. 실패해도 리스너는 정상으로 끝나고 다시 시도하는 일은 스케줄러가 맡는다. 위기 글이 있던 주의 리포트는 처음부터
- * 맡을 것이 없다.
+ * 않는다. 실패해도 리스너는 정상으로 끝나고 다시 시도하는 일은 [WeeklyLetterRetryScheduler]가 맡는다. 위기 글이 있던 주의
+ * 리포트는 처음부터 맡을 것이 없다.
+ *
+ * 새 리포트의 행과 첫 시도의 결과(성공, 또는 실패의 다음 차례)는 이미 커밋됐으므로, 끝나면 타이머를 다시 건다(018 research
+ * R3). 스케줄러를 끈 테스트에서는 타이머가 없다.
  */
 @Component
 class WeeklyLetterListener(
     private val runner: WeeklyLetterRunner,
+    private val retry: ObjectProvider<WeeklyLetterRetryScheduler>,
 ) {
     @ApplicationModuleListener(propagation = Propagation.NOT_SUPPORTED)
     fun on(event: WeeklyReportPublished) {
-        runner.attempt(event.memberId, event.weekStart)
+        try {
+            runner.attempt(event.memberId, event.weekStart)
+        } finally {
+            retry.ifAvailable { it.rearm() }
+        }
     }
 }
 
 /**
- * `letter.poll-interval`(10초)마다 차례가 된 편지를 다시 시도한다. 여러 인스턴스가 돌아도 `FOR UPDATE SKIP LOCKED`와 맡을
- * 때 미뤄 두는 다음 차례 덕분에 같은 리포트를 두 번 맡지 않는다.
+ * 차례가 된 편지를 다시 시도한다. 018 research R3부터는 주기마다 DB를 읽지 않고, 기다리는 편지 가운데 가장 이른
+ * `letter_next_attempt_at`에만 깨어난다. 할 일이 없으면 DB에 묻지 않으므로 Neon이 잠들 수 있다.
+ *
+ * - 돌고 나면 [nextDue]로 다음 시각을 다시 읽는다. 맡기(임대)와 실패(백오프)로 바뀐 시각은 이것으로 잡힌다.
+ * - 리포트가 발행된 직후의 첫 시도는 [WeeklyLetterListener]가 하고, 끝나면 [rearm]을 부른다.
+ * - 여러 인스턴스가 돌아도 `FOR UPDATE SKIP LOCKED`와 맡을 때 미뤄 두는 다음 차례 덕분에 같은 리포트를 두 번 맡지 않는다.
  */
 @Component
 @ConditionalOnProperty(prefix = "ogu.report", name = ["scheduler-enabled"], matchIfMissing = true)
 class WeeklyLetterRetryScheduler(
     private val runner: WeeklyLetterRunner,
-) {
+    private val letters: WeeklyLetterRepository,
+    // 밀린 재시도는 예전 폴링 간격마다 한 묶음씩 보낸다. AI 제공자의 요청 한도에 몰리지 않게 한다.
+    @Value("\${ogu.report.letter.poll-interval:10s}") override val minGap: Duration,
+    timers: DueTimers,
+) : DueJob {
     private val log = LoggerFactory.getLogger(javaClass)
+    private val timer = timers.register(this)
 
-    @Suppress("TooGenericExceptionCaught") // 한 번 실패해도 다음 주기에 다시 돈다
-    @Scheduled(fixedDelayString = "\${ogu.report.letter.poll-interval:10s}")
-    fun poll() {
-        try {
-            val handled = runner.runDue()
-            if (handled > 0) log.info("편지 처리: {}건", handled)
-        } catch (e: RuntimeException) {
-            log.error("편지 처리 주기가 실패했습니다", e)
-        }
+    override val name = "주간 편지 재시도"
+
+    override fun nextDue(): Instant? = letters.findEarliestPendingAttemptAt()
+
+    override fun runDue() {
+        val handled = runner.runDue()
+        if (handled > 0) log.info("편지 처리: {}건", handled)
     }
+
+    /** 다음 시각을 DB에서 다시 읽어 건다. 리포트를 만들거나 편지의 다음 차례를 바꾼 쪽이 커밋 뒤에 부른다. */
+    fun rearm() = timer.rearm()
 }

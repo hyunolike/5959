@@ -1,9 +1,9 @@
 package com.ogu.notification.application
 
 import com.ogu.notification.domain.NotificationRepository
+import com.ogu.shared.schedule.HousekeepingStep
 import org.slf4j.LoggerFactory
 import org.springframework.modulith.events.CompletedEventPublications
-import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import java.time.Duration
 
@@ -24,10 +24,17 @@ class NotificationPurgeJob(
     private val notifications: NotificationRepository,
     private val completedPublications: CompletedEventPublications,
     private val properties: NotificationProperties,
-) {
+) : HousekeepingStep {
+    override val stepName = "알림과 끝난 이벤트 발행 정리"
+    override val order = 10
+
+    /** 하루 정리([com.ogu.shared.schedule.Housekeeping])가 04:00(한국 시간)에 부른다. */
+    override fun runStep() {
+        purge()
+    }
+
     private val log = LoggerFactory.getLogger(javaClass)
 
-    @Scheduled(cron = "\${ogu.notification.purge-cron:0 0 4 * * *}", zone = "Asia/Seoul")
     fun purge(): PurgeResult {
         val purged = step("알림 정리") { purgeNotifications() }
         val cleaned = step("끝난 이벤트 발행 정리") { purgePublications() }

@@ -105,3 +105,13 @@ variable "google_client_id" {
   type    = string
   default = ""
 }
+
+variable "api_origin" {
+  type        = string
+  description = "API origin the web calls and streams from (018: the Render service, e.g. https://ogu-api.onrender.com). Empty keeps the VM's sslip.io address."
+  default     = ""
+  validation {
+    condition     = var.api_origin == "" || can(regex("^https://([a-z0-9]([a-z0-9-]*[a-z0-9])?\\.)+[a-z]{2,}$", var.api_origin))
+    error_message = "Use an https origin without a trailing slash or path."
+  }
+}

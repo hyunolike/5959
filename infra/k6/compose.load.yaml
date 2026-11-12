@@ -1,0 +1,6 @@
+# k6 부하 테스트용 덧씌우기(018 T039). compose.e2e.yaml의 access 토큰은 5초라, 회원 500명을 만드는 동안 앞선 토큰이 끝난다.
+#   docker compose -f infra/compose.e2e.yaml -f infra/k6/compose.load.yaml up -d
+services:
+  api:
+    environment:
+      OGU_AUTH_JWT_ACCESS_TOKEN_TTL: 15m

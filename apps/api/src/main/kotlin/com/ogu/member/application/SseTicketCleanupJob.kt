@@ -1,8 +1,8 @@
 package com.ogu.member.application
 
 import com.ogu.member.domain.SseTicketRepository
+import com.ogu.shared.schedule.HousekeepingStep
 import org.slf4j.LoggerFactory
-import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import java.time.Clock
 import java.time.Duration
@@ -15,10 +15,17 @@ import java.time.Duration
 class SseTicketCleanupJob(
     private val repository: SseTicketRepository,
     private val clock: Clock,
-) {
+) : HousekeepingStep {
+    override val stepName = "알림 연결 표 정리"
+    override val order = 40
+
+    /** 하루 정리([com.ogu.shared.schedule.Housekeeping])가 04:00(한국 시간)에 부른다. */
+    override fun runStep() {
+        deleteStaleTickets()
+    }
+
     private val log = LoggerFactory.getLogger(javaClass)
 
-    @Scheduled(cron = "\${ogu.stream-ticket.cleanup-cron:0 40 4 * * *}", zone = "Asia/Seoul")
     fun deleteStaleTickets(): Int {
         val deleted = repository.deleteExpiredBefore(clock.instant().minus(RETENTION))
         log.info("Deleted {} stale sse_ticket rows", deleted)

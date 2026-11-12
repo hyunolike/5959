@@ -1,8 +1,8 @@
 package com.ogu.safety.application
 
+import com.ogu.shared.schedule.HousekeepingStep
 import org.slf4j.LoggerFactory
 import org.springframework.jdbc.core.simple.JdbcClient
-import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import java.sql.Timestamp
 import java.time.Clock
@@ -20,10 +20,17 @@ class SafetyPurgeJob(
     private val jdbcClient: JdbcClient,
     private val properties: SafetyProperties,
     private val clock: Clock,
-) {
+) : HousekeepingStep {
+    override val stepName = "안전 기록 정리"
+    override val order = 30
+
+    /** 하루 정리([com.ogu.shared.schedule.Housekeeping])가 04:00(한국 시간)에 부른다. */
+    override fun runStep() {
+        purge()
+    }
+
     private val log = LoggerFactory.getLogger(javaClass)
 
-    @Scheduled(cron = "\${ogu.safety.purge-cron:0 30 4 * * *}", zone = "Asia/Seoul")
     fun purge(): Map<String, Int> {
         val cutoff = Timestamp.from(clock.instant().minus(properties.retention))
         val deleted = TABLES.associate { (table, condition) -> table to purgeTable(table, condition, cutoff) }

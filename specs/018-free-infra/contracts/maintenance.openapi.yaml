@@ -1,0 +1,59 @@
+# 018-free-infra가 루트 계약(contracts/openapi.yaml)에 더하는 것. 구현 전에 루트에 합친다(0.17.0).
+# 새 경로는 없다. 모든 쓰기 연산이 점검 중에 낼 수 있는 응답 하나와 설명을 더한다.
+openapi: 3.1.0
+info:
+  title: 오구오구 API - 점검 모드
+  version: 0.17.0
+  description: |
+    읽기 전용 점검(018 FR-002, research R11). 운영자가 `OGU_MAINTENANCE_READ_ONLY=true`로 켜면
+    GET이 아닌 요청이 503 SERVICE_MAINTENANCE를 받는다. 쓰기는 반영되지 않았다.
+    예외(점검 중에도 받는다): `POST /api/v1/auth/login`, `POST /api/v1/auth/oauth/{provider}`,
+    `POST /api/v1/auth/refresh`, `POST /api/v1/auth/logout`, `POST /api/v1/notifications/stream-tickets`.
+    점검 중에도 로그인 상태가 끊기지 않고 알림 스트림에 붙을 수 있게 한다.
+    이 예외가 마지막 백업 뒤에 쓴 세션은 새 DB로 가지 않는다. 그 회원은 전환 뒤 한 번 다시 로그인한다.
+paths: {}
+components:
+  responses:
+    Maintenance:
+      description: 점검 중이라 쓰기를 받지 않는다 (SERVICE_MAINTENANCE). 요청은 반영되지 않았다. 점검이 끝나면 다시 보낸다
+      headers:
+        Retry-After:
+          description: 다시 보낼 때까지 기다릴 초. 점검 예정 시간에서 정한다(기본 600)
+          schema: { type: integer }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+          examples:
+            maintenance:
+              value:
+                success: false
+                data: null
+                error:
+                  code: SERVICE_MAINTENANCE
+                  message: 점검 중이라 지금은 저장할 수 없어요. 잠시 뒤 다시 시도해 주세요.
+                  retryAfterSeconds: 600
+  schemas:
+    ErrorResponse:
+      # 루트의 ErrorResponse에서 retryAfterSeconds 설명만 넓힌다
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: ErrorCode 이름
+          examples: [INVALID_CREDENTIALS, SERVICE_MAINTENANCE, DATABASE_UNAVAILABLE]
+        message:
+          type: string
+        retryAfterSeconds:
+          type: integer
+          description: LOGIN_THROTTLED, SERVICE_MAINTENANCE일 때 있다
+    DatabaseUnavailable:
+      # 루트 계약의 info.description에 한 줄로 적는다(연산마다 붙이지 않는다):
+      # "DB에 연결할 수 없으면 어느 연산이든 503 DATABASE_UNAVAILABLE을 줄 수 있다. 요청은 반영되지 않았다(018 FR-025)."
+      type: 'null'
+# 합칠 때 함께 고치는 설명:
+# - POST /api/v1/raid/attack의 503 설명: "HP를 들고 있는 장치가 내려가 있어" → "서버가 종료 중이거나 기록을 쓸 수 없어"
+#   (RAID_UNAVAILABLE. 코드와 웹 동작은 그대로, research R5)
+# - RaidState.available, RaidLive.available, epoch의 설명에서 Redis를 지운다
+# - 쓰기 연산(POST, PUT, PATCH, DELETE)마다 '503': { $ref: '#/components/responses/Maintenance' }를 더한다.
+#   이미 503이 있는 연산(비밀번호 재설정 요청, 레이드 공격)은 설명에 SERVICE_MAINTENANCE를 덧붙인다

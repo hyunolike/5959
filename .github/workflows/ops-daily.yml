@@ -1,0 +1,136 @@
+name: Ops daily
+
+# 018 research R10: 매일 한 번 Neon을 백업하고 무료 한도 사용량을 본다. 어느 단계든 실패하면 워크플로가 실패하고
+# GitHub이 저장소 소유자에게 메일을 보낸다.
+# - 백업: Neon 직접 연결로 pg_dump -Fc → gpg(AES256, 암호는 BACKUP_PASSPHRASE)로 잠가 Actions 아티팩트로 14일 둔다.
+#   Cloudflare R2는 무료 한도 안에서도 결제 수단 등록이 필요해 쓰지 않는다(research R10 끝).
+#   공개 저장소의 아티팩트는 로그인한 누구나 받을 수 있다. 그래서 암호화 없이 올리지 않는다.
+# - 사용량: Neon API의 compute_time_seconds와 synthetic_storage_size가 무료 한도의 70%를 넘으면 실패.
+# - 손으로 실행할 때 restore_drill을 켜면 이번 실행의 백업을 풀어 빈 Postgres에 되살리고 테이블마다 행 수를 출력한다.
+#
+# 비밀값: NEON_DIRECT_URL, NEON_API_KEY, BACKUP_PASSPHRASE
+# 변수: NEON_PROJECT_ID
+on:
+  schedule:
+    # 03:30 KST. 백업과 점검이 같은 시각에 돌아 DB를 하루 한 번만 깨운다.
+    - cron: "30 18 * * *"
+  workflow_dispatch:
+    inputs:
+      restore_drill:
+        description: 이번 백업을 빈 Postgres에 되살려 행 수를 확인한다
+        type: boolean
+        default: false
+
+permissions: {}
+
+concurrency:
+  group: ops-daily
+  cancel-in-progress: false
+
+env:
+  PG_IMAGE: pgvector/pgvector:pg17
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: 덤프
+        env:
+          NEON_DIRECT_URL: ${{ secrets.NEON_DIRECT_URL }}
+        run: |
+          # 잠든 DB가 깨어나는 데 몇 초 걸린다. 연결 시간 제한을 넉넉히 둔다.
+          docker run --rm -e PGCONNECT_TIMEOUT=30 -e NEON_DIRECT_URL "$PG_IMAGE" \
+            sh -c 'pg_dump --format=custom --no-owner --no-privileges "$NEON_DIRECT_URL"' > backup.dump
+          size="$(stat -c %s backup.dump)"
+          echo "덤프 크기: $size 바이트"
+          # 스키마만 있어도 수십 KB다. 이보다 작으면 덤프가 깨진 것이다.
+          if (( size < 10000 )); then
+            echo "덤프가 너무 작습니다" >&2
+            exit 1
+          fi
+      - name: 암호화
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          if [[ ${#BACKUP_PASSPHRASE} -lt 32 ]]; then
+            echo "BACKUP_PASSPHRASE가 없거나 짧습니다" >&2
+            exit 1
+          fi
+          name="ogu-$(date -u +%Y-%m-%d).dump.gpg"
+          gpg --batch --yes --pinentry-mode loopback --passphrase-fd 3 \
+            --symmetric --cipher-algo AES256 --output "$name" backup.dump 3<<<"$BACKUP_PASSPHRASE"
+          rm backup.dump
+          echo "BACKUP_FILE=$name" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: neon-backup
+          path: ${{ env.BACKUP_FILE }}
+          retention-days: 14
+          if-no-files-found: error
+
+  usage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Neon 무료 한도 사용량
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+          # 무료 플랜: 한 달 100 CU-시간, 저장 0.5GB. 저장 한도는 research R10의 1GB보다 낮게 잡아 일찍 알린다.
+          CU_HOURS_LIMIT: "100"
+          STORAGE_BYTES_LIMIT: "536870912"
+        run: |
+          project="$(curl -fsS -H "Authorization: Bearer $NEON_API_KEY" -H 'Accept: application/json' \
+            "https://console.neon.tech/api/v2/projects/$PROJECT_ID" | jq '.project')"
+          compute="$(jq -r '.compute_time_seconds // 0' <<<"$project")"
+          storage="$(jq -r '.synthetic_storage_size // 0' <<<"$project")"
+          cu_pct=$(( compute * 100 / (CU_HOURS_LIMIT * 3600) ))
+          storage_pct=$(( storage * 100 / STORAGE_BYTES_LIMIT ))
+          echo "이번 달 컴퓨트: $(( compute / 60 ))분 (${cu_pct}%), 저장: $(( storage / 1048576 ))MB (${storage_pct}%)"
+          if (( cu_pct >= 70 || storage_pct >= 70 )); then
+            echo "Neon 무료 한도의 70%를 넘었습니다" >&2
+            exit 1
+          fi
+
+  restore-drill:
+    if: github.event_name == 'workflow_dispatch' && inputs.restore_drill
+    needs: backup
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_DB: drill
+          POSTGRES_USER: drill
+          POSTGRES_PASSWORD: drill
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U drill -d drill"
+          --health-interval 5s
+          --health-retries 10
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: neon-backup
+      - name: 풀기
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          file="$(ls ogu-*.dump.gpg)"
+          echo "되살릴 백업: $file"
+          gpg --batch --pinentry-mode loopback --passphrase-fd 3 --decrypt --output latest.dump "$file" 3<<<"$BACKUP_PASSPHRASE"
+      - name: 되살리고 행 수 보기
+        run: |
+          docker run --rm --network host -v "$PWD:/work" -e PGPASSWORD=drill "$PG_IMAGE" sh -c '
+            psql -h localhost -U drill -d drill -v ON_ERROR_STOP=1 -c "CREATE EXTENSION IF NOT EXISTS vector" &&
+            pg_restore -h localhost -U drill -d drill --no-owner --no-privileges /work/latest.dump &&
+            psql -h localhost -U drill -d drill -At -c "
+              SELECT table_name FROM information_schema.tables
+              WHERE table_schema = '"'"'public'"'"' AND table_name <> '"'"'flyway_schema_history'"'"'
+              ORDER BY table_name" |
+            while read -r t; do
+              printf "%s\t%s\n" "$t" "$(psql -h localhost -U drill -d drill -At -c "SELECT count(*) FROM \"$t\"")"
+            done'

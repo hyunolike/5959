@@ -1,5 +1,6 @@
 package com.ogu.companion.application
 
+import com.ogu.companion.domain.CompanionDueRepository
 import com.ogu.companion.domain.Friend
 import com.ogu.companion.domain.Reaction
 import com.ogu.companion.domain.SkipReason
@@ -8,12 +9,15 @@ import com.ogu.post.CompanionReactionOutcome
 import com.ogu.post.CompanionReactionResult
 import com.ogu.post.CompanionTarget
 import com.ogu.post.PostCompanionApi
+import com.ogu.post.PostCreated
 import com.ogu.shared.error.BusinessException
 import com.ogu.shared.error.ErrorCode
+import com.ogu.shared.schedule.DueJob
+import com.ogu.shared.schedule.DueTimers
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
-import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
+import java.time.Instant
 import java.time.LocalDate
 
 /**
@@ -223,25 +227,43 @@ class ReactionRunner(
 }
 
 /**
- * `poll-interval`(30초)마다 차례가 된 글을 맡는다. 여러 인스턴스가 돌아도 `FOR UPDATE SKIP LOCKED`와 맡을 때 미뤄 두는
- * 다음 차례 덕분에 같은 글을 두 번 맡지 않고, 한 글에 같은 친구는 한 번을 유일 제약이 지킨다(012 research R1). 기능이 꺼져 있으면
- * 아무것도 맡지 않는다.
+ * 차례가 된 글을 맡는다. 018 research R3부터는 주기마다 DB를 읽지 않고, 가장 이른 차례(올라온 뒤 기다리는 시간과 다음 차례
+ * 가운데 늦은 것)에만 깨어난다. 할 일이 없으면 DB에 묻지 않으므로 Neon이 잠들 수 있다.
+ *
+ * - 돌고 나면 [nextDue]로 다음 시각을 다시 읽는다. 맡기(임대), 실패(백오프), 판정 기다리기, 뒤따르는 친구의 차례는 모두
+ *   [ReactionRunner.runDue] 안에서 바뀌므로 이것으로 잡힌다.
+ * - 새 글의 기록은 [ReactionEnrollListener]가 만들고, 커밋 뒤에 [armFor]로 기다리는 시간이 끝나는 때를 건다.
+ * - 올라온 지 `max-age`가 지난 기록은 차례가 됐을 때 맡으면서 닫는다. 만료 시각에 따로 깨지 않는다. 차례가 아직인 기록은
+ *   만료 시각에 깨어도 닫을 수 없어(닫는 쿼리가 차례가 된 기록만 본다) 1초마다 헛돌게 된다.
+ * - 여러 인스턴스가 돌아도 `FOR UPDATE SKIP LOCKED`와 맡을 때 미뤄 두는 다음 차례 덕분에 같은 글을 두 번 맡지 않고, 한 글에
+ *   같은 친구는 한 번을 유일 제약이 지킨다(012 research R1).
+ * - 기능이 꺼져 있으면 걸지 않고 DB도 읽지 않는다.
  */
 @Component
 @ConditionalOnProperty(prefix = "ogu.companion", name = ["scheduler-enabled"], matchIfMissing = true)
 class ReactionScheduler(
     private val runner: ReactionRunner,
-) {
+    private val due: CompanionDueRepository,
+    private val properties: CompanionProperties,
+    timers: DueTimers,
+) : DueJob {
     private val log = LoggerFactory.getLogger(javaClass)
+    private val timer = timers.register(this)
 
-    @Suppress("TooGenericExceptionCaught") // 한 번 실패해도 다음 주기에 다시 돈다
-    @Scheduled(fixedDelayString = "\${ogu.companion.poll-interval:30s}")
-    fun poll() {
-        try {
-            val handled = runner.runDue()
-            if (handled > 0) log.info("AI 친구의 반응 처리: {}건", handled)
-        } catch (e: RuntimeException) {
-            log.error("AI 친구의 반응 주기가 실패했습니다", e)
-        }
+    override val name = "AI 친구의 반응"
+
+    override fun nextDue(): Instant? = if (properties.enabled) due.earliestReaction(properties.wait) else null
+
+    override fun runDue() {
+        val handled = runner.runDue()
+        if (handled > 0) log.info("AI 친구의 반응 처리: {}건", handled)
     }
+
+    /** 방금 기록을 만든 글의 기다리는 시간이 끝나는 때를 커밋 뒤에 건다. 기능이 꺼져 있으면 걸지 않는다. */
+    fun armFor(event: PostCreated) {
+        if (properties.enabled) timer.armAfterCommit(event.createdAt.plus(properties.wait))
+    }
+
+    /** 지금 걸린 다음 시각. 테스트와 로그용이다. */
+    val nextAt: Instant? get() = timer.nextAt
 }

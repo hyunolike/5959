@@ -5,8 +5,8 @@ import com.ogu.notification.domain.LikeParticipantRepository
 import com.ogu.notification.domain.NewNotification
 import com.ogu.notification.domain.NotificationRepository
 import com.ogu.notification.domain.NotificationSequenceRepository
+import com.ogu.notification.stream.LocalSignalPublisher
 import com.ogu.notification.stream.NotificationSignal
-import com.ogu.notification.stream.RedisSignalPublisher
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.springframework.transaction.interceptor.TransactionAspectSupport
@@ -21,7 +21,7 @@ import java.time.temporal.ChronoUnit
  *
  * - 번호는 받는 사람의 카운터 행에서 받는다. 그 행 잠금이 커밋까지 남아 같은 회원의 쓰기를 줄 세운다. 여러 회원에게 쓰면
  *   회원 ID 오름차순으로 받아 교착을 막는다.
- * - 쓴 회원마다 커밋 뒤 `{memberId}:n:{seq}` 신호를 예약한다([RedisSignalPublisher]). 되돌리면 나가지 않는다.
+ * - 쓴 회원마다 커밋 뒤 새 알림 신호를 예약한다([LocalSignalPublisher]). 되돌리면 나가지 않는다.
  * - 멱등 키 확인과 번호 받기 사이에 같은 알림이 먼저 커밋되면(소급 처치에서 생성 리스너와 처치 리스너가 겹친 경우,
  *   research R8) 삽입은 건너뛰지만 받은 번호는 빈 채로 남는다. 재전송은 `seq >` 비교라 빈칸은 해가 없다(research R4).
  */
@@ -30,7 +30,7 @@ class NotificationWriter(
     private val sequences: NotificationSequenceRepository,
     private val notifications: NotificationRepository,
     private val participants: LikeParticipantRepository,
-    private val signals: RedisSignalPublisher,
+    private val signals: LocalSignalPublisher,
     private val memberApi: MemberApi,
     private val clock: Clock,
 ) {

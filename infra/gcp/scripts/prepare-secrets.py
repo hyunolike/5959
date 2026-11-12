@@ -20,7 +20,7 @@ def main():
         if not isinstance(values.get(key), str) or not values[key].strip():
             parser.error(f"Required credential missing: {key}")
     values["KAKAO_LOGIN_ENABLED"] = "false" if args.without_kakao else "true"
-    for key in ["POSTGRES_PASSWORD", "JWT_SECRET", "REDIS_PASSWORD"]:
+    for key in ["POSTGRES_PASSWORD", "JWT_SECRET"]:
         values.setdefault(key, secrets.token_hex(32))
     os.umask(0o077)
     destination = pathlib.Path(__file__).resolve().parents[1] / "secrets"

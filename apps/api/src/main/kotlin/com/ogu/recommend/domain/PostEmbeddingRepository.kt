@@ -90,6 +90,17 @@ class PostEmbeddingRepository(
             .orElse(null)
     }
 
+    /**
+     * 가장 이른 다음 시도 시각. 시도할 행이 없으면 null이다(018 research R3). 타이머가 이 시각에만 깨어 DB를 연다.
+     * 부분 인덱스 `post_embedding_pending_idx`(PENDING만)를 탄다.
+     */
+    fun findEarliestPendingAttemptAt(): Instant? =
+        jdbcClient
+            .sql("select min(next_attempt_at) from post_embedding where status = 'PENDING'")
+            .query { rs, _ -> rs.getTimestamp(1)?.toInstant() }
+            .list()
+            .firstOrNull()
+
     /** 맡았다고 적는다. 시도 횟수를 올리고 다음 차례를 미뤄, 호출이 끝나기 전에 다른 실행기가 맡지 않게 한다. */
     fun markAttempt(
         postId: Long,

@@ -4,13 +4,17 @@ import com.ogu.post.PostReportApi
 import com.ogu.report.WeeklyReportPublished
 import com.ogu.report.domain.WeeklyReportRepository
 import com.ogu.report.domain.WeeklyReportRunRepository
+import com.ogu.shared.schedule.DueJob
+import com.ogu.shared.schedule.DueTimers
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import org.springframework.boot.convert.DurationStyle
 import org.springframework.context.ApplicationEventPublisher
-import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
@@ -75,6 +79,21 @@ class WeeklyReportJob(
         return fill(target)
     }
 
+    /**
+     * 다음에 [tick]을 부를 시각(018 research R3). 이번 주 발행 시각 전이면 그 시각이고 DB를 읽지 않는다. 지났는데 지난주를
+     * 다 훑지 않았으면 [continueAt](지났거나 없으면 지금)이고, 다 훑었으면 다음 주 월요일의 발행 시각이다.
+     */
+    fun nextRunAt(continueAt: Instant?): Instant {
+        val now = clock.instant()
+        val thisWeek = WeekRange.containing(now)
+        val publishFrom = publishFrom(thisWeek)
+        return when {
+            now < publishFrom -> publishFrom
+            runs.isCompleted(thisWeek.previous().start) -> publishFrom(WeekRange(thisWeek.start.plusWeeks(1)))
+            else -> continueAt?.takeIf { it > now } ?: now
+        }
+    }
+
     private fun publishFrom(thisWeek: WeekRange): Instant =
         thisWeek.start
             .atTime(properties.publishAt)
@@ -130,23 +149,48 @@ class WeeklyReportJob(
 }
 
 /**
- * `poll-interval`(1분)마다 [WeeklyReportJob.tick]을 부른다. `ogu.report.scheduler-enabled=false`면 돌지 않는다. 시계를
- * 움직이는 테스트가 직접 부를 때 쓴다.
+ * 정해진 시각에만 [WeeklyReportJob.tick]을 부른다(018 research R3). 주기마다 DB를 읽지 않는다.
+ *
+ * - 이번 주 월요일 `publish-at`(05:00 한국 시간) 전이면 그 시각에 깬다. DB를 읽지 않고 시계로 정한다.
+ * - 그 시각이 지났는데 지난주를 다 훑지 않았으면(`weekly_report_run`이 없으면) 바로 돈다. 기동이 늦어도 밀린 주를 채운다.
+ * - 훑는 중이면(한도에 닿았거나 일부가 실패했으면) `poll-interval`(1분) 뒤에 이어 간다. 그동안은 DB가 깨어 있어야 하는 일이다.
+ * - 다 훑었으면 다음 주 월요일 `publish-at`에 깬다.
+ *
+ * `ogu.report.scheduler-enabled=false`면 돌지 않는다. 시계를 움직이는 테스트가 [WeeklyReportJob.tick]을 직접 부를 때 쓴다.
+ *
+ * `ogu.report.idle-recheck`를 주면 다 훑은 뒤에도 그 간격마다 다시 확인한다. 브라우저 e2e가 글의 때를 지난주로 옮기고
+ * `weekly_report_run`을 지워 다시 훑게 하는데, DB만 바뀌어서는 타이머가 알 수 없기 때문이다. 운영에서는 두지 않는다.
  */
 @Component
 @ConditionalOnProperty(prefix = "ogu.report", name = ["scheduler-enabled"], matchIfMissing = true)
 class WeeklyReportScheduler(
     private val job: WeeklyReportJob,
-) {
-    private val log = LoggerFactory.getLogger(javaClass)
+    private val clock: Clock,
+    @Value("\${ogu.report.poll-interval:1m}") private val continueAfter: Duration,
+    timers: DueTimers,
+    @Value("\${ogu.report.idle-recheck:}") idleRecheck: String = "",
+) : DueJob {
+    private val idleRecheck: Duration? = idleRecheck.takeIf { it.isNotBlank() }?.let(DurationStyle::detectAndParse)
 
-    @Suppress("TooGenericExceptionCaught") // 한 번 실패해도 다음 주기에 다시 돈다
-    @Scheduled(fixedDelayString = "\${ogu.report.poll-interval:1m}")
-    fun run() {
-        try {
-            job.tick()
-        } catch (e: RuntimeException) {
-            log.error("주간 리포트 주기가 실패했습니다", e)
-        }
+    /** 훑는 중일 때 이어 갈 시각. 기동 직후에는 없다(밀린 주가 있으면 바로 돈다). */
+    @Volatile
+    private var continueAt: Instant? = null
+
+    init {
+        timers.register(this)
+    }
+
+    override val name = "주간 리포트"
+
+    override fun nextDue(): Instant {
+        val next = job.nextRunAt(continueAt)
+        val recheckAt = idleRecheck?.let { clock.instant().plus(it) } ?: return next
+        return minOf(next, recheckAt)
+    }
+
+    override fun runDue() {
+        // 실패해도 1분 뒤에 다시 돈다(지금까지의 주기와 같다)
+        continueAt = clock.instant().plus(continueAfter)
+        job.tick()
     }
 }

@@ -29,8 +29,8 @@ resource "google_cloud_run_v2_service" "web" {
         for_each = {
           NODE_ENV            = "production"
           APP_ENV             = "production"
-          API_ORIGIN          = "https://${local.api_domain}"
-          SSE_PUBLIC_ORIGIN   = "https://${local.api_domain}"
+          API_ORIGIN          = local.api_origin
+          SSE_PUBLIC_ORIGIN   = local.api_origin
           APP_ORIGIN          = local.web_origin
           KAKAO_CLIENT_ID     = var.kakao_client_id
           KAKAO_LOGIN_ENABLED = tostring(var.kakao_login_enabled)

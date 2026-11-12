@@ -100,13 +100,11 @@ flowchart LR
     end
 
     PG[("PostgreSQL 17<br/>+ pgvector")]
-    Redis[("Redis")]
     LLM["LLM 공급자<br/>(OpenAI 호환)"]
 
     U --> Pages --> BFF --> Api
     U -. "SSE 알림과 레이드<br/>(일회용 표)" .-> Api
     Api --> PG
-    Api --> Redis
     AI --> LLM
 ```
 
@@ -121,6 +119,94 @@ flowchart LR
 
 <br>
 
+## 🗺 시스템 구조
+
+<p align="center">
+  <img src="docs/assets/architecture/after-free.png" alt="지금 구조. 브라우저가 Vercel의 Next.js 웹을 거쳐 Render Free의 Spring Boot API 한 대를 호출하고, 실시간 알림(SSE)은 API로 바로 연결한다. API는 알림 신호와 레이드 상태를 메모리에 두고 Neon Free의 PostgreSQL을 쓰며, LLM 공급자에 분석을 요청한다. cron-job.org가 10분마다 깨우고, GitHub Actions가 매일 Neon을 덤프해 암호화한 뒤 아티팩트로 14일 둔다. Resend 재설정 메일은 준비 중이다." width="900" />
+</p>
+
+2026년 11월 12일부터 모든 구성이 무료 플랜에서 돕니다. 고정비는 월 0원입니다(AI 사용료와 도메인 제외).
+
+| 구성 | 서비스 | 하는 일 |
+| --- | --- | --- |
+| 웹 | Vercel(Hobby) | Next.js 화면과 BFF. 로그인 쿠키를 토큰으로 바꿔 API에 전합니다 |
+| API | Render 무료(싱가포르, 메모리 512MB, CPU 0.1개) | Spring Boot 서버 한 대. 알림 신호와 레이드 판정을 메모리에서 처리합니다 |
+| DB | Neon 무료(싱가포르, PostgreSQL 17 + pgvector) | 쿼리가 5분 없으면 잠듭니다. 주기 작업은 할 일이 있을 때만 DB를 엽니다 |
+| 깨우기 | cron-job.org | Render 무료는 15분 동안 요청이 없으면 잠들어 10분마다 liveness를 부릅니다 |
+| 백업 | GitHub Actions | 매일 Neon을 덤프해 gpg로 잠가 아티팩트로 14일 둡니다. 무료 한도 사용량도 점검합니다 |
+| 이미지 | GHCR(공개) | 기동 캐시(AOT)를 담은 API 이미지 |
+
+서버가 한 대가 되면서 Redis를 지웠습니다. 알림 신호는 서버 안에서 바로 전하고, 레이드 공격은 메모리의 잠금 하나로 판정한 뒤 1초마다 DB에 기록합니다. 가상 사용자 500명이 공격해도 받아들인 공격 수, 줄어든 HP, DB에 적힌 기여의 합이 정확히 같았습니다. 왜 이렇게 바꿨는지는 [018 research](specs/018-free-infra/research.md)에 있습니다.
+
+<br>
+
+## 🔄 요청이 처리되는 길
+
+<p align="center">
+  <img src="docs/assets/architecture/request-flow.png" alt="요청 흐름. 1 브라우저가 로그인 쿠키와 함께 Vercel의 Next.js BFF에 요청한다. 2 BFF가 Bearer 토큰과 BFF 키를 붙여 Render의 Spring Boot API에 전한다. 3 API가 Neon을 읽고 쓴다. 4 글을 저장한 뒤 LLM 공급자에 분석을 맡긴다(응답을 기다리지 않음). 5 실시간 알림은 일회용 표로 브라우저가 API에 직접 연결한다. 6 레이드는 메모리에서 판정하고 1초마다 DB에 기록한다." width="900" />
+</p>
+
+1. **브라우저 → 웹(BFF):** 토큰은 브라우저 스크립트가 읽지 못하는 쿠키(`__Host-ogu_at`, `__Host-ogu_rt`)에만 있습니다. 화면은 같은 출처의 `/api/*`만 부릅니다.
+2. **BFF → API:** BFF가 쿠키의 토큰을 `Authorization: Bearer`로 바꾸고, 자기가 BFF임을 밝히는 키(`X-Ogu-Bff-Key`)와 회원의 IP를 붙여 전합니다. 토큰이 만료됐으면 BFF가 갱신하고 다시 부릅니다.
+3. **API → DB:** 모듈마다 자기 테이블만 읽고 씁니다. 연결 풀은 쉬는 연결을 두지 않아 DB가 잠들 수 있습니다.
+4. **AI는 뒤에서:** 글은 바로 저장되고, 감정 분석과 위험 분류는 저장이 끝난 뒤 따로 돕니다. 실패하면 간격을 늘려 다시 시도하고, 그동안 키워드 위험 감지는 그대로 돕니다.
+5. **실시간 알림:** BFF에서 일회용 표를 받아, 브라우저가 API의 SSE에 직접 붙습니다. 연결은 50분마다 새로 맺습니다.
+6. **레이드:** 공격은 서버 메모리에서 잠금 하나로 판정해 바로 응답하고, 1초마다 DB에 옮겨 적습니다. 서버가 정상 종료하면 남은 공격을 모두 쓰고 끝냅니다.
+
+<br>
+
+## 🚀 배포와 운영
+
+<p align="center">
+  <img src="docs/assets/architecture/deploy-flow.png" alt="배포와 운영. 개발자가 GitHub에 PR을 올리고 병합한다. 손으로 실행하는 Release 워크플로가 버전을 정하고 기동 캐시 이미지를 GHCR에 올린 뒤 Render API로 배포하고 live를 기다린다. 웹은 개발자가 vercel deploy --prod로 올린다. cron-job.org가 10분마다 Render의 liveness를 부르고, 매일 03:30 Ops daily 워크플로가 Neon을 덤프하고 사용량을 점검해 암호화한 백업을 아티팩트로 둔다." width="900" />
+</p>
+
+| 무엇을 | 어떻게 | 언제 |
+| --- | --- | --- |
+| 검사 | GitHub Actions CI: API 테스트와 린트, 웹 테스트, 실제 API를 띄운 브라우저 e2e, 인프라 검사 | PR마다 |
+| API | [Release](.github/workflows/release.yml): release-please → 기동 캐시 이미지([build-image.sh](infra/render/scripts/build-image.sh)) → GHCR → Render API로 배포 → live 대기 | 손으로 실행 |
+| 웹 | Vercel 프로젝트 `ogu-web`에 `vercel deploy --prod` | 손으로 실행 |
+| 깨우기 | cron-job.org가 `/actuator/health/liveness`를 부름. 2번 연속 실패하면 메일 | 10분마다 |
+| 백업 | [Ops daily](.github/workflows/ops-daily.yml): `pg_dump` → gpg 암호화 → 아티팩트 14일. 손으로 돌릴 때 복구 연습 | 매일 03:30 |
+| 사용량 | 같은 워크플로가 Neon 컴퓨트와 저장 사용량을 보고, 무료 한도의 70%를 넘으면 실패 | 매일 03:30 |
+
+Render 무료에서 실제로 잰 값입니다([측정 기록](specs/018-free-infra/research.md)).
+
+| 항목 | 값 |
+| --- | --- |
+| 기동 | 약 4분. 배포 중에는 옛 인스턴스가 요청을 받아 끊기지 않습니다 |
+| 잠든 뒤 첫 요청 | 약 5분. cron-job.org가 막습니다 |
+| 메모리 | 50명이 30분 동안 공격할 때 411~442MB(한도 512MB) |
+| 레이드 공격 응답 | 50명이 1초마다 쉬지 않고 공격하면 p95 2.6초. 수는 맞습니다 |
+
+절차와 비밀값은 [Render와 Neon 운영 문서](infra/render/README.md)에 있습니다.
+
+<br>
+
+## 🕰 이전 구조 (GCP, 2026년 11월 10일까지)
+
+<details>
+<summary>펼쳐 보기</summary>
+
+<p align="center">
+  <img src="docs/assets/architecture/before-gcp.png" alt="이전 구조. 브라우저가 Cloud Run의 Next.js 웹을 거쳐 Compute Engine VM 한 대의 Caddy로 API를 호출하고, 실시간 알림(SSE)은 브라우저가 Caddy로 바로 연결한다. VM 안에서 Spring Boot API가 PostgreSQL 17과 Redis를 쓰고, LLM 공급자에 감정 분석을 요청한다. DB는 매일 GCS로 백업한다." width="900" />
+</p>
+
+| 무엇을 | 이전 | 지금 |
+| --- | --- | --- |
+| 웹 | Cloud Run | Vercel |
+| API | Compute Engine VM(e2-small), Caddy | Render 무료 |
+| DB | 같은 VM의 PostgreSQL 17 | Neon 무료 |
+| Redis | 알림 신호(pub/sub), 레이드 판정(Lua) | 없음 |
+| 백업 | 매일 GCS | 매일 GitHub Actions 아티팩트(암호화) |
+| 고정비 | 월 약 $18 | 월 0원 |
+
+2026년 11월 10일 GCP 결제 계정이 닫혀 API가 멈췄고, 이틀 뒤 무료 플랜으로 옮겼습니다. 옛 DB는 옮기지 않고 새 DB로 시작해 이전 회원과 글은 넘어오지 않았습니다. 그때의 README는 [보관본](docs/archive/README-2026-11-10-gcp.md)에 있습니다.
+
+</details>
+
+<br>
+
 ## 📏 재 본 것
 
 | 무엇을 | 결과 |
@@ -130,9 +216,9 @@ flowchart LR
 | 주간 리포트: 1천 명 가운데 100명을 실패하게 함 | 첫 실행에 900명, 다음 실행에 100명. 겹친 리포트와 알림 0건 |
 | 위기 글 100개를 쓰는 동안 다른 회원이 피드를 계속 조회 | 20번 되풀이해 한 번도 보이지 않음 |
 | 글 쓰기(키워드 위험 판정 포함) | p95 21ms |
-| 자동 테스트 | API 1,055개, 웹 단위 1,511개, 브라우저 e2e 180개(가짜 API 63개, 실제 API 117개) |
+| 자동 테스트 | API 1,514개, 웹 단위 1,597개, 브라우저 e2e(가짜 API, 실제 API) |
 
-성능 수치는 모두 로컬 한 기기에서 쟀습니다. 운영 환경의 수치가 아닙니다.
+위 성능 수치는 로컬 한 기기에서 쟀습니다. 운영(Render 무료)에서 잰 값은 [배포와 운영](#-배포와-운영)에 따로 적었습니다.
 
 ### 아직 목표에 못 미친 것
 
@@ -141,6 +227,8 @@ flowchart LR
 - **에두른 위기 표현**: 평가 문장 200개에서는 위기 50개를 모두 잡아 목표(놓치는 비율 5% 이하)를 채웠습니다. 죽음을 직접 말하지 않는 표현만 모은 묶음에서는 80~90%입니다. 위험 분류에만 더 큰 모델을 따로 써서 40~55%에서 올린 수치이고, 더 큰 모델은 호출 한도 때문에 쓰지 못했습니다.
 - **추천 품질**: 추천에 같은 주제가 든 비율이 35%입니다(목표 80%). 지금 쓰는 임베딩 모델이 한국어 고민의 주제를 잘 가르지 못합니다. 아주 가까운 글만 "비슷한 고민"으로 보이게 기준을 좁혀 두었습니다.
 - **리포트를 만드는 동안의 글 쓰기**: p95가 26ms에서 46ms로 늘어납니다.
+- **CPU 0.1개의 레이드**: 50명이 1초마다 쉬지 않고 공격하면 응답 p95가 2.6초입니다(목표 500ms). 예외의 스택 추적과 거절 로그를 덜어냈지만 처리량 자체가 한계입니다.
+- **AI 모델**: 2026년 11월 공급자에서 쓰던 감정 분석과 위험 분류 모델이 응답하지 않습니다. 대체 모델 셋을 평가 문장 200개로 재 봤고(셋 모두 위기 50개 가운데 48~50개를 잡음), 아직 바꾸지 않았습니다. 그동안 글은 "분석 중"에 머뭅니다.
 
 <br>
 
@@ -148,8 +236,8 @@ flowchart LR
 
 | 구분 | 사용 기술 |
 | --- | --- |
-| API | Kotlin 2.2, JDK 21, Spring Boot 4.1, Spring Modulith 2.1 |
-| 데이터 | PostgreSQL 17 + pgvector, Redis(Lua 스크립트, pub/sub), Flyway |
+| API | Kotlin 2.2(JDK 21로 컴파일, JDK 25에서 실행), Spring Boot 4.1, Spring Modulith 2.1 |
+| 데이터 | PostgreSQL 17 + pgvector, Flyway. Redis는 018에서 지웠습니다 |
 | AI | Spring AI(OpenAI 호환 공급자), Resilience4j 서킷 브레이커 |
 | 웹 | Next.js 16(App Router), React 19, TypeScript, Tailwind CSS v4 |
 | 웹 상태 | TanStack Query v5, Zustand v5, react-hook-form, Zod |
@@ -157,8 +245,9 @@ flowchart LR
 | 테스트 | JUnit 5, Testcontainers, Vitest, Playwright, k6 |
 | 품질 | ktlint, detekt, ESLint, Prettier, steiger(FSD 규칙) |
 | 진행 방식 | GitHub Spec Kit(스펙 → 설계 → 작업 → 구현), OpenAPI 계약 우선 |
-| CI | GitHub Actions(API, 웹, 실제 API를 띄운 e2e), release-please |
-| 배포 | GCP(웹은 Cloud Run, API와 DB는 Compute Engine 한 대), Terraform, Caddy |
+| CI | GitHub Actions(API, 웹, 실제 API를 띄운 e2e, 인프라), release-please |
+| 배포 | 웹은 Vercel, API는 Render 무료(JDK 25 AOT 캐시), DB는 Neon 무료, 이미지는 GHCR |
+| 운영 | cron-job.org(깨우기), GitHub Actions(매일 백업과 사용량 점검) |
 | 방문 분석 | Umami Cloud. 쿠키를 쓰지 않고, 보내기 전에 주소에서 utm 꼬리표만 남기고 지웁니다 |
 
 <br>
@@ -171,19 +260,20 @@ flowchart LR
 │   ├── api/        Kotlin, Spring Boot 4, Spring Modulith
 │   └── web/        Next.js 16, Feature-Sliced Design
 ├── contracts/      OpenAPI 계약 (웹의 타입을 여기서 만든다)
-├── specs/          기능별 스펙, 설계, 작업 목록 (001~011)
-├── docs/           아키텍처, ADR, 측정 기록
-├── infra/          운영 compose, Caddy, GCP Terraform, 백업과 부하 테스트 스크립트
+├── specs/          기능별 스펙, 설계, 작업 목록 (001~018)
+├── docs/           아키텍처, ADR, 측정 기록, 구조도, 보관한 README
+├── infra/          Render 이미지 스크립트와 운영 문서, 옛 GCP Terraform, 부하 테스트
+├── render.yaml     Render 서비스 정의(Blueprint)
 ├── webbb-be/       원본 백엔드 (참고용)
 └── webbb-fe/       원본 프론트엔드 (참고용)
 ```
 
 <br>
 
-## 🚀 로컬 실행
+## 💻 로컬 실행
 
 ```bash
-cd apps/api && ./gradlew bootRun        # PostgreSQL과 Redis는 compose로 자동 기동
+cd apps/api && ./gradlew bootRun        # PostgreSQL은 compose로 자동 기동
 pnpm install && pnpm --filter web dev   # http://localhost:3000
 ```
 
@@ -192,17 +282,6 @@ AI 키(`AI_API_KEY`)가 없으면 글이 "분석 중"에 머물고 몬스터가 
 ```bash
 cd apps/api && SPRING_PROFILES_ACTIVE=local,e2e ./gradlew bootRun
 ```
-
-<br>
-
-## 🌐 배포
-
-| 무엇을 | 어디에 | 어떻게 |
-| --- | --- | --- |
-| 웹 | [new.5959.site](https://new.5959.site), Cloud Run | `main`에 병합되고 CI가 통과하면 자동으로 배포합니다 |
-| API와 DB | Compute Engine 한 대(Caddy, Spring Boot, PostgreSQL, Redis) | 이미지를 빌드한 뒤 손으로 배포합니다 |
-
-기반 자원과 도메인 연결은 Terraform으로 관리합니다. 웹의 주소 하나를 바꾸면 로그인 콜백과 실시간 알림이 허용하는 출처가 함께 바뀝니다. 절차는 [GCP 배포 문서](infra/gcp/README.md)에 있습니다.
 
 <br>
 
@@ -216,7 +295,10 @@ cd apps/api && SPRING_PROFILES_ACTIVE=local,e2e ./gradlew bootRun
 | [스펙](specs) | 마일스톤마다의 요구사항, 설계, 검증 절차 |
 | [개발 원칙](.specify/memory/constitution.md) | 여섯 가지 원칙 |
 | [API 가이드](apps/api/AGENTS.md), [웹 구조](apps/web/docs/ARCHITECTURE.md) | 모듈과 슬라이스마다의 규칙 |
-| [GCP 배포](infra/gcp/README.md), [웹 배포와 복구](infra/gcp/WEB-DEPLOY.md) | 기반 자원, 도메인 연결, 자동 배포와 되돌리기 |
+| [Render와 Neon 운영](infra/render/README.md) | 계정 준비, 배포, 깨우기, 백업과 복구 |
+| [018 무료 플랜 이전](specs/018-free-infra/research.md) | 결정의 근거, 측정값, 전환 기록 |
+| [GCP 배포(이전)](infra/gcp/README.md) | 2026년 11월 10일까지의 기반 자원과 배포 |
+| [README 보관본](docs/archive/README-2026-11-10-gcp.md) | GCP 시절의 README |
 | [레이드 부하 테스트](docs/benchmarks/raid-attack.md) | 가상 사용자 500명 측정 기록 |
 | [원본 서비스](docs/original-service.md) | DDD 13기 WEBBB 팀의 원본 소개, 기술 스택, 구조, 팀원 |
 

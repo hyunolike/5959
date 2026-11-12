@@ -4,8 +4,8 @@ import com.ogu.report.domain.WeeklyReport
 import com.ogu.report.domain.WeeklyReportRepository
 import com.ogu.shared.error.BusinessException
 import com.ogu.shared.error.ErrorCode
+import com.ogu.shared.schedule.HousekeepingStep
 import org.slf4j.LoggerFactory
-import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -81,10 +81,17 @@ class WeeklyReportPurgeJob(
     private val reports: WeeklyReportRepository,
     private val properties: ReportProperties,
     private val clock: Clock,
-) {
+) : HousekeepingStep {
+    override val stepName = "주간 리포트 정리"
+    override val order = 50
+
+    /** 하루 정리([com.ogu.shared.schedule.Housekeeping])가 04:00(한국 시간)에 부른다. */
+    override fun runStep() {
+        purge()
+    }
+
     private val log = LoggerFactory.getLogger(javaClass)
 
-    @Scheduled(cron = "\${ogu.report.purge-cron:0 40 4 * * *}", zone = "Asia/Seoul")
     fun purge(): Int {
         val cutoff = clock.instant().minus(properties.retention)
         var total = 0

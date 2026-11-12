@@ -144,3 +144,66 @@ run "web_domain_rejects_a_url" {
   }
   expect_failures = [var.web_domain]
 }
+
+run "web_calls_the_vm_api_by_default" {
+  command = apply
+  variables {
+    web_image = "us-central1-docker.pkg.dev/ogu-test-project/ogu/web@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  }
+  assert {
+    condition = alltrue([
+      for item in google_cloud_run_v2_service.web[0].template[0].containers[0].env :
+      endswith(item.value, ".sslip.io") if contains(["API_ORIGIN", "SSE_PUBLIC_ORIGIN"], item.name)
+    ])
+    error_message = "Without api_origin the web must keep calling the VM."
+  }
+}
+
+run "web_calls_render_when_api_origin_is_set" {
+  command = apply
+  variables {
+    web_image  = "us-central1-docker.pkg.dev/ogu-test-project/ogu/web@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    api_origin = "https://ogu-api.onrender.com"
+  }
+  assert {
+    condition = length([
+      for item in google_cloud_run_v2_service.web[0].template[0].containers[0].env :
+      item if contains(["API_ORIGIN", "SSE_PUBLIC_ORIGIN"], item.name) && item.value == "https://ogu-api.onrender.com"
+    ]) == 2
+    error_message = "API_ORIGIN and SSE_PUBLIC_ORIGIN must both follow api_origin."
+  }
+  assert {
+    condition     = output.api_origin == "https://ogu-api.onrender.com"
+    error_message = "The api_origin output must follow the variable."
+  }
+}
+
+run "api_origin_rejects_a_path" {
+  command = plan
+  variables {
+    api_origin = "https://ogu-api.onrender.com/"
+  }
+  expect_failures = [var.api_origin]
+}
+
+run "registry_keeps_only_recent_web_images" {
+  command = plan
+  assert {
+    condition = anytrue([
+      for p in google_artifact_registry_repository.ogu.cleanup_policies :
+      p.action == "KEEP" && one(p.most_recent_versions).keep_count == 3 && contains(one(p.most_recent_versions).package_name_prefixes, "web")
+    ])
+    error_message = "Keep the three most recent web images (US7-AC3)."
+  }
+  assert {
+    condition = alltrue([
+      for p in google_artifact_registry_repository.ogu.cleanup_policies :
+      p.action == "KEEP" || tolist(one(p.condition).package_name_prefixes) == tolist(["web"])
+    ])
+    error_message = "Never delete API images: the VM uses them while rollback is possible."
+  }
+  assert {
+    condition     = !google_artifact_registry_repository.ogu.cleanup_policy_dry_run
+    error_message = "Cleanup must really delete, not only report."
+  }
+}

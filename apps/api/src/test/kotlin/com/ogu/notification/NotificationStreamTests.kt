@@ -25,6 +25,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.system.CapturedOutput
 import org.springframework.boot.test.system.OutputCaptureExtension
 import org.springframework.boot.test.web.server.LocalServerPort
+import org.springframework.boot.web.server.context.WebServerGracefulShutdownLifecycle
 import org.springframework.context.annotation.Import
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity
@@ -39,8 +40,8 @@ import org.springframework.web.context.WebApplicationContext
 import java.time.Duration
 
 /**
- * T022: 실시간 알림 스트림(US1-AC1, AC7, AC8, research R2~R5). 실제 HTTP로 붙어 `text/event-stream`을 줄 단위로 읽는다.
- * 하트비트 주기는 테스트에서 줄인다.
+ * T022: 실시간 알림 스트림(US1-AC1, AC7, AC8, research R2~R5, 018 US3-AC6). 실제 HTTP로 붙어 `text/event-stream`을
+ * 줄 단위로 읽는다. 하트비트 주기는 테스트에서 줄인다.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration::class)
@@ -49,7 +50,7 @@ import java.time.Duration
 @TestPropertySource(
     properties = [
         "ogu.notification.heartbeat=200ms",
-        // 안전망이 대신 전달해 주지 못하게 길게 둔다. 기다리는 시간 안에는 Redis 신호만 알림을 보낼 수 있다
+        // 안전망이 대신 전달해 주지 못하게 길게 둔다. 기다리는 시간 안에는 신호만 알림을 보낼 수 있다
         "ogu.notification.safety-drain-interval=10m",
         "ogu.sse.allowed-origins=${NotificationStreamTests.WEB_ORIGIN}",
     ],
@@ -292,6 +293,23 @@ class NotificationStreamTests {
         try {
             val stream = SseTestClient.connect(port, ticket).also { streams += it }
 
+            stream.awaitEnded()
+            assertThat(hub.connectionCount(member.id)).isZero()
+        } finally {
+            hub.start()
+        }
+    }
+
+    @Test
+    fun `US3-AC6 서버가 내려갈 때 열린 연결을 먼저 닫는다`() {
+        val member = members.onboarded()
+        val stream = open(member)
+        assertThat(hub.connectionCount(member.id)).isEqualTo(1)
+        // 단계가 높을수록 먼저 멈춘다. 웹 서버의 우아한 종료가 열린 스트림을 기다리기 전에 허브가 닫는다
+        assertThat(hub.phase).isGreaterThan(WebServerGracefulShutdownLifecycle.SMART_LIFECYCLE_PHASE)
+
+        hub.stop()
+        try {
             stream.awaitEnded()
             assertThat(hub.connectionCount(member.id)).isZero()
         } finally {

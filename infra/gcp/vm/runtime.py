@@ -9,12 +9,11 @@ import subprocess
 import sys
 import time
 import urllib.request
-import urllib.parse
 
 ROOT = pathlib.Path("/opt/ogu")
 METADATA = "http://metadata.google.internal/computeMetadata/v1/"
 REQUIRED = [
-    "AI_API_KEY", "POSTGRES_PASSWORD", "JWT_SECRET", "REDIS_PASSWORD",
+    "AI_API_KEY", "POSTGRES_PASSWORD", "JWT_SECRET",
     "KAKAO_CLIENT_ID", "KAKAO_CLIENT_SECRET", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET",
 ]
 
@@ -46,9 +45,8 @@ def validate_secrets(values):
             continue
         if not isinstance(values.get(key), str) or not values[key].strip():
             raise ValueError(f"Required secret field missing: {key}")
-    for key in ["JWT_SECRET", "REDIS_PASSWORD"]:
-        if len(values[key]) < 32:
-            raise ValueError(f"Secret field too short: {key}")
+    if len(values["JWT_SECRET"]) < 32:
+        raise ValueError("Secret field too short: JWT_SECRET")
 
 
 def serialize_environment(values):
@@ -115,8 +113,7 @@ def deploy(root, values, health_check=healthy):
     previous = current.read_bytes() if current.exists() else None
     if previous is not None:
         old_values = json.loads(previous)
-        for key in ["POSTGRES_PASSWORD", "REDIS_PASSWORD"]:
-            if old_values.get(key) != values.get(key):
+        if old_values.get("POSTGRES_PASSWORD") != values.get("POSTGRES_PASSWORD"):
                 raise ValueError("Database credentials require a separate rotation procedure")
     private_write(pending, serialize_environment(values))
     promoted = False
@@ -125,7 +122,7 @@ def deploy(root, values, health_check=healthy):
         compose(root, ["pull", "api", "caddy"], pending)
         os.replace(pending, current)
         promoted = True
-        compose(root, ["up", "-d", "postgres", "redis", "api", "caddy"])
+        compose(root, ["up", "-d", "postgres", "api", "caddy"])
         if not health_check():
             raise RuntimeError("API health check failed")
     except Exception:
@@ -181,7 +178,6 @@ def environment(config, token):
         "API_DOMAIN": config["api_domain"],
         "POSTGRES_DB": "ogu", "POSTGRES_USER": "ogu",
         "OGU_BFF_KEY": bff,
-        "REDIS_URL": "redis://:" + urllib.parse.quote(values["REDIS_PASSWORD"], safe="") + "@redis:6379",
         "OGU_SSE_ALLOWED_ORIGINS": origin,
         # 015: the password-reset mail links to the web; the deployment config knows its origin.
         "OGU_WEB_ORIGIN": origin,

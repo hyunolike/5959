@@ -1,8 +1,8 @@
 package com.ogu.member.application
 
 import com.ogu.member.domain.LoginAttemptRepository
+import com.ogu.shared.schedule.HousekeepingStep
 import org.slf4j.LoggerFactory
-import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import java.time.Clock
 import java.time.Duration
@@ -15,10 +15,17 @@ import java.time.Duration
 class LoginAttemptCleanupJob(
     private val repository: LoginAttemptRepository,
     private val clock: Clock,
-) {
+) : HousekeepingStep {
+    override val stepName = "로그인 실패 기록 정리"
+    override val order = 20
+
+    /** 하루 정리([com.ogu.shared.schedule.Housekeeping])가 04:00(한국 시간)에 부른다. */
+    override fun runStep() {
+        deleteStaleAttempts()
+    }
+
     private val log = LoggerFactory.getLogger(javaClass)
 
-    @Scheduled(cron = "\${ogu.auth.login-attempt-cleanup-cron:0 30 4 * * *}", zone = "Asia/Seoul")
     fun deleteStaleAttempts(): Int {
         val deleted = repository.deleteUntouchedBefore(clock.instant().minus(RETENTION))
         log.info("Deleted {} stale login_attempt rows", deleted)

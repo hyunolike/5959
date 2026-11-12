@@ -153,18 +153,10 @@ CADDYFILE="$ROOT/Caddyfile"
 WORK="$(mktemp -d)" # assert가 실패하면 출력하는 로그 자리
 : > "$WORK/out.log"
 # shellcheck disable=SC2034
-redis_block="$(service_block redis "$PROD_COMPOSE")"
-# shellcheck disable=SC2034
 api_block="$(service_block api "$PROD_COMPOSE")"
 
-assert "운영 compose에 redis 서비스가 있고 포트를 공개하지 않는다" \
-  '[[ -n "$redis_block" ]] && ! grep -q "ports:" <<< "$redis_block"'
-
-assert "운영 redis는 디스크에 저장하지 않는다(--save \"\", --appendonly no)" \
-  'grep -qF -- "--save \"\"" <<< "$redis_block" && grep -qF -- "--appendonly no" <<< "$redis_block"'
-
-assert "api는 redis에 service_started로만 의존한다(Redis 장애가 기동을 막지 않는다)" \
-  '[[ "$(depends_condition "$api_block" redis)" == "service_started" ]]'
+assert "운영 compose에 redis가 없다(018: 실시간 상태는 API 메모리에 둔다)" \
+  '[[ -z "$(service_block redis "$PROD_COMPOSE")" ]] && ! grep -q REDIS "$PROD_COMPOSE"'
 
 # 009: compose는 적힌 변수만 컨테이너에 넣는다. AI 친구의 스위치가 빠지면 서버에서 켤 수 없다
 assert "운영 compose가 AI 친구의 설정을 api에 넘기고 기본은 꺼짐이다" \

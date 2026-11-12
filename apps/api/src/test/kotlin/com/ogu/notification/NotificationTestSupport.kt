@@ -1,16 +1,13 @@
 package com.ogu.notification
 
 import com.ogu.notification.stream.NotificationSignal
+import com.ogu.notification.stream.NotificationSignalHandler
 import org.awaitility.Awaitility.await
-import org.springframework.data.redis.connection.MessageListener
-import org.springframework.data.redis.core.StringRedisTemplate
-import org.springframework.data.redis.listener.ChannelTopic
-import org.springframework.data.redis.listener.RedisMessageListenerContainer
+import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.jdbc.core.JdbcTemplate
 import java.sql.Timestamp
 import java.time.Duration
 import java.time.Instant
-import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
 
 /** 저장된 알림 한 행을 테스트에서 보기 쉽게 줄인 것. */
@@ -29,16 +26,11 @@ data class NotificationRow(
 
 /**
  * 알림 테스트 도우미. 알림 행은 읽기 전용 SQL로 확인하고, 비동기 알림 리스너가 끝났는지는 Event Publication Registry의
- * 미완료 행으로 기다린다. 신호는 앱의 구독 컨테이너에 붙인 리스너로 실제 Redis 채널에서 모은다.
+ * 미완료 행으로 기다린다. 커밋 뒤 나간 신호는 [NotificationSignalRecorder]가 모은다.
  */
 class NotificationTestSupport(
     private val jdbcTemplate: JdbcTemplate,
-    private val redis: StringRedisTemplate,
-    private val container: RedisMessageListenerContainer,
 ) {
-    private val received = CopyOnWriteArrayList<String>()
-    private val listener = MessageListener { message, _ -> received += String(message.body) }
-
     /** 받는 사람의 알림을 번호 순서로. */
     fun notificationsOf(receiverId: Long): List<NotificationRow> =
         jdbcTemplate.query(
@@ -169,26 +161,27 @@ class NotificationTestSupport(
             value.toString(),
         )!!
 
-    /** 알림 채널 구독을 건다. 구독이 실제로 걸릴 때까지 표지를 보내 본다. */
-    fun subscribeSignals() {
-        container.addMessageListener(listener, ChannelTopic(NotificationSignal.CHANNEL))
-        val probe = "probe-${UUID.randomUUID()}"
-        await().atMost(AWAIT_LIMIT).until {
-            redis.convertAndSend(NotificationSignal.CHANNEL, probe)
-            received.contains(probe)
-        }
-        received.clear()
-    }
-
-    fun unsubscribeSignals() {
-        container.removeMessageListener(listener)
-    }
-
-    /** 이 회원에게 온 새 알림 신호(`{memberId}:n:{seq}`). */
-    fun newSignalsFor(memberId: Long): List<String> = received.filter { it.startsWith("$memberId:n:") }
-
     companion object {
         val AWAIT_LIMIT: Duration = Duration.ofSeconds(15)
         val POLL: Duration = Duration.ofMillis(50)
     }
+}
+
+/**
+ * [com.ogu.notification.stream.LocalSignalPublisher]가 넘긴 신호를 모으는 테스트 처리기(018 US3). 허브와 같은 자리에서
+ * 받으므로 커밋 뒤에 실제로 나간 신호만 담긴다. 컨텍스트를 테스트끼리 나눠 쓰므로 회원 ID로 걸러 읽는다.
+ * [com.ogu.TestcontainersConfiguration]이 가져온다.
+ */
+@TestConfiguration(proxyBeanMethods = false)
+class NotificationSignalRecorder : NotificationSignalHandler {
+    private val received = CopyOnWriteArrayList<NotificationSignal>()
+
+    override fun onSignal(signal: NotificationSignal) {
+        received += signal
+    }
+
+    fun of(memberId: Long): List<NotificationSignal> = received.filter { it.memberId == memberId }
+
+    /** 이 회원에게 온 새 알림 신호. */
+    fun newFor(memberId: Long): List<NotificationSignal.New> = of(memberId).filterIsInstance<NotificationSignal.New>()
 }

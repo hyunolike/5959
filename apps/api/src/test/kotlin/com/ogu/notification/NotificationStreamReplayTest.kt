@@ -18,8 +18,6 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.context.annotation.Import
-import org.springframework.data.redis.core.StringRedisTemplate
-import org.springframework.data.redis.listener.RedisMessageListenerContainer
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity
 import org.springframework.test.annotation.DirtiesContext
@@ -48,12 +46,6 @@ class NotificationStreamReplayTest {
     @Autowired
     lateinit var monsterApi: MonsterApi
 
-    @Autowired
-    lateinit var redis: StringRedisTemplate
-
-    @Autowired
-    lateinit var container: RedisMessageListenerContainer
-
     @LocalServerPort
     var port: Int = 0
 
@@ -70,7 +62,7 @@ class NotificationStreamReplayTest {
         members = MemberFixture(mockMvc)
         loop = CoreLoopFixture(mockMvc, jdbcTemplate, monsterApi)
         tickets = StreamTickets(mockMvc)
-        support = NotificationTestSupport(jdbcTemplate, redis, container)
+        support = NotificationTestSupport(jdbcTemplate)
     }
 
     @AfterEach
@@ -134,6 +126,31 @@ class NotificationStreamReplayTest {
                 .get("actorCount")
                 .asInt(),
         ).isEqualTo(LIKES)
+    }
+
+    @Test
+    fun `US3-AC2 끊긴 동안의 알림을 다시 붙을 때 순서대로 받는다`() {
+        val author = members.onboarded()
+        val commenter = members.onboarded()
+        val postId = loop.postWithoutMonster(author)
+        val first = open(author)
+        loop.comment(commenter, postId, "붙어 있을 때")
+        val lastSeen =
+            first
+                .awaitNotifications(1)
+                .single()
+                .id!!
+                .toLong()
+        first.close()
+
+        repeat(GAP_COMMENTS) { loop.comment(commenter, postId, "끊긴 동안 $it") }
+        awaitNotificationsSettled(author, postId, expectedRows = 1 + GAP_COMMENTS)
+
+        val expected = rowsAfter(author.id, lastSeen)
+        val replayed = open(author, lastEventId = lastSeen)
+        val received = receiveAllThenMarker(replayed, author, commenter, postId, GAP_COMMENTS)
+
+        assertThat(received.map { it.id!!.toLong() }).isEqualTo(expected.map { it.seq }).isSorted()
     }
 
     @Test
@@ -259,6 +276,7 @@ class NotificationStreamReplayTest {
 
     private companion object {
         const val COMMENTS = 40
+        const val GAP_COMMENTS = 3
         const val LIKES = 10
         const val LIKE_EVERY = COMMENTS / LIKES
     }

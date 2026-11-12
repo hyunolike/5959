@@ -1,5 +1,6 @@
 package com.ogu.shared.config
 
+import com.ogu.shared.schedule.ActivityGate
 import org.slf4j.LoggerFactory
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
@@ -39,11 +40,16 @@ class EventResubmitConfig
  * [EventResubmitProperties.maxAttempts]에 닿은 발행은 건너뛴다. Spring Modulith 2.1의 `ResubmissionOptions` 필터로
  * 거른다. 건너뛰기 시작한 발행은 이 프로세스에서 한 번만 WARN으로 남기고, 행은 지우지 않아 운영자가 원인을 고친 뒤
  * 직접 다시 보낼 수 있게 둔다.
+ *
+ * 018 research R3: 주기 재전송은 회원이 최근에 쓴 동안([ActivityGate])만 돈다. 재전송이 필요한 실패는 회원의 요청에서
+ * 생기므로 그때는 DB가 깨어 있다. 회원이 떠나면 멈춰 DB가 잘 수 있다. 끝나지 않은 발행은 기동 때
+ * (`republish-outstanding-events-on-restart`)와 하루 정리([com.ogu.shared.schedule.Housekeeping])에서도 한 번 다시 나간다.
  */
 @Component
 class EventPublicationResubmitter(
     private val incompletePublications: IncompleteEventPublications,
     private val properties: EventResubmitProperties,
+    private val activity: ActivityGate,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
     private val givenUp = ConcurrentHashMap.newKeySet<UUID>()
@@ -76,7 +82,7 @@ class EventPublicationResubmitter(
         initialDelayString = "\${ogu.events.resubmit.interval:1m}",
     )
     fun scheduledResubmit() {
-        if (!properties.enabled) return
+        if (!properties.enabled || !activity.isActive()) return
         try {
             resubmit()
         } catch (e: RuntimeException) {

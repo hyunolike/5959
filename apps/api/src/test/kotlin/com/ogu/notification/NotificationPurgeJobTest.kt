@@ -12,10 +12,7 @@ import org.mockito.Mockito.verify
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
-import org.springframework.data.redis.core.StringRedisTemplate
-import org.springframework.data.redis.listener.RedisMessageListenerContainer
 import org.springframework.jdbc.core.JdbcTemplate
-import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean
 import java.sql.Timestamp
@@ -39,12 +36,6 @@ class NotificationPurgeJobTest {
     @Autowired
     lateinit var jdbcTemplate: JdbcTemplate
 
-    @Autowired
-    lateinit var redis: StringRedisTemplate
-
-    @Autowired
-    lateinit var container: RedisMessageListenerContainer
-
     @MockitoSpyBean
     lateinit var notifications: NotificationRepository
 
@@ -53,7 +44,7 @@ class NotificationPurgeJobTest {
 
     @BeforeEach
     fun setUp() {
-        support = NotificationTestSupport(jdbcTemplate, redis, container)
+        support = NotificationTestSupport(jdbcTemplate)
     }
 
     @Test
@@ -158,17 +149,6 @@ class NotificationPurgeJobTest {
         assertThat(support.notificationsOf(receiver)).isEqualTo(afterFirst)
         assertThat(publicationExists(completed)).isFalse()
         assertThat(support.lastSeq(receiver)).isEqualTo(4L)
-    }
-
-    @Test
-    fun `매일 04시 한국 시간에 돈다`() {
-        val scheduled =
-            NotificationPurgeJob::class.java.methods
-                .mapNotNull { it.getAnnotation(Scheduled::class.java) }
-                .single()
-
-        assertThat(scheduled.cron).isEqualTo("\${ogu.notification.purge-cron:0 0 4 * * *}")
-        assertThat(scheduled.zone).isEqualTo("Asia/Seoul")
     }
 
     private fun seedAt(

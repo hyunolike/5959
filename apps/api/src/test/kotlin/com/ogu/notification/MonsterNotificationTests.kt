@@ -18,8 +18,6 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
-import org.springframework.data.redis.core.StringRedisTemplate
-import org.springframework.data.redis.listener.RedisMessageListenerContainer
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.modulith.test.EnableScenarios
 import org.springframework.modulith.test.Scenario
@@ -46,12 +44,6 @@ class MonsterNotificationTests {
     @Autowired
     lateinit var monsterApi: MonsterApi
 
-    @Autowired
-    lateinit var redis: StringRedisTemplate
-
-    @Autowired
-    lateinit var container: RedisMessageListenerContainer
-
     private lateinit var members: MemberFixture
     private lateinit var loop: CoreLoopFixture
     private lateinit var support: NotificationTestSupport
@@ -62,7 +54,7 @@ class MonsterNotificationTests {
             MockMvcBuilders.webAppContextSetup(context).apply<DefaultMockMvcBuilder>(springSecurity()).build()
         members = MemberFixture(mockMvc)
         loop = CoreLoopFixture(mockMvc, jdbcTemplate, monsterApi)
-        support = NotificationTestSupport(jdbcTemplate, redis, container)
+        support = NotificationTestSupport(jdbcTemplate)
     }
 
     @Test

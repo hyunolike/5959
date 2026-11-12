@@ -6,10 +6,15 @@ import com.ogu.post.PostApi
 import com.ogu.post.PostModerationApi
 import com.ogu.raid.application.RaidAttackService
 import com.ogu.raid.application.RaidBossLifecycle
+import com.ogu.raid.application.RaidLifecycleScheduler
+import com.ogu.raid.application.RaidProperties
 import com.ogu.raid.application.RaidQueryService
 import com.ogu.raid.domain.RaidBossStatus
+import com.ogu.raid.domain.RaidLiveStore
 import com.ogu.shared.error.BusinessException
 import com.ogu.shared.error.ErrorCode
+import com.ogu.shared.schedule.DueTimers
+import com.ogu.shared.schedule.ManualScheduler
 import com.ogu.support.MemberFixture
 import com.ogu.support.MutableClock
 import com.ogu.support.RaidFixture
@@ -24,7 +29,6 @@ import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
 import org.springframework.context.annotation.Primary
-import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity
 import org.springframework.test.web.servlet.setup.DefaultMockMvcBuilder
@@ -57,7 +61,7 @@ class RaidLifecycleTests {
     lateinit var jdbcTemplate: JdbcTemplate
 
     @Autowired
-    lateinit var redisTemplate: StringRedisTemplate
+    lateinit var store: RaidLiveStore
 
     @Autowired
     lateinit var lifecycle: RaidBossLifecycle
@@ -77,11 +81,14 @@ class RaidLifecycleTests {
     @Autowired
     lateinit var clock: MutableClock
 
+    @Autowired
+    lateinit var properties: RaidProperties
+
     private lateinit var raid: RaidFixture
 
     @BeforeEach
     fun setUp() {
-        raid = RaidFixture(jdbcTemplate, redisTemplate)
+        raid = RaidFixture(jdbcTemplate, store)
         // 날짜 경계에 걸리지 않게 한국 시간 낮 12시로 맞춘다
         clock.advance(Duration.between(clock.instant(), nextNoon()))
     }
@@ -90,7 +97,7 @@ class RaidLifecycleTests {
     fun `US5-AC1 보스가 한 번도 없으면 HP 300의 첫 보스가 나타난다`() {
         jdbcTemplate.update("delete from raid_contribution")
         jdbcTemplate.update("delete from raid_boss")
-        redisTemplate.delete("raid:boss")
+        store.clear()
 
         lifecycle.tick()
 
@@ -179,6 +186,30 @@ class RaidLifecycleTests {
     }
 
     @Test
+    fun `US4-AC8 보스가 물러날 시각에 다음 보스로 바뀐다`() {
+        val bossId = placeBoss("ALIVE", participants = 0)
+        // 이 컨텍스트는 주기 작업을 꺼 두었으므로 시계를 따라 깨우는 타이머를 직접 놓는다
+        val scheduler = ManualScheduler(clock)
+        val timers = DueTimers(clock, scheduler) {}
+        RaidLifecycleScheduler(lifecycle, properties, clock, timers)
+        timers.rearmAll()
+        // 018 research R3: 기다리는 동안은 걸린 시각 하나만 있고 DB를 읽지 않는다
+        assertThat(scheduler.pending).isEqualTo(1)
+
+        scheduler.advance(Duration.ofDays(7).minusSeconds(1))
+        assertThat(raid.boss(bossId)).containsEntry("status", "ALIVE")
+
+        scheduler.advance(Duration.ofSeconds(1))
+        assertThat(raid.boss(bossId)).containsEntry("status", "RETREATED")
+        assertThat(aliveCount()).isZero()
+
+        scheduler.advance(Duration.between(clock.instant(), nextMidnight()))
+        assertThat(aliveBoss()["id"]).isNotEqualTo(bossId)
+        // 다음 보스가 물러날 시각이 다시 걸린다
+        assertThat(scheduler.pending).isEqualTo(1)
+    }
+
+    @Test
     fun `US5-AC6 여러 인스턴스가 동시에 만들어도 살아 있는 보스는 하나다`() {
         placeBoss("DEFEATED", participants = 3, endedAt = clock.instant().minus(Duration.ofDays(2)))
         val pool = Executors.newFixedThreadPool(INSTANCES)
@@ -250,7 +281,7 @@ class RaidLifecycleTests {
                 Timestamp.from(now.truncatedTo(ChronoUnit.MICROS)),
                 endedAt?.let { Timestamp.from(it.truncatedTo(ChronoUnit.MICROS)) },
             )!!
-        redisTemplate.delete("raid:boss")
+        store.clear()
         return bossId
     }
 

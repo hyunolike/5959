@@ -20,8 +20,6 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.context.annotation.Import
-import org.springframework.data.redis.core.StringRedisTemplate
-import org.springframework.data.redis.listener.RedisMessageListenerContainer
 import org.springframework.http.MediaType
 import org.springframework.jdbc.core.ConnectionCallback
 import org.springframework.jdbc.core.JdbcTemplate
@@ -57,7 +55,7 @@ import java.util.concurrent.atomic.AtomicLong
 @Import(TestcontainersConfiguration::class)
 // 이 클래스만의 설정이라 다른 테스트와 컨텍스트를 나누지 않는다. 끝나면 닫아 컨테이너와 메모리를 돌려준다
 @DirtiesContext
-// 안전망이나 하트비트가 끼어들지 않게 길게 둔다. unread-count는 Redis 신호로만 올 수 있다
+// 안전망이나 하트비트가 끼어들지 않게 길게 둔다. unread-count는 읽음 신호로만 올 수 있다
 @TestPropertySource(properties = ["ogu.notification.safety-drain-interval=10m"])
 class NotificationReadApiTests {
     @Autowired
@@ -68,12 +66,6 @@ class NotificationReadApiTests {
 
     @Autowired
     lateinit var monsterApi: MonsterApi
-
-    @Autowired
-    lateinit var redis: StringRedisTemplate
-
-    @Autowired
-    lateinit var container: RedisMessageListenerContainer
 
     @Autowired
     lateinit var readService: NotificationReadService
@@ -102,7 +94,7 @@ class NotificationReadApiTests {
         members = MemberFixture(mockMvc)
         loop = CoreLoopFixture(mockMvc, jdbcTemplate, monsterApi)
         tickets = StreamTickets(mockMvc)
-        support = NotificationTestSupport(jdbcTemplate, redis, container)
+        support = NotificationTestSupport(jdbcTemplate)
     }
 
     @AfterEach

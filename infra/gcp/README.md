@@ -1,5 +1,7 @@
 # GCP 배포
 
+> **API와 DB는 Render와 Neon으로 옮기고 있다(018).** 이 문서의 VM 절차는 이전이 끝나고 되돌리기 기간(7일)이 지나면 쓰지 않는다. 새 운영은 [Render와 Neon 문서](../render/README.md)를 본다. 웹(Cloud Run)은 계속 여기서 관리한다. 웹이 부를 API 주소는 Terraform 변수 `api_origin`으로 정한다(비우면 VM의 sslip.io 주소).
+
 Terraform으로 기반 자원을 관리하고 gcloud/Cloud Build로 이미지를 빌드한다.
 기본 구성은 us-central1, e2-small 한 대, Cloud Run 웹이다.
 
@@ -11,7 +13,6 @@ flowchart LR
   subgraph VM[Compute Engine: e2-small / 2GB]
     C --> A[Spring Boot API]
     A --> P[(PostgreSQL + pgvector)]
-    A --> R[(Redis)]
   end
   P --- D[20GB 영구 데이터 디스크]
   P -. 매일 pg_dump .-> B[Cloud Storage / 14일 보관]
@@ -35,7 +36,7 @@ us-central1, 월 730시간 기준 e2-small 약 $12.23, 외부 IPv4 약 $3.65이�
 - [Cloud Run 요금](https://cloud.google.com/run/pricing)
 
 이 구성은 소규모 포트폴리오용이다. 단일 VM이므로 VM 장애 동안 API와 DB는 함께 중단된다.
-API 1GB(heap 512MB), DB 384MB, Redis 128MB, Caddy 96MB와 swap 2GB로 시작한다.
+API 1GB(heap 512MB), DB 384MB, Caddy 96MB와 swap 2GB로 시작한다.
 swap은 마지막 안전망으로만 쓰도록 `vm.swappiness=10`을 둔다. 기본값 60에서는 쉬고 있는 JVM 힙이
 swap으로 내려가, 오랜만의 첫 요청이 디스크에서 메모리를 다시 읽느라 수십 초 멈추고 웹의 15초 타임아웃에 걸렸다.
 실제 핵심 흐름과 배치에서 OOM/지연을 확인하고 부족하면 machine_type을 e2-medium으로 바꾼다.
@@ -103,7 +104,7 @@ bash infra/gcp/scripts/upload-secrets.sh
 terraform -chdir=infra/gcp/terraform output web_origin
 ```
 
-prepare-secrets는 JWT, DB/Redis 비밀번호, BFF 키, OAuth 상태 서명 키를 생성하고 파일 권한을 600으로 둔다.
+prepare-secrets는 JWT, DB 비밀번호, BFF 키, OAuth 상태 서명 키를 생성하고 파일 권한을 600으로 둔다.
 기존 파일이 있으면 덮어쓰지 않는다. upload-secrets는 이미 enabled 버전이 있으면 그대로 둔다.
 시크릿을 교체할 때는 DB 암호 변경과 기존 로그인 만료 영향을 별도로 판단한다.
 
@@ -165,8 +166,8 @@ terraform output의 api_origin/web_origin에서 다음을 확인한다.
 VM 재부팅 때 기존 ext4 데이터 디스크는 포맷하지 않는다. unknown signature는 자동 덮어쓰지 않는다.
 Docker와 배포/백업은 `/var/lib/ogu`의 UUID가 연결한 데이터 디스크와 일치해야 실행된다.
 데이터 마운트가 실패하면 Docker도 시작하지 않으므로 부팅 디스크에 새 DB가 만들어지지 않는다.
-Caddy 인증서도 데이터 디스크에 저장한다. Redis는 영속화하지 않으므로 재시작 때 직전 1초
-레이드 공격을 잃을 수 있으며 이는 기존 설계의 한계다.
+Caddy 인증서도 데이터 디스크에 저장한다. 레이드 상태는 API 메모리에 있다. 정상 종료 때는 모두 DB에 쓰고,
+비정상 종료 때는 직전 1초의 공격을 잃을 수 있다(018 research R5).
 
 ## 검증 명령
 

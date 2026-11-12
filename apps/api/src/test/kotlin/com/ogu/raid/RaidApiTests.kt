@@ -1,6 +1,7 @@
 package com.ogu.raid
 
 import com.ogu.TestcontainersConfiguration
+import com.ogu.raid.domain.RaidLiveStore
 import com.ogu.support.MemberFixture
 import com.ogu.support.RaidFixture
 import com.ogu.support.SafetyFixture
@@ -12,13 +13,13 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
-import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.http.HttpMethod
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.ResultActions
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -41,7 +42,7 @@ class RaidApiTests {
     lateinit var jdbcTemplate: JdbcTemplate
 
     @Autowired
-    lateinit var redisTemplate: StringRedisTemplate
+    lateinit var store: RaidLiveStore
 
     private lateinit var mockMvc: MockMvc
     private lateinit var members: MemberFixture
@@ -53,7 +54,14 @@ class RaidApiTests {
         mockMvc = MockMvcBuilders.webAppContextSetup(context).apply<DefaultMockMvcBuilder>(springSecurity()).build()
         members = MemberFixture(mockMvc)
         http = SafetyFixture(mockMvc, jdbcTemplate)
-        raid = RaidFixture(jdbcTemplate, redisTemplate)
+        raid = RaidFixture(jdbcTemplate, store)
+    }
+
+    @Test
+    fun `018 e2e 프로필이 아니면 레이드 다시 올리기 경로가 없다`() {
+        mockMvc
+            .perform(post("/api/v1/e2e/raid/reload").header("X-Ogu-Bff-Key", "test-bff-key"))
+            .andExpect(status().isNotFound)
     }
 
     @Test
@@ -128,7 +136,7 @@ class RaidApiTests {
     fun `US1-AC4 같은 회원의 동시 공격은 하나만 반영된다`() {
         val bossId = raid.freshBoss(maxHp = 30)
         val member = members.onboarded()
-        // 첫 요청이 Redis를 채우는 동안 나머지가 기다리지 않도록 미리 채운다
+        // 첫 요청이 메모리 저장소를 채우는 동안 나머지가 기다리지 않도록 미리 채운다
         http.get(member, PATH).andExpect(status().isOk)
         val pool = Executors.newFixedThreadPool(TABS)
         val start = CountDownLatch(1)
@@ -151,7 +159,7 @@ class RaidApiTests {
 
         assertThat(statuses.count { it == 200 }).isEqualTo(1)
         assertThat(statuses.count { it == 429 }).isEqualTo(TABS - 1)
-        assertThat(raid.redisHp()).isEqualTo(29)
+        assertThat(raid.liveHp()).isEqualTo(29)
     }
 
     @Test

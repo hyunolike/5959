@@ -4,6 +4,7 @@ import com.ogu.TestcontainersConfiguration
 import com.ogu.raid.application.RaidAttackService
 import com.ogu.raid.application.RaidFlusher
 import com.ogu.raid.application.RaidQueryService
+import com.ogu.raid.domain.RaidLiveStore
 import com.ogu.shared.error.BusinessException
 import com.ogu.shared.error.ErrorCode
 import com.ogu.support.RaidFixture
@@ -13,7 +14,6 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
-import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.jdbc.core.JdbcTemplate
 import java.util.concurrent.Callable
 import java.util.concurrent.CountDownLatch
@@ -21,8 +21,8 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 /**
- * T009: 한꺼번에 몰려도 HP와 처치가 정확하다(006 US3, SC-001, SC-002). 가상 사용자 500명의 측정은 k6로 따로 하고
- * (research R15), 같은 불변식을 여기서 PR마다 확인한다.
+ * T009, 018 T028: 한꺼번에 몰려도 HP와 처치가 정확하다(006 US3, SC-001, SC-002). 판정은 메모리 저장소의 잠금 하나 안에서
+ * 한다(018 research R5). 가상 사용자 500명의 측정은 k6로 따로 하고(research R15), 같은 불변식을 여기서 PR마다 확인한다.
  */
 @SpringBootTest
 @Import(TestcontainersConfiguration::class)
@@ -31,7 +31,7 @@ class RaidConcurrencyTests {
     lateinit var jdbcTemplate: JdbcTemplate
 
     @Autowired
-    lateinit var redisTemplate: StringRedisTemplate
+    lateinit var store: RaidLiveStore
 
     @Autowired
     lateinit var attackService: RaidAttackService
@@ -46,11 +46,11 @@ class RaidConcurrencyTests {
 
     @BeforeEach
     fun setUp() {
-        raid = RaidFixture(jdbcTemplate, redisTemplate)
+        raid = RaidFixture(jdbcTemplate, store)
     }
 
     @Test
-    fun `US3-AC1 회원 64명이 동시에 여러 번 공격해도 줄어든 HP가 받아들여진 수와 같다`() {
+    fun `US3-AC3 64명이 동시에 공격해도 받아들인 수 = 줄어든 HP = 기여의 합`() {
         val bossId = loadedBoss(maxHp = 5_000)
         val members = raid.memberIds(ATTACKERS)
 
@@ -64,9 +64,9 @@ class RaidConcurrencyTests {
             }.sum()
 
         assertThat(accepted).isGreaterThan(0)
-        assertThat(5_000 - raid.redisHp()).isEqualTo(accepted)
-        // US3-AC4: 기여의 합도 같다. Redis와, 옮긴 뒤의 기록 모두
-        assertThat(raid.redisDamageSum(bossId)).isEqualTo(accepted)
+        assertThat(5_000 - raid.liveHp()).isEqualTo(accepted)
+        // 기여의 합도 같다. 메모리와, 옮긴 뒤의 기록 모두
+        assertThat(raid.liveDamageSum(bossId)).isEqualTo(accepted)
         flusher.flush()
         raid.awaitRecorded(bossId, accepted)
         assertThat(raid.boss(bossId))
@@ -75,7 +75,7 @@ class RaidConcurrencyTests {
     }
 
     @Test
-    fun `US3-AC2 남은 HP보다 많은 공격이 동시에 와도 0에서 멈추고 남은 만큼만 받아들인다`() {
+    fun `남은 HP보다 많은 공격이 동시에 와도 0에서 멈추고 남은 만큼만 받아들인다`() {
         val bossId = loadedBoss(maxHp = 20)
         val members = raid.memberIds(ATTACKERS)
 
@@ -84,17 +84,16 @@ class RaidConcurrencyTests {
         val accepted = results.filterNotNull()
         assertThat(accepted).hasSize(20)
         assertThat(accepted.map { it.hp }).containsExactlyInAnyOrderElementsOf((0..19).toList())
-        assertThat(raid.redisHp()).isZero()
-        // US3-AC3: 처치는 한 번이다
+        assertThat(raid.liveHp()).isZero()
+        // 처치는 한 번이다
         assertThat(accepted.count { it.defeated }).isEqualTo(1)
         raid.awaitStatus(bossId, "DEFEATED")
         assertThat(raid.boss(bossId)).containsEntry("hp", 0).containsEntry("participant_count", 20)
-        // US3-AC4
         assertThat(raid.recordedDamageSum(bossId)).isEqualTo(20)
     }
 
     @Test
-    fun `US3-AC3 마지막 HP를 여러 회원이 다퉈도 처치는 한 번만 기록된다`() {
+    fun `마지막 HP에서 여러 회원이 다퉈도 처치는 한 번만 기록된다`() {
         repeat(REPEATS) {
             val bossId = loadedBoss(maxHp = 1)
             val members = raid.memberIds(ATTACKERS)

@@ -9,10 +9,13 @@ import com.ogu.post.PostWritten
 import com.ogu.recommend.domain.EmbeddingClaim
 import com.ogu.recommend.domain.PostEmbeddingRepository
 import com.ogu.shared.config.AiProperties
+import com.ogu.shared.schedule.DueJob
+import com.ogu.shared.schedule.DueTimers
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.ObjectProvider
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.modulith.events.ApplicationModuleListener
-import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
@@ -178,17 +181,26 @@ class EmbeddingRunner(
 
 /**
  * 글이 저장되거나 고쳐지면 커밋 뒤에 임베딩을 만든다(007 research R4). 리스너는 트랜잭션 없이 돈다. 공급자를 부르는 동안
- * DB 커넥션을 쥐지 않는다. 실패해도 리스너는 정상으로 끝나고 다시 시도하는 일은 스케줄러가 맡는다. 글이 지워지면 값을 지운다.
+ * DB 커넥션을 쥐지 않는다. 실패해도 리스너는 정상으로 끝나고 다시 시도하는 일은 [EmbeddingRetryScheduler]가 맡는다. 글이
+ * 지워지면 값을 지운다.
+ *
+ * 행 요청과 첫 시도의 결과(성공, 또는 실패의 다음 시각)는 이미 커밋됐으므로, 끝나면 타이머를 다시 건다(018 research R3).
+ * 스케줄러를 끈 테스트에서는 타이머가 없다.
  */
 @Component
 class EmbeddingListener(
     private val store: EmbeddingStore,
     private val runner: EmbeddingRunner,
+    private val retry: ObjectProvider<EmbeddingRetryScheduler>,
 ) {
     @ApplicationModuleListener(propagation = Propagation.NOT_SUPPORTED)
     fun on(event: PostWritten) {
-        store.request(event.postId, event.authorId)
-        runner.attempt(event.postId)
+        try {
+            store.request(event.postId, event.authorId)
+            runner.attempt(event.postId)
+        } finally {
+            retry.ifAvailable { it.rearm() }
+        }
     }
 
     @ApplicationModuleListener
@@ -198,25 +210,40 @@ class EmbeddingListener(
 }
 
 /**
- * `poll-interval`(10초)마다 시도할 차례인 임베딩을 다시 시도한다. 이미 있는 글을 처리하는 일도 이 주기가 맡는다
- * (research R7). 여러 인스턴스가 돌아도 `FOR UPDATE SKIP LOCKED`와 맡을 때 미뤄 두는 다음 차례 덕분에 같은 행을 두 번
- * 맡지 않는다.
+ * 시도할 차례인 임베딩을 다시 시도한다. 이미 있는 글을 처리하는 일도 이 타이머가 맡는다(research R7). 018 research R3부터는
+ * 주기마다 DB를 읽지 않고, 가장 이른 `next_attempt_at`에만 깨어난다. 할 일이 없으면 DB에 묻지 않으므로 Neon이 잠들 수 있다.
+ *
+ * - 돌고 나면 [nextDue]로 다음 시각을 다시 읽는다. 맡기(임대)와 실패(백오프)로 바뀐 시각은 이것으로 잡힌다. 밀린 글이
+ *   있으면 `batch-size`개씩 이어서 돈다(돌고 난 뒤 1초는 쉰다, `DueTimer`).
+ * - 글 저장 직후의 첫 시도는 [EmbeddingListener]가, 이미 있는 글의 요청은 [EmbeddingBackfillStarter]가 하고, 끝나면
+ *   [rearm]을 부른다.
+ * - 여러 인스턴스가 돌아도 `FOR UPDATE SKIP LOCKED`와 맡을 때 미뤄 두는 다음 차례 덕분에 같은 행을 두 번 맡지 않는다.
  */
 @Component
 @ConditionalOnProperty(prefix = "ogu.recommend.retry", name = ["scheduler-enabled"], matchIfMissing = true)
 class EmbeddingRetryScheduler(
     private val runner: EmbeddingRunner,
-) {
+    private val embeddings: PostEmbeddingRepository,
+    // 밀린 재시도는 예전 폴링 간격마다 한 묶음씩 보낸다. AI 제공자의 요청 한도에 몰리지 않게 한다.
+    @Value("\${ogu.recommend.retry.poll-interval:10s}") override val minGap: Duration,
+    timers: DueTimers,
+) : DueJob {
     private val log = LoggerFactory.getLogger(javaClass)
+    private val timer = timers.register(this)
 
-    @Suppress("TooGenericExceptionCaught") // 한 번 실패해도 다음 주기에 다시 돈다
-    @Scheduled(fixedDelayString = "\${ogu.recommend.retry.poll-interval:10s}")
-    fun poll() {
-        try {
-            val handled = runner.runDue()
-            if (handled > 0) log.info("임베딩 처리: {}건", handled)
-        } catch (e: RuntimeException) {
-            log.error("임베딩 처리 주기가 실패했습니다", e)
-        }
+    override val name = "임베딩 재시도"
+
+    override fun nextDue(): Instant? = embeddings.findEarliestPendingAttemptAt()
+
+    override fun runDue() {
+        val handled = runner.runDue()
+        if (handled > 0) log.info("임베딩 처리: {}건", handled)
     }
+
+    /** 다음 시각을 DB에서 다시 읽어 건다. 행을 만들거나 시각을 바꾼 쪽이 커밋 뒤에 부른다. */
+    fun rearm() = timer.rearm()
+
+    /** 지금 걸린 다음 시각. 테스트와 로그용이다. */
+    val nextAt: Instant?
+        get() = timer.nextAt
 }

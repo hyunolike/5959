@@ -16,8 +16,8 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.context.WebApplicationContext
 
 /**
- * `@SpringBootTest` 없이 직접 띄운 애플리케이션 하나(004 SC-003, Redis 장애). 서버 두 대를 같은 DB와 Redis에 붙이거나,
- * Redis가 없는 채로 기동해 보려고 쓴다. 가짜 감정 분석기([TestAiConfiguration])를 쓰고, 테스트 소스의 다른 설정
+ * `@SpringBootTest` 없이 직접 띄운 애플리케이션 하나. 같은 DB에 서버를 하나 더 붙여, 배포가 겹치거나 정상 종료하는
+ * 경우를 본다(018 RaidDurabilityTests). 가짜 감정 분석기([TestAiConfiguration])를 쓰고, 테스트 소스의 다른 설정
  * (`@TestConfiguration`, 테스트용 컴포넌트)은 컴포넌트 검색에서 뺀다. `@SpringBootTest`라면 Spring Boot가 해 주는 일이다.
  */
 class AppInstance private constructor(
@@ -48,7 +48,7 @@ class AppInstance private constructor(
                             it.beanFactory.registerSingleton("excludeTestSources", ExcludeTestSources())
                         },
                     )
-                    // 명령행 인자로 넘겨 application.yml의 값(예: `REDIS_URL` 기본값)보다 앞서게 한다
+                    // 명령행 인자로 넘겨 application.yml의 값보다 앞서게 한다
                     .run(*(DEFAULTS + properties).map { (key, value) -> "--$key=$value" }.toTypedArray())
             return AppInstance(context)
         }

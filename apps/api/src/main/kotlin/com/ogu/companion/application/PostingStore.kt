@@ -150,6 +150,31 @@ class PostingPlanner(
         return if (ready) Plan(longestRested(free), freshTopic(), anyTone()) else null
     }
 
+    /**
+     * 새 기록을 열어 볼 가장 이른 때(018 research R3). [next]가 볼 시각의 조건을 시계로 미리 푼 것이다: 가장 새 글 +
+     * `quiet`(지났으면 지금), 시간대 전이면 그날의 `active-from`, `active-until`을 넘으면 다음 날의 `active-from`. 그날 올린
+     * 글이나 청한 횟수가 다 찼거나 쓸 친구가 없으면 다음 날의 `active-from`이다. 이것을 빼면 [next]가 쓰지 않는 동안 지난
+     * 시각이 계속 나와 타이머가 헛돈다. 시작과 끝이 같거나 뒤집혀 있으면 쓰지 않으므로 null이다.
+     */
+    fun nextOpening(): Instant? {
+        if (!posting.activeFrom.isBefore(posting.activeUntil)) return null
+        val now = koreaNow()
+        val quietAt = postApi.latestVisiblePostAt()?.plus(posting.quiet)?.atZone(PostingStore.SEOUL)
+        var at = posting.activeFromOrAfter(if (quietAt == null || quietAt.isBefore(now)) now else quietAt)
+        if (at.toLocalDate() == now.toLocalDate() && !roomOn(now.toLocalDate())) {
+            at = posting.startOf(now.toLocalDate().plusDays(1), PostingStore.SEOUL)
+        }
+        return at.toInstant()
+    }
+
+    /** [day]에 올릴 글과 청할 횟수가 남았고 아직 쓰지 않은 친구가 있다. */
+    private fun roomOn(day: LocalDate): Boolean {
+        val used = posts.dayOf(day)
+        return used.posted < posting.dailyPosts &&
+            used.requests < posting.dailyRequests &&
+            companions.all().any { it.id !in used.companionIds }
+    }
+
     /** 쓰는 중인 [attempt]를 그만둘 까닭. 계속 써도 되면 null이다. */
     fun stopReason(attempt: PostAttempt): GiveUpReason? {
         val now = koreaNow()

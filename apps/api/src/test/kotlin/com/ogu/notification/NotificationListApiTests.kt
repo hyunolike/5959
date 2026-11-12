@@ -20,8 +20,6 @@ import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
 import org.springframework.context.annotation.Primary
-import org.springframework.data.redis.core.StringRedisTemplate
-import org.springframework.data.redis.listener.RedisMessageListenerContainer
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity
 import org.springframework.test.annotation.DirtiesContext
@@ -60,12 +58,6 @@ class NotificationListApiTests {
     lateinit var monsterApi: MonsterApi
 
     @Autowired
-    lateinit var redis: StringRedisTemplate
-
-    @Autowired
-    lateinit var container: RedisMessageListenerContainer
-
-    @Autowired
     lateinit var queries: NotificationQueryService
 
     @Autowired
@@ -88,7 +80,7 @@ class NotificationListApiTests {
         mockMvc = MockMvcBuilders.webAppContextSetup(context).apply<DefaultMockMvcBuilder>(springSecurity()).build()
         members = MemberFixture(mockMvc)
         loop = CoreLoopFixture(mockMvc, jdbcTemplate, monsterApi)
-        support = NotificationTestSupport(jdbcTemplate, redis, container)
+        support = NotificationTestSupport(jdbcTemplate)
     }
 
     @Test

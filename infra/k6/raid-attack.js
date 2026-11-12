@@ -2,14 +2,14 @@
 // 가상 사용자마다 회원 하나를 맡아 1초에 한 번씩 보스를 공격한다. API를 직접 부른다(BFF를 거치지 않는다).
 //
 // 직접 돌리지 말고 infra/k6/run-raid-load.sh로 돌린다. 그 스크립트가 보스를 놓고, 끝난 뒤 받아들여진 공격 수를
-// Redis와 Postgres의 값과 견준다. 운영 환경에는 돌리지 않는다.
+// API의 HP와 Postgres의 값과 견준다. 운영 환경에는 돌리지 않는다.
 //
-//   k6 run -e API=http://localhost:8080 -e VUS=500 -e DURATION=60s infra/k6/raid-attack.js
+//   k6 run -e API=http://localhost:18080 -e VUS=500 -e DURATION=60s infra/k6/raid-attack.js
 import http from "k6/http";
 import { sleep } from "k6";
 import { Counter, Gauge, Trend } from "k6/metrics";
 
-const API = __ENV.API || "http://localhost:8080";
+const API = __ENV.API || "http://localhost:18080";
 const VUS = Number(__ENV.VUS || 500);
 const DURATION = __ENV.DURATION || "60s";
 const PASSWORD = "abcd1234";
@@ -84,8 +84,8 @@ export function setup() {
         method: "PUT",
         url: `${API}/api/v1/members/me/onboarding`,
         body: JSON.stringify({
-          // 닉네임은 10자까지다
-          nickname: `r${run.slice(-5)}${i.toString(36)}`.slice(0, 10),
+          // 닉네임은 10자까지다. 번호는 10진수로 쓴다: 36진수면 370이 "ai"가 되어 AI 친구와 헷갈리는 닉네임으로 막힌다
+          nickname: `r${run.slice(-5)}${i}`.slice(0, 10),
           jobRole: "DESIGN",
           careerYear: "YEAR_3",
         }),

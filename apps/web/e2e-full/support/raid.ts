@@ -1,4 +1,8 @@
-import { runRedis, runSql } from "./db";
+import { runSql } from "./db";
+
+const API_ORIGIN = process.env.API_ORIGIN ?? "http://localhost:18080";
+// infra/compose.e2e.yaml의 OGU_BFF_KEY. 다시 올리기는 e2e 프로필에만 있고 BFF 키를 본다
+const BFF_KEY = process.env.E2E_BFF_KEY ?? "e2e-bff-key";
 
 const REPLACE_ATTEMPTS = 5;
 
@@ -24,10 +28,11 @@ function replaceBoss(maxHp: number): string {
 }
 
 /**
- * 살아 있는 보스를 물러나게 하고 HP가 [maxHp]인 새 보스를 놓는다. Redis의 보스를 지워 다음 요청이 기록에서
- * 새 보스를 올리게 한다. 보스는 서비스 전체에 하나라, 레이드를 쓰는 테스트는 차례로 돌아야 한다.
+ * 살아 있는 보스를 물러나게 하고 HP가 [maxHp]인 새 보스를 놓는다. API의 메모리 저장소를 비우고 기록에서
+ * 새 보스를 올리게 한다(018, e2e 프로필의 `POST /api/v1/e2e/raid/reload`).
+ * 보스는 서비스 전체에 하나라, 레이드를 쓰는 테스트는 차례로 돌아야 한다.
  */
-export function freshBoss(maxHp: number): number {
+export async function freshBoss(maxHp: number): Promise<number> {
   if (!Number.isInteger(maxHp) || maxHp <= 0) {
     throw new Error(`보스의 HP가 올바르지 않습니다: ${maxHp}`);
   }
@@ -36,6 +41,12 @@ export function freshBoss(maxHp: number): number {
   if (!Number.isInteger(bossId)) {
     throw new Error(`보스를 만들지 못했습니다: ${output}`);
   }
-  runRedis("DEL", "raid:boss");
+  const response = await fetch(`${API_ORIGIN}/api/v1/e2e/raid/reload`, {
+    method: "POST",
+    headers: { "X-Ogu-Bff-Key": BFF_KEY },
+  });
+  if (response.status !== 204) {
+    throw new Error(`레이드를 다시 올리지 못했습니다: ${response.status}`);
+  }
   return bossId;
 }

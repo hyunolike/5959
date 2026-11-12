@@ -16,10 +16,10 @@ class ComposeTests(unittest.TestCase):
         values = dict.fromkeys([
             "POSTGRES_PASSWORD", "JWT_SECRET", "OGU_BFF_KEY", "OAUTH_ALLOWED_REDIRECT_URIS",
             "KAKAO_CLIENT_ID", "KAKAO_CLIENT_SECRET", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET",
-            "AI_API_KEY", "REDIS_PASSWORD", "OGU_SSE_ALLOWED_ORIGINS",
+            "AI_API_KEY", "OGU_SSE_ALLOWED_ORIGINS",
         ], credential)
         values.update(API_IMAGE="example.invalid/api:test", API_DOMAIN="api.example.invalid",
-                      POSTGRES_DB="ogu", POSTGRES_USER="ogu", REDIS_URL="redis://redis:6379")
+                      POSTGRES_DB="ogu", POSTGRES_USER="ogu")
         result = subprocess.run(
             ["docker", "compose", "--env-file", "/dev/null", "-f", str(ROOT / "compose.yaml"),
              "config", "--format", "json"],
@@ -48,4 +48,6 @@ class ComposeTests(unittest.TestCase):
         # 015: the password-reset mail ships switched off.
         self.assertEqual(api["MAIL_ENABLED"], "false")
         self.assertEqual(api["MAIL_SMTP_PORT"], "587")
-        self.assertEqual(services["redis"]["command"][2], credential)
+        # 018: Redis is gone; one API instance keeps realtime state in memory.
+        self.assertNotIn("redis", services)
+        self.assertNotIn("REDIS_URL", api)

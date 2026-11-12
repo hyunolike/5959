@@ -9,6 +9,7 @@ import com.ogu.companion.domain.SkipReason
 import com.ogu.post.PostCreated
 import com.ogu.shared.config.AiProperties
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.modulith.events.ApplicationModuleListener
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
@@ -219,13 +220,21 @@ class ReactionEnroller(
 /**
  * 글이 커밋되면 반응 기록을 하나 만든다(009 research R4). 기능이 꺼져 있어도 만든다. 주기 작업만 켜고 끄기를 본다. 그래서
  * 껐다 켜면 그동안의 글 가운데 24시간 안의 것은 반응을 받는다(US5-AC4).
+ *
+ * 018 research R3부터는 커밋 뒤에 두 타이머를 건다. 반응은 이 글의 기다리는 시간이 끝나는 때를, 글쓰기는 조용한 시간을 이
+ * 글부터 다시 세도록 다음 시각을 다시 읽는다(미뤄진다). 글쓰기의 리스너를 따로 두지 않는 것은 발행 기록이 리스너마다 하나씩
+ * 쌓이기 때문이다. 주기 작업을 끈 테스트에서는 타이머가 없다.
  */
 @Component
 class ReactionEnrollListener(
     private val enroller: ReactionEnroller,
+    private val reactionScheduler: ObjectProvider<ReactionScheduler>,
+    private val postingScheduler: ObjectProvider<PostingScheduler>,
 ) {
     @ApplicationModuleListener
     fun on(event: PostCreated) {
         enroller.enroll(event)
+        reactionScheduler.ifAvailable { it.armFor(event) }
+        postingScheduler.ifAvailable { it.rearmAfterCommit() }
     }
 }
