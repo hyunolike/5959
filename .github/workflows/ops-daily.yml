@@ -2,13 +2,14 @@ name: Ops daily
 
 # 018 research R10: 매일 한 번 Neon을 백업하고 무료 한도 사용량을 본다. 어느 단계든 실패하면 워크플로가 실패하고
 # GitHub이 저장소 소유자에게 메일을 보낸다.
-# - 백업: Neon 직접 연결로 pg_dump -Fc → Cloudflare R2 `ogu-backup/postgres/<날짜>.dump`.
-#   14일보다 오래된 덤프는 R2 수명 주기 규칙이 지운다(infra/render/README.md).
+# - 백업: Neon 직접 연결로 pg_dump -Fc → gpg(AES256, 암호는 BACKUP_PASSPHRASE)로 잠가 Actions 아티팩트로 14일 둔다.
+#   Cloudflare R2는 무료 한도 안에서도 결제 수단 등록이 필요해 쓰지 않는다(research R10 끝).
+#   공개 저장소의 아티팩트는 로그인한 누구나 받을 수 있다. 그래서 암호화 없이 올리지 않는다.
 # - 사용량: Neon API의 compute_time_seconds와 synthetic_storage_size가 무료 한도의 70%를 넘으면 실패.
-# - 손으로 실행할 때 restore_drill을 켜면 최신 덤프를 빈 Postgres에 되살리고 테이블마다 행 수를 출력한다.
+# - 손으로 실행할 때 restore_drill을 켜면 이번 실행의 백업을 풀어 빈 Postgres에 되살리고 테이블마다 행 수를 출력한다.
 #
-# 비밀값: NEON_DIRECT_URL, NEON_API_KEY, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY
-# 변수: NEON_PROJECT_ID, R2_ACCOUNT_ID
+# 비밀값: NEON_DIRECT_URL, NEON_API_KEY, BACKUP_PASSPHRASE
+# 변수: NEON_PROJECT_ID
 on:
   schedule:
     # 03:30 KST. 백업과 점검이 같은 시각에 돌아 DB를 하루 한 번만 깨운다.
@@ -16,7 +17,7 @@ on:
   workflow_dispatch:
     inputs:
       restore_drill:
-        description: 최신 덤프를 빈 Postgres에 되살려 행 수를 확인한다
+        description: 이번 백업을 빈 Postgres에 되살려 행 수를 확인한다
         type: boolean
         default: false
 
@@ -27,18 +28,12 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  BUCKET: ogu-backup
   PG_IMAGE: pgvector/pgvector:pg17
 
 jobs:
   backup:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-      AWS_DEFAULT_REGION: auto
-      R2_ENDPOINT: https://${{ vars.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
     steps:
       - name: 덤프
         env:
@@ -54,11 +49,25 @@ jobs:
             echo "덤프가 너무 작습니다" >&2
             exit 1
           fi
-      - name: R2에 올리기
+      - name: 암호화
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
         run: |
-          key="postgres/$(date -u +%Y-%m-%d).dump"
-          aws s3 cp backup.dump "s3://$BUCKET/$key" --endpoint-url "$R2_ENDPOINT" --only-show-errors
-          echo "올림: $BUCKET/$key"
+          if [[ ${#BACKUP_PASSPHRASE} -lt 32 ]]; then
+            echo "BACKUP_PASSPHRASE가 없거나 짧습니다" >&2
+            exit 1
+          fi
+          name="ogu-$(date -u +%Y-%m-%d).dump.gpg"
+          gpg --batch --yes --pinentry-mode loopback --passphrase-fd 3 \
+            --symmetric --cipher-algo AES256 --output "$name" backup.dump 3<<<"$BACKUP_PASSPHRASE"
+          rm backup.dump
+          echo "BACKUP_FILE=$name" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: neon-backup
+          path: ${{ env.BACKUP_FILE }}
+          retention-days: 14
+          if-no-files-found: error
 
   usage:
     runs-on: ubuntu-latest
@@ -102,17 +111,17 @@ jobs:
           --health-cmd "pg_isready -U drill -d drill"
           --health-interval 5s
           --health-retries 10
-    env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-      AWS_DEFAULT_REGION: auto
-      R2_ENDPOINT: https://${{ vars.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
     steps:
-      - name: 최신 덤프 받기
+      - uses: actions/download-artifact@v4
+        with:
+          name: neon-backup
+      - name: 풀기
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
         run: |
-          latest="$(aws s3 ls "s3://$BUCKET/postgres/" --endpoint-url "$R2_ENDPOINT" | sort | tail -n 1 | awk '{print $4}')"
-          echo "되살릴 덤프: $latest"
-          aws s3 cp "s3://$BUCKET/postgres/$latest" latest.dump --endpoint-url "$R2_ENDPOINT" --only-show-errors
+          file="$(ls ogu-*.dump.gpg)"
+          echo "되살릴 백업: $file"
+          gpg --batch --pinentry-mode loopback --passphrase-fd 3 --decrypt --output latest.dump "$file" 3<<<"$BACKUP_PASSPHRASE"
       - name: 되살리고 행 수 보기
         run: |
           docker run --rm --network host -v "$PWD:/work" -e PGPASSWORD=drill "$PG_IMAGE" sh -c '

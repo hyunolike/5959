@@ -65,7 +65,30 @@ Render 무료는 15분 동안 요청이 없으면 서비스를 재운다. 잠든
 
 liveness는 DB를 보지 않는다(research R8). 그래서 이 요청은 서비스만 깨워 두고 Neon은 그대로 잠들 수 있다.
 
-## 4. 무료 플랜에서 알아 둘 것
+## 4. 백업(GitHub Actions)
+
+[ops-daily.yml](../../.github/workflows/ops-daily.yml)이 매일 03:30(한국 시간)에 돈다.
+
+- Neon을 `pg_dump -Fc`로 덤프하고 `gpg`(AES256)로 잠가 Actions 아티팩트 `neon-backup`으로 14일 둔다. 공개 저장소의 아티팩트는 로그인한 누구나 받을 수 있어 반드시 암호화한다.
+- Neon 컴퓨트와 저장 사용량이 무료 한도의 70%를 넘으면 실패한다. 실패하면 GitHub이 메일을 보낸다.
+- 손으로 실행할 때 `restore_drill`을 켜면 이번 백업을 풀어 빈 Postgres에 되살리고 테이블마다 행 수를 출력한다.
+
+| 이름 | 종류 | 값 |
+|---|---|---|
+| `NEON_DIRECT_URL` | 비밀값 | Neon 직접 연결 주소(`postgresql://...`) |
+| `NEON_API_KEY` | 비밀값 | 프로젝트 `ogu`에만 쓰는 Neon API 키 |
+| `BACKUP_PASSPHRASE` | 비밀값 | 32자 이상. **잃으면 백업을 풀 수 없다.** 비밀번호 관리자에 따로 둔다 |
+| `NEON_PROJECT_ID` | 변수 | `lucky-bonus-72541262` |
+
+백업에서 되살리기:
+
+```bash
+gh run download <실행 id> -R hyunolike/5959 -n neon-backup
+gpg --decrypt --output ogu.dump ogu-<날짜>.dump.gpg     # 암호를 묻는다
+pg_restore --clean --if-exists --no-owner --no-privileges -d "<대상 DB 주소>" ogu.dump
+```
+
+## 5. 무료 플랜에서 알아 둘 것
 
 | 항목 | 값 | 근거 |
 |---|---|---|
