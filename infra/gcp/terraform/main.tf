@@ -13,6 +13,8 @@ locals {
   run_origin = "https://ogu-web-${data.google_project.current.number}.${var.region}.run.app"
   web_origin = var.web_domain == "" ? local.run_origin : "https://${var.web_domain}"
   api_domain = "api.${replace(google_compute_address.api.address, ".", "-")}.sslip.io"
+  # 018: 웹이 부를 API. 비우면 VM의 sslip.io 주소, 정하면 Render 주소다.
+  api_origin = var.api_origin == "" ? "https://${local.api_domain}" : var.api_origin
   registry   = "${var.region}-docker.pkg.dev/${var.project_id}/ogu"
   deployment_config = {
     kakao_login_enabled          = var.kakao_login_enabled
@@ -118,7 +120,26 @@ resource "google_artifact_registry_repository" "ogu" {
   repository_id = "ogu"
   format        = "DOCKER"
   labels        = local.labels
-  depends_on    = [google_project_service.enabled]
+  # 018 US7-AC3: 웹 이미지는 최근 3개만 남긴다. 저장 용량이 무료 한도 안에 머물게 한다.
+  # API 이미지는 되돌리기(research R12) 동안 VM이 쓰므로 지우지 않는다.
+  cleanup_policy_dry_run = false
+  cleanup_policies {
+    id     = "keep-recent-web"
+    action = "KEEP"
+    most_recent_versions {
+      package_name_prefixes = ["web"]
+      keep_count            = 3
+    }
+  }
+  cleanup_policies {
+    id     = "delete-old-web"
+    action = "DELETE"
+    condition {
+      tag_state             = "ANY"
+      package_name_prefixes = ["web"]
+    }
+  }
+  depends_on = [google_project_service.enabled]
 }
 
 resource "google_artifact_registry_repository_iam_member" "vm_reader" {

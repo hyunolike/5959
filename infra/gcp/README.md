@@ -1,5 +1,7 @@
 # GCP 배포
 
+> **API와 DB는 Render와 Neon으로 옮기고 있다(018).** 이 문서의 VM 절차는 이전이 끝나고 되돌리기 기간(7일)이 지나면 쓰지 않는다. 새 운영은 [Render와 Neon 문서](../render/README.md)를 본다. 웹(Cloud Run)은 계속 여기서 관리한다. 웹이 부를 API 주소는 Terraform 변수 `api_origin`으로 정한다(비우면 VM의 sslip.io 주소).
+
 Terraform으로 기반 자원을 관리하고 gcloud/Cloud Build로 이미지를 빌드한다.
 기본 구성은 us-central1, e2-small 한 대, Cloud Run 웹이다.
 

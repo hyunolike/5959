@@ -169,6 +169,12 @@
 - **웹 리전**: Cloud Run 무료 한도는 어느 리전에서든 쓰지만 "1등급 가격으로 매긴 할인"이다. 싱가포르와 서울은 2등급이라 같은 한도로 쓸 수 있는 초가 줄고, 도쿄는 1등급이다(가격 문서). 지금 웹의 사용량은 한도의 일부라 어느 쪽도 0원일 가능성이 높다. BFF는 화면 하나에 API를 여러 번 부르므로 API와 같은 싱가포르가 유리하다. **리허설에서 싱가포르와 지금(아이오와) 두 곳의 피드 응답 시간을 재고 정한다**(quickstart Q3). 옮기면 Cloud Run 서비스와 도메인 매핑을 새로 만든다(Terraform). 도메인 매핑이 싱가포르를 지원하는지는 그때 확인한다(확인 못 함).
 - **Artifact Registry 정리 정책**: 웹 이미지를 최근 3개만 남긴다(Terraform `cleanup_policies`). API 이미지는 GHCR로 옮겨 여기서 빠진다.
 
+**구현하며 바꾼 것**(2026-11-12, T043~T044):
+- 배포는 배포 훅이 아니라 Render API(`POST /v1/services/{id}/deploys`, `imageUrl`에 digest)로 건다. 배포 훅 주소는 API로 읽을 수 없어 응답 모양을 확인하지 못했고, 배포가 `live`가 됐는지 기다리려면 어차피 API 키가 필요하다. 시험 서비스에서 digest 지정 배포와 상태 조회(`GET .../deploys/{id}`의 `status`)를 확인했다.
+- 배포를 마쳤는지는 liveness가 아니라 배포 상태로 본다. Render는 새 인스턴스가 뜰 때까지 옛 인스턴스로 요청을 받아 liveness는 처음부터 UP이다.
+- `maxShutdownDelaySeconds`는 무료 플랜에서 받지 않는다(`render blueprints validate`). 기본 30초를 쓴다.
+- GHCR 패키지 `5959-api`를 공개로 바꿨다. Render에 토큰을 맡기지 않는다. 이미지에는 공개 저장소의 jar만 있다.
+
 ## R10. 백업과 사용량 점검은 GitHub Actions 하나에서 한다
 
 **결정**: `ops-daily.yml` 워크플로 하나를 매일 03:30(한국 시간, 18:30 UTC)에 돌린다.

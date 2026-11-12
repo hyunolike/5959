@@ -1,0 +1,94 @@
+# Render Blueprint: 오구오구 API (018 US2, research R1, R9).
+# 무료 웹 서비스 한 대(싱가포르, 512MB, CPU 0.1개)에 GHCR 이미지를 띄운다. DB는 Neon 무료다(여기서 만들지 않는다).
+#
+# - 이미지는 infra/render/scripts/build-image.sh가 기동 캐시(AOT)를 담아 만들고, 배포는 release.yml이
+#   Render API에 이미지 digest를 지정해 배포를 건다. 아래 image.url은 처음 만들 때만 쓰인다.
+# - sync: false인 값은 Render 대시보드에서 넣는다. 저장소에 비밀값을 두지 않는다. 절차는 infra/render/README.md.
+# - 리허설(T047) 동안은 AI_COMPANION_ENABLED, AI_COMPANION_POSTING_ENABLED, MAIL_ENABLED를 false로 둔다.
+services:
+  - type: web
+    name: ogu-api
+    runtime: image
+    image:
+      url: ghcr.io/hyunolike/5959-api:latest
+    plan: free
+    region: singapore
+    numInstances: 1
+    healthCheckPath: /actuator/health/liveness
+    # 종료 대기(maxShutdownDelaySeconds)는 무료 플랜에서 받지 않는다(blueprints validate). 기본 30초 안에
+    # 레이드 공격 기록을 다 쓰고 끝낸다(research R5, 스프링의 종료 단계는 20초).
+    autoDeploy: false
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: PORT
+        value: "8080"
+      # Neon 직접 연결(풀러 아님). jdbc:postgresql://<호스트>/<DB>?sslmode=require
+      - key: DB_URL
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: OGU_BFF_KEY
+        sync: false
+      - key: OGU_WEB_ORIGIN
+        sync: false
+      - key: OGU_SSE_ALLOWED_ORIGINS
+        sync: false
+      - key: OAUTH_ALLOWED_REDIRECT_URIS
+        sync: false
+      - key: KAKAO_LOGIN_ENABLED
+        sync: false
+      - key: KAKAO_CLIENT_ID
+        sync: false
+      - key: KAKAO_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: AI_BASE_URL
+        sync: false
+      - key: AI_API_KEY
+        sync: false
+      - key: AI_MODEL
+        sync: false
+      - key: AI_RISK_MODEL
+        sync: false
+      - key: AI_COMPANION_ENABLED
+        sync: false
+      - key: AI_COMPANION_DAILY_LIMIT
+        value: "45"
+      - key: AI_COMPANION_WAIT
+        value: 10m
+      - key: AI_COMPANION_COUNT_WEIGHTS
+        value: 60,30,10
+      - key: AI_COMPANION_FOLLOW_UP_MIN
+        value: 3m
+      - key: AI_COMPANION_FOLLOW_UP_MAX
+        value: 10m
+      - key: AI_COMPANION_POSTING_ENABLED
+        sync: false
+      - key: AI_COMPANION_POSTING_QUIET
+        value: 6h
+      - key: AI_COMPANION_POSTING_DAILY_POSTS
+        value: "3"
+      - key: MAIL_ENABLED
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      # Resend SMTP. Render 무료는 25, 465, 587로 나가는 연결을 막아 2587(STARTTLS)을 쓴다(research R7).
+      - key: MAIL_SMTP_HOST
+        value: smtp.resend.com
+      - key: MAIL_SMTP_PORT
+        value: "2587"
+      - key: MAIL_SMTP_USERNAME
+        value: resend
+      - key: MAIL_SMTP_PASSWORD
+        sync: false
+      # 이전 때의 읽기 전용 점검(research R11). 평소에는 false.
+      - key: OGU_MAINTENANCE_READ_ONLY
+        value: "false"

@@ -7,7 +7,7 @@
 | 서비스 | 할 일 | 저장할 곳 |
 |---|---|---|
 | Neon | 프로젝트 `ogu`를 **AWS Singapore(ap-southeast-1)** 에 만든다. Postgres 17. DB `ogu`, 역할 `ogu`. 직접 연결 주소(`-pooler`가 없는 것)를 쓴다 | Render env `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`. GitHub Secrets `NEON_DIRECT_URL`, `NEON_API_KEY`, `NEON_PROJECT_ID` |
-| Render | 작업 공간 하나, 다른 무료 서비스 없이. `render.yaml` Blueprint로 서비스 `ogu-api`(Singapore, Free, 이미지) | GitHub Secrets `RENDER_DEPLOY_HOOK_URL`. GHCR 이미지가 비공개면 Render에 `read:packages` 토큰 |
+| Render | 작업 공간 하나, 다른 무료 서비스 없이. `render.yaml` Blueprint로 서비스 `ogu-api`(Singapore, Free, 이미지) | GitHub Secrets `RENDER_API_KEY`, `RENDER_SERVICE_ID`(배포 훅 대신 API로 배포, research R9). GHCR 이미지는 공개 |
 | Cloudflare R2 | 버킷 `ogu-backup`, 수명 주기 규칙 "`postgres/` 14일 뒤 삭제" | GitHub Secrets `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` |
 | cron-job.org | 작업 하나: `GET https://<render 주소>/actuator/health/liveness`, 10분마다, 실패와 복구 메일 켬 | - |
 | Resend (메일을 켤 때만) | 보내는 도메인 인증 | Render env `MAIL_*` (Q6) |
