@@ -23,7 +23,15 @@ import java.time.Duration
 class EmotionAnalyzerLiveTest {
     @Test
     fun `기본 모델이 감정과 강도, 이유를 돌려준다`() {
-        val properties = AiProperties(apiKey = System.getenv("AI_API_KEY").orEmpty())
+        // 후보 모델을 잴 때는 AI_MODEL, AI_REASONING_EFFORT, AI_MAX_TOKENS로 바꾼다. 주지 않으면 서비스의 기본값이다.
+        val defaults = AiProperties()
+        val properties =
+            defaults.copy(
+                apiKey = System.getenv("AI_API_KEY").orEmpty(),
+                model = env("AI_MODEL") ?: defaults.model,
+                reasoningEffort = System.getenv("AI_REASONING_EFFORT") ?: defaults.reasoningEffort,
+                maxTokens = env("AI_MAX_TOKENS")?.toIntOrNull() ?: defaults.maxTokens,
+            )
         val limiter = TimeLimiter.of(TimeLimiterConfig.custom().timeoutDuration(properties.timeout).build())
         val analyzer = SpringAiEmotionAnalyzer.create(properties, CircuitBreaker.ofDefaults("emotionLive"), limiter)
 
@@ -47,9 +55,11 @@ class EmotionAnalyzerLiveTest {
         assertThat(results.map { it.second }).doesNotContainNull()
         assertThat(results.map { it.second!!.reason }).allSatisfy { assertThat(it).isNotBlank() }
         val matched = results.count { (expected, result) -> result!!.emotion == expected }
-        println("LIVE emotion: model ${properties.model}, matched $matched/${results.size}")
+        println("LIVE emotion: model ${properties.model}, effort '${properties.reasoningEffort}', matched $matched/${results.size}")
         assertThat(matched).isGreaterThanOrEqualTo(MIN_MATCHED)
     }
+
+    private fun env(name: String): String? = System.getenv(name)?.takeIf { it.isNotBlank() }
 
     private companion object {
         // 검증용으로 지어낸 문장이다
