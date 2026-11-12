@@ -36,6 +36,8 @@ ogu:
   report:
     publish-at: "00:00"
     poll-interval: 5s
+    # 018: 타이머는 다 훑은 주를 다시 보지 않는다. 테스트가 weekly_report_run을 지우면 5초 안에 다시 훑게 한다
+    idle-recheck: 5s
     letter:
       poll-interval: 5s
   # 009 AI 친구: 가짜 댓글 쓰기를 쓰고 5초만 기다렸다 반응한다. 가짜는 본문에 [AI친구]가 있는 글에만 답하고

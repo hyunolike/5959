@@ -9,6 +9,7 @@ import com.ogu.shared.schedule.DueTimers
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import org.springframework.boot.convert.DurationStyle
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
@@ -156,6 +157,9 @@ class WeeklyReportJob(
  * - 다 훑었으면 다음 주 월요일 `publish-at`에 깬다.
  *
  * `ogu.report.scheduler-enabled=false`면 돌지 않는다. 시계를 움직이는 테스트가 [WeeklyReportJob.tick]을 직접 부를 때 쓴다.
+ *
+ * `ogu.report.idle-recheck`를 주면 다 훑은 뒤에도 그 간격마다 다시 확인한다. 브라우저 e2e가 글의 때를 지난주로 옮기고
+ * `weekly_report_run`을 지워 다시 훑게 하는데, DB만 바뀌어서는 타이머가 알 수 없기 때문이다. 운영에서는 두지 않는다.
  */
 @Component
 @ConditionalOnProperty(prefix = "ogu.report", name = ["scheduler-enabled"], matchIfMissing = true)
@@ -164,7 +168,10 @@ class WeeklyReportScheduler(
     private val clock: Clock,
     @Value("\${ogu.report.poll-interval:1m}") private val continueAfter: Duration,
     timers: DueTimers,
+    @Value("\${ogu.report.idle-recheck:}") idleRecheck: String = "",
 ) : DueJob {
+    private val idleRecheck: Duration? = idleRecheck.takeIf { it.isNotBlank() }?.let(DurationStyle::detectAndParse)
+
     /** 훑는 중일 때 이어 갈 시각. 기동 직후에는 없다(밀린 주가 있으면 바로 돈다). */
     @Volatile
     private var continueAt: Instant? = null
@@ -175,7 +182,11 @@ class WeeklyReportScheduler(
 
     override val name = "주간 리포트"
 
-    override fun nextDue(): Instant = job.nextRunAt(continueAt)
+    override fun nextDue(): Instant {
+        val next = job.nextRunAt(continueAt)
+        val recheckAt = idleRecheck?.let { clock.instant().plus(it) } ?: return next
+        return minOf(next, recheckAt)
+    }
 
     override fun runDue() {
         // 실패해도 1분 뒤에 다시 돈다(지금까지의 주기와 같다)
