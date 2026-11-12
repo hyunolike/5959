@@ -3,6 +3,8 @@ import Image from "next/image";
 
 import { Button } from "@/shared/ui";
 
+import { OAuthLink } from "./oauth-link";
+
 const PROVIDERS = [
   { id: "kakao", label: "카카오로 계속하기" },
   { id: "google", label: "구글로 계속하기" },
@@ -15,7 +17,7 @@ interface OAuthButtonsProps {
 }
 
 /**
- * 외부 계정 로그인 버튼. 자바스크립트 없이도 동작하는 일반 링크로, BFF의
+ * 외부 계정 로그인 버튼. 자바스크립트 없이도 동작하는 링크로, BFF의
  * OAuth 시작 라우트(`/api/auth/oauth/{provider}`)로 이동한다. 시작 라우트가
  * state 쿠키를 심고 제공자로 보낸다.
  */
@@ -38,14 +40,17 @@ export function OAuthButtons({
               id === "kakao" ? "bg-kakao hover:bg-kakao hover:opacity-90" : ""
             }
           >
-            <a href={`/api/auth/oauth/${id}?${query}`}>
+            <OAuthLink
+              href={`/api/auth/oauth/${id}?${query}`}
+              waitingLabel="서버가 깨면 이동할게요"
+            >
               {id === "google" ? (
                 <Image src="/brand/google.png" alt="" width={18} height={18} />
               ) : (
                 <ChatCircle size={20} weight="fill" aria-hidden />
               )}
               {label}
-            </a>
+            </OAuthLink>
           </Button>
         ),
       )}
