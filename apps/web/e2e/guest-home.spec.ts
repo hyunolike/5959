@@ -108,8 +108,11 @@ for (const width of [320, 390, 1440]) {
     await expect(
       page.getByRole("heading", { name: "마음 이야기", exact: true }),
     ).toBeVisible();
-    // 로그인 없이 부르는 것은 공개 피드 하나뿐이다(011 US2-AC5).
-    expect([...new Set(apiRequests)]).toEqual(["/api/public/feed"]);
+    // 로그인 없이 부르는 것은 공개 피드 하나뿐이다(011 US2-AC5). 로그인 화면이 서버가 깨어 있는지 묻는
+    // `/api/health`(018 US2-AC7)는 회원 데이터를 읽지 않으므로 세지 않는다.
+    expect(
+      [...new Set(apiRequests)].filter((path) => path !== "/api/health"),
+    ).toEqual(["/api/public/feed"]);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth > innerWidth,
