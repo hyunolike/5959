@@ -32,15 +32,15 @@ README의 구조도 두 장(`before-gcp.png`, `after-free.png`)을 만들 때 �
 
 ## 2장: after-free.png
 
-제목: "새 구조 · 월 0원 (전환 준비 중)"
+제목: "지금 구조 · 월 0원 (2026년 11월 12일부터)"
 부제: "Redis 없이 서버 한 대 · 무료 플랜"
 
 노드:
 1. "브라우저" — "회원"
-2. "Cloud Run" 박스 안에 "Next.js 웹" — "화면 + BFF"
+2. "Vercel" 박스 안에 "Next.js 웹" — "화면 + BFF"
 3. "Render Free" 박스 안에 "Spring Boot API" — "서버 1대 · 512MB". 그 안에 작은 칩 두 개: "알림 신호(메모리)", "레이드(메모리)"
 4. "Neon Free" — "PostgreSQL + pgvector · 쉬면 잠듦"
-5. "LLM 공급자" — "감정 분석"
+5. "LLM 공급자" — "감정 분석" (특정 회사 로고를 넣지 않는다. 일반 AI 칩 아이콘)
 6. "GitHub Actions" — "매일 백업 · 사용량 점검"
 7. "Cloudflare R2" — "백업 14일"
 8. "cron-job.org" — "10분마다 깨우기"
@@ -49,12 +49,12 @@ README의 구조도 두 장(`before-gcp.png`, `after-free.png`)을 만들 때 �
 화살표(이것만):
 - 브라우저 → Next.js 웹: "페이지"
 - Next.js 웹 → Spring Boot API: "API 호출"
-- 브라우저 → Spring Boot API: "SSE 실시간" (점선)
+- 브라우저 → Spring Boot API: "SSE 실시간" (실선)
 - Spring Boot API → Neon Free: "읽기/쓰기"
 - Spring Boot API → LLM 공급자: "분석 요청"
-- Spring Boot API → Resend: "SMTP 2587"
-- cron-job.org → Spring Boot API: "liveness"
-- GitHub Actions → Neon Free: "pg_dump"
-- GitHub Actions → Cloudflare R2: "백업 저장"
+- Spring Boot API → Resend: "SMTP 2587" (점선)
+- cron-job.org → Spring Boot API: "liveness" (점선)
+- GitHub Actions → Neon Free: "pg_dump" (점선)
+- GitHub Actions → Cloudflare R2: "백업 저장" (점선)
 
-작은 배지: Render Free 옆과 Neon Free 옆에 "계획" (아직 전환 전이라는 뜻)
+작은 배지: Vercel, Render Free, Neon Free 옆에 초록 배지 "운영 중". GitHub Actions, Cloudflare R2, cron-job.org, Resend 옆에 회색 배지 "준비 중". 점선은 아직 켜지 않은 연결이라는 범례를 오른쪽 아래에 작게 둔다: "점선 = 준비 중".

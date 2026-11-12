@@ -131,28 +131,28 @@ flowchart LR
 - Redis는 서버가 여러 대일 때를 위해 두었습니다. 알림 신호를 pub/sub으로 다른 서버에 전하고, 레이드 공격 판정을 Lua 스크립트로 한 번에 처리했습니다.
 - 2026년 11월 10일 GCP 결제 계정이 닫히면서 API가 멈췄습니다. 고정비를 0원으로 줄이는 이전을 [018 스펙](specs/018-free-infra/spec.md)으로 진행하고 있습니다.
 
-### 지금: 무료 플랜으로 옮기는 중
+### 지금: 무료 플랜 (2026년 11월 12일부터)
 
 <p align="center">
-  <img src="docs/assets/architecture/after-free.png" alt="새 구조. 브라우저가 Cloud Run의 Next.js 웹을 거쳐 Render Free의 Spring Boot API 한 대를 호출하고, SSE는 API로 바로 연결한다. API는 알림 신호와 레이드 상태를 메모리에 두고 Neon Free의 PostgreSQL을 쓴다. LLM 공급자에 분석을, Resend에 재설정 메일을 보낸다. cron-job.org가 10분마다 깨우고, GitHub Actions가 매일 Neon을 덤프해 Cloudflare R2에 둔다." width="900" />
+  <img src="docs/assets/architecture/after-free.png" alt="지금 구조. 브라우저가 Vercel의 Next.js 웹을 거쳐 Render Free의 Spring Boot API 한 대를 호출하고, SSE는 API로 바로 연결한다. API는 알림 신호와 레이드 상태를 메모리에 두고 Neon Free의 PostgreSQL을 쓰며, LLM 공급자에 분석을 요청한다. 준비 중인 것: cron-job.org의 10분 간격 깨우기, GitHub Actions의 매일 백업(Cloudflare R2), Resend 재설정 메일." width="900" />
 </p>
 
 | 무엇을 | 이전 | 지금 |
 | --- | --- | --- |
-| 웹 | Cloud Run | Cloud Run (그대로) |
+| 웹 | Cloud Run | Vercel (GCP 결제가 멈춘 뒤 옮김) |
 | API | Compute Engine VM, 서버 여러 대 가능 | Render 무료, 서버 한 대(메모리 512MB) |
 | DB | 같은 VM의 PostgreSQL 17 | Neon 무료 PostgreSQL. 쿼리가 5분 없으면 잠든다 |
 | Redis | 알림 신호(pub/sub), 레이드 판정(Lua) | 없음. 둘 다 서버 메모리에서 처리 |
 | 주기 작업 | 1초~1분마다 DB 확인 | 다음 할 일 시각에만 깨어남. DB가 잠들 수 있게 |
-| 백업 | 매일 GCS로 | GitHub Actions가 매일 Cloudflare R2로 |
-| 잠들지 않게 | 해당 없음 | cron-job.org가 10분마다 liveness 호출 |
-| 고정비(AI 사용료 제외) | 월 약 $18 | 월 0원(목표) |
+| 백업 | 매일 GCS로 | GitHub Actions가 매일 Cloudflare R2로 (준비 중) |
+| 잠들지 않게 | 해당 없음 | cron-job.org가 10분마다 liveness 호출 (준비 중) |
+| 고정비(AI 사용료 제외) | 월 약 $18 | 월 0원 |
 
 진행 상황은 이렇습니다.
 
-- **끝남:** 주기 작업을 할 일이 있을 때만 DB를 열게 바꿨습니다. Redis를 지우고 알림과 레이드를 서버 메모리로 옮겼습니다. 레이드는 500명 부하에서 받은 공격 수, 줄어든 HP, DB에 적힌 기여가 정확히 같았습니다.
-- **재 봄:** Render 무료에서 실제로 띄워 봤습니다. 힙을 192MB로 줄이자 50명이 30분 동안 공격하는 부하에서도 메모리가 411~442MB로 한도(512MB) 안에 머물렀습니다. 기동은 약 4분 걸리지만, 배포 중에는 옛 서버가 요청을 받아서 끊기지 않습니다. 50명이 1초마다 쉬지 않고 공격하면 CPU 0.1개로는 응답 p95가 2.6초까지 늘어납니다. 수는 맞습니다([측정 기록](specs/018-free-infra/research.md)).
-- **남음:** 데이터 이전(읽기 전용 점검 한 시간 안), 백업 자동화, 옛 GCP 자원 정리.
+- **옮김:** 2026년 11월 12일 API를 Render, DB를 Neon으로 옮기고 웹(Vercel)이 새 API를 보게 했습니다. 이전 DB는 꺼내지 않고 새 DB로 시작했습니다. 그래서 이전 회원과 글은 넘어오지 않았습니다.
+- **재 봄:** 힙을 192MB로 줄이자 50명이 30분 동안 공격하는 부하에서도 메모리가 411~442MB로 한도(512MB) 안에 머물렀습니다. 기동은 약 4분 걸리지만, 배포 중에는 옛 서버가 요청을 받아서 끊기지 않습니다. 50명이 1초마다 쉬지 않고 공격하면 CPU 0.1개로는 응답 p95가 2.6초까지 늘어납니다. 수는 맞습니다([측정 기록](specs/018-free-infra/research.md)).
+- **남음:** 10분 간격 깨우기, 백업 자동화, 읽기 전용 점검 모드, 옛 GCP 자원 정리.
 
 <br>
 
@@ -193,7 +193,7 @@ flowchart LR
 | 품질 | ktlint, detekt, ESLint, Prettier, steiger(FSD 규칙) |
 | 진행 방식 | GitHub Spec Kit(스펙 → 설계 → 작업 → 구현), OpenAPI 계약 우선 |
 | CI | GitHub Actions(API, 웹, 실제 API를 띄운 e2e), release-please |
-| 배포 | 웹은 Cloud Run(Terraform). API는 Render 무료, DB는 Neon 무료로 옮기는 중(이전: Compute Engine 한 대, Caddy) |
+| 배포 | 웹은 Vercel, API는 Render 무료, DB는 Neon 무료(이전: 웹은 Cloud Run, API와 DB는 Compute Engine 한 대) |
 | 방문 분석 | Umami Cloud. 쿠키를 쓰지 않고, 보내기 전에 주소에서 utm 꼬리표만 남기고 지웁니다 |
 
 <br>
@@ -234,12 +234,12 @@ cd apps/api && SPRING_PROFILES_ACTIVE=local,e2e ./gradlew bootRun
 
 | 무엇을 | 어디에 | 어떻게 |
 | --- | --- | --- |
-| 웹 | [new.5959.site](https://new.5959.site), Cloud Run | `main`에 병합되고 CI가 통과하면 자동으로 배포합니다 |
-| API | Render 무료 웹 서비스(싱가포르, 옮기는 중) | 기동 캐시를 담은 이미지를 `infra/render/scripts/build-image.sh`로 만들어 GHCR에 올리고 배포합니다 |
-| DB | Neon 무료(옮기는 중) | 스키마는 API가 뜰 때 Flyway로 맞춥니다 |
-| 이전 API와 DB | Compute Engine 한 대(Caddy, Spring Boot, PostgreSQL) | 2026년 11월 10일 결제 계정이 닫혀 멈췄습니다. 이전이 끝나면 정리합니다 |
+| 웹 | [new.5959.site](https://new.5959.site), Vercel 프로젝트 `ogu-web` | 지금은 손으로 배포합니다(`vercel deploy --prod`). Cloud Run 자동 배포는 GCP 결제가 멈춰 돌지 않습니다 |
+| API | [ogu-api.onrender.com](https://ogu-api.onrender.com/actuator/health/liveness), Render 무료 웹 서비스(싱가포르) | 기동 캐시를 담은 이미지를 `infra/render/scripts/build-image.sh`로 만들어 GHCR에 올리고 배포합니다 |
+| DB | Neon 무료(싱가포르) | 스키마는 API가 뜰 때 Flyway로 맞춥니다 |
+| 이전 API와 DB | Compute Engine 한 대(Caddy, Spring Boot, PostgreSQL) | 2026년 11월 10일 결제 계정이 닫혀 멈췄습니다. 정리할 차례입니다 |
 
-웹의 기반 자원과 도메인 연결은 Terraform으로 관리합니다. 웹의 주소 하나를 바꾸면 로그인 콜백과 실시간 알림이 허용하는 출처가 함께 바뀝니다. 절차는 [GCP 배포 문서](infra/gcp/README.md)에 있습니다.
+API와 DB의 운영 절차는 [Render와 Neon 문서](infra/render/README.md)에, 옛 GCP 구성은 [GCP 배포 문서](infra/gcp/README.md)에 있습니다.
 
 <br>
 

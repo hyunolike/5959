@@ -1,6 +1,6 @@
 # Render와 Neon 운영 (018)
 
-API는 Render 무료 웹 서비스 한 대(싱가포르, 메모리 512MB, CPU 0.1개)에서, DB는 Neon 무료(싱가포르)에서 돈다. 웹은 그대로 Cloud Run이다([GCP 문서](../gcp/README.md)). 설계와 측정값은 [018 research](../../specs/018-free-infra/research.md)에 있다.
+API는 Render 무료 웹 서비스 한 대(싱가포르, 메모리 512MB, CPU 0.1개)에서, DB는 Neon 무료(싱가포르)에서 돈다. 웹은 Vercel 프로젝트 `ogu-web`이다(2026-11-11부터. 그 전에는 Cloud Run). 웹이 부르는 API 주소는 Vercel 운영 환경 변수 `API_ORIGIN`이다. 설계와 측정값은 [018 research](../../specs/018-free-infra/research.md)에 있다.
 
 ## 1. 계정 준비
 
