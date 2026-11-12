@@ -2,9 +2,10 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 
-import { ApiError } from "@/shared/api";
+import { ApiError, useApiReadiness } from "@/shared/api";
 import { withNextPath } from "@/shared/lib";
 import { Button, Input, Label } from "@/shared/ui";
 
@@ -14,6 +15,9 @@ import { signupSchema, type SignupFormValues } from "../model/schema";
 
 const GENERIC_ERROR_MESSAGE =
   "가입 중 문제가 생겼습니다. 잠시 후 다시 시도해주세요.";
+
+const API_ASLEEP_MESSAGE =
+  "서버가 아직 깨어나지 않았어요. 잠시 후 다시 시도해주세요.";
 
 /**
  * 이메일 가입 폼. 성공하면 `/onboarding`으로 이동한다(US1-AC1). 가입 화면에
@@ -31,6 +35,8 @@ interface SignupFormProps {
 export function SignupForm({ next }: SignupFormProps) {
   const router = useRouter();
   const signupMutation = useSignupMutation();
+  const { status: apiStatus, waitUntilReady } = useApiReadiness();
+  const [waitingForApi, setWaitingForApi] = useState(false);
   const {
     register,
     handleSubmit,
@@ -39,6 +45,14 @@ export function SignupForm({ next }: SignupFormProps) {
   } = useForm<SignupFormValues>({ resolver: zodResolver(signupSchema) });
 
   const onSubmit = handleSubmit(async (values) => {
+    // 잠든 서버에 보내면 실패로 보였다가 기동 뒤 가입이 될 수 있다. 깨어난 뒤에 한 번만 보낸다(018 US2-AC8).
+    if (apiStatus !== "ready") setWaitingForApi(true);
+    const ready = await waitUntilReady();
+    setWaitingForApi(false);
+    if (!ready) {
+      setError("root", { message: API_ASLEEP_MESSAGE });
+      return;
+    }
     try {
       await signupMutation.mutateAsync(values);
       router.push(withNextPath("/onboarding", next));
@@ -121,7 +135,7 @@ export function SignupForm({ next }: SignupFormProps) {
       )}
 
       <Button type="submit" size="lg" disabled={isSubmitting}>
-        가입하기
+        {waitingForApi && isSubmitting ? "서버가 깨면 가입할게요" : "가입하기"}
       </Button>
     </form>
   );

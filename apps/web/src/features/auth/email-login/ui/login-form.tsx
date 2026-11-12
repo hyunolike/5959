@@ -2,9 +2,10 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 
-import { ApiError } from "@/shared/api";
+import { ApiError, useApiReadiness } from "@/shared/api";
 import { Button, Input, Label } from "@/shared/ui";
 
 import { useLoginMutation } from "../api/use-login-mutation";
@@ -14,6 +15,9 @@ import { loginSchema, type LoginFormValues } from "../model/schema";
 
 const GENERIC_ERROR_MESSAGE =
   "로그인 중 문제가 생겼습니다. 잠시 후 다시 시도해주세요.";
+
+const API_ASLEEP_MESSAGE =
+  "서버가 아직 깨어나지 않았어요. 잠시 후 다시 시도해주세요.";
 
 /**
  * 이메일 로그인 폼. 성공하면 온보딩 여부에 따라 `/home` 또는 `/onboarding`으로
@@ -31,6 +35,8 @@ interface LoginFormProps {
 export function LoginForm({ next }: LoginFormProps) {
   const router = useRouter();
   const loginMutation = useLoginMutation();
+  const { status: apiStatus, waitUntilReady } = useApiReadiness();
+  const [waitingForApi, setWaitingForApi] = useState(false);
   const {
     register,
     handleSubmit,
@@ -39,6 +45,15 @@ export function LoginForm({ next }: LoginFormProps) {
   } = useForm<LoginFormValues>({ resolver: zodResolver(loginSchema) });
 
   const onSubmit = handleSubmit(async (values) => {
+    // 서버가 잠들어 있으면 깨어난 뒤에 한 번만 보낸다(018 US2-AC8).
+    // 깨어 있으면 문구를 바꾸지 않는다. 바로 보내는데 한 번 깜빡이면 오히려 헷갈린다.
+    if (apiStatus !== "ready") setWaitingForApi(true);
+    const ready = await waitUntilReady();
+    setWaitingForApi(false);
+    if (!ready) {
+      setError("root", { message: API_ASLEEP_MESSAGE });
+      return;
+    }
     try {
       const member = await loginMutation.mutateAsync(values);
       router.push(loginDestination(member.onboarded, next));
@@ -118,7 +133,7 @@ export function LoginForm({ next }: LoginFormProps) {
       )}
 
       <Button type="submit" size="lg" disabled={isSubmitting}>
-        로그인
+        {waitingForApi && isSubmitting ? "서버가 깨면 로그인할게요" : "로그인"}
       </Button>
     </form>
   );
