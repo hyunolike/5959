@@ -55,7 +55,10 @@ class EmotionAnalyzerLiveTest {
         assertThat(results.map { it.second }).doesNotContainNull()
         assertThat(results.map { it.second!!.reason }).allSatisfy { assertThat(it).isNotBlank() }
         val matched = results.count { (expected, result) -> result!!.emotion == expected }
-        println("LIVE emotion: model ${properties.model}, effort '${properties.reasoningEffort}', matched $matched/${results.size}")
+        println(
+            "LIVE emotion: model ${properties.model}, effort '${properties.reasoningEffort}', " +
+                "matched $matched/${results.size}",
+        )
         assertThat(matched).isGreaterThanOrEqualTo(MIN_MATCHED)
     }
 

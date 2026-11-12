@@ -42,7 +42,7 @@ README의 구조도 두 장(`before-gcp.png`, `after-free.png`)을 만들 때 �
 4. "Neon Free" — "PostgreSQL + pgvector · 쉬면 잠듦"
 5. "LLM 공급자" — "감정 분석" (특정 회사 로고를 넣지 않는다. 일반 AI 칩 아이콘)
 6. "GitHub Actions" — "매일 백업 · 사용량 점검"
-7. "Cloudflare R2" — "백업 14일"
+7. "Actions 아티팩트" — "암호화 백업 14일"
 8. "cron-job.org" — "10분마다 깨우기"
 9. "Resend" — "재설정 메일"
 
@@ -53,8 +53,61 @@ README의 구조도 두 장(`before-gcp.png`, `after-free.png`)을 만들 때 �
 - Spring Boot API → Neon Free: "읽기/쓰기"
 - Spring Boot API → LLM 공급자: "분석 요청"
 - Spring Boot API → Resend: "SMTP 2587" (점선)
-- cron-job.org → Spring Boot API: "liveness" (점선)
-- GitHub Actions → Neon Free: "pg_dump" (점선)
-- GitHub Actions → Cloudflare R2: "백업 저장" (점선)
+- cron-job.org → Spring Boot API: "liveness" (실선)
+- GitHub Actions → Neon Free: "pg_dump" (실선)
+- GitHub Actions → Actions 아티팩트: "gpg 암호화" (실선)
 
-작은 배지: Vercel, Render Free, Neon Free 옆에 초록 배지 "운영 중". GitHub Actions, Cloudflare R2, cron-job.org, Resend 옆에 회색 배지 "준비 중". 점선은 아직 켜지 않은 연결이라는 범례를 오른쪽 아래에 작게 둔다: "점선 = 준비 중".
+작은 배지: Vercel, Render Free, Neon Free, cron-job.org, GitHub Actions 옆에 초록 배지 "운영 중". Resend 옆에 회색 배지 "준비 중". 오른쪽 아래 작은 범례: "점선 = 준비 중".
+
+## 3장: request-flow.png
+
+제목: "요청이 처리되는 길"
+부제: "웹이 쿠키를 토큰으로 바꿔 API에 전한다"
+
+노드(왼쪽에서 오른쪽):
+1. "브라우저" — "회원"
+2. "Vercel" 박스 안에 "Next.js BFF" — "쿠키 → Bearer 토큰"
+3. "Render Free" 박스 안에 "Spring Boot API". 그 안에 작은 칩 세 개: "글 · 피드", "레이드(메모리 판정)", "알림 SSE"
+4. "Neon Free" — "PostgreSQL"
+5. "LLM 공급자" — "감정 분석 · 위험 분류" (특정 회사 로고 없이 일반 AI 칩 아이콘)
+
+화살표(이것만, 번호 배지를 붙인다):
+- ① 브라우저 → Next.js BFF: "요청 + 로그인 쿠키"
+- ② Next.js BFF → Spring Boot API: "Bearer 토큰 + BFF 키"
+- ③ Spring Boot API → Neon Free: "읽기/쓰기"
+- ④ "글 · 피드" 칩 → LLM 공급자: "글 저장 뒤 분석" (점선. 반드시 "글 · 피드" 칩의 오른쪽 끝에서 시작한다. 레이드 칩에서 나오면 안 된다)
+- ⑤ 브라우저 → Spring Boot API의 "알림 SSE" 칩: "일회용 표로 직접 연결" (실선, 브라우저에서 BFF를 건너뛰는 긴 화살표)
+- ⑥ "레이드(메모리 판정)" 칩 → Neon Free: "1초마다 기록"
+
+범례(오른쪽 아래 작게): "점선 = 응답을 기다리지 않는 뒤 작업"
+
+## 4장: deploy-flow.png
+
+제목: "배포와 운영"
+부제: "무료 플랜 위에서 돌리는 방법"
+
+노드:
+1. "개발자" — "로컬"
+2. "GitHub" — "저장소 · PR CI"
+3. "Release 워크플로" — "손으로 실행"
+4. "GHCR" — "API 이미지(AOT 캐시)"
+5. "Render Free" — "Spring Boot API"
+6. "Vercel" — "Next.js 웹"
+7. "cron-job.org" — "10분마다 깨우기"
+8. "Ops daily 워크플로" — "매일 03:30"
+9. "Neon Free" — "PostgreSQL"
+10. "Actions 아티팩트" — "암호화 백업 14일"
+
+화살표(이것만):
+- 개발자 → GitHub: "PR · 병합"
+- GitHub → Release 워크플로: "버전 확정"
+- Release 워크플로 → GHCR: "이미지 올리기"
+- Release 워크플로 → Render Free: "API로 배포 · live 대기"
+- GHCR → Render Free: "이미지 받기"
+- 개발자 → Vercel: "vercel deploy --prod"
+- cron-job.org → Render Free: "liveness"
+- Ops daily 워크플로 → Neon Free: "pg_dump · 사용량 점검"
+- Ops daily 워크플로 → Actions 아티팩트: "gpg 암호화"
+- Render Free → Neon Free: "읽기/쓰기"
+
+작은 배지: Release 워크플로와 개발자→Vercel 화살표 옆에 "손으로", cron-job.org와 Ops daily 옆에 "자동".
