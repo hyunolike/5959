@@ -100,13 +100,11 @@ flowchart LR
     end
 
     PG[("PostgreSQL 17<br/>+ pgvector")]
-    Redis[("Redis")]
     LLM["LLM 공급자<br/>(OpenAI 호환)"]
 
     U --> Pages --> BFF --> Api
     U -. "SSE 알림과 레이드<br/>(일회용 표)" .-> Api
     Api --> PG
-    Api --> Redis
     AI --> LLM
 ```
 
@@ -118,6 +116,43 @@ flowchart LR
 - **"한 번만"은 잠금이 아니라 제약이 지킵니다.** 살아 있는 보스 하나, 회원과 주마다 리포트 하나, 알림 하나를 유일 제약과 멱등 키로 보장합니다.
 
 전체 설계는 [아키텍처 문서](docs/architecture/overview.md)에, 결정과 그 까닭은 [ADR](docs/adr)에 있습니다.
+
+<br>
+
+## 🗺 시스템 구조: 이전과 지금
+
+### 이전: GCP (2026년 11월 10일까지)
+
+<p align="center">
+  <img src="docs/assets/architecture/before-gcp.png" alt="이전 구조. 브라우저가 Cloud Run의 Next.js 웹을 거쳐 Compute Engine VM 한 대의 Caddy로 API를 호출하고, 실시간 알림(SSE)은 브라우저가 Caddy로 바로 연결한다. VM 안에서 Spring Boot API가 PostgreSQL 17과 Redis를 쓰고, LLM 공급자에 감정 분석을 요청한다. DB는 매일 GCS로 백업한다." width="900" />
+</p>
+
+- 웹은 Cloud Run, API와 PostgreSQL, Redis, Caddy는 Compute Engine VM(e2-small) 한 대에 있었습니다.
+- Redis는 서버가 여러 대일 때를 위해 두었습니다. 알림 신호를 pub/sub으로 다른 서버에 전하고, 레이드 공격 판정을 Lua 스크립트로 한 번에 처리했습니다.
+- 2026년 11월 10일 GCP 결제 계정이 닫히면서 API가 멈췄습니다. 고정비를 0원으로 줄이는 이전을 [018 스펙](specs/018-free-infra/spec.md)으로 진행하고 있습니다.
+
+### 지금: 무료 플랜으로 옮기는 중
+
+<p align="center">
+  <img src="docs/assets/architecture/after-free.png" alt="새 구조. 브라우저가 Cloud Run의 Next.js 웹을 거쳐 Render Free의 Spring Boot API 한 대를 호출하고, SSE는 API로 바로 연결한다. API는 알림 신호와 레이드 상태를 메모리에 두고 Neon Free의 PostgreSQL을 쓴다. LLM 공급자에 분석을, Resend에 재설정 메일을 보낸다. cron-job.org가 10분마다 깨우고, GitHub Actions가 매일 Neon을 덤프해 Cloudflare R2에 둔다." width="900" />
+</p>
+
+| 무엇을 | 이전 | 지금 |
+| --- | --- | --- |
+| 웹 | Cloud Run | Cloud Run (그대로) |
+| API | Compute Engine VM, 서버 여러 대 가능 | Render 무료, 서버 한 대(메모리 512MB) |
+| DB | 같은 VM의 PostgreSQL 17 | Neon 무료 PostgreSQL. 쿼리가 5분 없으면 잠든다 |
+| Redis | 알림 신호(pub/sub), 레이드 판정(Lua) | 없음. 둘 다 서버 메모리에서 처리 |
+| 주기 작업 | 1초~1분마다 DB 확인 | 다음 할 일 시각에만 깨어남. DB가 잠들 수 있게 |
+| 백업 | 매일 GCS로 | GitHub Actions가 매일 Cloudflare R2로 |
+| 잠들지 않게 | 해당 없음 | cron-job.org가 10분마다 liveness 호출 |
+| 고정비(AI 사용료 제외) | 월 약 $18 | 월 0원(목표) |
+
+진행 상황은 이렇습니다.
+
+- **끝남:** 주기 작업을 할 일이 있을 때만 DB를 열게 바꿨습니다. Redis를 지우고 알림과 레이드를 서버 메모리로 옮겼습니다. 레이드는 500명 부하에서 받은 공격 수, 줄어든 HP, DB에 적힌 기여가 정확히 같았습니다.
+- **재 봄:** Render 무료에서 실제로 띄워 봤습니다. 힙을 192MB로 줄이자 50명이 30분 동안 공격하는 부하에서도 메모리가 411~442MB로 한도(512MB) 안에 머물렀습니다. 기동은 약 4분 걸리지만, 배포 중에는 옛 서버가 요청을 받아서 끊기지 않습니다. 50명이 1초마다 쉬지 않고 공격하면 CPU 0.1개로는 응답 p95가 2.6초까지 늘어납니다. 수는 맞습니다([측정 기록](specs/018-free-infra/research.md)).
+- **남음:** 데이터 이전(읽기 전용 점검 한 시간 안), 백업 자동화, 옛 GCP 자원 정리.
 
 <br>
 
@@ -148,8 +183,8 @@ flowchart LR
 
 | 구분 | 사용 기술 |
 | --- | --- |
-| API | Kotlin 2.2, JDK 21, Spring Boot 4.1, Spring Modulith 2.1 |
-| 데이터 | PostgreSQL 17 + pgvector, Redis(Lua 스크립트, pub/sub), Flyway |
+| API | Kotlin 2.2(JDK 21로 컴파일, JDK 25에서 실행), Spring Boot 4.1, Spring Modulith 2.1 |
+| 데이터 | PostgreSQL 17 + pgvector, Flyway. Redis는 018에서 지웠습니다 |
 | AI | Spring AI(OpenAI 호환 공급자), Resilience4j 서킷 브레이커 |
 | 웹 | Next.js 16(App Router), React 19, TypeScript, Tailwind CSS v4 |
 | 웹 상태 | TanStack Query v5, Zustand v5, react-hook-form, Zod |
@@ -158,7 +193,7 @@ flowchart LR
 | 품질 | ktlint, detekt, ESLint, Prettier, steiger(FSD 규칙) |
 | 진행 방식 | GitHub Spec Kit(스펙 → 설계 → 작업 → 구현), OpenAPI 계약 우선 |
 | CI | GitHub Actions(API, 웹, 실제 API를 띄운 e2e), release-please |
-| 배포 | GCP(웹은 Cloud Run, API와 DB는 Compute Engine 한 대), Terraform, Caddy |
+| 배포 | 웹은 Cloud Run(Terraform). API는 Render 무료, DB는 Neon 무료로 옮기는 중(이전: Compute Engine 한 대, Caddy) |
 | 방문 분석 | Umami Cloud. 쿠키를 쓰지 않고, 보내기 전에 주소에서 utm 꼬리표만 남기고 지웁니다 |
 
 <br>
@@ -171,9 +206,9 @@ flowchart LR
 │   ├── api/        Kotlin, Spring Boot 4, Spring Modulith
 │   └── web/        Next.js 16, Feature-Sliced Design
 ├── contracts/      OpenAPI 계약 (웹의 타입을 여기서 만든다)
-├── specs/          기능별 스펙, 설계, 작업 목록 (001~011)
+├── specs/          기능별 스펙, 설계, 작업 목록 (001~018)
 ├── docs/           아키텍처, ADR, 측정 기록
-├── infra/          운영 compose, Caddy, GCP Terraform, 백업과 부하 테스트 스크립트
+├── infra/          GCP Terraform, Render 이미지 스크립트, 운영 compose, 백업과 부하 테스트 스크립트
 ├── webbb-be/       원본 백엔드 (참고용)
 └── webbb-fe/       원본 프론트엔드 (참고용)
 ```
@@ -183,7 +218,7 @@ flowchart LR
 ## 🚀 로컬 실행
 
 ```bash
-cd apps/api && ./gradlew bootRun        # PostgreSQL과 Redis는 compose로 자동 기동
+cd apps/api && ./gradlew bootRun        # PostgreSQL은 compose로 자동 기동
 pnpm install && pnpm --filter web dev   # http://localhost:3000
 ```
 
@@ -200,9 +235,11 @@ cd apps/api && SPRING_PROFILES_ACTIVE=local,e2e ./gradlew bootRun
 | 무엇을 | 어디에 | 어떻게 |
 | --- | --- | --- |
 | 웹 | [new.5959.site](https://new.5959.site), Cloud Run | `main`에 병합되고 CI가 통과하면 자동으로 배포합니다 |
-| API와 DB | Compute Engine 한 대(Caddy, Spring Boot, PostgreSQL, Redis) | 이미지를 빌드한 뒤 손으로 배포합니다 |
+| API | Render 무료 웹 서비스(싱가포르, 옮기는 중) | 기동 캐시를 담은 이미지를 `infra/render/scripts/build-image.sh`로 만들어 GHCR에 올리고 배포합니다 |
+| DB | Neon 무료(옮기는 중) | 스키마는 API가 뜰 때 Flyway로 맞춥니다 |
+| 이전 API와 DB | Compute Engine 한 대(Caddy, Spring Boot, PostgreSQL) | 2026년 11월 10일 결제 계정이 닫혀 멈췄습니다. 이전이 끝나면 정리합니다 |
 
-기반 자원과 도메인 연결은 Terraform으로 관리합니다. 웹의 주소 하나를 바꾸면 로그인 콜백과 실시간 알림이 허용하는 출처가 함께 바뀝니다. 절차는 [GCP 배포 문서](infra/gcp/README.md)에 있습니다.
+웹의 기반 자원과 도메인 연결은 Terraform으로 관리합니다. 웹의 주소 하나를 바꾸면 로그인 콜백과 실시간 알림이 허용하는 출처가 함께 바뀝니다. 절차는 [GCP 배포 문서](infra/gcp/README.md)에 있습니다.
 
 <br>
 
