@@ -3,6 +3,9 @@ package com.ogu.member.infrastructure.oauth
 import com.nimbusds.jose.JOSEException
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.KeySourceException
+import com.nimbusds.jose.jwk.JWKMatcher
+import com.nimbusds.jose.jwk.JWKSelector
+import com.nimbusds.jose.jwk.source.JWKSource
 import com.nimbusds.jose.jwk.source.JWKSourceBuilder
 import com.nimbusds.jose.proc.BadJOSEException
 import com.nimbusds.jose.proc.JWSVerificationKeySelector
@@ -16,6 +19,7 @@ import com.ogu.member.domain.OAuthProvider
 import com.ogu.member.infrastructure.config.AuthProperties
 import com.ogu.shared.error.BusinessException
 import com.ogu.shared.error.ErrorCode
+import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.client.RestClient
@@ -43,18 +47,30 @@ class GoogleClient(
 ) : OAuthProviderClient {
     override val provider = OAuthProvider.GOOGLE
 
+    private val jwkSource: JWKSource<SecurityContext> =
+        JWKSourceBuilder
+            .create<SecurityContext>(settings.jwksUri.toURL(), RestClientResourceRetriever(restClient))
+            .build()
+
     private val idTokenProcessor =
         DefaultJWTProcessor<SecurityContext>().apply {
-            jwsKeySelector =
-                JWSVerificationKeySelector(
-                    JWSAlgorithm.RS256,
-                    JWKSourceBuilder
-                        .create<SecurityContext>(settings.jwksUri.toURL(), RestClientResourceRetriever(restClient))
-                        .build(),
-                )
+            jwsKeySelector = JWSVerificationKeySelector(JWSAlgorithm.RS256, jwkSource)
             // 시간 검증은 주입한 Clock으로 verifyClaims에서 한다
             jwtClaimsSetVerifier = JWTClaimsSetVerifier { _, _ -> }
         }
+
+    /**
+     * JWKS를 미리 받아 캐시에 넣는다. 잠들었다 깬 서버는 JVM의 첫 TLS 연결이 느려, 기동 직후 첫 로그인이 시간 초과로
+     * 실패했다(2026-11-12). 여기서 TLS와 HTTP 클라이언트를 먼저 데운다. 실패해도 로그인 때 다시 받으므로 경고만 남긴다.
+     */
+    fun warmUp() {
+        try {
+            val keys = jwkSource.get(JWKSelector(JWKMatcher.Builder().build()), null)
+            log.info("구글 JWKS를 미리 받았습니다: keys={}", keys.size)
+        } catch (e: KeySourceException) {
+            log.warn("구글 JWKS를 미리 받지 못했습니다: error={}", e.javaClass.simpleName)
+        }
+    }
 
     override fun exchange(
         code: String,
@@ -159,6 +175,7 @@ class GoogleClient(
     }
 
     companion object {
+        private val log = LoggerFactory.getLogger(GoogleClient::class.java)
         private const val ID_TOKEN_STEP = "google-id-token"
         private val ISSUERS = setOf("accounts.google.com", "https://accounts.google.com")
         private val CLOCK_SKEW: Duration = Duration.ofMinutes(1)

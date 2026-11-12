@@ -19,6 +19,7 @@ import org.junit.jupiter.params.provider.ValueSource
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
+import org.springframework.test.web.client.ExpectedCount
 import org.springframework.test.web.client.MockRestServiceServer
 import org.springframework.test.web.client.match.MockRestRequestMatchers.content
 import org.springframework.test.web.client.match.MockRestRequestMatchers.method
@@ -30,6 +31,8 @@ import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.client.RestClient
 import java.net.SocketTimeoutException
 import java.net.URI
+import java.net.http.HttpConnectTimeoutException
+import java.net.http.HttpTimeoutException
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -237,6 +240,56 @@ class GoogleClientTest {
         server.expect(requestTo(settings.tokenUri)).andRespond(withException(SocketTimeoutException("timed out")))
 
         assertErrorCode(ErrorCode.OAUTH_PROVIDER_UNAVAILABLE)
+    }
+
+    @Test
+    fun `토큰 요청이 연결 단계에서 실패하면 한 번 더 보내 로그인을 마친다`() {
+        server
+            .expect(requestTo(settings.tokenUri))
+            .andRespond(withException(HttpConnectTimeoutException("HTTP connect timed out")))
+        expectToken(idToken())
+        expectJwks()
+
+        val info = client.exchange("auth-code", REDIRECT_URI, "pkce-verifier")
+
+        assertThat(info.providerUserId).isEqualTo("109876543210")
+        server.verify()
+    }
+
+    @Test
+    fun `토큰 응답을 기다리다 시간이 지나면 다시 보내지 않는다`() {
+        server
+            .expect(ExpectedCount.once(), requestTo(settings.tokenUri))
+            .andRespond(withException(HttpTimeoutException("request timed out")))
+
+        assertErrorCode(ErrorCode.OAUTH_PROVIDER_UNAVAILABLE)
+        server.verify()
+    }
+
+    @Test
+    fun `미리 받아 두기는 JWKS를 받아 캐시하고 로그인 때 다시 받지 않는다`() {
+        // JWKS는 미리 받기 때 한 번만 온다. 로그인은 토큰 요청만 한다.
+        expectJwks()
+        expectToken(idToken())
+
+        client.warmUp()
+        val info = client.exchange("auth-code", REDIRECT_URI, "pkce-verifier")
+
+        assertThat(info.providerUserId).isEqualTo("109876543210")
+        server.verify()
+    }
+
+    @Test
+    fun `미리 받아 두기가 실패해도 예외를 내지 않고 로그인 때 다시 받는다`() {
+        server.expect(requestTo(settings.jwksUri)).andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE))
+        expectToken(idToken())
+        expectJwks()
+
+        client.warmUp()
+        val info = client.exchange("auth-code", REDIRECT_URI, "pkce-verifier")
+
+        assertThat(info.providerUserId).isEqualTo("109876543210")
+        server.verify()
     }
 
     @Test
