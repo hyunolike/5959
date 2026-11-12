@@ -59,9 +59,20 @@ const FEATURES = [
  * 첫 화면(`/`). 로그인하지 않은 방문자와 검색 엔진이 보는 서비스 소개다(002 FR-014). 회원 데이터를
  * 부르지 않는 서버 컴포넌트라 HTML에 소개가 그대로 담긴다. 로그인한 회원은 가드가 홈으로 보낸다.
  */
-export function Landing() {
+export interface LandingMaintenance {
+  /** 공유받은 글 링크로 들어왔다가 첫 화면으로 온 경우. */
+  fromPost: boolean;
+}
+
+export function Landing({
+  maintenance,
+}: {
+  /** 점검 모드(`OGU_MAINTENANCE_MODE`)일 때만 넘긴다. 이사 안내를 띄우고 다른 화면으로 가는 길을 숨긴다. */
+  maintenance?: LandingMaintenance;
+} = {}) {
   return (
     <div className="flex w-full max-w-[960px] flex-col gap-16 sm:gap-20">
+      {maintenance ? <MaintenanceNotice {...maintenance} /> : null}
       <section className="grid items-center gap-8 md:grid-cols-[1fr_300px] md:gap-12">
         <div className="flex flex-col items-center gap-6 text-center md:items-start md:text-left">
           <h1 className="text-display text-fg font-extrabold break-keep">
@@ -73,14 +84,16 @@ export function Landing() {
             익명으로 고민을 남기면 AI가 감정을 읽어 몬스터로 만들어요. 공감과
             댓글이 모일수록 몬스터가 약해지고, 마음은 조금 가벼워져요.
           </p>
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-            <Button asChild size="lg">
-              <Link href="/login">시작하기</Link>
-            </Button>
-            <Button asChild size="lg" variant="secondary">
-              <Link href="/home">먼저 둘러보기</Link>
-            </Button>
-          </div>
+          {maintenance ? null : (
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+              <Button asChild size="lg">
+                <Link href="/login">시작하기</Link>
+              </Button>
+              <Button asChild size="lg" variant="secondary">
+                <Link href="/home">먼저 둘러보기</Link>
+              </Button>
+            </div>
+          )}
         </div>
         <Image
           src="/brand/ogu-hug.webp"
@@ -201,23 +214,56 @@ export function Landing() {
         </div>
       </section>
 
-      <section className="rounded-surface bg-surface-sunken flex flex-col items-center gap-4 p-8 text-center">
-        <h2 className="text-heading text-fg font-bold break-keep">
-          오늘 마음은 어때요?
-        </h2>
-        <p className="text-body text-fg-subtle max-w-md break-keep">
-          카카오나 구글 계정이면 바로 시작할 수 있어요. 이메일로도 가입할 수
-          있어요.
+      {maintenance ? null : (
+        <section className="rounded-surface bg-surface-sunken flex flex-col items-center gap-4 p-8 text-center">
+          <h2 className="text-heading text-fg font-bold break-keep">
+            오늘 마음은 어때요?
+          </h2>
+          <p className="text-body text-fg-subtle max-w-md break-keep">
+            카카오나 구글 계정이면 바로 시작할 수 있어요. 이메일로도 가입할 수
+            있어요.
+          </p>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <Button asChild size="lg">
+              <Link href="/login">로그인하고 시작하기</Link>
+            </Button>
+            <Button asChild size="lg" variant="secondary">
+              <Link href="/signup">회원가입</Link>
+            </Button>
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+/**
+ * 인프라를 옮기는 동안 첫 화면 맨 위에 두는 안내. 누를 곳을 두지 않는다. API가 꺼져 있어 어디로
+ * 가든 오류만 나기 때문이다. 재개 날짜는 정해졌을 때만 적는다.
+ */
+function MaintenanceNotice({ fromPost }: LandingMaintenance) {
+  return (
+    <div
+      role="status"
+      className="rounded-surface border-game-line bg-game flex items-center gap-4 border-2 p-5"
+    >
+      <Image
+        src="/pwa/ogu-logo-v2-192.png"
+        alt=""
+        width={52}
+        height={52}
+        className="border-game-line size-13 shrink-0 rounded-[14px] border-2"
+      />
+      <div>
+        <p className="text-body-lg text-fg font-extrabold break-keep">
+          오구가 새 집으로 이사하고 있어요
         </p>
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-          <Button asChild size="lg">
-            <Link href="/login">로그인하고 시작하기</Link>
-          </Button>
-          <Button asChild size="lg" variant="secondary">
-            <Link href="/signup">회원가입</Link>
-          </Button>
-        </div>
-      </section>
+        <p className="text-body-sm text-fg mt-1 break-keep">
+          {fromPost
+            ? "이사하는 동안에는 글을 읽거나 쓸 수 없어요. 이사가 끝나면 지금 링크 그대로 그 이야기를 다시 볼 수 있어요."
+            : "이사하는 동안에는 글을 읽거나 쓸 수 없어요. 이사가 끝나면 이 주소에서 다시 만나요."}
+        </p>
+      </div>
     </div>
   );
 }

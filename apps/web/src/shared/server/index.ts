@@ -13,6 +13,7 @@ export { callApi } from "./api-client";
 export type { ApiClientOptions, ApiClientResult } from "./api-client";
 export { resolveClientIp } from "./client-ip";
 export { guardOrigin } from "./origin-guard";
+export { resolveMaintenanceAction } from "./maintenance";
 export { resolveRouteGuardAction } from "./route-guard";
 export type { RouteGuardAction, RouteGuardCookies } from "./route-guard";
 export {

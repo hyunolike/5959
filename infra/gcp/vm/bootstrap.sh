@@ -43,6 +43,10 @@ if [[ ! -f /swapfile ]]; then
 fi
 swapon --show=NAME --noheadings | grep -q '^/swapfile$' || swapon /swapfile
 grep -q '^/swapfile ' /etc/fstab || printf '/swapfile none swap sw 0 0\n' >> /etc/fstab
+# Keep swap as a last resort. At the default (60) the kernel pages out the idle JVM heap,
+# and the first request after a quiet period stalls for tens of seconds while it pages back in.
+printf 'vm.swappiness=10\n' > /etc/sysctl.d/90-ogu.conf
+sysctl -q -p /etc/sysctl.d/90-ogu.conf
 
 python3 - <<'PY'
 import base64
