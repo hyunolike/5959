@@ -1,2 +1,4 @@
 *
 !build/libs/api.jar
+# 기동 캐시. infra/render/scripts/build-image.sh가 만들고 Dockerfile의 with-aot 단계가 담는다
+!build/aot/app.aot
