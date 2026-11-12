@@ -41,6 +41,9 @@ export function useApiReadiness(): ApiReadiness {
   return useContext(ApiReadinessContext);
 }
 
+/** API의 liveness만 묻는 웹 라우트. DB를 보지 않아 잠든 DB를 깨우지 않는다(018 US2-AC3). */
+const HEALTH_PATH = "/api/health/live";
+
 /** 다시 묻는 간격. 묻는 요청 하나하나가 잠든 서버를 깨우는 신호도 된다. */
 const POLL_INTERVAL_MS = 5_000;
 /** 무료 플랜의 기동은 4~5분이다(018 research R1, 2026-11-12 측정 최장 313초). 넉넉히 7분을 기다린다. */
@@ -50,7 +53,7 @@ const STALE_AFTER_MS = 10 * 60_000;
 
 async function probeHealth(fetchImpl: typeof fetch): Promise<boolean> {
   try {
-    const response = await fetchImpl("/api/health", { cache: "no-store" });
+    const response = await fetchImpl(HEALTH_PATH, { cache: "no-store" });
     if (!response.ok) return false;
     const body = (await response.json()) as { status?: string };
     return body.status === "UP";
@@ -68,7 +71,7 @@ interface ApiReadinessProviderProps {
 }
 
 /**
- * API(Render 무료)가 잠들어 있는지 화면이 열릴 때 묻고, 잠들어 있으면 깨어날 때까지 기다린다(018 US2-AC7).
+ * API(Render 무료)가 잠들어 있는지 화면이 열릴 때 `/api/health/live`로 묻고, 잠들어 있으면 깨어날 때까지 기다린다(018 US2-AC7).
  * 잠든 서버는 기동에 4분쯤 걸리는데 BFF는 15초만 기다리므로, 그동안 보낸 요청은 실패로 보인다.
  * 게다가 Render가 붙잡아 둔 요청이 기동 뒤 처리될 수 있어, 실패로 보인 가입이 실제로는 되는 일이 생긴다.
  * 그래서 제출은 깨어난 것을 확인한 뒤에만 보낸다(US2-AC8).

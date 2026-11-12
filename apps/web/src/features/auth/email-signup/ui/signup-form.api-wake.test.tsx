@@ -17,11 +17,11 @@ const json = (body: unknown, status = 200) =>
     headers: { "content-type": "application/json" },
   });
 
-/** `/api/health`는 `isUp()`에 따라 답하고, 가입은 성공으로 답한다. */
+/** `/api/health/live`는 `isUp()`에 따라 답하고, 가입은 성공으로 답한다. */
 function stubFetch(isUp: () => boolean) {
   const fetchMock = vi.fn((input: RequestInfo | URL) => {
     const url = String(input);
-    if (url === "/api/health") {
+    if (url === "/api/health/live") {
       return Promise.resolve(json({ status: isUp() ? "UP" : "DOWN" }));
     }
     return Promise.resolve(
@@ -92,7 +92,10 @@ describe("SignupForm 서버 깨우기", () => {
     const fetchMock = stubFetch(() => true);
     renderForm();
     await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith("/api/health", expect.anything()),
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/health/live",
+        expect.anything(),
+      ),
     );
 
     await fillAndSubmit();

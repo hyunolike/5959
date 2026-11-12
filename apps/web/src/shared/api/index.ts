@@ -5,7 +5,7 @@ export {
 } from "./query-client";
 export { ApiError } from "./api-error";
 export type { ApiErrorBody } from "./api-error";
-export { fetchApiHealth } from "./api-health";
+export { fetchApiHealth, fetchApiLiveness } from "./api-health";
 export { ApiReadinessProvider, useApiReadiness } from "./api-readiness";
 export type { ApiReadiness, ApiReadinessStatus } from "./api-readiness";
 export { requestApi } from "./request-api";
