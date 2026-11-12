@@ -8,7 +8,9 @@ import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.RestClientException
 import tools.jackson.databind.JsonNode
+import java.net.ConnectException
 import java.net.http.HttpClient
+import java.net.http.HttpConnectTimeoutException
 import java.time.Duration
 
 /**
@@ -40,6 +42,10 @@ object OAuthHttp {
      * 제공자를 부른다. 400(`invalid_grant` 등 요청 값 문제)은 [onBadRequest]로 바꾼다. 401(`invalid_client`), 403,
      * 429 같은 다른 4xx는 우리 설정이나 호출 한도 문제이므로, 5xx, 연결 실패, 타임아웃, 해석 실패, 빈 응답과 함께
      * `OAUTH_PROVIDER_UNAVAILABLE`로 바꾼다. 로그에는 상태 코드만 남기고 응답 본문은 남기지 않는다.
+     *
+     * 연결 단계에서 실패하면([isConnectFailure]) 한 번 더 보낸다. 요청이 제공자에 닿지 않았으니 인가 코드를 두 번 쓰지
+     * 않는다. 잠들었다 막 깬 서버는 첫 TLS 연결이 연결 시간 안에 끝나지 않을 때가 있다.
+     * 응답을 기다리다 끊긴 것은 제공자가 코드를 이미 썼을 수 있어 다시 보내지 않는다.
      */
     fun <T : Any> call(
         step: String,
@@ -48,12 +54,31 @@ object OAuthHttp {
     ): T {
         val result =
             try {
-                request()
+                retryOnConnectFailure(step, request)
             } catch (e: RestClientException) {
                 throw translate(step, onBadRequest, e)
             }
         return result ?: throw unavailable(step, "빈 응답")
     }
+
+    /** 연결 단계의 실패만 한 번 더 보낸다. 다른 실패와 두 번째 실패는 그대로 던진다. */
+    private fun <T : Any> retryOnConnectFailure(
+        step: String,
+        request: () -> T?,
+    ): T? =
+        try {
+            request()
+        } catch (e: RestClientException) {
+            if (!isConnectFailure(e)) throw e
+            log.warn("OAuth 제공자에 연결하지 못해 한 번 더 보냅니다: step={}, error={}", step, rootName(e))
+            request()
+        }
+
+    /** 연결을 맺지 못한 실패(연결 시간 초과, 연결 거절). 요청 본문은 제공자에 가지 않았다. */
+    fun isConnectFailure(e: Throwable): Boolean =
+        generateSequence(e) { it.cause }.any { it is HttpConnectTimeoutException || it is ConnectException }
+
+    private fun rootName(e: Throwable): String = generateSequence(e) { it.cause }.last().javaClass.simpleName
 
     private fun translate(
         step: String,
@@ -67,7 +92,12 @@ object OAuthHttp {
             log.warn("OAuth 제공자가 우리 요청을 받지 않습니다: step={}, status={}", step, e.statusCode.value())
             BusinessException(ErrorCode.OAUTH_PROVIDER_UNAVAILABLE)
         } else {
-            log.warn("OAuth 제공자 호출에 실패했습니다: step={}, error={}", step, e.javaClass.simpleName)
+            log.warn(
+                "OAuth 제공자 호출에 실패했습니다: step={}, error={}, cause={}",
+                step,
+                e.javaClass.simpleName,
+                rootName(e),
+            )
             BusinessException(ErrorCode.OAUTH_PROVIDER_UNAVAILABLE)
         }
 
