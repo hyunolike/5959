@@ -53,7 +53,10 @@ const STALE_AFTER_MS = 10 * 60_000;
 
 async function probeHealth(fetchImpl: typeof fetch): Promise<boolean> {
   try {
-    const response = await fetchImpl(HEALTH_PATH, { cache: "no-store" });
+    const response = await fetchImpl(HEALTH_PATH, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(5_000),
+    });
     if (!response.ok) return false;
     const body = (await response.json()) as { status?: string };
     return body.status === "UP";
@@ -68,6 +71,7 @@ interface ApiReadinessProviderProps {
   giveUpAfterMs?: number;
   staleAfterMs?: number;
   fetchImpl?: typeof fetch;
+  recheckOnResume?: boolean;
 }
 
 /**
@@ -82,6 +86,7 @@ export function ApiReadinessProvider({
   giveUpAfterMs = GIVE_UP_AFTER_MS,
   staleAfterMs = STALE_AFTER_MS,
   fetchImpl = fetch,
+  recheckOnResume = false,
 }: ApiReadinessProviderProps) {
   const [status, setStatus] = useState<ApiReadinessStatus>("checking");
   const [wakingSince, setWakingSince] = useState<number | null>(null);
@@ -161,6 +166,25 @@ export function ApiReadinessProvider({
     () => ({ status, wakingSince, waitUntilReady }),
     [status, wakingSince, waitUntilReady],
   );
+
+  useEffect(() => {
+    if (!recheckOnResume) return;
+    const resume = () => {
+      if (document.visibilityState === "hidden") return;
+      if (
+        statusRef.current === "ready" &&
+        Date.now() - readyAtRef.current >= staleAfterMs
+      ) {
+        void waitUntilReady();
+      }
+    };
+    window.addEventListener("focus", resume);
+    document.addEventListener("visibilitychange", resume);
+    return () => {
+      window.removeEventListener("focus", resume);
+      document.removeEventListener("visibilitychange", resume);
+    };
+  }, [recheckOnResume, staleAfterMs, waitUntilReady]);
 
   return (
     <ApiReadinessContext.Provider value={value}>

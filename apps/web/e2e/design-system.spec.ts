@@ -88,6 +88,10 @@ for (const viewport of [
     });
     await page.route("**/api/**", async (route) => {
       const path = new URL(route.request().url()).pathname;
+      if (path === "/api/health/live") {
+        await route.fulfill({ json: { status: "UP" } });
+        return;
+      }
       if (path === "/api/posts" && route.request().method() === "POST") {
         postRequests += 1;
         if (postRequests === 1) {

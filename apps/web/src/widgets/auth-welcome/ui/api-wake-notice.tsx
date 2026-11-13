@@ -16,7 +16,11 @@ function formatElapsed(seconds: number): string {
  * 서버가 잠들어 있을 때만 보이는 안내(018 US2-AC7). 깨어 있거나 아직 묻는 중이면 아무것도 그리지 않는다.
  * 기다리는 동안 입력은 그대로 할 수 있고, 제출은 폼이 깨어난 뒤에 보낸다(US2-AC8).
  */
-export function ApiWakeNotice() {
+export function ApiWakeNotice({
+  context = "form",
+}: {
+  context?: "form" | "session";
+}) {
   const { status, wakingSince } = useApiReadiness();
   const [now, setNow] = useState(() => Date.now());
 
@@ -54,7 +58,9 @@ export function ApiWakeNotice() {
         </p>
         <p className="text-body-sm text-fg-subtle break-keep">
           {waking
-            ? "오래 쉬던 서버라 일어나는 데 4~5분쯤 걸려요. 그동안 입력해 두면 준비되는 대로 보낼게요."
+            ? context === "session"
+              ? "오래 쉬던 서버라 일어나는 데 4~5분쯤 걸려요. 준비되면 보고 있던 화면을 자동으로 불러올게요."
+              : "오래 쉬던 서버라 일어나는 데 4~5분쯤 걸려요. 그동안 입력해 두면 준비되는 대로 보낼게요."
             : "잠시 뒤 다시 눌러 주세요. 누르면 다시 깨워 볼게요."}
         </p>
         {waking ? (
