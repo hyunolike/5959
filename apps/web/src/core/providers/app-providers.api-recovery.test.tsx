@@ -68,6 +68,55 @@ afterEach(() => {
 });
 
 describe("로그인된 사용자의 API 복구", () => {
+  it("놀이 중 깨어나면 완료를 알린 뒤 자동으로 회원 화면을 복구한다", async () => {
+    render(
+      <AppProviders authenticated>
+        <MemberScreen />
+      </AppProviders>,
+    );
+    await flush();
+    fireEvent.click(screen.getByRole("button", { name: "오구와 놀기" }));
+    up = true;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    expect(screen.getByText("준비됐어요")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "산책 완료" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_200);
+    });
+    await flush();
+    expect(screen.getByText("복구된 회원 1")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("region", { name: "오구의 마음 산책" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("놀이 중 연결에 실패해도 다시 연결하기로 복구할 수 있다", async () => {
+    render(
+      <AppProviders authenticated>
+        <MemberScreen />
+      </AppProviders>,
+    );
+    await flush();
+    fireEvent.click(screen.getByRole("button", { name: "오구와 놀기" }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(7 * 60_000);
+    });
+    expect(screen.getByText("연결을 다시 확인해 주세요")).toBeInTheDocument();
+    up = true;
+    fireEvent.click(screen.getByRole("button", { name: "다시 연결하기" }));
+    await flush();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_200);
+    });
+    await flush();
+    expect(screen.getByText("복구된 회원 1")).toBeInTheDocument();
+  });
+
   it("재연결 중에는 열린 확인창과 초점 가두기를 멈추고 복구 후 다시 보여 준다", async () => {
     up = true;
     render(
