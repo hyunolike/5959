@@ -30,6 +30,8 @@ import {
 } from "@/shared/ui";
 
 import { FirstPostGuide } from "./first-post-guide";
+import { MonsterFormation } from "./monster-formation";
+import formationStyles from "./monster-formation.module.css";
 import { PostComments } from "./post-comments";
 import { needsSafetyNotice, SafetyNotice } from "./safety-notice";
 import { SimilarPosts } from "./similar-posts";
@@ -68,7 +70,7 @@ function isNotFound(error: unknown): boolean {
 
 /**
  * 글 상세(FR-012): 작성자, 본문, 댓글 말투, 몬스터(US5), 공감과 댓글.
- * 몬스터가 생기기 전에는 "분석 중"을 보여 주고, `usePostDetailQuery`가 몬스터가
+ * 몬스터가 생기기 전에는 마음 덩어리 인터랙션을 보여 주고, `usePostDetailQuery`가 몬스터가
  * 생길 때까지 다시 불러와 새로고침 없이 바꿔 그린다(FR-015, US1-AC3).
  * 공감과 댓글은 응답 전에 HP를 줄여 보여 주고 몬스터 자리가 맞는 반응을 한다(US3-AC10).
  * 내 글이면 고치기 화면으로 가는 링크와 삭제 버튼을 둔다(US4-AC1, AC2).
@@ -181,7 +183,7 @@ function PostDetailContent({
         */}
         <MonsterStage
           emotion={monster?.emotion}
-          className="rounded-surface flex flex-col gap-4 p-5"
+          className="rounded-surface flex flex-col gap-4 p-5 motion-safe:transition-colors motion-safe:duration-500"
         >
           <div role="group" aria-label="몬스터">
             {monster ? (
@@ -189,11 +191,12 @@ function PostDetailContent({
                 monster={monster}
                 variant="detail"
                 postId={detail.postId}
+                className={
+                  openedWithoutMonster ? formationStyles.reveal : undefined
+                }
               />
             ) : (
-              <p className="text-body-sm text-fg-subtle py-6 text-center">
-                분석 중
-              </p>
+              <MonsterFormation />
             )}
             {/* "분석 중"은 몬스터가 오면 통째로 사라져 읽히지 않는다. 늘 있는 자리에 글자를 채운다. */}
             {/* 내 글이면 눈으로도 보이게 한다(016 FR-016). 남의 글은 지금처럼 화면 낭독기에만 알린다. */}

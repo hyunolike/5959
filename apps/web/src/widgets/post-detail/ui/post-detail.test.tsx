@@ -131,10 +131,17 @@ describe("PostDetail", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("US1-AC3 몬스터가 아직 없으면 몬스터 자리에 분석 중을 보여 준다", async () => {
+  it("US1-AC3 몬스터를 기다리며 마음 덩어리를 누를 수 있고 HP 진행률은 꾸미지 않는다", async () => {
+    const user = userEvent.setup();
     renderDetail(jsonResponse({ success: true, data: detail(), error: null }));
 
     expect(await screen.findByText("분석 중")).toBeInTheDocument();
+    const seed = screen.getByRole("button", {
+      name: "마음 덩어리 살짝 건드리기",
+    });
+    await user.click(seed);
+    expect(screen.getByText("톡! 조금만 기다려 주세요")).toBeInTheDocument();
+    expect(seed).toHaveFocus();
     expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
   });
 
@@ -221,6 +228,9 @@ describe("PostDetail", () => {
     });
 
     expect(await screen.findByText("불안 몬스터가 나타났어요.")).toBe(status);
+    expect(
+      screen.queryByRole("button", { name: "마음 덩어리 살짝 건드리기" }),
+    ).not.toBeInTheDocument();
   });
 
   it("US1-AC4 처음부터 몬스터가 있던 글에서는 나타났다고 알리지 않는다", async () => {
