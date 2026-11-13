@@ -31,6 +31,7 @@ function ReadySession({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const ready = status === "ready";
   const [opened, setOpened] = useState(false);
+  const [playing, setPlaying] = useState(false);
   const previouslyReady = useRef(false);
   const previousStatus = useRef(status);
   if (ready && !opened) setOpened(true);
@@ -55,14 +56,14 @@ function ReadySession({ children }: { children: ReactNode }) {
 
   return (
     <>
-      {!ready ? (
+      {!ready || playing ? (
         <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center gap-6 px-5 py-10">
           <BrandMark />
           <h1 className="sr-only">서버 연결 확인</h1>
           {status === "checking" ? (
             <Spinner label="서버 연결 확인 중" />
           ) : (
-            <ApiWakeNotice context="session" />
+            <ApiWakeNotice context="session" onPlayingChange={setPlaying} />
           )}
           {status === "unavailable" ? (
             <Button onClick={() => void waitUntilReady()}>다시 연결하기</Button>
@@ -71,7 +72,9 @@ function ReadySession({ children }: { children: ReactNode }) {
       ) : null}
       {/* 돌아온 탭의 입력, 스크롤, 세션은 보존한다. 처음 준비되기 전에는 조회와 SSE를 마운트하지 않는다. */}
       {opened ? (
-        <Activity mode={ready ? "visible" : "hidden"}>{children}</Activity>
+        <Activity mode={ready && !playing ? "visible" : "hidden"}>
+          {children}
+        </Activity>
       ) : null}
     </>
   );
