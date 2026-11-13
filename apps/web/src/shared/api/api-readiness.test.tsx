@@ -59,6 +59,7 @@ describe("ApiReadinessProvider", () => {
     await screen.findByText("status:ready");
     expect(fetchImpl).toHaveBeenCalledWith("/api/health/live", {
       cache: "no-store",
+      signal: expect.any(AbortSignal),
     });
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });

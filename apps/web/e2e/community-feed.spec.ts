@@ -34,6 +34,10 @@ for (const viewport of [
     });
     await page.route("**/api/**", async (route) => {
       const path = new URL(route.request().url()).pathname;
+      if (path === "/api/health/live") {
+        await route.fulfill({ json: { status: "UP" } });
+        return;
+      }
       const data =
         path === "/api/members/me"
           ? { ...author, onboarded: true }
@@ -304,6 +308,9 @@ for (const viewport of [
       ).toHaveAttribute("aria-pressed", "true");
     }
     await page.goto("/home");
+    await expect(
+      page.getByRole("link", { name: "본문으로 건너뛰기" }),
+    ).toBeAttached();
     await page.keyboard.press("Tab");
     await expect(
       page.getByRole("link", { name: "본문으로 건너뛰기" }),

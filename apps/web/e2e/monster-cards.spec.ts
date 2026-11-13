@@ -78,6 +78,10 @@ async function mockApi(page: Page) {
   });
   await page.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
+    if (path === "/api/health/live") {
+      await route.fulfill({ json: { status: "UP" } });
+      return;
+    }
     const data =
       path === "/api/members/me"
         ? member

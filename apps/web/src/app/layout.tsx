@@ -42,7 +42,7 @@ export default async function RootLayout({
   return (
     <html lang="ko" className="h-full antialiased">
       <body className="flex min-h-full flex-col">
-        <AppProviders>
+        <AppProviders authenticated={authenticated}>
           <AppShell
             authenticated={authenticated}
             notification={authenticated ? <NotificationBell /> : undefined}
