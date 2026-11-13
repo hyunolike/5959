@@ -57,7 +57,7 @@ describe("ApiReadinessProvider", () => {
 
     expect(screen.getByText("status:checking")).toBeInTheDocument();
     await screen.findByText("status:ready");
-    expect(fetchImpl).toHaveBeenCalledWith("/api/health", {
+    expect(fetchImpl).toHaveBeenCalledWith("/api/health/live", {
       cache: "no-store",
     });
     expect(fetchImpl).toHaveBeenCalledTimes(1);

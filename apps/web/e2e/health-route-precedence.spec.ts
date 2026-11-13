@@ -12,3 +12,14 @@ test("api/health/route.ts가 캐치올 프록시(api/[...path])보다 먼저 매
   expect(body).toEqual({ status: expect.stringMatching(/^(UP|DOWN)$/) });
   expect(body).not.toHaveProperty("success");
 });
+
+test("api/health/live/route.ts도 캐치올 프록시보다 먼저 매칭된다", async ({
+  request,
+}) => {
+  const response = await request.get("/api/health/live");
+
+  expect(response.status()).toBe(200);
+  const body = await response.json();
+  expect(body).toEqual({ status: expect.stringMatching(/^(UP|DOWN)$/) });
+  expect(body).not.toHaveProperty("success");
+});

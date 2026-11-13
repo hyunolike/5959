@@ -20,7 +20,7 @@ for (const viewport of [
     await page.setViewportSize(viewport);
     await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
     // 평소(서버가 깨어 있을 때)의 배치를 본다. e2e의 API 주소는 닿지 않아, 그대로 두면 깨우는 중 안내가 위에 붙는다(018 US2-AC7).
-    await page.route("**/api/health", (route) =>
+    await page.route("**/api/health/live", (route) =>
       route.fulfill({ json: { status: "UP" } }),
     );
     await page.goto("/login?error=oauth_failed&next=%2Fwrite");

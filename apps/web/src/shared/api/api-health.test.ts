@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from "vitest";
 
-import { fetchApiHealth } from "./api-health";
+import { fetchApiHealth, fetchApiLiveness } from "./api-health";
 
 const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -65,5 +65,27 @@ describe("fetchApiHealth", () => {
     await expect(
       fetchApiHealth("http://api", fetchImpl as typeof fetch, 10),
     ).resolves.toEqual({ status: "DOWN" });
+  });
+});
+
+describe("fetchApiLiveness", () => {
+  it("US2-AC3 DB를 보지 않는 liveness 주소를 묻는다", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ status: "UP" }));
+
+    await expect(fetchApiLiveness("http://api/", fetchImpl)).resolves.toEqual({
+      status: "UP",
+    });
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "http://api/actuator/health/liveness",
+      expect.objectContaining({ cache: "no-store" }),
+    );
+  });
+
+  it("US2-AC7 연결에 실패하면 예외 대신 DOWN을 돌려준다", async () => {
+    const fetchImpl = vi.fn().mockRejectedValue(new TypeError("fetch failed"));
+
+    await expect(fetchApiLiveness("http://api", fetchImpl)).resolves.toEqual({
+      status: "DOWN",
+    });
   });
 });
