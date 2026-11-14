@@ -62,7 +62,7 @@ jobs:
             --symmetric --cipher-algo AES256 --output "$name" backup.dump 3<<<"$BACKUP_PASSPHRASE"
           rm backup.dump
           echo "BACKUP_FILE=$name" >> "$GITHUB_ENV"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: neon-backup
           path: ${{ env.BACKUP_FILE }}
