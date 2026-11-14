@@ -112,7 +112,7 @@ jobs:
           --health-interval 5s
           --health-retries 10
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: neon-backup
       - name: 풀기
