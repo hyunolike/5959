@@ -55,7 +55,7 @@ dependencies {
     testImplementation("org.testcontainers:testcontainers-junit-jupiter")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testImplementation("org.springframework.security:spring-security-test")
-    testImplementation("io.swagger.parser.v3:swagger-parser:2.1.48")
+    testImplementation("io.swagger.parser.v3:swagger-parser:2.1.49")
     // 피드 쿼리 수 고정(T029, research R7)을 확인할 때 JDBC 문장을 센다(JPA와 JdbcClient 모두)
     testImplementation("net.ttddyy:datasource-proxy:1.11.1")
     // swagger-parser가 끌어오는 io.swagger:swagger-core(1.x, v2 변환용)는 JDK에서 제거된 JAXB를 참조한다
